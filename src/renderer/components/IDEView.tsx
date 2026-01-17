@@ -186,10 +186,10 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
         </div>
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {getStatusIcon()}
         <span className="text-[10px] text-muted-foreground">
           {formatRelativeTime(pr.created_at)}
         </span>
+        {getStatusIcon()}
       </div>
     </div>
   )

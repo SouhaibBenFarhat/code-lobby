@@ -9,6 +9,7 @@ import {
   fetchAllRepositories,
   fetchAllPRsForRepos,
   extractEventsFromPRs,
+  fetchRateLimitOnly,
   GitHubUser,
   PullRequest,
   RateLimitInfo,
@@ -288,19 +289,21 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
-  // Rate limit info
+  // Rate limit info - uses dedicated endpoint that doesn't count against rate limit
   ipcMain.handle('get-rate-limit', async () => {
     const token = getToken()
     if (!token) return { success: false, error: 'No token' }
     try {
-      const data = await fetchAndCacheData()
+      // Use the dedicated rate limit endpoint (doesn't count against limit!)
+      const rateLimit = await fetchRateLimitOnly(token)
       logger.debug(LogCategory.RATE_LIMIT, 'Rate limit status', {
-        used: data.rateLimit.used,
-        remaining: data.rateLimit.remaining,
-        limit: data.rateLimit.limit,
-        percentage: data.rateLimit.percentage
+        used: rateLimit.used,
+        remaining: rateLimit.remaining,
+        limit: rateLimit.limit,
+        percentage: rateLimit.percentage,
+        resetAt: rateLimit.resetAt
       })
-      return { success: true, data: data.rateLimit }
+      return { success: true, data: rateLimit }
     } catch (error) {
       logger.error(LogCategory.RATE_LIMIT, 'Failed to get rate limit', { error: (error as Error).message })
       return { success: false, error: (error as Error).message }

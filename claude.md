@@ -640,6 +640,39 @@ When building new components:
 
 ---
 
+## 👁️ UX Scannability Rules
+
+When displaying lists of items with multiple data points (status, date, title, etc.):
+
+### Align Status Indicators Consistently
+
+**Put status icons at the far right (or far left) so they align vertically:**
+```tsx
+// ✅ GOOD - Status icons align on the right edge for easy scanning
+<div className="flex items-center gap-1.5">
+  <span>{formatRelativeTime(item.date)}</span>  {/* Variable width */}
+  {getStatusIcon()}                              {/* Fixed position - far right */}
+</div>
+
+// ❌ BAD - Status icons at varying positions due to variable-width content before them
+<div className="flex items-center gap-1.5">
+  {getStatusIcon()}                              {/* Position varies based on content */}
+  <span>{formatRelativeTime(item.date)}</span>  {/* "4d ago" vs "1mo ago" shifts icon */}
+</div>
+```
+
+### Why This Matters
+- Users scan lists vertically, looking for specific statuses
+- Misaligned icons force the eye to hunt horizontally
+- Consistent positioning enables "at a glance" status checking
+
+### General Rule
+**Variable-width content → Fixed-width indicators**
+
+Put variable-length text (dates, titles, names) BEFORE fixed-width elements (icons, badges, status indicators) so the fixed elements align consistently.
+
+---
+
 ## 📜 Virtual Scrolling & Chat Patterns
 
 ### TanStack Virtual Best Practices

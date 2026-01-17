@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree, AlertTriangle, Clock } from 'lucide-react'
 import { DogIcon } from './DogIcon'
 import { useIsFetching, useQuery } from '@tanstack/react-query'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
@@ -13,6 +13,30 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { Separator } from './ui/separator'
 import { cn } from '@/lib/utils'
+
+// Helper to format time until reset
+function formatTimeUntilReset(resetAt: string): string {
+  const resetDate = new Date(resetAt)
+  const now = new Date()
+  const diffMs = resetDate.getTime() - now.getTime()
+  
+  if (diffMs <= 0) return 'now'
+  
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffSecs = Math.floor((diffMs % 60000) / 1000)
+  
+  if (diffMins > 60) {
+    const hours = Math.floor(diffMins / 60)
+    const mins = diffMins % 60
+    return `${hours}h ${mins}m`
+  }
+  
+  if (diffMins > 0) {
+    return `${diffMins}m ${diffSecs}s`
+  }
+  
+  return `${diffSecs}s`
+}
 
 export type ViewMode = 'canvas' | 'ide'
 
@@ -43,6 +67,7 @@ export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOp
   const queryClient = useQueryClient()
   const isFetching = useIsFetching()
   const [isDark, setIsDark] = useState(true)
+  const [, setTick] = useState(0) // Force re-render for countdown
 
   // Fetch rate limit info (refreshes with other queries on window focus)
   const { data: rateLimitData } = useQuery({
@@ -57,6 +82,25 @@ export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOp
     refetchOnWindowFocus: true,
     staleTime: 30000
   })
+
+  // Calculate rate limit status
+  const isRateLimited = rateLimitData && rateLimitData.remaining === 0
+  const isNearLimit = rateLimitData && rateLimitData.percentage >= 80
+  const timeUntilReset = useMemo(() => {
+    if (!rateLimitData?.resetAt) return ''
+    return formatTimeUntilReset(rateLimitData.resetAt)
+  }, [rateLimitData?.resetAt])
+
+  // Update countdown every second when rate limited or near limit
+  useEffect(() => {
+    if (!isRateLimited && !isNearLimit) return
+    
+    const interval = setInterval(() => {
+      setTick(t => t + 1)
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [isRateLimited, isNearLimit])
 
   useEffect(() => {
     // Check saved theme or default to dark
@@ -138,33 +182,74 @@ export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOp
             <Separator orientation="vertical" className="h-6" />
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 no-drag cursor-default">
-                  <Gauge className="w-3.5 h-3.5 text-muted-foreground" />
+                <div className={cn(
+                  "flex items-center gap-2 no-drag cursor-default px-2 py-1 rounded-md transition-colors",
+                  isRateLimited && "bg-destructive/10 border border-destructive/30",
+                  isNearLimit && !isRateLimited && "bg-warning/10 border border-warning/30"
+                )}>
+                  {isRateLimited ? (
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive animate-pulse" />
+                  ) : (
+                    <Gauge className={cn(
+                      "w-3.5 h-3.5",
+                      isNearLimit ? "text-warning" : "text-muted-foreground"
+                    )} />
+                  )}
                   <div className="flex items-center gap-1.5">
-                    <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          rateLimitData.percentage > 80 
-                            ? 'bg-red-500' 
-                            : rateLimitData.percentage > 50 
-                              ? 'bg-yellow-500' 
-                              : 'bg-green-500'
-                        }`}
-                        style={{ width: `${rateLimitData.percentage}%` }}
+                        className={cn(
+                          "h-full rounded-full transition-all duration-300",
+                          isRateLimited ? "bg-destructive" :
+                          rateLimitData.percentage > 80 ? "bg-red-500" : 
+                          rateLimitData.percentage > 50 ? "bg-yellow-500" : 
+                          "bg-green-500"
+                        )}
+                        style={{ width: `${Math.min(rateLimitData.percentage, 100)}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-muted-foreground w-8">
-                      {rateLimitData.percentage}%
-                    </span>
+                    {isRateLimited ? (
+                      <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatTimeUntilReset(rateLimitData.resetAt)}</span>
+                      </div>
+                    ) : isNearLimit ? (
+                      <div className="flex items-center gap-1 text-[10px] text-warning">
+                        <span>{rateLimitData.remaining}</span>
+                        <span className="text-muted-foreground">left</span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground w-8">
+                        {rateLimitData.percentage}%
+                      </span>
+                    )}
                   </div>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
-                <div className="space-y-1">
-                  <p className="font-medium">API Rate Limit</p>
-                  <p>Used: {rateLimitData.used.toLocaleString()} / {rateLimitData.limit.toLocaleString()}</p>
-                  <p>Remaining: {rateLimitData.remaining.toLocaleString()}</p>
-                  <p>Resets: {new Date(rateLimitData.resetAt).toLocaleTimeString()}</p>
+                <div className="space-y-1.5">
+                  <p className={cn(
+                    "font-medium",
+                    isRateLimited && "text-destructive"
+                  )}>
+                    {isRateLimited ? "⚠️ Rate Limit Reached!" : "API Rate Limit"}
+                  </p>
+                  <div className="space-y-0.5">
+                    <p>Used: {rateLimitData.used.toLocaleString()} / {rateLimitData.limit.toLocaleString()}</p>
+                    <p className={cn(isRateLimited && "text-destructive font-medium")}>
+                      Remaining: {rateLimitData.remaining.toLocaleString()}
+                    </p>
+                  </div>
+                  <Separator className="my-1" />
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      Resets in <span className="font-medium">{formatTimeUntilReset(rateLimitData.resetAt)}</span>
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground text-[10px]">
+                    ({new Date(rateLimitData.resetAt).toLocaleTimeString()})
+                  </p>
                 </div>
               </TooltipContent>
             </Tooltip>

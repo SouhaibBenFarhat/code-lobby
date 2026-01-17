@@ -146,6 +146,58 @@ export interface RateLimitInfo {
   percentage: number
 }
 
+/**
+ * Fetch rate limit info using GitHub REST API
+ * This endpoint doesn't count against the rate limit!
+ * We check the GraphQL rate limit since that's what the app uses.
+ */
+export async function fetchRateLimitOnly(token: string): Promise<RateLimitInfo> {
+  logger.info(LogCategory.API, 'Fetching rate limit from /rate_limit endpoint')
+  
+  const response = await fetch('https://api.github.com/rate_limit', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'CodeLobby-App'
+    }
+  })
+  
+  if (!response.ok) {
+    logger.error(LogCategory.API, 'Failed to fetch rate limit', { status: response.status })
+    throw new Error(`Failed to fetch rate limit: ${response.status}`)
+  }
+  
+  const data = await response.json()
+  
+  // Log all rate limit resources for debugging
+  logger.debug(LogCategory.API, 'Rate limit response', {
+    core: data.resources.core,
+    graphql: data.resources.graphql,
+    search: data.resources.search
+  })
+  
+  // Use GraphQL rate limit since that's what the app uses for data fetching
+  const graphql = data.resources.graphql
+  
+  const result = {
+    limit: graphql.limit,
+    remaining: graphql.remaining,
+    used: graphql.limit - graphql.remaining,
+    resetAt: new Date(graphql.reset * 1000).toISOString(),
+    percentage: Math.round(((graphql.limit - graphql.remaining) / graphql.limit) * 100)
+  }
+  
+  logger.info(LogCategory.API, 'GraphQL rate limit status', {
+    used: result.used,
+    remaining: result.remaining,
+    limit: result.limit,
+    percentage: result.percentage,
+    resetAt: result.resetAt
+  })
+  
+  return result
+}
+
 // GraphQL query to get everything in one request!
 const GET_ALL_DATA = `
   query GetAllPRData {

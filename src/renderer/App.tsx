@@ -260,7 +260,7 @@ function App() {
           {/* Canvas View */}
           {viewMode === 'canvas' && (
             <div className="flex-1 flex overflow-hidden">
-              <main className="flex-1 overflow-auto p-2">
+              <main className="flex-1 overflow-auto bg-muted/20">
                 <PRGrid currentUser={user?.login || null} />
               </main>
               
