@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { Button } from './ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from '@/lib/utils'
 
 interface ResizableSidebarProps {
@@ -60,8 +60,7 @@ export function ResizableSidebar({
   }, [isResizing, resize, stopResizing])
 
   return (
-    <TooltipProvider>
-      <div className="relative flex">
+    <div className="relative flex">
         {/* Toggle button when closed */}
         {!isOpen && (
           <div className="flex items-start pt-4 px-2 border-l border-border bg-card/50">
@@ -124,6 +123,5 @@ export function ResizableSidebar({
           </aside>
         )}
       </div>
-    </TooltipProvider>
   )
 }

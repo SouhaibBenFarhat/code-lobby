@@ -12,7 +12,8 @@ import {
   GitBranch
 } from 'lucide-react'
 import { Badge } from './ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import { usePRContext } from '../App'
 import type { PullRequest, CheckStatus } from './types'
@@ -67,14 +68,11 @@ export function PRCard({ pr }: PRCardProps) {
   const totalComments = pr.comments + pr.review_comments
 
   return (
-    <TooltipProvider>
-      <div 
-        className={cn(
+    <div 
+      className={cn(
           'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item',
           pr.draft && 'opacity-70',
-          isSelected 
-            ? 'border-primary/60 bg-primary/5 hover:bg-primary/10 hover:border-primary/80 shadow-sm' 
-            : 'hover:shadow-sm'
+          isSelected && 'selected'
         )}
         onClick={() => setSelectedPR(pr)}
       >
@@ -131,6 +129,24 @@ export function PRCard({ pr }: PRCardProps) {
             <span className="text-xs text-muted-foreground font-mono">
               #{pr.number}
             </span>
+
+            {/* Author */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1">
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
+                    <AvatarFallback className="text-[8px]">
+                      {pr.user.login.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground truncate max-w-[60px]">
+                    {pr.user.login}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Author: {pr.user.login}</TooltipContent>
+            </Tooltip>
 
             {/* Draft badge */}
             {pr.draft && (
@@ -189,6 +205,5 @@ export function PRCard({ pr }: PRCardProps) {
           </div>
         </div>
       </div>
-    </TooltipProvider>
   )
 }

@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { Separator } from './ui/separator'
 
 interface RateLimitInfo {
@@ -71,8 +71,7 @@ export function Header({ user, onLogout }: HeaderProps) {
   }
 
   return (
-    <TooltipProvider>
-      <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center pl-20 pr-4 gap-4 drag-region header-bar">
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center pl-20 pr-4 gap-4 drag-region header-bar">
         <div className="flex items-center gap-3 no-drag">
           <CodeLobbyLogo size={36} />
           <div className="flex flex-col">
@@ -207,6 +206,5 @@ export function Header({ user, onLogout }: HeaderProps) {
           </Tooltip>
         </div>
       </header>
-    </TooltipProvider>
   )
 }

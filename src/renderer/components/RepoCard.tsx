@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { PRCard } from './PRCard'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import type { PullRequest, Repository } from './types'
@@ -61,7 +61,6 @@ export function RepoCard({
   const myPRsCount = currentUser ? prs.filter(pr => pr.user.login === currentUser).length : 0
 
   return (
-    <TooltipProvider>
     <Card 
       className={cn('flex flex-col overflow-hidden h-full', className)} 
       style={{
@@ -283,6 +282,5 @@ export function RepoCard({
         </div>
       </div>
     </Card>
-    </TooltipProvider>
   )
 }

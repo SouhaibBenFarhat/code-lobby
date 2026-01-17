@@ -4,7 +4,7 @@ import { Loader2, AlertCircle, RefreshCw, FolderGit2, Lock, Unlock, LayoutGrid, 
 import { Rnd } from 'react-rnd'
 import { RepoCard } from './RepoCard'
 import { Button } from './ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { groupBy } from '@/lib/utils'
 import type { PullRequest, Repository } from './types'
 
@@ -385,8 +385,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
   }
 
   return (
-    <TooltipProvider>
-      <div ref={containerRef} className="h-full w-full overflow-auto relative bg-muted/20">
+    <div ref={containerRef} className="h-full w-full overflow-auto relative bg-muted/20">
         {/* Toolbar */}
         <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
           <Tooltip>
@@ -535,6 +534,5 @@ export function PRGrid({ currentUser }: PRGridProps) {
           })}
         </div>
       </div>
-    </TooltipProvider>
   )
 }

@@ -134,6 +134,18 @@
   border-color: hsl(220 50% 80%);
 }
 
+:root .pr-card-item.selected {
+  background: hsl(142 50% 96%);
+  border-color: hsl(142 70% 45%);
+  box-shadow: inset 0 0 0 1px hsl(142 70% 45%), 0 0 0 2px hsl(142 70% 45% / 0.15);
+}
+
+:root .pr-card-item.selected:hover {
+  background: hsl(142 50% 94%);
+  border-color: hsl(142 70% 40%);
+  box-shadow: inset 0 0 0 1px hsl(142 70% 40%), 0 0 0 2px hsl(142 70% 40% / 0.2);
+}
+
 .dark .pr-card-item {
   background: hsl(217 33% 14%);
   border: 1px solid hsl(217 33% 22%);
@@ -142,6 +154,18 @@
 .dark .pr-card-item:hover {
   background: hsl(217 33% 18%);
   border-color: hsl(142 70% 35%);
+}
+
+.dark .pr-card-item.selected {
+  background: hsl(142 50% 10%);
+  border-color: hsl(142 70% 40%);
+  box-shadow: inset 0 0 0 1px hsl(142 70% 40%), 0 0 0 2px hsl(142 70% 40% / 0.2);
+}
+
+.dark .pr-card-item.selected:hover {
+  background: hsl(142 50% 12%);
+  border-color: hsl(142 70% 45%);
+  box-shadow: inset 0 0 0 1px hsl(142 70% 45%), 0 0 0 2px hsl(142 70% 45% / 0.25);
 }
 
 /* Drag region for titlebar */

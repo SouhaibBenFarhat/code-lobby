@@ -5,6 +5,7 @@ import { PRGrid } from './components/PRGrid'
 import { PRDetail } from './components/PRDetail'
 import { Header } from './components/Header'
 import { Toaster } from './components/ui/toaster'
+import { TooltipProvider } from './components/ui/tooltip'
 import { MousePointerClick, PanelRightClose, PanelRight } from 'lucide-react'
 import { Button } from './components/ui/button'
 import type { PullRequest } from './components/types'
@@ -168,8 +169,9 @@ function App() {
 
   // Authenticated - show dashboard
   return (
-    <PRContext.Provider value={{ selectedPR, setSelectedPR }}>
-      <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <TooltipProvider>
+      <PRContext.Provider value={{ selectedPR, setSelectedPR }}>
+        <div className="h-screen bg-background flex flex-col overflow-hidden">
         <Header user={user} onLogout={handleLogout} />
         <div className="flex-1 flex overflow-hidden">
           <main className="flex-1 overflow-auto p-2">
@@ -236,8 +238,9 @@ function App() {
           )}
         </div>
         <Toaster />
-      </div>
-    </PRContext.Provider>
+        </div>
+      </PRContext.Provider>
+    </TooltipProvider>
   )
 }
 
