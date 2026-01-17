@@ -1,0 +1,59 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="108" fill="#0d1117"/>
+  
+  <!-- Subtle gradient overlay -->
+  <rect width="512" height="512" rx="108" fill="url(#gradient)" opacity="0.5"/>
+  
+  <!-- Left bracket < -->
+  <path
+    d="M180 140L68 256L180 372"
+    stroke="#3fb950"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Right bracket > -->
+  <path
+    d="M332 140L444 256L332 372"
+    stroke="#3fb950"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Door/Lobby - center rectangle -->
+  <rect
+    x="220"
+    y="180"
+    width="72"
+    height="152"
+    rx="8"
+    fill="#3fb950"
+  />
+  
+  <!-- Door handle -->
+  <circle
+    cx="276"
+    cy="256"
+    r="10"
+    fill="#0d1117"
+  />
+  
+  <!-- Welcome mat / base line -->
+  <path
+    d="M200 372H312"
+    stroke="#3fb950"
+    stroke-width="24"
+    stroke-linecap="round"
+    opacity="0.6"
+  />
+  
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" stop-color="#3fb950" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#3fb950" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>

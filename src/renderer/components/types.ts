@@ -1,0 +1,130 @@
+export interface Repository {
+  id: string
+  name: string
+  full_name: string
+  html_url: string
+  description: string | null
+  owner: {
+    login: string
+    avatar_url: string
+  }
+  stargazers_count: number
+  language: string | null
+  updated_at: string
+}
+
+export interface PRComment {
+  id: string
+  body: string
+  created_at: string
+  author: {
+    login: string
+    avatar_url: string
+    isBot?: boolean
+  }
+}
+
+export interface PRReview {
+  id: string
+  state: string
+  created_at: string
+  author: {
+    login: string
+    avatar_url: string
+    isBot?: boolean
+  }
+  body: string | null
+}
+
+export interface ReviewComment {
+  id: string
+  body: string
+  created_at: string
+  author: {
+    login: string
+    avatar_url: string
+    isBot?: boolean
+  }
+  path: string
+  line: number | null
+  diffHunk?: string
+}
+
+export interface ReviewThread {
+  id: string
+  isResolved: boolean
+  path: string
+  line: number | null
+  comments: ReviewComment[]
+}
+
+export interface PullRequest {
+  id: string
+  number: number
+  title: string
+  html_url: string
+  state: string
+  created_at: string
+  updated_at: string
+  draft: boolean
+  merged_at: string | null
+  user: {
+    login: string
+    avatar_url: string
+  }
+  head: {
+    ref: string
+    sha: string
+  }
+  base: {
+    ref: string
+    repo: {
+      name: string
+      full_name: string
+      owner: {
+        login: string
+        avatar_url: string
+      }
+    }
+  }
+  labels: Array<{
+    name: string
+    color: string
+  }>
+  comments: number
+  review_comments: number
+  additions: number
+  deletions: number
+  changed_files: number
+  // GraphQL additions - data included in single request!
+  checks?: CheckStatus
+  commentsList?: PRComment[]
+  reviews?: PRReview[]
+  reviewThreads?: ReviewThread[]
+}
+
+export interface PREvent {
+  id: number
+  event: string
+  created_at: string
+  actor?: {
+    login: string
+    avatar_url: string
+  }
+  body?: string
+  state?: string
+  commit_id?: string
+  submitted_at?: string
+}
+
+export interface CheckStatus {
+  state: 'pending' | 'success' | 'failure' | 'error'
+  total_count: number
+  check_runs: Array<{
+    id: string
+    name: string
+    status: string
+    conclusion: string | null
+    html_url: string
+  }>
+}
