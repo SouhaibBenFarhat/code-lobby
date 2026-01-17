@@ -5,7 +5,7 @@ import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { EventStream } from './EventStream'
 import { RepoSelector } from './RepoSelector'
 import { LogsViewer } from './LogsViewer'
-import { AIChat } from './AIChat'
+import { AIChatPanel } from './AIChat'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from './ui/button'
@@ -41,7 +41,6 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
   const queryClient = useQueryClient()
   const isFetching = useIsFetching()
   const [isDark, setIsDark] = useState(true)
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
 
   // Fetch rate limit info (refreshes with other queries on window focus)
   const { data: rateLimitData } = useQuery({
@@ -200,19 +199,25 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
             <TooltipContent>{isDark ? 'Light mode' : 'Dark mode'}</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsAIChatOpen(true)} 
-                className="h-8 w-8"
-              >
-                <Bot className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>AI Assistant</TooltipContent>
-          </Tooltip>
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Bot className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>AI Assistant</TooltipContent>
+            </Tooltip>
+            <PopoverContent 
+              className="w-[400px] h-[500px] p-0 overflow-hidden" 
+              align="end"
+              sideOffset={8}
+            >
+              <AIChatPanel onClose={() => {}} />
+            </PopoverContent>
+          </Popover>
 
           <Popover>
             <Tooltip>
@@ -264,9 +269,6 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
             <TooltipContent>Sign out</TooltipContent>
           </Tooltip>
         </div>
-
-        {/* AI Chat Dialog */}
-        <AIChat isOpen={isAIChatOpen} onClose={() => setIsAIChatOpen(false)} />
       </header>
   )
 }
