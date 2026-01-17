@@ -369,22 +369,52 @@ function setupIPCHandlers(): void {
 
   // AI Chat
   ipcMain.handle('get-claude-api-key', async () => {
-    return getClaudeApiKey()
+    logger.debug(LogCategory.AUTH, 'Getting Claude API key')
+    const key = getClaudeApiKey()
+    logger.info(LogCategory.AUTH, 'Claude API key retrieved', { hasKey: !!key })
+    return key
   })
 
   ipcMain.handle('set-claude-api-key', async (_, key: string | null) => {
+    logger.info(LogCategory.AUTH, 'Setting Claude API key', { 
+      action: key ? 'set' : 'clear',
+      keyLength: key?.length || 0,
+      keyPrefix: key ? key.substring(0, 10) + '...' : null
+    })
+    
     if (key) {
       // Simple format validation - actual validation happens on first message
       if (!key.startsWith('sk-ant-')) {
-        logger.warn(LogCategory.AUTH, 'Invalid Claude API key format')
+        logger.warn(LogCategory.AUTH, 'Invalid Claude API key format', { 
+          keyPrefix: key.substring(0, 10),
+          expectedPrefix: 'sk-ant-'
+        })
         return { success: false, error: 'Invalid API key format. Key should start with sk-ant-' }
       }
-      setClaudeApiKey(key)
-      logger.info(LogCategory.AUTH, 'Claude API key saved')
-      return { success: true }
+      
+      try {
+        setClaudeApiKey(key)
+        logger.info(LogCategory.AUTH, 'Claude API key saved successfully', {
+          keyLength: key.length
+        })
+        return { success: true }
+      } catch (error) {
+        logger.error(LogCategory.AUTH, 'Failed to save Claude API key', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+        return { success: false, error: 'Failed to save API key' }
+      }
     } else {
-      setClaudeApiKey(null)
-      return { success: true }
+      try {
+        setClaudeApiKey(null)
+        logger.info(LogCategory.AUTH, 'Claude API key cleared')
+        return { success: true }
+      } catch (error) {
+        logger.error(LogCategory.AUTH, 'Failed to clear Claude API key', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+        return { success: false, error: 'Failed to clear API key' }
+      }
     }
   })
 
