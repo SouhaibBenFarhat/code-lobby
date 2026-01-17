@@ -72,7 +72,7 @@ export function Header({ user, onLogout }: HeaderProps) {
 
   return (
     <TooltipProvider>
-      <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center pl-20 pr-4 gap-4 drag-region">
+      <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center pl-20 pr-4 gap-4 drag-region header-bar">
         <div className="flex items-center gap-3 no-drag">
           <CodeLobbyLogo size={36} />
           <div className="flex flex-col">

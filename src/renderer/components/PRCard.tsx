@@ -70,11 +70,11 @@ export function PRCard({ pr }: PRCardProps) {
     <TooltipProvider>
       <div 
         className={cn(
-          'group p-3 rounded-lg border transition-all cursor-pointer',
+          'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item',
           pr.draft && 'opacity-70',
           isSelected 
-            ? 'border-primary/60 bg-primary/5 hover:bg-primary/10 hover:border-primary/80' 
-            : 'border-border/50 bg-background/50 hover:bg-background hover:border-border'
+            ? 'border-primary/60 bg-primary/5 hover:bg-primary/10 hover:border-primary/80 shadow-sm' 
+            : 'hover:shadow-sm'
         )}
         onClick={() => setSelectedPR(pr)}
       >

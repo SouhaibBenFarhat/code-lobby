@@ -4,29 +4,30 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light mode - improved contrast with subtle warmth */
+    --background: 220 20% 97%;
+    --foreground: 224 71% 4%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 220 90% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 224 71% 4%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 90%;
+    --accent-foreground: 224 71% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
     --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 222.2 47.4% 11.2%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --warning-foreground: 224 71% 4%;
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
+    --ring: 220 90% 45%;
     --radius: 0.5rem;
   }
 
@@ -85,6 +86,62 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/40;
+}
+
+/* Light mode enhancements for better contrast */
+:root {
+  /* Card shadow for light mode */
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --card-shadow-hover: 0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Better card styling in light mode */
+:root [data-slot="card"],
+:root .card {
+  box-shadow: var(--card-shadow);
+  border: 1px solid hsl(var(--border));
+}
+
+:root [data-slot="card"]:hover,
+:root .card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Header bar light mode - subtle gradient */
+:root .header-bar {
+  background: linear-gradient(to bottom, hsl(0 0% 100%), hsl(220 20% 98%));
+  border-bottom: 1px solid hsl(220 13% 88%);
+}
+
+.dark .header-bar {
+  background: linear-gradient(to bottom, hsl(217 33% 12%), hsl(217 33% 10%));
+  border-bottom: 1px solid hsl(217 33% 18%);
+}
+
+/* PR card in light mode - subtle background */
+:root .pr-card-item {
+  background: hsl(220 20% 99%);
+  border: 1px solid hsl(220 13% 90%);
+}
+
+:root .pr-card-item:hover {
+  background: hsl(220 30% 97%);
+  border-color: hsl(220 50% 80%);
+}
+
+.dark .pr-card-item {
+  background: hsl(217 33% 14%);
+  border: 1px solid hsl(217 33% 22%);
+}
+
+.dark .pr-card-item:hover {
+  background: hsl(217 33% 18%);
+  border-color: hsl(142 70% 35%);
 }
 
 /* Drag region for titlebar */

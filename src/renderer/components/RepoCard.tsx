@@ -75,8 +75,8 @@ export function RepoCard({
     >
       {/* Top bar with drag handle, color picker, and close button */}
       <div 
-        className="flex items-center border-b border-border/50"
-        style={color ? { backgroundColor: `${color}10`, borderBottomColor: `${color}30` } : {}}
+        className="flex items-center border-b border-border bg-muted/80 dark:bg-black/20"
+        style={color ? { backgroundColor: `${color}15`, borderBottomColor: `${color}40` } : {}}
       >
         {/* Color picker */}
         {onColorChange && (
@@ -243,7 +243,7 @@ export function RepoCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-2">
+      <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-1">
         {hasPRs ? (
           <div className="space-y-1.5 p-0.5">
             {filteredPRs.map((pr) => (
@@ -261,6 +261,27 @@ export function RepoCard({
           </div>
         )}
       </CardContent>
+
+      {/* Footer - visual end marker */}
+      <div 
+        className="flex-shrink-0 border-t border-border bg-muted/80 dark:bg-black/20 px-3 py-1.5 flex items-center justify-center gap-2"
+        style={color ? { borderTopColor: `${color}40`, backgroundColor: `${color}15` } : {}}
+      >
+        <div className="flex items-center gap-1.5">
+          <div 
+            className="w-1 h-1 rounded-full bg-muted-foreground/40"
+            style={color ? { backgroundColor: `${color}60` } : {}}
+          />
+          <div 
+            className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50"
+            style={color ? { backgroundColor: `${color}70` } : {}}
+          />
+          <div 
+            className="w-1 h-1 rounded-full bg-muted-foreground/40"
+            style={color ? { backgroundColor: `${color}60` } : {}}
+          />
+        </div>
+      </div>
     </Card>
     </TooltipProvider>
   )
