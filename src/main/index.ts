@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getSelectedModel, setSelectedModel, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
+import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getSelectedModel, setSelectedModel, getEnableThinking, setEnableThinking, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
 import { sendMessage as sendClaudeMessage, fetchModels as fetchClaudeModels, getDefaultModel, ClaudeMessage } from './claude-api'
 import { 
   validateToken,
@@ -456,6 +456,17 @@ function setupIPCHandlers(): void {
     return getDefaultModel()
   })
 
+  // Extended thinking toggle
+  ipcMain.handle('get-enable-thinking', async () => {
+    return getEnableThinking()
+  })
+
+  ipcMain.handle('set-enable-thinking', async (_, enabled: boolean) => {
+    logger.info(LogCategory.API, 'Setting extended thinking', { enabled })
+    setEnableThinking(enabled)
+    return { success: true }
+  })
+
   ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
@@ -463,7 +474,11 @@ function setupIPCHandlers(): void {
     }
 
     const selectedModel = getSelectedModel() || getDefaultModel()
-    logger.info(LogCategory.API, 'Sending chat message to Claude', { model: selectedModel })
+    const enableThinking = getEnableThinking()
+    logger.info(LogCategory.API, 'Sending chat message to Claude', { 
+      model: selectedModel, 
+      thinking: enableThinking 
+    })
 
     // Create user message
     const userMsg: ChatMessage = {
@@ -482,18 +497,23 @@ function setupIPCHandlers(): void {
     }))
 
     try {
-      const response = await sendClaudeMessage(apiKey, claudeMessages, selectedModel)
+      const response = await sendClaudeMessage(apiKey, claudeMessages, selectedModel, undefined, enableThinking)
       
-      // Create assistant message
+      // Create assistant message (include thinking if present)
       const assistantMsg: ChatMessage = {
         id: response.id || `msg_${Date.now()}_assistant`,
         role: 'assistant',
         content: response.content,
+        thinking: response.thinking,
         timestamp: new Date().toISOString()
       }
       addChatMessage(assistantMsg)
 
-      logger.info(LogCategory.API, 'Chat message sent successfully', { model: response.model })
+      logger.info(LogCategory.API, 'Chat message sent successfully', { 
+        model: response.model,
+        hasThinking: !!response.thinking,
+        usage: response.usage
+      })
       return { success: true, message: assistantMsg }
     } catch (error) {
       logger.error(LogCategory.API, 'Failed to send chat message', { 

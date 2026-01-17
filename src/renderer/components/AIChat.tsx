@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Trash2, Key, Loader2, Bot, User, AlertCircle, Settings, X, ChevronDown, RefreshCw } from 'lucide-react'
+import { Send, Trash2, Key, Loader2, Bot, User, AlertCircle, Settings, X, ChevronDown, RefreshCw, Brain, ChevronRight } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
@@ -11,6 +11,7 @@ interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  thinking?: string
   timestamp: string
 }
 
@@ -37,6 +38,8 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const [models, setModels] = useState<ClaudeModel[]>([])
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [isLoadingModels, setIsLoadingModels] = useState(false)
+  const [enableThinking, setEnableThinking] = useState(false)
+  const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -48,14 +51,16 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [key, history, model] = await Promise.all([
+      const [key, history, model, thinking] = await Promise.all([
         window.electron.getClaudeApiKey(),
         window.electron.getChatHistory(),
-        window.electron.getSelectedModel()
+        window.electron.getSelectedModel(),
+        window.electron.getEnableThinking()
       ])
       setApiKey(key)
       setMessages(history)
       setSelectedModel(model)
+      setEnableThinking(thinking)
       
       // If we have an API key, fetch available models
       if (key) {
@@ -93,6 +98,24 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     setSelectedModel(modelId)
     await window.electron.setSelectedModel(modelId)
     window.electron.logFromRenderer('info', 'API', 'Model changed', { model: modelId })
+  }
+
+  const handleThinkingChange = async (enabled: boolean) => {
+    setEnableThinking(enabled)
+    await window.electron.setEnableThinking(enabled)
+    window.electron.logFromRenderer('info', 'API', 'Extended thinking changed', { enabled })
+  }
+
+  const toggleThinkingExpanded = (messageId: string) => {
+    setExpandedThinking(prev => {
+      const next = new Set(prev)
+      if (next.has(messageId)) {
+        next.delete(messageId)
+      } else {
+        next.add(messageId)
+      }
+      return next
+    })
   }
 
   // Scroll to bottom when messages change
@@ -331,6 +354,33 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
               </div>
             )}
           </div>
+
+          {/* Extended Thinking Toggle */}
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              <Brain className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Extended Thinking</span>
+            </div>
+            <button
+              onClick={() => handleThinkingChange(!enableThinking)}
+              className={cn(
+                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                enableThinking ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
+                  enableThinking ? "translate-x-5" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+          {enableThinking && (
+            <p className="text-[10px] text-muted-foreground">
+              Shows Claude's reasoning process. Uses more tokens.
+            </p>
+          )}
           
           {/* API Key */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -380,15 +430,43 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                 
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-lg px-3 py-2",
+                    "max-w-[85%] rounded-lg",
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground px-3 py-2'
                       : 'bg-muted'
                   )}
                 >
                   {message.role === 'assistant' ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-                      <MarkdownContent content={message.content} />
+                    <div className="space-y-0">
+                      {/* Thinking section (collapsible) */}
+                      {message.thinking && (
+                        <div className="border-b border-border/50">
+                          <button
+                            onClick={() => toggleThinkingExpanded(message.id)}
+                            className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <ChevronRight 
+                              className={cn(
+                                "w-3 h-3 transition-transform",
+                                expandedThinking.has(message.id) && "rotate-90"
+                              )} 
+                            />
+                            <Brain className="w-3 h-3" />
+                            <span>Thinking...</span>
+                          </button>
+                          {expandedThinking.has(message.id) && (
+                            <div className="px-3 pb-2 text-xs text-muted-foreground bg-muted/50 border-l-2 border-primary/30 ml-3 mr-3 mb-2 rounded">
+                              <pre className="whitespace-pre-wrap font-mono text-[10px] max-h-48 overflow-y-auto">
+                                {message.thinking}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Main content */}
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm px-3 py-2">
+                        <MarkdownContent content={message.content} />
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>

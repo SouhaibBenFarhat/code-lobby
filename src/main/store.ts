@@ -36,6 +36,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  thinking?: string  // Extended thinking content (for assistant messages)
   timestamp: string
 }
 
@@ -43,6 +44,7 @@ export interface ChatMessage {
 export interface AIChatSettings {
   claudeApiKey: string | null
   selectedModel: string | null
+  enableThinking: boolean
   chatHistory: ChatMessage[]
 }
 
@@ -89,6 +91,7 @@ const store = new Store<StoreSchema>({
     aiChat: {
       claudeApiKey: null,
       selectedModel: null,
+      enableThinking: false,
       chatHistory: []
     }
   },
@@ -208,6 +211,15 @@ export function getSelectedModel(): string | null {
 export function setSelectedModel(model: string | null): void {
   const current = store.get('aiChat')
   store.set('aiChat', { ...current, selectedModel: model })
+}
+
+export function getEnableThinking(): boolean {
+  return store.get('aiChat').enableThinking ?? false
+}
+
+export function setEnableThinking(enabled: boolean): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { ...current, enableThinking: enabled })
 }
 
 export function getChatHistory(): ChatMessage[] {

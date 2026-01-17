@@ -66,8 +66,10 @@ export interface ElectronAPI {
   getSelectedModel: () => Promise<string>
   setSelectedModel: (model: string) => Promise<{ success: boolean }>
   getDefaultModel: () => Promise<string>
-  getChatHistory: () => Promise<Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: string }>>
-  sendChatMessage: (message: string) => Promise<{ success: boolean; message?: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string }; error?: string }>
+  getEnableThinking: () => Promise<boolean>
+  setEnableThinking: (enabled: boolean) => Promise<{ success: boolean }>
+  getChatHistory: () => Promise<Array<{ id: string; role: 'user' | 'assistant'; content: string; thinking?: string; timestamp: string }>>
+  sendChatMessage: (message: string) => Promise<{ success: boolean; message?: { id: string; role: 'user' | 'assistant'; content: string; thinking?: string; timestamp: string }; error?: string }>
   clearChatHistory: () => Promise<{ success: boolean }>
 }
 
@@ -140,6 +142,8 @@ const electronAPI: ElectronAPI = {
   getSelectedModel: () => ipcRenderer.invoke('get-selected-model'),
   setSelectedModel: (model: string) => ipcRenderer.invoke('set-selected-model', model),
   getDefaultModel: () => ipcRenderer.invoke('get-default-model'),
+  getEnableThinking: () => ipcRenderer.invoke('get-enable-thinking'),
+  setEnableThinking: (enabled: boolean) => ipcRenderer.invoke('set-enable-thinking', enabled),
   getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
   sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
   clearChatHistory: () => ipcRenderer.invoke('clear-chat-history')

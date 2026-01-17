@@ -15,6 +15,7 @@ export interface ClaudeMessage {
 export interface ClaudeResponse {
   id: string
   content: string
+  thinking?: string  // Extended thinking content
   model: string
   stop_reason: string | null
   usage?: {
@@ -93,6 +94,18 @@ export function getDefaultModel(): string {
   return DEFAULT_MODEL
 }
 
+// Models that support extended thinking
+const THINKING_SUPPORTED_MODELS = [
+  'claude-opus-4',
+  'claude-sonnet-4',
+  'claude-3-7-sonnet',
+  'claude-3-5-sonnet'
+]
+
+function supportsThinking(model: string): boolean {
+  return THINKING_SUPPORTED_MODELS.some(m => model.includes(m))
+}
+
 /**
  * Send a message to Claude API
  */
@@ -100,19 +113,23 @@ export async function sendMessage(
   apiKey: string,
   messages: ClaudeMessage[],
   model?: string,
-  systemPrompt?: string
+  systemPrompt?: string,
+  enableThinking: boolean = false
 ): Promise<ClaudeResponse> {
   const selectedModel = model || DEFAULT_MODEL
+  const useThinking = enableThinking && supportsThinking(selectedModel)
   
   logger.info(LogCategory.API, 'Sending message to Claude API (SDK)', { 
     messageCount: messages.length,
-    model: selectedModel
+    model: selectedModel,
+    thinking: useThinking
   })
 
   try {
     const client = getClient(apiKey)
     
-    const response = await client.messages.create({
+    // Build request parameters
+    const requestParams: Parameters<typeof client.messages.create>[0] = {
       model: selectedModel,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,
@@ -120,23 +137,43 @@ export async function sendMessage(
         role: m.role,
         content: m.content
       }))
-    })
+    }
     
-    // Extract the text content from the response
-    const textContent = response.content.find(c => c.type === 'text')
-    const content = textContent && 'text' in textContent ? textContent.text : ''
+    // Add thinking configuration if supported and enabled
+    if (useThinking) {
+      requestParams.thinking = {
+        type: 'enabled',
+        budget_tokens: 5000 // Allow up to 5000 tokens for thinking
+      }
+    }
+    
+    const response = await client.messages.create(requestParams)
+    
+    // Extract text and thinking content from the response
+    let content = ''
+    let thinking = ''
+    
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        content = block.text
+      } else if (block.type === 'thinking' && 'thinking' in block) {
+        thinking = block.thinking
+      }
+    }
     
     logger.info(LogCategory.API, 'Claude API response received', { 
       id: response.id,
       model: response.model,
       stopReason: response.stop_reason,
       inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens
+      outputTokens: response.usage.output_tokens,
+      hasThinking: !!thinking
     })
 
     return {
       id: response.id,
       content,
+      thinking: thinking || undefined,
       model: response.model,
       stop_reason: response.stop_reason,
       usage: {
