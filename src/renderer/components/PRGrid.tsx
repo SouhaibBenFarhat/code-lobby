@@ -385,9 +385,9 @@ export function PRGrid({ currentUser }: PRGridProps) {
   }
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-auto relative bg-muted/20">
-        {/* Toolbar */}
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+    <div className="h-full w-full relative">
+      {/* Toolbar - positioned at bottom right of container */}
+      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -447,6 +447,8 @@ export function PRGrid({ currentUser }: PRGridProps) {
           </Tooltip>
         </div>
 
+      {/* Scrollable canvas area */}
+      <div ref={containerRef} className="h-full w-full overflow-auto bg-muted/20">
         {/* Canvas - extends if cards go beyond viewport */}
         <div 
           className="relative"
@@ -534,5 +536,6 @@ export function PRGrid({ currentUser }: PRGridProps) {
           })}
         </div>
       </div>
+    </div>
   )
 }
