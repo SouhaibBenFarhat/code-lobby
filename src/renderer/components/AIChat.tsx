@@ -68,19 +68,29 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const handleSetApiKey = async () => {
     if (!apiKeyInput.trim()) return
     
+    const keyToSet = apiKeyInput.trim()
+    console.log('[AIChat] Setting API key, length:', keyToSet.length, 'prefix:', keyToSet.substring(0, 10))
+    
     setIsSettingKey(true)
     setError(null)
     
     try {
-      const result = await window.electron.setClaudeApiKey(apiKeyInput.trim())
+      console.log('[AIChat] Calling setClaudeApiKey...')
+      const result = await window.electron.setClaudeApiKey(keyToSet)
+      console.log('[AIChat] setClaudeApiKey result:', result)
+      
       if (result.success) {
-        setApiKey(apiKeyInput.trim())
+        console.log('[AIChat] API key set successfully')
+        setApiKey(keyToSet)
         setApiKeyInput('')
       } else {
+        console.log('[AIChat] API key set failed:', result.error)
         setError(result.error || 'Invalid API key')
       }
     } catch (e) {
-      setError('Failed to set API key')
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      console.error('[AIChat] Exception setting API key:', errorMsg, e)
+      setError(`Failed to set API key: ${errorMsg}`)
     } finally {
       setIsSettingKey(false)
     }
