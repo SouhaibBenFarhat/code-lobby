@@ -9,11 +9,13 @@ import { Toaster } from './components/ui/toaster'
 import { TooltipProvider } from './components/ui/tooltip'
 import { MousePointerClick, PanelRightClose, PanelRight } from 'lucide-react'
 import { Button } from './components/ui/button'
+import { AIChatPanel } from './components/AIChat'
 import type { PullRequest } from './components/types'
 
 const MIN_PANEL_WIDTH = 300
 const MAX_PANEL_WIDTH = 800
 const DEFAULT_PANEL_WIDTH = 400
+const DEFAULT_AI_PANEL_WIDTH = 380
 
 interface User {
   login: string
@@ -45,6 +47,12 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('canvas')
   const [viewModeLoaded, setViewModeLoaded] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  
+  // AI Panel state
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false)
+  const [aiPanelWidth, setAIPanelWidth] = useState(DEFAULT_AI_PANEL_WIDTH)
+  const [isAIResizing, setIsAIResizing] = useState(false)
+  const aiResizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
   // Load view mode on mount
   useEffect(() => {
@@ -94,7 +102,7 @@ function App() {
     }
   }, [selectedPR])
 
-  // Handle resize
+  // Handle PR panel resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setIsResizing(true)
@@ -108,21 +116,42 @@ function App() {
     setIsPanelOpen(prev => !prev)
   }, [])
 
+  // Handle AI panel resize
+  const handleAIResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsAIResizing(true)
+    aiResizeRef.current = {
+      startX: e.clientX,
+      startWidth: aiPanelWidth
+    }
+  }, [aiPanelWidth])
+
+  const toggleAIPanel = useCallback(() => {
+    setIsAIPanelOpen(prev => !prev)
+  }, [])
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !resizeRef.current) return
-      
-      const delta = resizeRef.current.startX - e.clientX
-      const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, resizeRef.current.startWidth + delta))
-      setPanelWidth(newWidth)
+      if (isResizing && resizeRef.current) {
+        const delta = resizeRef.current.startX - e.clientX
+        const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, resizeRef.current.startWidth + delta))
+        setPanelWidth(newWidth)
+      }
+      if (isAIResizing && aiResizeRef.current) {
+        const delta = aiResizeRef.current.startX - e.clientX
+        const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, aiResizeRef.current.startWidth + delta))
+        setAIPanelWidth(newWidth)
+      }
     }
 
     const handleMouseUp = () => {
       setIsResizing(false)
+      setIsAIResizing(false)
       resizeRef.current = null
+      aiResizeRef.current = null
     }
 
-    if (isResizing) {
+    if (isResizing || isAIResizing) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       document.body.style.cursor = 'col-resize'
@@ -135,7 +164,7 @@ function App() {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
-  }, [isResizing])
+  }, [isResizing, isAIResizing])
 
   // Check for existing token on mount
   const { data: tokenCheck, isLoading: checkingToken } = useQuery({
@@ -200,6 +229,8 @@ function App() {
           onLogout={handleLogout} 
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          isAIPanelOpen={isAIPanelOpen}
+          onToggleAIPanel={toggleAIPanel}
         />
         
         {/* Canvas View */}
@@ -267,13 +298,53 @@ function App() {
                 </div>
               </aside>
             )}
+
+            {/* AI Panel */}
+            {isAIPanelOpen && (
+              <aside 
+                className="border-l border-border overflow-hidden flex bg-card/30 relative flex-shrink-0"
+                style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
+              >
+                {/* Resize handle */}
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                    isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                  }`}
+                  onMouseDown={handleAIResizeStart}
+                />
+                <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                  <AIChatPanel onClose={toggleAIPanel} />
+                </div>
+              </aside>
+            )}
           </div>
         )}
 
         {/* IDE View */}
         {viewMode === 'ide' && (
-          <div className="flex-1 overflow-hidden">
-            <IDEView currentUser={user?.login || null} />
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-hidden">
+              <IDEView currentUser={user?.login || null} />
+            </div>
+
+            {/* AI Panel in IDE View */}
+            {isAIPanelOpen && (
+              <aside 
+                className="border-l border-border overflow-hidden flex bg-card/30 relative flex-shrink-0"
+                style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
+              >
+                {/* Resize handle */}
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                    isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                  }`}
+                  onMouseDown={handleAIResizeStart}
+                />
+                <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                  <AIChatPanel onClose={toggleAIPanel} />
+                </div>
+              </aside>
+            )}
           </div>
         )}
         

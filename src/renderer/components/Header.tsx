@@ -5,7 +5,6 @@ import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { EventStream } from './EventStream'
 import { RepoSelector } from './RepoSelector'
 import { LogsViewer } from './LogsViewer'
-import { AIChatPanel } from './AIChat'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from './ui/button'
@@ -35,9 +34,11 @@ interface HeaderProps {
   onLogout: () => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
+  isAIPanelOpen: boolean
+  onToggleAIPanel: () => void
 }
 
-export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderProps) {
+export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOpen, onToggleAIPanel }: HeaderProps) {
   const queryClient = useQueryClient()
   const isFetching = useIsFetching()
   const [isDark, setIsDark] = useState(true)
@@ -199,25 +200,19 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
             <TooltipContent>{isDark ? 'Light mode' : 'Dark mode'}</TooltipContent>
           </Tooltip>
 
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Bot className="w-4 h-4" />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>AI Assistant</TooltipContent>
-            </Tooltip>
-            <PopoverContent 
-              className="w-[400px] h-[500px] p-0 overflow-hidden" 
-              align="end"
-              sideOffset={8}
-            >
-              <AIChatPanel onClose={() => {}} />
-            </PopoverContent>
-          </Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant={isAIPanelOpen ? "secondary" : "ghost"} 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={onToggleAIPanel}
+              >
+                <Bot className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>
+          </Tooltip>
 
           <Popover>
             <Tooltip>
