@@ -492,6 +492,25 @@ function setupIPCHandlers(): void {
   ipcMain.handle('get-logs-summary', async () => {
     return logger.getLogsSummary()
   })
+
+  // Log from renderer
+  ipcMain.handle('log-from-renderer', async (_, level: string, category: string, message: string, data?: Record<string, unknown>) => {
+    const cat = (LogCategory as Record<string, string>)[category] || LogCategory.APP
+    switch (level) {
+      case 'error':
+        logger.error(cat, `[Renderer] ${message}`, data)
+        break
+      case 'warn':
+        logger.warn(cat, `[Renderer] ${message}`, data)
+        break
+      case 'debug':
+        logger.debug(cat, `[Renderer] ${message}`, data)
+        break
+      default:
+        logger.info(cat, `[Renderer] ${message}`, data)
+    }
+    return { success: true }
+  })
 }
 
 app.whenReady().then(() => {

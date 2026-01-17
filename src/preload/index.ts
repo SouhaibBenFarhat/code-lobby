@@ -57,6 +57,7 @@ export interface ElectronAPI {
   clearLogs: () => Promise<{ success: boolean }>
   exportLogs: () => Promise<string>
   getLogsSummary: () => Promise<{ total: number; byLevel: Record<string, number>; byCategory: Record<string, number> }>
+  logFromRenderer: (level: 'info' | 'warn' | 'error' | 'debug', category: string, message: string, data?: Record<string, unknown>) => Promise<{ success: boolean }>
   
   // AI Chat
   getClaudeApiKey: () => Promise<string | null>
@@ -125,6 +126,8 @@ const electronAPI: ElectronAPI = {
   clearLogs: () => ipcRenderer.invoke('clear-logs'),
   exportLogs: () => ipcRenderer.invoke('export-logs'),
   getLogsSummary: () => ipcRenderer.invoke('get-logs-summary'),
+  logFromRenderer: (level: string, category: string, message: string, data?: Record<string, unknown>) => 
+    ipcRenderer.invoke('log-from-renderer', level, category, message, data),
   
   // AI Chat
   getClaudeApiKey: () => ipcRenderer.invoke('get-claude-api-key'),

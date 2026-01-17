@@ -69,27 +69,36 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     if (!apiKeyInput.trim()) return
     
     const keyToSet = apiKeyInput.trim()
-    console.log('[AIChat] Setting API key, length:', keyToSet.length, 'prefix:', keyToSet.substring(0, 10))
+    
+    await window.electron.logFromRenderer('info', 'AUTH', 'Setting Claude API key from UI', {
+      keyLength: keyToSet.length,
+      keyPrefix: keyToSet.substring(0, 10) + '...'
+    })
     
     setIsSettingKey(true)
     setError(null)
     
     try {
-      console.log('[AIChat] Calling setClaudeApiKey...')
+      await window.electron.logFromRenderer('info', 'AUTH', 'Calling setClaudeApiKey IPC...')
       const result = await window.electron.setClaudeApiKey(keyToSet)
-      console.log('[AIChat] setClaudeApiKey result:', result)
+      
+      await window.electron.logFromRenderer('info', 'AUTH', 'setClaudeApiKey IPC result', { result })
       
       if (result.success) {
-        console.log('[AIChat] API key set successfully')
+        await window.electron.logFromRenderer('info', 'AUTH', 'API key set successfully')
         setApiKey(keyToSet)
         setApiKeyInput('')
       } else {
-        console.log('[AIChat] API key set failed:', result.error)
+        await window.electron.logFromRenderer('error', 'AUTH', 'API key set failed', { error: result.error })
         setError(result.error || 'Invalid API key')
       }
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e)
-      console.error('[AIChat] Exception setting API key:', errorMsg, e)
+      const stack = e instanceof Error ? e.stack : undefined
+      await window.electron.logFromRenderer('error', 'AUTH', 'Exception setting API key', { 
+        error: errorMsg, 
+        stack 
+      })
       setError(`Failed to set API key: ${errorMsg}`)
     } finally {
       setIsSettingKey(false)
