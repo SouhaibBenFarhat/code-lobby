@@ -1,5 +1,6 @@
 import { graphql } from '@octokit/graphql'
-import { logger } from './logger'
+import { logger, LogCategory } from './logger'
+import { withRetryAndTimeout, parseGitHubError, GitHubAPIError } from './api-client'
 
 export interface GitHubUser {
   login: string
@@ -523,15 +524,60 @@ function createGraphQLClient(token: string) {
   })
 }
 
+/**
+ * Execute a GraphQL query with retry logic and timeout
+ * Handles GitHub's HTML error responses (Unicorn 503 pages) gracefully
+ */
+async function executeGraphQL<T>(
+  client: ReturnType<typeof createGraphQLClient>,
+  query: string,
+  variables?: Record<string, unknown>,
+  context?: string
+): Promise<T> {
+  return withRetryAndTimeout<T>(
+    async () => {
+      try {
+        return await client(query, variables) as T
+      } catch (error) {
+        // Re-throw parsed error for better handling
+        throw parseGitHubError(error)
+      }
+    },
+    {
+      retry: {
+        maxRetries: 3,
+        initialDelayMs: 2000, // Start with 2 second delay for GitHub
+        maxDelayMs: 15000,
+        backoffMultiplier: 2
+      },
+      timeoutMs: 45000, // 45 second timeout per request
+      context: context || 'GraphQL request'
+    }
+  )
+}
+
 export async function validateToken(token: string): Promise<GitHubUser | null> {
   const client = createGraphQLClient(token)
-  const response: any = await client(GET_USER)
   
-  return {
-    login: response.viewer.login,
-    avatar_url: response.viewer.avatarUrl,
-    name: response.viewer.name,
-    html_url: response.viewer.url
+  try {
+    const response = await executeGraphQL<{ viewer: { login: string; avatarUrl: string; name: string | null; url: string } }>(
+      client,
+      GET_USER,
+      undefined,
+      'validateToken'
+    )
+    
+    return {
+      login: response.viewer.login,
+      avatar_url: response.viewer.avatarUrl,
+      name: response.viewer.name,
+      html_url: response.viewer.url
+    }
+  } catch (error) {
+    logger.error(LogCategory.API, 'Failed to validate token', { 
+      error: error instanceof Error ? error.message : String(error) 
+    })
+    throw error
   }
 }
 
@@ -542,7 +588,15 @@ export async function fetchAllPRData(token: string): Promise<{
   rateLimit: RateLimitInfo
 }> {
   const client = createGraphQLClient(token)
-  const response: any = await client(GET_ALL_DATA)
+  
+  logger.info(LogCategory.API, 'Fetching all PR data', { context: 'fetchAllPRData' })
+  
+  const response: any = await executeGraphQL(
+    client,
+    GET_ALL_DATA,
+    undefined,
+    'fetchAllPRData'
+  )
   
   // Parse rate limit info
   const rateLimit: RateLimitInfo = {
@@ -746,17 +800,32 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
   const allRepos: Repository[] = []
   const seenIds = new Set<string>()
   
+  logger.info(LogCategory.API, 'Fetching all repositories', { context: 'fetchAllRepositories' })
+  
   // First, get the user's login
-  const userResponse: any = await client(GET_USER)
+  const userResponse: any = await executeGraphQL(
+    client,
+    GET_USER,
+    undefined,
+    'fetchAllRepositories:getUser'
+  )
   const userLogin = userResponse.viewer.login
   
   // Try to get user's organizations (requires read:org scope)
   let orgs: string[] = []
   try {
-    const userOrgsResponse: any = await client(GET_USER_ORGS)
+    const userOrgsResponse: any = await executeGraphQL(
+      client,
+      GET_USER_ORGS,
+      undefined,
+      'fetchAllRepositories:getOrgs'
+    )
     orgs = userOrgsResponse.viewer.organizations.nodes.map((o: any) => o.login)
-  } catch {
+  } catch (error) {
     // Could not fetch orgs (may need read:org scope), continuing with user repos only
+    logger.warn(LogCategory.API, 'Could not fetch user organizations', { 
+      error: error instanceof Error ? error.message : String(error) 
+    })
   }
   
   // Build search queries for user's repos and all their orgs
@@ -771,10 +840,12 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
     
     while (hasNextPage) {
       try {
-        const response: any = await client(GET_REPOS_BY_SEARCH, { 
-          searchQuery: searchQuery, 
-          cursor 
-        })
+        const response: any = await executeGraphQL(
+          client,
+          GET_REPOS_BY_SEARCH,
+          { searchQuery: searchQuery, cursor },
+          `fetchAllRepositories:search(${searchQuery.substring(0, 30)})`
+        )
         
         const nodes = response?.search?.nodes || []
         
@@ -803,7 +874,11 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
         
         hasNextPage = response.search.pageInfo.hasNextPage
         cursor = response.search.pageInfo.endCursor
-      } catch {
+      } catch (error) {
+        logger.warn(LogCategory.API, 'Failed to fetch repos for query', { 
+          query: searchQuery,
+          error: error instanceof Error ? error.message : String(error)
+        })
         hasNextPage = false
       }
     }
@@ -829,8 +904,11 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
         updated_at: pr.updated_at
       })
     }
-  } catch {
+  } catch (error) {
     // Error fetching repos from PRs, continuing with what we have
+    logger.warn(LogCategory.API, 'Error fetching repos from PRs', { 
+      error: error instanceof Error ? error.message : String(error) 
+    })
   }
   
   return allRepos
@@ -897,7 +975,12 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
   
   // Paginate through results
   do {
-    const response: any = await client(GET_ALL_PRS_FOR_REPOS, { searchQuery, cursor })
+    const response: any = await executeGraphQL(
+      client,
+      GET_ALL_PRS_FOR_REPOS,
+      { searchQuery, cursor },
+      'fetchAllPRsForRepos:search'
+    )
     
     currentUser = response.viewer.login
     rateLimit = {
