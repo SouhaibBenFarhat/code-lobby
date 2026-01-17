@@ -141,103 +141,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     }
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="h-full flex flex-col bg-background">
-        <div className="flex items-center justify-between p-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-sm">AI Assistant</h2>
-          </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    )
-  }
-
-  // No API key - show setup
-  if (!apiKey) {
-    return (
-      <div className="h-full flex flex-col bg-background">
-        <div className="flex items-center justify-between p-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-sm">AI Assistant</h2>
-          </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm space-y-4">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                <Key className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold">Configure Claude API Key</h3>
-              <p className="text-sm text-muted-foreground">
-                Enter your Anthropic API key to start chatting.
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <Input
-                type="password"
-                placeholder="sk-ant-..."
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSetApiKey()}
-                autoFocus
-              />
-              
-              {error && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-              
-              <Button 
-                className="w-full" 
-                onClick={handleSetApiKey}
-                disabled={isSettingKey || !apiKeyInput.trim()}
-              >
-                {isSettingKey ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Validating...
-                  </>
-                ) : (
-                  'Save API Key'
-                )}
-              </Button>
-              
-              <p className="text-xs text-center text-muted-foreground">
-                Get your API key from{' '}
-                <a 
-                  href="https://console.anthropic.com/settings/keys" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  console.anthropic.com
-                </a>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Chat interface
+  // Chat interface (unified - handles both API key setup and chat)
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
@@ -245,27 +149,31 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
           <h2 className="font-semibold text-sm">AI Assistant</h2>
-          <span className="text-[10px] text-muted-foreground">(Claude)</span>
+          {apiKey && <span className="text-[10px] text-muted-foreground">(Claude)</span>}
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setShowSettings(!showSettings)}
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleClearHistory}
-            title="Clear chat"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {apiKey && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setShowSettings(!showSettings)}
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleClearHistory}
+                title="Clear chat"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
@@ -273,7 +181,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
       </div>
 
       {/* Settings Panel */}
-      {showSettings && (
+      {showSettings && apiKey && (
         <div className="p-3 border-b border-border bg-muted/30">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">API Key configured</span>
@@ -288,14 +196,18 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         </div>
       )}
 
-      {/* Messages */}
+      {/* Messages area */}
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
-        {messages.length === 0 ? (
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center min-h-[200px]">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages.length === 0 ? (
           <div className="h-full flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-2">
               <Bot className="w-10 h-10 mx-auto text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
-                Start a conversation with Claude
+                {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
               </p>
             </div>
           </div>
@@ -364,31 +276,72 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input area - shows API key input or message input */}
       <div className="p-3 border-t border-border">
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            placeholder="Type a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isSending}
-            className="flex-1 h-9 text-sm"
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={isSending || !input.trim()}
-            size="icon"
-            className="h-9 w-9"
-          >
-            {isSending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
+        {!apiKey ? (
+          // API Key input
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="Enter Claude API key (sk-ant-...)"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSetApiKey()}
+                className="flex-1 h-9 text-sm"
+                autoFocus
+              />
+              <Button
+                onClick={handleSetApiKey}
+                disabled={isSettingKey || !apiKeyInput.trim()}
+                size="icon"
+                className="h-9 w-9"
+              >
+                {isSettingKey ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Key className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Get your key from{' '}
+              <a 
+                href="https://console.anthropic.com/settings/keys" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                console.anthropic.com
+              </a>
+            </p>
+          </div>
+        ) : (
+          // Message input
+          <div className="flex gap-2">
+            <Input
+              ref={inputRef}
+              placeholder="Type a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isSending}
+              className="flex-1 h-9 text-sm"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={isSending || !input.trim()}
+              size="icon"
+              className="h-9 w-9"
+            >
+              {isSending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
