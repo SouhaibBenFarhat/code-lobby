@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
-import { sendMessage as sendClaudeMessage, validateApiKey as validateClaudeKey, ClaudeMessage } from './claude-api'
+import { sendMessage as sendClaudeMessage, ClaudeMessage } from './claude-api'
 import { 
   validateToken,
   fetchAllPRData,
@@ -374,22 +374,14 @@ function setupIPCHandlers(): void {
 
   ipcMain.handle('set-claude-api-key', async (_, key: string | null) => {
     if (key) {
-      logger.info(LogCategory.AUTH, 'Validating Claude API key')
-      try {
-        const isValid = await validateClaudeKey(key)
-        if (isValid) {
-          setClaudeApiKey(key)
-          logger.info(LogCategory.AUTH, 'Claude API key validated and saved')
-          return { success: true }
-        }
-        logger.warn(LogCategory.AUTH, 'Invalid Claude API key')
-        return { success: false, error: 'Invalid API key' }
-      } catch (error) {
-        logger.error(LogCategory.AUTH, 'Claude API key validation failed', { 
-          error: (error as Error).message 
-        })
-        return { success: false, error: (error as Error).message }
+      // Simple format validation - actual validation happens on first message
+      if (!key.startsWith('sk-ant-')) {
+        logger.warn(LogCategory.AUTH, 'Invalid Claude API key format')
+        return { success: false, error: 'Invalid API key format. Key should start with sk-ant-' }
       }
+      setClaudeApiKey(key)
+      logger.info(LogCategory.AUTH, 'Claude API key saved')
+      return { success: true }
     } else {
       setClaudeApiKey(null)
       return { success: true }
