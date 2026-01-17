@@ -62,6 +62,10 @@ export interface ElectronAPI {
   // AI Chat
   getClaudeApiKey: () => Promise<string | null>
   setClaudeApiKey: (key: string | null) => Promise<{ success: boolean; error?: string }>
+  fetchClaudeModels: () => Promise<{ success: boolean; models?: Array<{ id: string; display_name: string; created_at: string }>; error?: string }>
+  getSelectedModel: () => Promise<string>
+  setSelectedModel: (model: string) => Promise<{ success: boolean }>
+  getDefaultModel: () => Promise<string>
   getChatHistory: () => Promise<Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: string }>>
   sendChatMessage: (message: string) => Promise<{ success: boolean; message?: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string }; error?: string }>
   clearChatHistory: () => Promise<{ success: boolean }>
@@ -132,6 +136,10 @@ const electronAPI: ElectronAPI = {
   // AI Chat
   getClaudeApiKey: () => ipcRenderer.invoke('get-claude-api-key'),
   setClaudeApiKey: (key: string | null) => ipcRenderer.invoke('set-claude-api-key', key),
+  fetchClaudeModels: () => ipcRenderer.invoke('fetch-claude-models'),
+  getSelectedModel: () => ipcRenderer.invoke('get-selected-model'),
+  setSelectedModel: (model: string) => ipcRenderer.invoke('set-selected-model', model),
+  getDefaultModel: () => ipcRenderer.invoke('get-default-model'),
   getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
   sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
   clearChatHistory: () => ipcRenderer.invoke('clear-chat-history')

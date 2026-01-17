@@ -1,8 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
-import { sendMessage as sendClaudeMessage, ClaudeMessage } from './claude-api'
+import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getSelectedModel, setSelectedModel, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
+import { sendMessage as sendClaudeMessage, fetchModels as fetchClaudeModels, getDefaultModel, ClaudeMessage } from './claude-api'
 import { 
   validateToken,
   fetchAllPRData,
@@ -422,13 +422,48 @@ function setupIPCHandlers(): void {
     return getChatHistory()
   })
 
+  // Model selection
+  ipcMain.handle('fetch-claude-models', async () => {
+    const apiKey = getClaudeApiKey()
+    if (!apiKey) {
+      return { success: false, error: 'No Claude API key configured' }
+    }
+
+    logger.info(LogCategory.API, 'Fetching Claude models')
+    try {
+      const models = await fetchClaudeModels(apiKey)
+      return { success: true, models }
+    } catch (error) {
+      logger.error(LogCategory.API, 'Failed to fetch Claude models', {
+        error: (error as Error).message
+      })
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
+  ipcMain.handle('get-selected-model', async () => {
+    const model = getSelectedModel()
+    return model || getDefaultModel()
+  })
+
+  ipcMain.handle('set-selected-model', async (_, model: string) => {
+    logger.info(LogCategory.API, 'Setting selected Claude model', { model })
+    setSelectedModel(model)
+    return { success: true }
+  })
+
+  ipcMain.handle('get-default-model', async () => {
+    return getDefaultModel()
+  })
+
   ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
       return { success: false, error: 'No Claude API key configured' }
     }
 
-    logger.info(LogCategory.API, 'Sending chat message to Claude')
+    const selectedModel = getSelectedModel() || getDefaultModel()
+    logger.info(LogCategory.API, 'Sending chat message to Claude', { model: selectedModel })
 
     // Create user message
     const userMsg: ChatMessage = {
@@ -447,7 +482,7 @@ function setupIPCHandlers(): void {
     }))
 
     try {
-      const response = await sendClaudeMessage(apiKey, claudeMessages)
+      const response = await sendClaudeMessage(apiKey, claudeMessages, selectedModel)
       
       // Create assistant message
       const assistantMsg: ChatMessage = {
@@ -458,7 +493,7 @@ function setupIPCHandlers(): void {
       }
       addChatMessage(assistantMsg)
 
-      logger.info(LogCategory.API, 'Chat message sent successfully')
+      logger.info(LogCategory.API, 'Chat message sent successfully', { model: response.model })
       return { success: true, message: assistantMsg }
     } catch (error) {
       logger.error(LogCategory.API, 'Failed to send chat message', { 

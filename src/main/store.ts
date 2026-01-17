@@ -42,6 +42,7 @@ export interface ChatMessage {
 // AI Chat settings
 export interface AIChatSettings {
   claudeApiKey: string | null
+  selectedModel: string | null
   chatHistory: ChatMessage[]
 }
 
@@ -87,6 +88,7 @@ const store = new Store<StoreSchema>({
     },
     aiChat: {
       claudeApiKey: null,
+      selectedModel: null,
       chatHistory: []
     }
   },
@@ -197,6 +199,15 @@ export function getClaudeApiKey(): string | null {
 export function setClaudeApiKey(key: string | null): void {
   const current = store.get('aiChat')
   store.set('aiChat', { ...current, claudeApiKey: key })
+}
+
+export function getSelectedModel(): string | null {
+  return store.get('aiChat').selectedModel
+}
+
+export function setSelectedModel(model: string | null): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { ...current, selectedModel: model })
 }
 
 export function getChatHistory(): ChatMessage[] {

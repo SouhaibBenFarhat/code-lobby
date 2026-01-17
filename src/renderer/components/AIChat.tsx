@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Trash2, Key, Loader2, Bot, User, AlertCircle, Settings, X } from 'lucide-react'
+import { Send, Trash2, Key, Loader2, Bot, User, AlertCircle, Settings, X, ChevronDown, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { cn } from '@/lib/utils'
 import { MarkdownContent } from './MarkdownContent'
 
@@ -11,6 +12,12 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: string
+}
+
+interface ClaudeModel {
+  id: string
+  display_name: string
+  created_at: string
 }
 
 interface AIChatPanelProps {
@@ -27,6 +34,9 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [models, setModels] = useState<ClaudeModel[]>([])
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [isLoadingModels, setIsLoadingModels] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -38,17 +48,51 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [key, history] = await Promise.all([
+      const [key, history, model] = await Promise.all([
         window.electron.getClaudeApiKey(),
-        window.electron.getChatHistory()
+        window.electron.getChatHistory(),
+        window.electron.getSelectedModel()
       ])
       setApiKey(key)
       setMessages(history)
+      setSelectedModel(model)
+      
+      // If we have an API key, fetch available models
+      if (key) {
+        loadModels()
+      }
     } catch (e) {
       console.error('Failed to load AI chat data:', e)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const loadModels = async () => {
+    setIsLoadingModels(true)
+    try {
+      const result = await window.electron.fetchClaudeModels()
+      if (result.success && result.models) {
+        setModels(result.models)
+        window.electron.logFromRenderer('info', 'API', 'Claude models loaded', { 
+          count: result.models.length 
+        })
+      } else {
+        window.electron.logFromRenderer('error', 'API', 'Failed to load Claude models', { 
+          error: result.error 
+        })
+      }
+    } catch (e) {
+      console.error('Failed to load models:', e)
+    } finally {
+      setIsLoadingModels(false)
+    }
+  }
+
+  const handleModelChange = async (modelId: string) => {
+    setSelectedModel(modelId)
+    await window.electron.setSelectedModel(modelId)
+    window.electron.logFromRenderer('info', 'API', 'Model changed', { model: modelId })
   }
 
   // Scroll to bottom when messages change
@@ -103,6 +147,12 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         await window.electron.logFromRenderer('info', 'AUTH', 'API key set successfully')
         setApiKey(keyToSet)
         setApiKeyInput('')
+        // Load available models and get default
+        const [defaultModel] = await Promise.all([
+          window.electron.getSelectedModel(),
+        ])
+        setSelectedModel(defaultModel)
+        loadModels()
       } else {
         console.log('[AIChat] Failed:', result.error)
         await window.electron.logFromRenderer('error', 'AUTH', 'API key set failed', { error: result.error })
@@ -185,7 +235,11 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
           <h2 className="font-semibold text-sm">AI Assistant</h2>
-          {apiKey && <span className="text-[10px] text-muted-foreground">(Sonnet 4)</span>}
+          {apiKey && selectedModel && (
+            <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+              ({models.find(m => m.id === selectedModel)?.display_name || selectedModel.split('-').slice(0, 2).join(' ')})
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {apiKey && (
@@ -218,20 +272,73 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
 
       {/* Settings Panel */}
       {showSettings && apiKey && (
-        <div className="p-3 border-b border-border bg-muted/30 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">API Key configured</span>
+        <div className="p-3 border-b border-border bg-muted/30 space-y-3">
+          {/* Model Selector */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Model</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={loadModels}
+                disabled={isLoadingModels}
+                title="Refresh models"
+              >
+                <RefreshCw className={cn("w-3 h-3", isLoadingModels && "animate-spin")} />
+              </Button>
+            </div>
+            {models.length > 0 ? (
+              <Select value={selectedModel} onValueChange={handleModelChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id} className="text-xs">
+                      <div className="flex flex-col">
+                        <span>{model.display_name}</span>
+                        <span className="text-[10px] text-muted-foreground">{model.id}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {isLoadingModels ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Loading models...</span>
+                  </>
+                ) : (
+                  <>
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">{selectedModel}</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 text-[10px] px-1"
+                      onClick={loadModels}
+                    >
+                      Load models
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* API Key */}
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="text-xs text-muted-foreground">API Key configured</span>
             <Button
               variant="destructive"
               size="sm"
+              className="h-6 text-xs"
               onClick={handleRemoveApiKey}
             >
               Remove Key
             </Button>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Model:</span>
-            <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">claude-sonnet-4-20250514</code>
           </div>
         </div>
       )}
