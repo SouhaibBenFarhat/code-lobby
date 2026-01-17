@@ -83,6 +83,11 @@ function createWindow(): void {
 function setupIPCHandlers(): void {
   logger.info(LogCategory.APP, 'Setting up IPC handlers')
   
+  // Window state
+  ipcMain.handle('is-fullscreen', () => {
+    return mainWindow?.isFullScreen() ?? false
+  })
+  
   // Token management
   ipcMain.handle('get-token', async () => {
     return getToken()
