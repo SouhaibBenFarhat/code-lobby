@@ -290,16 +290,20 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
             </div>
             {models.length > 0 ? (
               <Select value={selectedModel} onValueChange={handleModelChange}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select a model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id} className="text-xs">
-                      <div className="flex flex-col">
-                        <span>{model.display_name}</span>
-                        <span className="text-[10px] text-muted-foreground">{model.id}</span>
+                <SelectTrigger className="h-auto min-h-[32px] text-xs py-1">
+                  <SelectValue placeholder="Select a model">
+                    {selectedModel && (
+                      <div className="flex flex-col items-start">
+                        <span>{models.find(m => m.id === selectedModel)?.display_name || selectedModel}</span>
+                        <span className="text-[10px] text-muted-foreground">{selectedModel}</span>
                       </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="z-[9999]">
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id} className="text-xs py-2">
+                      {model.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
