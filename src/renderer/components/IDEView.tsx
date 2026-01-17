@@ -398,10 +398,10 @@ export function IDEView({ currentUser }: IDEViewProps) {
     <div className="flex h-full">
       {/* Sidebar - File tree */}
       <div 
-        className="flex-shrink-0 border-r border-border bg-card/30 flex flex-col"
+        className="flex-shrink-0 apple-sidebar flex flex-col"
         style={{ width: sidebarWidth }}
       >
-        <div className="p-2 border-b border-border bg-muted/30">
+        <div className="p-2 border-b border-border bg-muted/20">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5" />
             Explorer

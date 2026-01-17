@@ -60,7 +60,7 @@ function CheckItem({ check }: { check: { name: string; status: string; conclusio
 
   return (
     <div 
-      className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors overflow-hidden"
+      className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors overflow-hidden"
       onClick={() => window.open(check.html_url, '_blank')}
     >
       <span className="flex-shrink-0">{getIcon()}</span>
@@ -130,12 +130,12 @@ function CommentItem({ comment }: { comment: CommentData }) {
     <div className={cn(
       "p-2.5 rounded-lg space-y-1.5 overflow-hidden border-l-2 group/comment",
       comment.actor.isBot 
-        ? "bg-purple-500/5 border-l-purple-500" 
+        ? "bg-purple-500/15 border-l-purple-500 dark:bg-purple-500/20" 
         : comment.event === 'approved'
-        ? "bg-success/5 border-l-success"
+        ? "bg-success/15 border-l-success dark:bg-success/20"
         : comment.event === 'changes_requested'
-        ? "bg-destructive/5 border-l-destructive"
-        : "bg-muted/20 border-l-primary/50"
+        ? "bg-destructive/15 border-l-destructive dark:bg-destructive/20"
+        : "bg-muted/40 border-l-primary/50 dark:bg-muted/50"
     )}>
       <div className="flex items-center gap-1.5 flex-wrap">
         <Avatar className="h-5 w-5 flex-shrink-0">
@@ -172,7 +172,7 @@ function CommentItem({ comment }: { comment: CommentData }) {
       </div>
       {comment.body && (
         <div className="space-y-1.5">
-          <div className="text-xs text-muted-foreground overflow-hidden">
+          <div className="text-xs text-foreground/80 dark:text-foreground/70 overflow-hidden">
             <MarkdownContent 
               content={isExpanded || !shouldTruncate ? comment.body : getPreviewContent(comment.body, TRUNCATE_LENGTH)} 
             />
@@ -290,10 +290,10 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors",
-          reviewer.reviewState === 'approved' ? "bg-success/5" :
-          reviewer.reviewState === 'changes_requested' ? "bg-destructive/5" :
-          "bg-muted/20"
+          "w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors",
+          reviewer.reviewState === 'approved' ? "bg-success/15 dark:bg-success/20" :
+          reviewer.reviewState === 'changes_requested' ? "bg-destructive/15 dark:bg-destructive/20" :
+          "bg-muted/40 dark:bg-muted/50"
         )}
       >
         {isExpanded ? (
@@ -332,12 +332,12 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
         <div className="border-t border-border">
           {/* Review body (summary comment) */}
           {reviewer.reviewBody && (
-            <div className="p-3 bg-muted/10 border-b border-border">
+            <div className="p-3 bg-muted/30 dark:bg-muted/40 border-b border-border">
               <div className="flex items-center gap-2 mb-2">
                 {getStateIcon()}
                 <span className="text-xs font-medium">Review Summary</span>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-foreground/80 dark:text-foreground/70">
                 <MarkdownContent content={reviewer.reviewBody} />
               </div>
             </div>
@@ -366,7 +366,7 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
                       key={comment.id}
                       className={cn(
                         "rounded border p-2",
-                        comment.isResolved ? "bg-success/5 border-success/20" : "bg-muted/20 border-border"
+                        comment.isResolved ? "bg-success/15 border-success/30 dark:bg-success/20" : "bg-muted/40 border-border dark:bg-muted/50"
                       )}
                     >
                       <div className="flex items-center gap-2 mb-1.5 text-[10px]">
@@ -388,12 +388,12 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
                       
                       {/* Diff hunk preview */}
                       {comment.diffHunk && (
-                        <pre className="p-1.5 mb-1.5 bg-muted/50 text-[9px] font-mono overflow-x-auto rounded max-h-16 overflow-y-auto">
+                        <pre className="p-1.5 mb-1.5 bg-muted/60 dark:bg-muted/70 text-[9px] font-mono overflow-x-auto rounded max-h-16 overflow-y-auto border border-border/50">
                           {comment.diffHunk.split('\n').slice(-4).join('\n')}
                         </pre>
                       )}
                       
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-foreground/80 dark:text-foreground/70">
                         <MarkdownContent content={comment.body} />
                       </div>
                     </div>
@@ -404,7 +404,7 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
           )}
           
           {/* Actions */}
-          <div className="flex items-center gap-1 p-2 border-t border-border bg-muted/10">
+          <div className="flex items-center gap-1 p-2 border-t border-border bg-muted/30 dark:bg-muted/40">
             <Button
               variant="ghost"
               size="sm"
@@ -454,12 +454,12 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
   return (
     <div className={cn(
       "rounded-lg border overflow-hidden",
-      thread.isResolved ? "border-success/30 bg-success/5" : "border-border"
+      thread.isResolved ? "border-success/30 bg-success/10 dark:bg-success/15" : "border-border bg-muted/20 dark:bg-muted/30"
     )}>
       {/* Thread header - file path and line */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/60 transition-colors"
       >
         {isExpanded ? (
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
@@ -486,7 +486,7 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
         <div className="border-t border-border">
           {/* Diff hunk preview if available */}
           {firstComment?.diffHunk && (
-            <pre className="p-2 bg-muted/30 text-[10px] font-mono overflow-x-auto border-b border-border max-h-24 overflow-y-auto">
+            <pre className="p-2 bg-muted/50 dark:bg-muted/60 text-[10px] font-mono overflow-x-auto border-b border-border max-h-24 overflow-y-auto">
               {firstComment.diffHunk.split('\n').slice(-5).join('\n')}
             </pre>
           )}
@@ -498,7 +498,7 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
                 key={comment.id} 
                 className={cn(
                   "p-2 rounded text-xs",
-                  idx === 0 ? "bg-muted/30" : "bg-muted/10 ml-4"
+                  idx === 0 ? "bg-muted/40 dark:bg-muted/50" : "bg-muted/20 dark:bg-muted/30 ml-4"
                 )}
               >
                 <div className="flex items-center gap-1.5 mb-1">
@@ -518,7 +518,7 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
                     {formatRelativeTime(comment.created_at)}
                   </span>
                 </div>
-                <div className="text-muted-foreground">
+                <div className="text-foreground/80 dark:text-foreground/70">
                   <MarkdownContent content={comment.body} />
                 </div>
               </div>
@@ -526,7 +526,7 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
           </div>
           
           {/* Actions */}
-          <div className="flex items-center gap-1 p-2 border-t border-border bg-muted/20">
+          <div className="flex items-center gap-1 p-2 border-t border-border bg-muted/30 dark:bg-muted/40">
             <Button
               variant="ghost"
               size="sm"
@@ -740,9 +740,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const runningChecks = checks?.check_runs.filter(c => c.status === 'in_progress' || c.status === 'queued').length || 0
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden" style={{ maxWidth: '100%' }}>
+    <div className="flex flex-col h-full w-full overflow-hidden bg-background" style={{ maxWidth: '100%' }}>
       {/* Header */}
-      <div className="p-4 border-b border-border flex-shrink-0 overflow-hidden">
+      <div className="p-4 border-b border-border flex-shrink-0 overflow-hidden bg-card/80 dark:bg-card/60">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2 mb-1">
@@ -880,10 +880,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                     <>
                       {/* Running */}
                       {groupedChecks.running.length > 0 && (
-                        <div className="rounded-lg border border-warning/30 bg-warning/5 overflow-hidden">
+                        <div className="rounded-lg border border-warning/30 bg-warning/10 dark:bg-warning/15 overflow-hidden">
                           <button
                             onClick={() => toggleGroup('running')}
-                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-warning hover:bg-warning/10 transition-colors"
+                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-warning hover:bg-warning/20 transition-colors"
                           >
                             {collapsedGroups.has('running') ? (
                               <ChevronRight className="w-4 h-4" />
@@ -905,10 +905,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
                       {/* Failed */}
                       {groupedChecks.failed.length > 0 && (
-                        <div className="rounded-lg border border-destructive/30 bg-destructive/5 overflow-hidden">
+                        <div className="rounded-lg border border-destructive/30 bg-destructive/10 dark:bg-destructive/15 overflow-hidden">
                           <button
                             onClick={() => toggleGroup('failed')}
-                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
                           >
                             {collapsedGroups.has('failed') ? (
                               <ChevronRight className="w-4 h-4" />
@@ -930,10 +930,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
                       {/* Success */}
                       {groupedChecks.success.length > 0 && (
-                        <div className="rounded-lg border border-success/30 bg-success/5 overflow-hidden">
+                        <div className="rounded-lg border border-success/30 bg-success/10 dark:bg-success/15 overflow-hidden">
                           <button
                             onClick={() => toggleGroup('success')}
-                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-success hover:bg-success/10 transition-colors"
+                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-success hover:bg-success/20 transition-colors"
                           >
                             {collapsedGroups.has('success') ? (
                               <ChevronRight className="w-4 h-4" />
@@ -955,10 +955,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
                       {/* Other (skipped, cancelled, etc) */}
                       {groupedChecks.other.length > 0 && (
-                        <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+                        <div className="rounded-lg border border-border bg-muted/40 dark:bg-muted/50 overflow-hidden">
                           <button
                             onClick={() => toggleGroup('other')}
-                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2 p-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
                           >
                             {collapsedGroups.has('other') ? (
                               <ChevronRight className="w-4 h-4" />
@@ -1018,7 +1018,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             </div>
 
             {/* Tab filter - All, People, Bots, Reviews */}
-            <div className="flex gap-1 mb-3 p-1 bg-muted/50 rounded-lg">
+            <div className="flex gap-1 mb-3 p-1 bg-muted/60 dark:bg-muted/70 rounded-lg">
               <button
                 onClick={() => setCommentTab('all')}
                 className={cn(

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree, Bot } from 'lucide-react'
+import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree } from 'lucide-react'
+import { DogIcon } from './DogIcon'
 import { useIsFetching, useQuery } from '@tanstack/react-query'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { EventStream } from './EventStream'
@@ -208,7 +209,7 @@ export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOp
                 className="h-8 w-8"
                 onClick={onToggleAIPanel}
               >
-                <Bot className="w-4 h-4" />
+                <DogIcon className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>

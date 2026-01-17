@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Send, Trash2, Key, Loader2, Bot, User, AlertCircle, Settings, X, RefreshCw, Brain, ChevronRight, ArrowDown } from 'lucide-react'
+import { Send, Trash2, Key, Loader2, User, AlertCircle, Settings, X, RefreshCw, Brain, ChevronRight, ArrowDown } from 'lucide-react'
+import { DogIcon } from './DogIcon'
 
 // Utility for throttling with requestAnimationFrame
 function useThrottledValue<T>(value: T, fps = 30): T {
@@ -235,7 +236,7 @@ const MessageBubble = React.memo(function MessageBubble({
     >
       {message.role === 'assistant' && (
         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Bot className="w-3.5 h-3.5 text-primary" />
+          <DogIcon className="w-3.5 h-3.5 text-primary" />
         </div>
       )}
       
@@ -307,7 +308,7 @@ const StreamingBubble = React.memo(function StreamingBubble({
       }}
     >
       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <Bot className="w-3.5 h-3.5 text-primary" />
+        <DogIcon className="w-3.5 h-3.5 text-primary" />
       </div>
       <div className="max-w-[85%] rounded-lg bg-muted min-h-[40px]">
         {streaming.thinking && (
@@ -849,11 +850,11 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   // Chat interface (unified - handles both API key setup and chat)
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border">
+      <div className="flex items-center justify-between p-3 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-primary" />
+          <DogIcon className="w-5 h-5 text-primary" />
           <h2 className="font-semibold text-sm">AI Assistant</h2>
           {apiKey && selectedModel && (
             <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
@@ -892,7 +893,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
 
       {/* Settings Panel */}
       {showSettings && apiKey && (
-        <div className="p-3 border-b border-border bg-muted/30 space-y-3">
+        <div className="p-3 border-b border-border bg-muted/40 space-y-3">
           {/* Model Selector */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -1031,7 +1032,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         {!isLoading && messages.length === 0 && !streaming.isStreaming ? (
           <div className="h-full flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-2">
-              <Bot className="w-10 h-10 mx-auto text-muted-foreground/30" />
+              <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
                 {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
               </p>

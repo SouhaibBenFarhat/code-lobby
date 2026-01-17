@@ -277,7 +277,7 @@ function App() {
               
               {isPanelOpen && (
                 <aside 
-                  className="border-l border-border overflow-hidden flex bg-card/30 relative flex-shrink-0"
+                  className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
                   style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
                 >
                   {/* Resize handle */}
@@ -335,7 +335,7 @@ function App() {
           {/* AI Panel - rendered OUTSIDE view conditionals to persist across view switches */}
           {isAIPanelOpen && (
             <aside 
-              className="border-l border-border overflow-hidden flex bg-card/30 relative flex-shrink-0"
+              className="apple-panel overflow-hidden flex relative flex-shrink-0"
               style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
             >
               {/* Resize handle */}
