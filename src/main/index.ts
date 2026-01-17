@@ -44,6 +44,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 18 }, // Position traffic lights vertically centered in header
     backgroundColor: '#0d1117',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -55,6 +56,15 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  // Notify renderer of fullscreen changes
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow?.webContents.send('fullscreen-change', true)
+  })
+  
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow?.webContents.send('fullscreen-change', false)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

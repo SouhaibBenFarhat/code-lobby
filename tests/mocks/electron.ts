@@ -104,6 +104,10 @@ interface MockElectronAPI {
   // AI Panel
   getAIPanel: ReturnType<typeof vi.fn>
   setAIPanel: ReturnType<typeof vi.fn>
+  
+  // Fullscreen
+  isFullscreen: ReturnType<typeof vi.fn>
+  onFullscreenChange: ReturnType<typeof vi.fn>
 }
 
 // ============================================================================
@@ -208,6 +212,10 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // AI Panel
     getAIPanel: vi.fn().mockResolvedValue({ isOpen: false, width: 380 }),
     setAIPanel: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Fullscreen
+    isFullscreen: vi.fn().mockResolvedValue(false),
+    onFullscreenChange: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
     
     ...overrides
   }

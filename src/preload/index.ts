@@ -77,6 +77,10 @@ export interface ElectronAPI {
   sendChatMessageStreaming: (message: string) => Promise<{ success: boolean; streamId?: string; error?: string }>
   onChatStreamChunk: (callback: (chunk: { streamId: string; type: 'thinking' | 'text' | 'done' | 'error'; content?: string; thinking?: string; error?: string }) => void) => () => void
   clearChatHistory: () => Promise<{ success: boolean }>
+  
+  // Window state
+  isFullscreen: () => Promise<boolean>
+  onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
 }
 
 const electronAPI: ElectronAPI = {
@@ -167,7 +171,19 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('chat-stream-chunk', handler)
     }
   },
-  clearChatHistory: () => ipcRenderer.invoke('clear-chat-history')
+  clearChatHistory: () => ipcRenderer.invoke('clear-chat-history'),
+  
+  // Window state
+  isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),
+  onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, isFullscreen: boolean) => {
+      callback(isFullscreen)
+    }
+    ipcRenderer.on('fullscreen-change', handler)
+    return () => {
+      ipcRenderer.removeListener('fullscreen-change', handler)
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('electron', electronAPI)

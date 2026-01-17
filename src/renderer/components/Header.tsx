@@ -68,6 +68,19 @@ export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOp
   const isFetching = useIsFetching()
   const [isDark, setIsDark] = useState(true)
   const [, setTick] = useState(0) // Force re-render for countdown
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  
+  // Fetch initial fullscreen state and listen for changes
+  useEffect(() => {
+    // Get initial state
+    window.electron.isFullscreen().then(setIsFullscreen)
+    
+    // Listen for changes
+    const cleanup = window.electron.onFullscreenChange((fullscreen) => {
+      setIsFullscreen(fullscreen)
+    })
+    return cleanup
+  }, [])
 
   // Fetch rate limit info (refreshes with other queries on window focus)
   const { data: rateLimitData } = useQuery({
@@ -123,12 +136,20 @@ export function Header({ user, onLogout, viewMode, onViewModeChange, isAIPanelOp
   }
 
   return (
-    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center pl-20 pr-4 gap-4 drag-region header-bar">
-        <div className="flex items-center gap-3 no-drag">
-          <CodeLobbyLogo size={36} />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold">CodeLobby</span>
-            <span className="text-[10px] text-muted-foreground">Real-time PR monitoring</span>
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-4 pr-4 drag-region header-bar">
+        {/* Left section with window controls area + logo */}
+        <div className="flex items-center h-full">
+          {/* Window controls spacer (traffic lights) - hidden in fullscreen */}
+          {!isFullscreen && <div className="w-[72px] h-full flex-shrink-0" />}
+          {isFullscreen && <div className="w-3 h-full flex-shrink-0" />}
+          
+          {/* Logo - positioned right after traffic lights */}
+          <div className="flex items-center gap-2.5 no-drag pr-4">
+            <CodeLobbyLogo size={28} />
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold leading-tight">CodeLobby</span>
+              <span className="text-[10px] text-muted-foreground leading-tight">Real-time PR monitoring</span>
+            </div>
           </div>
         </div>
 
