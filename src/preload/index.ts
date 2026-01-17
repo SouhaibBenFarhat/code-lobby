@@ -57,6 +57,13 @@ export interface ElectronAPI {
   clearLogs: () => Promise<{ success: boolean }>
   exportLogs: () => Promise<string>
   getLogsSummary: () => Promise<{ total: number; byLevel: Record<string, number>; byCategory: Record<string, number> }>
+  
+  // AI Chat
+  getClaudeApiKey: () => Promise<string | null>
+  setClaudeApiKey: (key: string | null) => Promise<{ success: boolean; error?: string }>
+  getChatHistory: () => Promise<Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: string }>>
+  sendChatMessage: (message: string) => Promise<{ success: boolean; message?: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string }; error?: string }>
+  clearChatHistory: () => Promise<{ success: boolean }>
 }
 
 const electronAPI: ElectronAPI = {
@@ -117,7 +124,14 @@ const electronAPI: ElectronAPI = {
   getLogs: () => ipcRenderer.invoke('get-logs'),
   clearLogs: () => ipcRenderer.invoke('clear-logs'),
   exportLogs: () => ipcRenderer.invoke('export-logs'),
-  getLogsSummary: () => ipcRenderer.invoke('get-logs-summary')
+  getLogsSummary: () => ipcRenderer.invoke('get-logs-summary'),
+  
+  // AI Chat
+  getClaudeApiKey: () => ipcRenderer.invoke('get-claude-api-key'),
+  setClaudeApiKey: (key: string | null) => ipcRenderer.invoke('set-claude-api-key', key),
+  getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
+  sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
+  clearChatHistory: () => ipcRenderer.invoke('clear-chat-history')
 }
 
 contextBridge.exposeInMainWorld('electron', electronAPI)

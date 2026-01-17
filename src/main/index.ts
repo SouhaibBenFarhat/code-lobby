@@ -1,7 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings } from './store'
+import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
+import { sendMessage as sendClaudeMessage, validateApiKey as validateClaudeKey, ClaudeMessage } from './claude-api'
 import { 
   validateToken,
   fetchAllPRData,
@@ -363,6 +364,91 @@ function setupIPCHandlers(): void {
 
   ipcMain.handle('set-ide-view-settings', async (_, settings: Partial<IDEViewSettings>) => {
     setIDEViewSettings(settings)
+    return { success: true }
+  })
+
+  // AI Chat
+  ipcMain.handle('get-claude-api-key', async () => {
+    return getClaudeApiKey()
+  })
+
+  ipcMain.handle('set-claude-api-key', async (_, key: string | null) => {
+    if (key) {
+      logger.info(LogCategory.AUTH, 'Validating Claude API key')
+      try {
+        const isValid = await validateClaudeKey(key)
+        if (isValid) {
+          setClaudeApiKey(key)
+          logger.info(LogCategory.AUTH, 'Claude API key validated and saved')
+          return { success: true }
+        }
+        logger.warn(LogCategory.AUTH, 'Invalid Claude API key')
+        return { success: false, error: 'Invalid API key' }
+      } catch (error) {
+        logger.error(LogCategory.AUTH, 'Claude API key validation failed', { 
+          error: (error as Error).message 
+        })
+        return { success: false, error: (error as Error).message }
+      }
+    } else {
+      setClaudeApiKey(null)
+      return { success: true }
+    }
+  })
+
+  ipcMain.handle('get-chat-history', async () => {
+    return getChatHistory()
+  })
+
+  ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
+    const apiKey = getClaudeApiKey()
+    if (!apiKey) {
+      return { success: false, error: 'No Claude API key configured' }
+    }
+
+    logger.info(LogCategory.API, 'Sending chat message to Claude')
+
+    // Create user message
+    const userMsg: ChatMessage = {
+      id: `msg_${Date.now()}_user`,
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString()
+    }
+    addChatMessage(userMsg)
+
+    // Get history and convert to Claude format
+    const history = getChatHistory()
+    const claudeMessages: ClaudeMessage[] = history.map(m => ({
+      role: m.role,
+      content: m.content
+    }))
+
+    try {
+      const response = await sendClaudeMessage(apiKey, claudeMessages)
+      
+      // Create assistant message
+      const assistantMsg: ChatMessage = {
+        id: response.id || `msg_${Date.now()}_assistant`,
+        role: 'assistant',
+        content: response.content,
+        timestamp: new Date().toISOString()
+      }
+      addChatMessage(assistantMsg)
+
+      logger.info(LogCategory.API, 'Chat message sent successfully')
+      return { success: true, message: assistantMsg }
+    } catch (error) {
+      logger.error(LogCategory.API, 'Failed to send chat message', { 
+        error: (error as Error).message 
+      })
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
+  ipcMain.handle('clear-chat-history', async () => {
+    clearChatHistory()
+    logger.info(LogCategory.APP, 'Chat history cleared')
     return { success: true }
   })
 

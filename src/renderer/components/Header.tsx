@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree } from 'lucide-react'
+import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree, Bot } from 'lucide-react'
 import { useIsFetching, useQuery } from '@tanstack/react-query'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { EventStream } from './EventStream'
 import { RepoSelector } from './RepoSelector'
 import { LogsViewer } from './LogsViewer'
+import { AIChat } from './AIChat'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from './ui/button'
@@ -40,6 +41,7 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
   const queryClient = useQueryClient()
   const isFetching = useIsFetching()
   const [isDark, setIsDark] = useState(true)
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
 
   // Fetch rate limit info (refreshes with other queries on window focus)
   const { data: rateLimitData } = useQuery({
@@ -198,6 +200,20 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
             <TooltipContent>{isDark ? 'Light mode' : 'Dark mode'}</TooltipContent>
           </Tooltip>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsAIChatOpen(true)} 
+                className="h-8 w-8"
+              >
+                <Bot className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>AI Assistant</TooltipContent>
+          </Tooltip>
+
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -248,6 +264,9 @@ export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderPro
             <TooltipContent>Sign out</TooltipContent>
           </Tooltip>
         </div>
+
+        {/* AI Chat Dialog */}
+        <AIChat isOpen={isAIChatOpen} onClose={() => setIsAIChatOpen(false)} />
       </header>
   )
 }

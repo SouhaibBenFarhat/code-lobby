@@ -31,6 +31,20 @@ export interface IDEViewSettings {
   expandedRepos: string[] // Which repos are expanded in tree
 }
 
+// AI Chat message
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
+
+// AI Chat settings
+export interface AIChatSettings {
+  claudeApiKey: string | null
+  chatHistory: ChatMessage[]
+}
+
 interface StoreSchema {
   token: string | null
   user: GitHubUser | null // Cache user info to avoid re-validation
@@ -46,6 +60,7 @@ interface StoreSchema {
   repoColors: Record<string, string> // Map of repo full_name to color hex
   viewMode: ViewMode // Current view mode (canvas or ide)
   ideViewSettings: IDEViewSettings // IDE view specific settings
+  aiChat: AIChatSettings // AI chat settings and history
 }
 
 const store = new Store<StoreSchema>({
@@ -69,6 +84,10 @@ const store = new Store<StoreSchema>({
     ideViewSettings: {
       sidebarWidth: 280,
       expandedRepos: []
+    },
+    aiChat: {
+      claudeApiKey: null,
+      chatHistory: []
     }
   },
   encryptionKey: 'codelobby-secure-key'
@@ -168,4 +187,31 @@ export function getIDEViewSettings(): IDEViewSettings {
 export function setIDEViewSettings(settings: Partial<IDEViewSettings>): void {
   const current = getIDEViewSettings()
   store.set('ideViewSettings', { ...current, ...settings })
+}
+
+// AI Chat
+export function getClaudeApiKey(): string | null {
+  return store.get('aiChat').claudeApiKey
+}
+
+export function setClaudeApiKey(key: string | null): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { ...current, claudeApiKey: key })
+}
+
+export function getChatHistory(): ChatMessage[] {
+  return store.get('aiChat').chatHistory
+}
+
+export function addChatMessage(message: ChatMessage): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { 
+    ...current, 
+    chatHistory: [...current.chatHistory, message] 
+  })
+}
+
+export function clearChatHistory(): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { ...current, chatHistory: [] })
 }
