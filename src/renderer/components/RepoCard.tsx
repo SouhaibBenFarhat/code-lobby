@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { GitFork, ExternalLink, GitPullRequest, Star, Code, Move, X, Palette, User, Users } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { GitFork, ExternalLink, GitPullRequest, Code, Move, X, Palette, User, Users } from 'lucide-react'
+import { Card, CardContent, CardHeader } from './ui/card'
 import { PRCard } from './PRCard'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
@@ -153,23 +153,30 @@ export function RepoCard({
       </div>
 
       <CardHeader className="pb-2 flex-shrink-0 pt-2 px-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <Avatar className="h-7 w-7 rounded-md">
               <AvatarImage src={repo.owner.avatar_url} alt={repo.owner.login} />
               <AvatarFallback className="rounded-md text-[10px]">
                 {repo.owner.login.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-xs font-semibold truncate flex items-center gap-1.5">
-                <GitFork className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <span className="truncate">{repo.name}</span>
-              </CardTitle>
-              <p className="text-[10px] text-muted-foreground truncate">{repo.owner.login}</p>
+            <div className="min-w-0 flex-1 truncate text-xs">
+              <GitFork className="w-3 h-3 text-muted-foreground inline-block align-middle mr-1" />
+              <span className="font-semibold">{repo.name}</span>
+              <span className="text-muted-foreground ml-1.5">{repo.owner.login}</span>
+              {repo.language && (
+                <>
+                  <span className="text-muted-foreground/40 mx-1.5">•</span>
+                  <Code className="w-2.5 h-2.5 text-muted-foreground inline-block align-middle" />
+                  <span className="text-muted-foreground ml-0.5">{repo.language}</span>
+                </>
+              )}
+              <span className="text-muted-foreground/40 mx-1.5">•</span>
+              <span className="text-muted-foreground text-[10px]">{formatRelativeTime(repo.updated_at)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {/* PR count badge */}
             {totalPRs > 0 && (
               <Badge variant="default" className="h-4 text-[9px] px-1">
@@ -224,22 +231,6 @@ export function RepoCard({
           </div>
         </div>
 
-        {/* Repo meta info - compact */}
-        <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-          {repo.language && (
-            <span className="flex items-center gap-0.5">
-              <Code className="w-2.5 h-2.5" />
-              {repo.language}
-            </span>
-          )}
-          {repo.stargazers_count > 0 && (
-            <span className="flex items-center gap-0.5">
-              <Star className="w-2.5 h-2.5" />
-              {repo.stargazers_count}
-            </span>
-          )}
-          <span>{formatRelativeTime(repo.updated_at)}</span>
-        </div>
       </CardHeader>
 
       <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-1">
