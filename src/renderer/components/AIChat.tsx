@@ -185,7 +185,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
           <h2 className="font-semibold text-sm">AI Assistant</h2>
-          {apiKey && <span className="text-[10px] text-muted-foreground">(Claude)</span>}
+          {apiKey && <span className="text-[10px] text-muted-foreground">(Sonnet 4)</span>}
         </div>
         <div className="flex items-center gap-1">
           {apiKey && (
@@ -218,7 +218,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
 
       {/* Settings Panel */}
       {showSettings && apiKey && (
-        <div className="p-3 border-b border-border bg-muted/30">
+        <div className="p-3 border-b border-border bg-muted/30 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">API Key configured</span>
             <Button
@@ -228,6 +228,10 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
             >
               Remove Key
             </Button>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Model:</span>
+            <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">claude-sonnet-4-20250514</code>
           </div>
         </div>
       )}
