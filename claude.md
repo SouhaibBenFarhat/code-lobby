@@ -418,6 +418,47 @@ npm run build:linux  # Build for Linux
 
 ---
 
+## 🐛 Debugging Rules
+
+### Always Log API Calls
+**Every API call (GitHub, Claude, external services) must be logged** so errors can be viewed in the in-app LogsViewer and shared for debugging.
+
+**Pattern for API calls:**
+```typescript
+logger.info(LogCategory.API, 'Starting API call', { endpoint: 'description', params: relevantParams })
+
+try {
+  const result = await apiCall()
+  logger.info(LogCategory.API, 'API call successful', { 
+    endpoint: 'description',
+    responsePreview: summarizeResponse(result) 
+  })
+  return result
+} catch (error) {
+  logger.error(LogCategory.API, 'API call failed', { 
+    endpoint: 'description',
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined
+  })
+  throw error
+}
+```
+
+**Required logging for:**
+- All GitHub GraphQL queries
+- All Claude API calls (requests and responses)
+- All IPC handler invocations
+- Cache hits/misses
+- Rate limit status changes
+
+**Log levels:**
+- `info` - Successful operations, status updates
+- `warn` - Recoverable issues, fallbacks used
+- `error` - Failures that need attention
+- `debug` - Detailed info for troubleshooting
+
+---
+
 ## 🔮 Vision Context
 
 CodeLobby is evolving toward **intent-driven development** where:
