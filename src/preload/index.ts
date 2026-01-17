@@ -44,6 +44,14 @@ export interface ElectronAPI {
   getRepoColors: () => Promise<Record<string, string>>
   setRepoColor: (repoFullName: string, color: string | null) => Promise<{ success: boolean }>
   
+  // View mode
+  getViewMode: () => Promise<'canvas' | 'ide'>
+  setViewMode: (mode: 'canvas' | 'ide') => Promise<{ success: boolean }>
+  
+  // IDE view settings
+  getIDEViewSettings: () => Promise<{ sidebarWidth: number; expandedRepos: string[] }>
+  setIDEViewSettings: (settings: { sidebarWidth?: number; expandedRepos?: string[] }) => Promise<{ success: boolean }>
+  
   // Logging
   getLogs: () => Promise<Array<{ id: string; timestamp: string; level: string; category: string; message: string; details?: unknown }>>
   clearLogs: () => Promise<{ success: boolean }>
@@ -96,6 +104,14 @@ const electronAPI: ElectronAPI = {
   // Repo colors
   getRepoColors: () => ipcRenderer.invoke('get-repo-colors'),
   setRepoColor: (repoFullName: string, color: string | null) => ipcRenderer.invoke('set-repo-color', repoFullName, color),
+  
+  // View mode
+  getViewMode: () => ipcRenderer.invoke('get-view-mode'),
+  setViewMode: (mode: 'canvas' | 'ide') => ipcRenderer.invoke('set-view-mode', mode),
+  
+  // IDE view settings
+  getIDEViewSettings: () => ipcRenderer.invoke('get-ide-view-settings'),
+  setIDEViewSettings: (settings: { sidebarWidth?: number; expandedRepos?: string[] }) => ipcRenderer.invoke('set-ide-view-settings', settings),
   
   // Logging
   getLogs: () => ipcRenderer.invoke('get-logs'),

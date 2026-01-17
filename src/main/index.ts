@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor } from './store'
+import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings } from './store'
 import { 
   validateToken,
   fetchAllPRData,
@@ -343,6 +343,26 @@ function setupIPCHandlers(): void {
 
   ipcMain.handle('set-repo-color', async (_, repoFullName: string, color: string | null) => {
     setRepoColor(repoFullName, color)
+    return { success: true }
+  })
+
+  // View mode
+  ipcMain.handle('get-view-mode', async () => {
+    return getViewMode()
+  })
+
+  ipcMain.handle('set-view-mode', async (_, mode: ViewMode) => {
+    setViewMode(mode)
+    return { success: true }
+  })
+
+  // IDE view settings
+  ipcMain.handle('get-ide-view-settings', async () => {
+    return getIDEViewSettings()
+  })
+
+  ipcMain.handle('set-ide-view-settings', async (_, settings: Partial<IDEViewSettings>) => {
+    setIDEViewSettings(settings)
     return { success: true }
   })
 

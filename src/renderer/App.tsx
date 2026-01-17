@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { TokenInput } from './components/TokenInput'
 import { PRGrid } from './components/PRGrid'
 import { PRDetail } from './components/PRDetail'
-import { Header } from './components/Header'
+import { IDEView } from './components/IDEView'
+import { Header, ViewMode } from './components/Header'
 import { Toaster } from './components/ui/toaster'
 import { TooltipProvider } from './components/ui/tooltip'
 import { MousePointerClick, PanelRightClose, PanelRight } from 'lucide-react'
@@ -41,7 +42,29 @@ function App() {
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
   const [panelSettingsLoaded, setPanelSettingsLoaded] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('canvas')
+  const [viewModeLoaded, setViewModeLoaded] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+
+  // Load view mode on mount
+  useEffect(() => {
+    const loadViewMode = async () => {
+      try {
+        const mode = await window.electron.getViewMode()
+        setViewMode(mode)
+      } catch (e) {
+        // Use default
+      }
+      setViewModeLoaded(true)
+    }
+    loadViewMode()
+  }, [])
+
+  // Save view mode when it changes
+  useEffect(() => {
+    if (!viewModeLoaded) return
+    window.electron.setViewMode(viewMode)
+  }, [viewMode, viewModeLoaded])
 
   // Load panel settings on mount
   useEffect(() => {
@@ -172,71 +195,88 @@ function App() {
     <TooltipProvider>
       <PRContext.Provider value={{ selectedPR, setSelectedPR }}>
         <div className="h-screen bg-background flex flex-col overflow-hidden">
-        <Header user={user} onLogout={handleLogout} />
-        <div className="flex-1 flex overflow-hidden">
-          <main className="flex-1 overflow-auto p-2">
-            <PRGrid currentUser={user?.login || null} />
-          </main>
-          
-          {/* Panel toggle button when collapsed */}
-          {!isPanelOpen && (
-            <button
-              onClick={togglePanel}
-              className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-              title="Open PR details panel"
-            >
-              <PanelRight className="w-5 h-5" />
-            </button>
-          )}
-          
-          {isPanelOpen && (
-            <aside 
-              className="border-l border-border overflow-hidden flex bg-card/30 relative flex-shrink-0"
-              style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
-            >
-              {/* Resize handle */}
-              <div
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                  isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                }`}
-                onMouseDown={handleResizeStart}
-              />
-              <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                {selectedPR ? (
-                  <PRDetail pr={selectedPR} onClose={() => setSelectedPR(null)} />
-                ) : (
-                  /* Placeholder when no PR selected */
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
-                      <h3 className="font-semibold text-sm">PR Details</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={togglePanel}
-                      >
-                        <PanelRightClose className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="flex-1 flex items-center justify-center p-6">
-                      <div className="text-center space-y-4">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
-                          <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">No PR selected</p>
-                          <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                            Click on a pull request card to view its details, CI status, and comments
-                          </p>
+        <Header 
+          user={user} 
+          onLogout={handleLogout} 
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+        
+        {/* Canvas View */}
+        {viewMode === 'canvas' && (
+          <div className="flex-1 flex overflow-hidden">
+            <main className="flex-1 overflow-auto p-2">
+              <PRGrid currentUser={user?.login || null} />
+            </main>
+            
+            {/* Panel toggle button when collapsed */}
+            {!isPanelOpen && (
+              <button
+                onClick={togglePanel}
+                className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+                title="Open PR details panel"
+              >
+                <PanelRight className="w-5 h-5" />
+              </button>
+            )}
+            
+            {isPanelOpen && (
+              <aside 
+                className="border-l border-border overflow-hidden flex bg-card/30 relative flex-shrink-0"
+                style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
+              >
+                {/* Resize handle */}
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                    isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                  }`}
+                  onMouseDown={handleResizeStart}
+                />
+                <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                  {selectedPR ? (
+                    <PRDetail pr={selectedPR} onClose={() => setSelectedPR(null)} />
+                  ) : (
+                    /* Placeholder when no PR selected */
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
+                        <h3 className="font-semibold text-sm">PR Details</h3>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={togglePanel}
+                        >
+                          <PanelRightClose className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="text-center space-y-4">
+                          <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
+                            <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-muted-foreground">No PR selected</p>
+                            <p className="text-xs text-muted-foreground/70 max-w-[200px]">
+                              Click on a pull request card to view its details, CI status, and comments
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-          )}
-        </div>
+                  )}
+                </div>
+              </aside>
+            )}
+          </div>
+        )}
+
+        {/* IDE View */}
+        {viewMode === 'ide' && (
+          <div className="flex-1 overflow-hidden">
+            <IDEView currentUser={user?.login || null} />
+          </div>
+        )}
+        
         <Toaster />
         </div>
       </PRContext.Provider>

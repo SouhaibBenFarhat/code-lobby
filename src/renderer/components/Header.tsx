@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge } from 'lucide-react'
+import { LogOut, RefreshCw, Moon, Sun, Loader2, Activity, Gauge, LayoutGrid, FolderTree } from 'lucide-react'
 import { useIsFetching, useQuery } from '@tanstack/react-query'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { EventStream } from './EventStream'
@@ -11,6 +11,9 @@ import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { Separator } from './ui/separator'
+import { cn } from '@/lib/utils'
+
+export type ViewMode = 'canvas' | 'ide'
 
 interface RateLimitInfo {
   limit: number
@@ -29,9 +32,11 @@ interface User {
 interface HeaderProps {
   user: User | null
   onLogout: () => void
+  viewMode: ViewMode
+  onViewModeChange: (mode: ViewMode) => void
 }
 
-export function Header({ user, onLogout }: HeaderProps) {
+export function Header({ user, onLogout, viewMode, onViewModeChange }: HeaderProps) {
   const queryClient = useQueryClient()
   const isFetching = useIsFetching()
   const [isDark, setIsDark] = useState(true)
@@ -78,6 +83,44 @@ export function Header({ user, onLogout }: HeaderProps) {
             <span className="text-sm font-semibold">CodeLobby</span>
             <span className="text-[10px] text-muted-foreground">Real-time PR monitoring</span>
           </div>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-1 no-drag bg-muted/50 rounded-lg p-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'canvas' 
+                    ? "bg-background shadow-sm text-foreground" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onViewModeChange('canvas')}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Canvas View</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'ide' 
+                    ? "bg-background shadow-sm text-foreground" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => onViewModeChange('ide')}
+              >
+                <FolderTree className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>IDE View</TooltipContent>
+          </Tooltip>
         </div>
 
         <Separator orientation="vertical" className="h-6" />

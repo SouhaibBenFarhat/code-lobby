@@ -22,6 +22,15 @@ export interface PanelSettings {
   width: number
 }
 
+// View modes
+export type ViewMode = 'canvas' | 'ide'
+
+// IDE view settings
+export interface IDEViewSettings {
+  sidebarWidth: number
+  expandedRepos: string[] // Which repos are expanded in tree
+}
+
 interface StoreSchema {
   token: string | null
   user: GitHubUser | null // Cache user info to avoid re-validation
@@ -35,6 +44,8 @@ interface StoreSchema {
   selectedRepos: string[] // Array of repo full_names to display (empty = show all)
   prDetailPanel: PanelSettings // PR detail panel state
   repoColors: Record<string, string> // Map of repo full_name to color hex
+  viewMode: ViewMode // Current view mode (canvas or ide)
+  ideViewSettings: IDEViewSettings // IDE view specific settings
 }
 
 const store = new Store<StoreSchema>({
@@ -53,7 +64,12 @@ const store = new Store<StoreSchema>({
       isOpen: false,
       width: 400
     },
-    repoColors: {} // Empty = no custom colors
+    repoColors: {}, // Empty = no custom colors
+    viewMode: 'canvas', // Default to canvas view
+    ideViewSettings: {
+      sidebarWidth: 280,
+      expandedRepos: []
+    }
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -133,4 +149,23 @@ export function setRepoColor(repoFullName: string, color: string | null): void {
     current[repoFullName] = color
   }
   store.set('repoColors', current)
+}
+
+// View mode
+export function getViewMode(): ViewMode {
+  return store.get('viewMode')
+}
+
+export function setViewMode(mode: ViewMode): void {
+  store.set('viewMode', mode)
+}
+
+// IDE view settings
+export function getIDEViewSettings(): IDEViewSettings {
+  return store.get('ideViewSettings')
+}
+
+export function setIDEViewSettings(settings: Partial<IDEViewSettings>): void {
+  const current = getIDEViewSettings()
+  store.set('ideViewSettings', { ...current, ...settings })
 }

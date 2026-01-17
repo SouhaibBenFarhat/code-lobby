@@ -1,0 +1,272 @@
+/**
+ * Electron API Mock
+ * 
+ * Provides a complete mock of the window.electron API for renderer tests.
+ * All methods are vi.fn() for easy assertion and customization.
+ */
+
+import { vi } from 'vitest'
+import {
+  createMockUser,
+  createMockSettings,
+  createMockRateLimit,
+  createMockPanelSettings,
+  createMockIDEViewSettings,
+  createMockRepository,
+  createMockPullRequest,
+  type MockUser,
+  type MockPullRequest,
+  type MockRepository,
+  type MockSettings,
+  type MockRateLimit,
+  type MockPanelSettings,
+  type MockIDEViewSettings,
+  type MockLayoutItem
+} from './factories'
+
+// ============================================================================
+// Types for Mock Return Values
+// ============================================================================
+
+interface MockElectronAPI {
+  // Token management
+  getToken: ReturnType<typeof vi.fn>
+  setToken: ReturnType<typeof vi.fn>
+  clearToken: ReturnType<typeof vi.fn>
+  validateToken: ReturnType<typeof vi.fn>
+  
+  // GitHub API
+  fetchPRs: ReturnType<typeof vi.fn>
+  fetchAllPRsForRepos: ReturnType<typeof vi.fn>
+  fetchPREvents: ReturnType<typeof vi.fn>
+  fetchPRChecks: ReturnType<typeof vi.fn>
+  fetchContributedRepos: ReturnType<typeof vi.fn>
+  
+  // Settings
+  getSettings: ReturnType<typeof vi.fn>
+  setSettings: ReturnType<typeof vi.fn>
+  
+  // Notifications
+  showNotification: ReturnType<typeof vi.fn>
+  
+  // Repo order
+  getRepoOrder: ReturnType<typeof vi.fn>
+  setRepoOrder: ReturnType<typeof vi.fn>
+  
+  // Rate limit
+  getRateLimit: ReturnType<typeof vi.fn>
+  
+  // Card layouts
+  getCardLayouts: ReturnType<typeof vi.fn>
+  setCardLayouts: ReturnType<typeof vi.fn>
+  
+  // Selected repos
+  getSelectedRepos: ReturnType<typeof vi.fn>
+  setSelectedRepos: ReturnType<typeof vi.fn>
+  
+  // PR Detail panel
+  getPRDetailPanel: ReturnType<typeof vi.fn>
+  setPRDetailPanel: ReturnType<typeof vi.fn>
+  
+  // Repo colors
+  getRepoColors: ReturnType<typeof vi.fn>
+  setRepoColor: ReturnType<typeof vi.fn>
+  
+  // View mode
+  getViewMode: ReturnType<typeof vi.fn>
+  setViewMode: ReturnType<typeof vi.fn>
+  
+  // IDE view settings
+  getIDEViewSettings: ReturnType<typeof vi.fn>
+  setIDEViewSettings: ReturnType<typeof vi.fn>
+  
+  // Logging
+  getLogs: ReturnType<typeof vi.fn>
+  clearLogs: ReturnType<typeof vi.fn>
+  exportLogs: ReturnType<typeof vi.fn>
+  getLogsSummary: ReturnType<typeof vi.fn>
+}
+
+// ============================================================================
+// Default Mock Implementations
+// ============================================================================
+
+export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}): MockElectronAPI {
+  const defaultUser = createMockUser({ login: 'testuser' })
+  const defaultSettings = createMockSettings()
+  const defaultRateLimit = createMockRateLimit()
+  const defaultPanelSettings = createMockPanelSettings()
+  const defaultIDESettings = createMockIDEViewSettings()
+  
+  return {
+    // Token management
+    getToken: vi.fn().mockResolvedValue('ghp_mocktoken123'),
+    setToken: vi.fn().mockResolvedValue({ success: true, user: defaultUser }),
+    clearToken: vi.fn().mockResolvedValue({ success: true }),
+    validateToken: vi.fn().mockResolvedValue({ valid: true, user: defaultUser }),
+    
+    // GitHub API
+    fetchPRs: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    fetchAllPRsForRepos: vi.fn().mockResolvedValue({ 
+      success: true, 
+      data: [], 
+      currentUser: 'testuser',
+      rateLimit: defaultRateLimit
+    }),
+    fetchPREvents: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    fetchPRChecks: vi.fn().mockResolvedValue({ success: true, data: null }),
+    fetchContributedRepos: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    
+    // Settings
+    getSettings: vi.fn().mockResolvedValue(defaultSettings),
+    setSettings: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Notifications
+    showNotification: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Repo order
+    getRepoOrder: vi.fn().mockResolvedValue([]),
+    setRepoOrder: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Rate limit
+    getRateLimit: vi.fn().mockResolvedValue({ success: true, data: defaultRateLimit }),
+    
+    // Card layouts
+    getCardLayouts: vi.fn().mockResolvedValue([]),
+    setCardLayouts: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Selected repos
+    getSelectedRepos: vi.fn().mockResolvedValue([]),
+    setSelectedRepos: vi.fn().mockResolvedValue({ success: true }),
+    
+    // PR Detail panel
+    getPRDetailPanel: vi.fn().mockResolvedValue(defaultPanelSettings),
+    setPRDetailPanel: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Repo colors
+    getRepoColors: vi.fn().mockResolvedValue({}),
+    setRepoColor: vi.fn().mockResolvedValue({ success: true }),
+    
+    // View mode
+    getViewMode: vi.fn().mockResolvedValue('canvas'),
+    setViewMode: vi.fn().mockResolvedValue({ success: true }),
+    
+    // IDE view settings
+    getIDEViewSettings: vi.fn().mockResolvedValue(defaultIDESettings),
+    setIDEViewSettings: vi.fn().mockResolvedValue({ success: true }),
+    
+    // Logging
+    getLogs: vi.fn().mockResolvedValue([]),
+    clearLogs: vi.fn().mockResolvedValue({ success: true }),
+    exportLogs: vi.fn().mockResolvedValue('[]'),
+    getLogsSummary: vi.fn().mockResolvedValue({ 
+      total: 0, 
+      byLevel: {}, 
+      byCategory: {} 
+    }),
+    
+    ...overrides
+  }
+}
+
+// ============================================================================
+// Window.electron Setup Helper
+// ============================================================================
+
+let mockElectronAPI: MockElectronAPI | null = null
+
+export function setupMockElectron(overrides: Partial<MockElectronAPI> = {}): MockElectronAPI {
+  mockElectronAPI = createMockElectronAPI(overrides)
+  
+  // @ts-expect-error - Mocking window.electron
+  window.electron = mockElectronAPI
+  
+  return mockElectronAPI
+}
+
+export function getMockElectron(): MockElectronAPI {
+  if (!mockElectronAPI) {
+    throw new Error('Mock Electron API not initialized. Call setupMockElectron() first.')
+  }
+  return mockElectronAPI
+}
+
+export function resetMockElectron(): void {
+  mockElectronAPI = null
+  // @ts-expect-error - Cleaning up mock
+  delete window.electron
+}
+
+// ============================================================================
+// Scenario-based Mock Setups
+// ============================================================================
+
+/**
+ * Setup for authenticated user with repos and PRs
+ */
+export function setupAuthenticatedScenario(options: {
+  user?: MockUser
+  repos?: MockRepository[]
+  prs?: MockPullRequest[]
+  selectedRepos?: string[]
+} = {}) {
+  const user = options.user || createMockUser({ login: 'testuser' })
+  const repos = options.repos || [
+    createMockRepository({ name: 'frontend', owner: { login: 'myorg', avatar_url: '' } }),
+    createMockRepository({ name: 'backend', owner: { login: 'myorg', avatar_url: '' } })
+  ]
+  const prs = options.prs || [
+    createMockPullRequest({ base: { repo: repos[0], ref: 'main', sha: 'abc' } }),
+    createMockPullRequest({ base: { repo: repos[1], ref: 'main', sha: 'def' } })
+  ]
+  const selectedRepos = options.selectedRepos || repos.map(r => r.full_name)
+
+  return setupMockElectron({
+    validateToken: vi.fn().mockResolvedValue({ valid: true, user }),
+    getToken: vi.fn().mockResolvedValue('ghp_token'),
+    fetchContributedRepos: vi.fn().mockResolvedValue({ success: true, data: repos }),
+    fetchAllPRsForRepos: vi.fn().mockResolvedValue({
+      success: true,
+      data: prs,
+      currentUser: user.login,
+      rateLimit: createMockRateLimit()
+    }),
+    getSelectedRepos: vi.fn().mockResolvedValue(selectedRepos)
+  })
+}
+
+/**
+ * Setup for unauthenticated state
+ */
+export function setupUnauthenticatedScenario() {
+  return setupMockElectron({
+    validateToken: vi.fn().mockResolvedValue({ valid: false }),
+    getToken: vi.fn().mockResolvedValue(null)
+  })
+}
+
+/**
+ * Setup for error scenarios
+ */
+export function setupErrorScenario(errorMessage = 'API Error') {
+  return setupMockElectron({
+    fetchContributedRepos: vi.fn().mockResolvedValue({ success: false, error: errorMessage }),
+    fetchAllPRsForRepos: vi.fn().mockResolvedValue({ success: false, error: errorMessage }),
+    fetchPRs: vi.fn().mockResolvedValue({ success: false, error: errorMessage })
+  })
+}
+
+/**
+ * Setup for rate limit exceeded scenario
+ */
+export function setupRateLimitExceededScenario() {
+  const rateLimit = createMockRateLimit({ used: 4999, remaining: 1, percentage: 100 })
+  return setupMockElectron({
+    getRateLimit: vi.fn().mockResolvedValue({ success: true, data: rateLimit }),
+    fetchAllPRsForRepos: vi.fn().mockResolvedValue({
+      success: true,
+      data: [],
+      rateLimit
+    })
+  })
+}
