@@ -164,9 +164,10 @@ export function EventStream() {
       // Add PR context to each event
       const eventsWithContext = (result.data as PREvent[]).map(event => {
         // Find the PR this event belongs to by matching timestamps/authors
+        const eventId = String(event.id)
         const matchingPR = prs.find(pr => 
-          pr.commentsList?.some(c => c.id === event.id) ||
-          pr.reviews?.some(r => r.id === event.id)
+          pr.commentsList?.some(c => String(c.id) === eventId) ||
+          pr.reviews?.some(r => String(r.id) === eventId)
         )
         return {
           ...event,

@@ -16,7 +16,8 @@
     "paths": {
       "@/*": ["src/renderer/*"]
     },
-    "types": ["node"]
+    "types": ["node"],
+    "outDir": "./out/renderer"
   },
   "include": ["src/renderer/**/*", "src/preload/index.d.ts"]
 }
