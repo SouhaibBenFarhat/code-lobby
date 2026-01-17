@@ -552,3 +552,75 @@ export function createMockIDEViewSettings(overrides: Partial<MockIDEViewSettings
     ...overrides
   }
 }
+
+// ============================================================================
+// AI Chat Factories
+// ============================================================================
+
+export interface MockChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  thinking?: string
+  timestamp: string
+}
+
+export function createMockChatMessage(overrides: Partial<MockChatMessage> = {}): MockChatMessage {
+  const id = getNextId()
+  return {
+    id: `msg-${id}`,
+    role: 'user',
+    content: `Test message ${id}`,
+    timestamp: new Date().toISOString(),
+    ...overrides
+  }
+}
+
+export function createMockAssistantMessage(overrides: Partial<MockChatMessage> = {}): MockChatMessage {
+  return createMockChatMessage({
+    role: 'assistant',
+    content: 'I am Claude, an AI assistant. How can I help you today?',
+    ...overrides
+  })
+}
+
+export function createMockChatHistory(messageCount = 4): MockChatMessage[] {
+  const messages: MockChatMessage[] = []
+  for (let i = 0; i < messageCount; i++) {
+    if (i % 2 === 0) {
+      messages.push(createMockChatMessage({ content: `User message ${i + 1}` }))
+    } else {
+      messages.push(createMockAssistantMessage({ content: `Assistant response ${i + 1}` }))
+    }
+  }
+  return messages
+}
+
+export interface MockClaudeModel {
+  id: string
+  display_name: string
+  created_at: string
+}
+
+export function createMockClaudeModel(overrides: Partial<MockClaudeModel> = {}): MockClaudeModel {
+  const id = getNextId()
+  return {
+    id: `claude-model-${id}`,
+    display_name: `Claude Model ${id}`,
+    created_at: new Date().toISOString(),
+    ...overrides
+  }
+}
+
+export interface MockAIPanelSettings {
+  isOpen: boolean
+  width: number
+}
+
+export function createMockAIPanelSettings(overrides: Partial<MockAIPanelSettings> = {}): MockAIPanelSettings {
+  return {
+    isOpen: false,
+    width: 380,
+    ...overrides
+  }
+}

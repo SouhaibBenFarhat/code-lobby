@@ -60,6 +60,28 @@ module.exports = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        /* Apple-style radii */
+        'apple-sm': '6px',
+        'apple': '10px',
+        'apple-lg': '14px',
+        'apple-xl': '20px',
+      },
+      boxShadow: {
+        /* Apple-style shadows */
+        'apple-sm': '0 1px 2px rgba(0, 0, 0, 0.04)',
+        'apple': '0 2px 8px rgba(0, 0, 0, 0.08)',
+        'apple-md': '0 4px 16px rgba(0, 0, 0, 0.12)',
+        'apple-lg': '0 8px 32px rgba(0, 0, 0, 0.16)',
+        'apple-xl': '0 16px 64px rgba(0, 0, 0, 0.2)',
+      },
+      transitionTimingFunction: {
+        /* Apple's signature easing curve */
+        'apple': 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+        'apple-bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
+      transitionDuration: {
+        '150': '150ms',
+        '250': '250ms',
       },
       keyframes: {
         "accordion-down": {
@@ -86,8 +108,23 @@ module.exports = {
         "slide-in": "slide-in 0.3s ease-out",
       },
       fontFamily: {
-        sans: ['JetBrains Mono', 'SF Mono', 'Monaco', 'monospace'],
-        mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'monospace'],
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'SF Pro Display',
+          'SF Pro Text',
+          'Helvetica Neue',
+          'Helvetica',
+          'Arial',
+          'sans-serif',
+        ],
+        mono: [
+          'SF Mono',
+          'Monaco',
+          'Menlo',
+          'Consolas',
+          'monospace',
+        ],
       },
     },
   },

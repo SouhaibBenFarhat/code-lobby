@@ -1,8 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getSelectedModel, setSelectedModel, getEnableThinking, setEnableThinking, getChatHistory, addChatMessage, clearChatHistory, ChatMessage } from './store'
-import { sendMessage as sendClaudeMessage, fetchModels as fetchClaudeModels, getDefaultModel, ClaudeMessage } from './claude-api'
+import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getSelectedModel, setSelectedModel, getEnableThinking, setEnableThinking, getChatHistory, addChatMessage, clearChatHistory, ChatMessage, getAIPanel, setAIPanel, AIPanelSettings } from './store'
+import { sendMessage as sendClaudeMessage, sendMessageStreaming as sendClaudeMessageStreaming, fetchModels as fetchClaudeModels, getDefaultModel, ClaudeMessage } from './claude-api'
 import { 
   validateToken,
   fetchAllPRData,
@@ -337,6 +337,16 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
+  // AI Panel settings
+  ipcMain.handle('get-ai-panel', async () => {
+    return getAIPanel()
+  })
+
+  ipcMain.handle('set-ai-panel', async (_, settings: Partial<AIPanelSettings>) => {
+    setAIPanel(settings)
+    return { success: true }
+  })
+
   // Repo colors
   ipcMain.handle('get-repo-colors', async () => {
     return getRepoColors()
@@ -527,6 +537,76 @@ function setupIPCHandlers(): void {
     clearChatHistory()
     logger.info(LogCategory.APP, 'Chat history cleared')
     return { success: true }
+  })
+
+  // Streaming chat message
+  ipcMain.handle('send-chat-message-streaming', async (event, userMessage: string) => {
+    const apiKey = getClaudeApiKey()
+    if (!apiKey) {
+      return { success: false, error: 'No Claude API key configured' }
+    }
+
+    const selectedModel = getSelectedModel() || getDefaultModel()
+    const enableThinking = getEnableThinking()
+    logger.info(LogCategory.API, 'Sending streaming chat message to Claude', { 
+      model: selectedModel, 
+      thinking: enableThinking 
+    })
+
+    // Create user message
+    const userMsg: ChatMessage = {
+      id: `msg_${Date.now()}_user`,
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString()
+    }
+    addChatMessage(userMsg)
+
+    // Get history and convert to Claude format
+    const history = getChatHistory()
+    const claudeMessages: ClaudeMessage[] = history.map(m => ({
+      role: m.role,
+      content: m.content
+    }))
+
+    // Generate a unique stream ID for this conversation
+    const streamId = `stream_${Date.now()}`
+    
+    // Get the sender's webContents to send stream updates
+    const webContents = event.sender
+
+    // Start streaming
+    sendClaudeMessageStreaming(
+      apiKey,
+      claudeMessages,
+      (chunk) => {
+        // Send chunk to renderer
+        webContents.send('chat-stream-chunk', { streamId, ...chunk })
+        
+        // If done, save the assistant message
+        if (chunk.type === 'done' && chunk.fullResponse) {
+          const assistantMsg: ChatMessage = {
+            id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
+            role: 'assistant',
+            content: chunk.fullResponse.content,
+            thinking: chunk.fullResponse.thinking,
+            timestamp: new Date().toISOString()
+          }
+          addChatMessage(assistantMsg)
+          
+          logger.info(LogCategory.API, 'Streaming chat message complete', { 
+            model: chunk.fullResponse.model,
+            hasThinking: !!chunk.fullResponse.thinking,
+            usage: chunk.fullResponse.usage
+          })
+        }
+      },
+      selectedModel,
+      undefined,
+      enableThinking
+    )
+
+    return { success: true, streamId }
   })
 
   // Logging

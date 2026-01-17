@@ -48,6 +48,12 @@ export interface AIChatSettings {
   chatHistory: ChatMessage[]
 }
 
+// AI Panel settings (for remembering open state and size)
+export interface AIPanelSettings {
+  isOpen: boolean
+  width: number
+}
+
 interface StoreSchema {
   token: string | null
   user: GitHubUser | null // Cache user info to avoid re-validation
@@ -64,6 +70,7 @@ interface StoreSchema {
   viewMode: ViewMode // Current view mode (canvas or ide)
   ideViewSettings: IDEViewSettings // IDE view specific settings
   aiChat: AIChatSettings // AI chat settings and history
+  aiPanel: AIPanelSettings // AI panel open state and size
 }
 
 const store = new Store<StoreSchema>({
@@ -93,6 +100,10 @@ const store = new Store<StoreSchema>({
       selectedModel: null,
       enableThinking: false,
       chatHistory: []
+    },
+    aiPanel: {
+      isOpen: false,
+      width: 400
     }
   },
   encryptionKey: 'codelobby-secure-key'
@@ -237,4 +248,14 @@ export function addChatMessage(message: ChatMessage): void {
 export function clearChatHistory(): void {
   const current = store.get('aiChat')
   store.set('aiChat', { ...current, chatHistory: [] })
+}
+
+// AI Panel settings
+export function getAIPanel(): AIPanelSettings {
+  return store.get('aiPanel')
+}
+
+export function setAIPanel(settings: Partial<AIPanelSettings>): void {
+  const current = getAIPanel()
+  store.set('aiPanel', { ...current, ...settings })
 }

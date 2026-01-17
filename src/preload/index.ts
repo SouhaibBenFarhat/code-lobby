@@ -40,6 +40,10 @@ export interface ElectronAPI {
   getPRDetailPanel: () => Promise<{ isOpen: boolean; width: number }>
   setPRDetailPanel: (settings: { isOpen?: boolean; width?: number }) => Promise<{ success: boolean }>
   
+  // AI Panel settings
+  getAIPanel: () => Promise<{ isOpen: boolean; width: number }>
+  setAIPanel: (settings: { isOpen?: boolean; width?: number }) => Promise<{ success: boolean }>
+  
   // Repo colors
   getRepoColors: () => Promise<Record<string, string>>
   setRepoColor: (repoFullName: string, color: string | null) => Promise<{ success: boolean }>
@@ -70,6 +74,8 @@ export interface ElectronAPI {
   setEnableThinking: (enabled: boolean) => Promise<{ success: boolean }>
   getChatHistory: () => Promise<Array<{ id: string; role: 'user' | 'assistant'; content: string; thinking?: string; timestamp: string }>>
   sendChatMessage: (message: string) => Promise<{ success: boolean; message?: { id: string; role: 'user' | 'assistant'; content: string; thinking?: string; timestamp: string }; error?: string }>
+  sendChatMessageStreaming: (message: string) => Promise<{ success: boolean; streamId?: string; error?: string }>
+  onChatStreamChunk: (callback: (chunk: { streamId: string; type: 'thinking' | 'text' | 'done' | 'error'; content?: string; thinking?: string; error?: string }) => void) => () => void
   clearChatHistory: () => Promise<{ success: boolean }>
 }
 
@@ -115,6 +121,10 @@ const electronAPI: ElectronAPI = {
   getPRDetailPanel: () => ipcRenderer.invoke('get-pr-detail-panel'),
   setPRDetailPanel: (settings: { isOpen?: boolean; width?: number }) => ipcRenderer.invoke('set-pr-detail-panel', settings),
   
+  // AI Panel settings
+  getAIPanel: () => ipcRenderer.invoke('get-ai-panel'),
+  setAIPanel: (settings: { isOpen?: boolean; width?: number }) => ipcRenderer.invoke('set-ai-panel', settings),
+  
   // Repo colors
   getRepoColors: () => ipcRenderer.invoke('get-repo-colors'),
   setRepoColor: (repoFullName: string, color: string | null) => ipcRenderer.invoke('set-repo-color', repoFullName, color),
@@ -146,6 +156,17 @@ const electronAPI: ElectronAPI = {
   setEnableThinking: (enabled: boolean) => ipcRenderer.invoke('set-enable-thinking', enabled),
   getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
   sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
+  sendChatMessageStreaming: (message: string) => ipcRenderer.invoke('send-chat-message-streaming', message),
+  onChatStreamChunk: (callback: (chunk: { streamId: string; type: string; content?: string; thinking?: string; error?: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, chunk: { streamId: string; type: string; content?: string; thinking?: string; error?: string }) => {
+      callback(chunk)
+    }
+    ipcRenderer.on('chat-stream-chunk', handler)
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener('chat-stream-chunk', handler)
+    }
+  },
   clearChatHistory: () => ipcRenderer.invoke('clear-chat-history')
 }
 

@@ -85,6 +85,25 @@ interface MockElectronAPI {
   clearLogs: ReturnType<typeof vi.fn>
   exportLogs: ReturnType<typeof vi.fn>
   getLogsSummary: ReturnType<typeof vi.fn>
+  logFromRenderer: ReturnType<typeof vi.fn>
+  
+  // AI Chat
+  getClaudeApiKey: ReturnType<typeof vi.fn>
+  setClaudeApiKey: ReturnType<typeof vi.fn>
+  getChatHistory: ReturnType<typeof vi.fn>
+  clearChatHistory: ReturnType<typeof vi.fn>
+  sendChatMessage: ReturnType<typeof vi.fn>
+  sendChatMessageStreaming: ReturnType<typeof vi.fn>
+  onChatStreamChunk: ReturnType<typeof vi.fn>
+  fetchClaudeModels: ReturnType<typeof vi.fn>
+  getSelectedModel: ReturnType<typeof vi.fn>
+  setSelectedModel: ReturnType<typeof vi.fn>
+  getEnableThinking: ReturnType<typeof vi.fn>
+  setEnableThinking: ReturnType<typeof vi.fn>
+  
+  // AI Panel
+  getAIPanel: ReturnType<typeof vi.fn>
+  setAIPanel: ReturnType<typeof vi.fn>
 }
 
 // ============================================================================
@@ -164,6 +183,31 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
       byLevel: {}, 
       byCategory: {} 
     }),
+    logFromRenderer: vi.fn().mockResolvedValue(undefined),
+    
+    // AI Chat
+    getClaudeApiKey: vi.fn().mockResolvedValue(null),
+    setClaudeApiKey: vi.fn().mockResolvedValue({ success: true }),
+    getChatHistory: vi.fn().mockResolvedValue([]),
+    clearChatHistory: vi.fn().mockResolvedValue({ success: true }),
+    sendChatMessage: vi.fn().mockResolvedValue({ success: true, message: { id: '1', role: 'assistant', content: 'Hello!' } }),
+    sendChatMessageStreaming: vi.fn().mockResolvedValue({ success: true, streamId: 'stream-1' }),
+    onChatStreamChunk: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+    fetchClaudeModels: vi.fn().mockResolvedValue({ 
+      success: true, 
+      models: [
+        { id: 'claude-sonnet-4-20250514', display_name: 'Claude Sonnet 4', created_at: '2025-05-14' },
+        { id: 'claude-haiku-4-5-20251001', display_name: 'Claude Haiku 4.5', created_at: '2025-10-01' }
+      ] 
+    }),
+    getSelectedModel: vi.fn().mockResolvedValue('claude-sonnet-4-20250514'),
+    setSelectedModel: vi.fn().mockResolvedValue({ success: true }),
+    getEnableThinking: vi.fn().mockResolvedValue(false),
+    setEnableThinking: vi.fn().mockResolvedValue({ success: true }),
+    
+    // AI Panel
+    getAIPanel: vi.fn().mockResolvedValue({ isOpen: false, width: 380 }),
+    setAIPanel: vi.fn().mockResolvedValue({ success: true }),
     
     ...overrides
   }

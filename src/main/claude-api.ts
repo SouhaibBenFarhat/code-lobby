@@ -37,6 +37,15 @@ const MAX_TOKENS = 4096
 // Cache client instances by API key
 const clientCache = new Map<string, Anthropic>()
 
+// Stream callback type
+export type StreamCallback = (chunk: {
+  type: 'thinking' | 'text' | 'done' | 'error'
+  content?: string
+  thinking?: string
+  fullResponse?: ClaudeResponse
+  error?: string
+}) => void
+
 /**
  * Get or create an Anthropic client for the given API key
  */
@@ -231,5 +240,141 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
       error: error instanceof Error ? error.message : String(error)
     })
     return false
+  }
+}
+
+/**
+ * Send a message to Claude API with streaming
+ */
+export async function sendMessageStreaming(
+  apiKey: string,
+  messages: ClaudeMessage[],
+  onChunk: StreamCallback,
+  model?: string,
+  systemPrompt?: string,
+  enableThinking: boolean = false
+): Promise<void> {
+  const selectedModel = model || DEFAULT_MODEL
+  const useThinking = enableThinking && supportsThinking(selectedModel)
+  
+  logger.info(LogCategory.API, 'Sending streaming message to Claude API', { 
+    messageCount: messages.length,
+    model: selectedModel,
+    thinking: useThinking
+  })
+
+  try {
+    const client = getClient(apiKey)
+    
+    // Build request parameters
+    const requestParams: Parameters<typeof client.messages.create>[0] = {
+      model: selectedModel,
+      max_tokens: MAX_TOKENS,
+      system: systemPrompt,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content
+      })),
+      stream: true
+    }
+    
+    // Add thinking configuration if supported and enabled
+    if (useThinking) {
+      requestParams.thinking = {
+        type: 'enabled',
+        budget_tokens: 5000
+      }
+    }
+    
+    // Create streaming response
+    const stream = client.messages.stream(requestParams)
+    
+    let fullContent = ''
+    let fullThinking = ''
+    let responseId = ''
+    let responseModel = selectedModel
+    let stopReason: string | null = null
+    let inputTokens = 0
+    let outputTokens = 0
+    
+    // Handle stream events
+    stream.on('text', (text) => {
+      fullContent += text
+      onChunk({ type: 'text', content: text })
+    })
+    
+    // Handle thinking blocks (if extended thinking is enabled)
+    stream.on('contentBlockStart', (block) => {
+      if (block.content_block.type === 'thinking') {
+        // Thinking block started
+      }
+    })
+    
+    stream.on('contentBlockDelta', (delta) => {
+      if (delta.delta.type === 'thinking_delta' && 'thinking' in delta.delta) {
+        fullThinking += delta.delta.thinking
+        onChunk({ type: 'thinking', thinking: delta.delta.thinking })
+      }
+    })
+    
+    // Wait for completion
+    const finalMessage = await stream.finalMessage()
+    
+    responseId = finalMessage.id
+    responseModel = finalMessage.model
+    stopReason = finalMessage.stop_reason
+    inputTokens = finalMessage.usage.input_tokens
+    outputTokens = finalMessage.usage.output_tokens
+    
+    logger.info(LogCategory.API, 'Claude streaming response complete', { 
+      id: responseId,
+      model: responseModel,
+      stopReason,
+      inputTokens,
+      outputTokens,
+      hasThinking: !!fullThinking
+    })
+    
+    // Send done signal with full response
+    onChunk({
+      type: 'done',
+      fullResponse: {
+        id: responseId,
+        content: fullContent,
+        thinking: fullThinking || undefined,
+        model: responseModel,
+        stop_reason: stopReason,
+        usage: {
+          input_tokens: inputTokens,
+          output_tokens: outputTokens
+        }
+      }
+    })
+  } catch (error) {
+    // SDK provides typed errors
+    let errorMessage = 'Unknown error'
+    
+    if (error instanceof Anthropic.APIError) {
+      logger.error(LogCategory.API, 'Claude streaming API error', { 
+        status: error.status,
+        message: error.message,
+        type: error.constructor.name
+      })
+      
+      if (error instanceof Anthropic.AuthenticationError) {
+        errorMessage = 'Invalid API key. Please check your Claude API key.'
+      } else if (error instanceof Anthropic.RateLimitError) {
+        errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+      } else if (error instanceof Anthropic.BadRequestError) {
+        errorMessage = `Invalid request: ${error.message}`
+      } else {
+        errorMessage = `Claude API error: ${error.message}`
+      }
+    } else {
+      errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error(LogCategory.API, 'Failed to stream message from Claude', { error: errorMessage })
+    }
+    
+    onChunk({ type: 'error', error: errorMessage })
   }
 }

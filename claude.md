@@ -459,6 +459,392 @@ try {
 
 ---
 
+## 🍎 Apple Design Language
+
+CodeLobby follows Apple's Human Interface Guidelines to create a native macOS feel. Here are the core principles:
+
+### Design Philosophy
+
+1. **Clarity** - Content is paramount. UI chrome should be minimal and supportive
+2. **Deference** - The interface helps users understand and interact with content
+3. **Depth** - Visual layers and realistic motion provide hierarchy and feedback
+
+### Typography (SF Pro)
+
+```css
+/* Font stack - uses native Apple fonts */
+font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif;
+
+/* Apple's tight letter-spacing */
+letter-spacing: -0.01em;  /* body */
+letter-spacing: -0.02em;  /* headings */
+
+/* Font weights */
+400 - Regular (body text)
+500 - Medium (subtle emphasis)
+600 - Semibold (headings, buttons)
+700 - Bold (sparingly, strong emphasis)
+```
+
+### Color Palette
+
+| Purpose | Light Mode | Dark Mode |
+|---------|------------|-----------|
+| Background | `#FAFAFA` (98% white) | `#000000` (true black) |
+| Card/Surface | `#FFFFFF` | `#1C1C1E` |
+| Text Primary | `#1D1D1F` | `#F5F5F7` |
+| Text Secondary | `#86868B` | `#8E8E93` |
+| Accent (Blue) | `#007AFF` | `#0A84FF` |
+| Border | `rgba(0,0,0,0.06)` | `rgba(255,255,255,0.08)` |
+
+### Border Radii
+
+| Element | Radius |
+|---------|--------|
+| Buttons (small) | 6px |
+| Buttons (default) | 8px |
+| Cards | 12px |
+| Modals/Popovers | 14px |
+| Large panels | 20px |
+
+### Shadows
+
+```css
+/* Apple uses subtle, diffused shadows */
+--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+--shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
+
+/* Dark mode - deeper shadows */
+--shadow-md-dark: 0 4px 12px rgba(0, 0, 0, 0.4);
+```
+
+### Vibrancy & Materials
+
+Apple uses frosted glass effects for toolbars and sidebars:
+
+```css
+.apple-toolbar {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.dark .apple-toolbar {
+  background: rgba(28, 28, 30, 0.8);
+}
+```
+
+### Animation Timing
+
+```css
+/* Apple's signature easing curve */
+transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+/* Durations */
+150ms - Micro-interactions (hover, focus)
+250ms - Standard transitions
+350ms - Page/panel transitions
+500ms - Modal/sheet presentations
+```
+
+### Interactive States
+
+```css
+/* Buttons - scale on press */
+button:active {
+  transform: scale(0.97);
+}
+
+/* Cards - lift on hover */
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Focus rings - blue glow */
+:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.4);
+}
+```
+
+### Spacing System
+
+| Name | Value | Use Case |
+|------|-------|----------|
+| xs | 4px | Icon padding, tight spacing |
+| sm | 8px | Component internal spacing |
+| md | 12px | Between related elements |
+| lg | 16px | Section padding |
+| xl | 24px | Major section gaps |
+| 2xl | 32px | Page margins |
+
+### UI Component Guidelines
+
+**Buttons:**
+- Primary: Filled blue, white text, subtle shadow
+- Secondary: Gray background, black text
+- Ghost: No background, hover reveals subtle fill
+- All buttons scale to 0.97 on press
+
+**Inputs:**
+- Light gray background (not white borders)
+- Subtle hover state (slightly darker)
+- Blue border and white background on focus
+- Placeholder text at 60% opacity
+
+**Cards:**
+- Nearly invisible border (6% opacity black)
+- Subtle shadow
+- 12px border radius
+- Content padding: 16px
+
+**Lists/Tables:**
+- Alternating backgrounds (optional)
+- Hover highlight
+- Selection uses blue accent with subtle background tint
+
+### Do's and Don'ts
+
+✅ **Do:**
+- Use generous whitespace
+- Keep UI chrome minimal
+- Use system fonts
+- Animate with purpose
+- Maintain consistent radii
+- Use subtle shadows
+
+❌ **Don't:**
+- Use harsh borders (>8% opacity)
+- Overuse color - let blue be special
+- Use bouncy/playful animations
+- Mix border radii styles
+- Use drop shadows with hard edges
+- Neglect dark mode
+
+### Implementation Checklist
+
+When building new components:
+
+- [ ] Uses SF Pro / system font stack
+- [ ] Border radius matches design system (6/8/12/14px)
+- [ ] Shadows are subtle and diffused
+- [ ] Hover states use scale or lift
+- [ ] Active states scale to 0.97
+- [ ] Focus uses blue ring (3px, 40% opacity)
+- [ ] Colors from Apple palette
+- [ ] Spacing uses 4px grid
+- [ ] Animations use Apple easing curve
+- [ ] Dark mode tested and polished
+
+---
+
+## 📜 Virtual Scrolling & Chat Patterns
+
+### TanStack Virtual Best Practices
+
+**Use `scrollToIndex` instead of manual scroll calculations:**
+```typescript
+const virtualizer = useVirtualizer({
+  count: items.length,
+  getScrollElement: () => containerRef.current,
+  estimateSize: () => 100, // Slightly overestimate for safety
+  overscan: 5,
+})
+
+// More reliable than container.scrollTop = container.scrollHeight
+virtualizer.scrollToIndex(items.length - 1, { align: 'end' })
+```
+
+**Keep streaming content OUTSIDE the virtualizer:**
+```tsx
+// ❌ BAD - streaming causes constant re-measurement
+<VirtualList>
+  {messages.map(msg => <Message key={msg.id} />)}
+  {isStreaming && <StreamingMessage content={streamContent} />}
+</VirtualList>
+
+// ✅ GOOD - streaming is separate, virtualizer stays stable
+<VirtualList>
+  {messages.map(msg => <Message key={msg.id} />)}
+</VirtualList>
+{isStreaming && <StreamingMessage content={streamContent} />}
+```
+
+### Streaming Content Performance
+
+**Throttle state updates to ~30fps:**
+```typescript
+function useThrottledValue<T>(value: T, fps = 30): T {
+  const [throttled, setThrottled] = useState(value)
+  const lastUpdate = useRef(0)
+  const frame = useRef<number | null>(null)
+
+  useEffect(() => {
+    const minInterval = 1000 / fps
+    const now = performance.now()
+    
+    if (now - lastUpdate.current >= minInterval) {
+      setThrottled(value)
+      lastUpdate.current = now
+    } else {
+      frame.current = requestAnimationFrame(() => {
+        setThrottled(value)
+        lastUpdate.current = performance.now()
+      })
+    }
+    return () => frame.current && cancelAnimationFrame(frame.current)
+  }, [value, fps])
+
+  return throttled
+}
+
+// Usage: display throttled, store original
+const [streaming, setStreaming] = useState({ content: '', isStreaming: false })
+const throttledStreaming = useThrottledValue(streaming, 30)
+```
+
+**Use instant scroll during streaming, smooth otherwise:**
+```typescript
+const scrollToBottom = (force = false, instant = false) => {
+  requestAnimationFrame(() => {
+    if (force || !isUserScrolledUp) {
+      // Instant during streaming prevents animation conflicts
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: instant ? 'auto' : 'smooth'
+      })
+    }
+  })
+}
+
+// During streaming: instant scroll
+useLayoutEffect(() => {
+  if (streaming.isStreaming && !isUserScrolledUp) {
+    scrollToBottom(false, true) // instant
+  }
+}, [throttledStreaming.content])
+
+// After new message: smooth scroll
+useEffect(() => {
+  if (!streaming.isStreaming) {
+    scrollToBottom(false, false) // smooth
+  }
+}, [messages.length])
+```
+
+**CSS containment for streaming elements:**
+```tsx
+<div style={{ 
+  contain: 'content',      // Isolate layout changes
+  willChange: 'contents'   // Hint GPU acceleration
+}}>
+  <StreamingContent />
+</div>
+```
+
+### Loading States with Skeleton UI
+
+**Two-phase loading pattern:**
+```typescript
+const [isLoading, setIsLoading] = useState(true)
+const [isContentReady, setIsContentReady] = useState(false)
+
+// Phase 1: Fetch data
+useEffect(() => {
+  loadData().then(() => setIsLoading(false))
+}, [])
+
+// Phase 2: Wait for virtualizer to measure and scroll
+const handleVirtualizerReady = useCallback((scrollToEnd: () => void) => {
+  if (!isLoading && messages.length > 0) {
+    requestAnimationFrame(() => {
+      scrollToEnd()
+      setIsContentReady(true)
+    })
+  }
+}, [isLoading, messages.length])
+
+// Show skeleton until BOTH phases complete
+{(isLoading || !isContentReady) && <SkeletonUI />}
+```
+
+**Skeleton overlay pattern:**
+```tsx
+{/* Skeleton overlays content until ready */}
+{!isContentReady && messages.length > 0 && (
+  <div className="absolute inset-0 z-10 bg-background">
+    {[...Array(5)].map((_, i) => (
+      <div key={i} className="animate-pulse bg-muted rounded-lg h-16 mb-3" />
+    ))}
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Loader2 className="animate-spin" />
+      <span>Loading conversation...</span>
+    </div>
+  </div>
+)}
+```
+
+---
+
+## 🔄 Component Persistence Patterns
+
+### Preventing Remount on View Switches
+
+**Problem:** Components inside conditional blocks remount when conditions change:
+```tsx
+// ❌ BAD - Panel remounts when switching views
+{viewMode === 'canvas' && (
+  <div>
+    <CanvasContent />
+    <SidePanel /> {/* Instance A */}
+  </div>
+)}
+{viewMode === 'ide' && (
+  <div>
+    <IDEContent />
+    <SidePanel /> {/* Instance B - NEW! */}
+  </div>
+)}
+```
+
+**Solution:** Render persistent components as siblings outside conditionals:
+```tsx
+// ✅ GOOD - Panel persists across view switches
+<div className="flex">
+  {/* Views switch, but are siblings */}
+  {viewMode === 'canvas' && <CanvasContent />}
+  {viewMode === 'ide' && <IDEContent />}
+  
+  {/* Panel is outside conditionals - single instance */}
+  {isPanelOpen && <SidePanel />}
+</div>
+```
+
+**Key principle:** If a component's state should persist across parent state changes (like view modes), render it at the same tree level as a sibling, not nested inside conditional blocks.
+
+### State Isolation Pattern
+
+For panels/sidebars that should maintain state independently:
+```typescript
+// State lives at App level, not inside view components
+const [isPanelOpen, setIsPanelOpen] = useState(false)
+const [panelData, setPanelData] = useState(null)
+
+// Panel rendered once, receives state as props
+<App>
+  <ViewSwitcher mode={viewMode} />
+  <PersistentPanel 
+    isOpen={isPanelOpen} 
+    data={panelData}
+    onClose={() => setIsPanelOpen(false)}
+  />
+</App>
+```
+
+---
+
 ## 🔮 Vision Context
 
 CodeLobby is evolving toward **intent-driven development** where:
