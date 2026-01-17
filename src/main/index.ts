@@ -514,10 +514,14 @@ function setupIPCHandlers(): void {
 }
 
 app.whenReady().then(() => {
+  // Initialize logger (creates logs directory, cleans old sessions)
+  logger.init()
+  
   logger.info(LogCategory.APP, 'CodeLobby starting', { 
     version: app.getVersion(),
     platform: process.platform,
-    arch: process.arch
+    arch: process.arch,
+    logsPath: logger.getLogsPath()
   })
   
   electronApp.setAppUserModelId('com.codelobby.app')
@@ -540,4 +544,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// Save logs before quitting
+app.on('before-quit', () => {
+  logger.info(LogCategory.APP, 'App shutting down')
+  logger.forceSave()
 })
