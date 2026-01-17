@@ -20,6 +20,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@electron-toolkit/utils": "^3.0.0",
     "@octokit/graphql": "^7.0.2",
     "@octokit/rest": "^20.0.2",
