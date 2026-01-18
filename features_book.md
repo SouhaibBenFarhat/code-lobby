@@ -79,13 +79,22 @@ When CI fails, you'll know exactly where to look.
 
 ### 🐕 Your AI Assistant
 
-A built-in AI assistant powered by Claude that understands code:
+A built-in AI assistant powered by Claude that **understands CodeLobby**:
 
 **What It Can Do:**
 - Answer questions about your PRs
 - Explain complex code changes
 - Help draft commit messages
 - Discuss debugging strategies
+- Guide you through CodeLobby's features
+
+**Context-Aware:**
+The AI knows it's running inside CodeLobby. Ask it:
+- "What can you do?"
+- "How do I analyze a stuck PR?"
+- "What features does this app have?"
+
+It understands the full context of where it's running.
 
 **How It Works:**
 - Type naturally, like talking to a colleague
@@ -294,6 +303,7 @@ We're actively building:
 | **Two View Modes** | Work the way you think |
 | **Smart Filtering** | Focus on what matters |
 | **AI Assistant** | Intelligent help on demand |
+| **Context-Aware AI** | AI knows about CodeLobby |
 | **PR-Specific AI Chat** | Context-aware conversations |
 | **Conversation Navigator** | Switch between chats instantly |
 | **Open Preview** | One-click staging access |

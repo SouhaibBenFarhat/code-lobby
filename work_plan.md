@@ -37,6 +37,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Open Preview (AI-powered) | ✅ Complete |
 | | Why Open? Analysis (AI-powered) | ✅ Complete |
 | | PR-Specific Chat | ✅ Complete |
+| | System context awareness | ✅ Complete |
 | **UI/UX** | Apple design system | ✅ Complete |
 | | Dark/light themes | ✅ Complete |
 | | Fullscreen adaptation | ✅ Complete |
@@ -1045,6 +1046,67 @@ interface AIChat {
 **Note:** Implemented a simplified version without full multi-chat UI. PR chats are stored separately and can be switched via the PR detail "Start Chat" button.
 
 **Estimated Time:** ~4 hours (actual: ~2 hours)
+
+---
+
+### 2.5 System Context Awareness ✅ Complete
+> Give the AI Assistant knowledge about CodeLobby so it understands its environment
+
+**Problem Solved:**
+- Previously, the AI had no knowledge about what system it was running in
+- Users had to explain the context ("I'm using a PR tool...")
+- AI couldn't give app-specific guidance or mention features
+
+**Implementation Summary:**
+- Created `system-prompt.ts` with `CODELOBBY_SYSTEM_PROMPT` constant
+- System prompt includes:
+  - What CodeLobby is (PR management desktop app)
+  - Core features (Canvas/IDE views, CI visibility, etc.)
+  - All AI capabilities (PR analysis, preview finder, PR chat)
+  - Technical details (local storage, GitHub API, caching)
+  - AI's role and expected behavior
+- Applied automatically to all general chat messages
+- PR-specific chats use PR context instead (more specific)
+
+**How It Works:**
+```
+General Chat:
+  User message → [CodeLobby System Prompt] + [Message History] → Claude
+
+PR-Specific Chat:
+  User message → [PR Context System Prompt] + [Message History] → Claude
+```
+
+**System Prompt Structure:**
+```typescript
+const CODELOBBY_SYSTEM_PROMPT = `
+You are the AI Assistant embedded in CodeLobby, a desktop application 
+for managing GitHub Pull Requests.
+
+## About CodeLobby
+[Core features, view modes, CI visibility...]
+
+## AI-Powered Features
+[This conversation, Open Preview, Why Open, PR Chat...]
+
+## Technical Details
+[Local storage, GitHub API, rate limits...]
+
+## Your Role
+[Helpful, technical, concise, PR-focused...]
+`
+```
+
+**Files Changed:**
+- `src/main/system-prompt.ts` - New file with CodeLobby system prompt
+- `src/main/index.ts` - Import and use system prompt for general chat
+
+**Result:**
+- AI now responds correctly to "What is this app?" or "What can you do?"
+- AI gives contextual help knowing it's in a PR management tool
+- AI understands its capabilities and can guide users appropriately
+
+**Completed:** January 18, 2026
 
 ### 2.5 PR Context for AI 🟡 In Progress
 > Provide PR context to the AI assistant
