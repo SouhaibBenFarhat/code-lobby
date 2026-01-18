@@ -1056,4 +1056,193 @@ describe('System Context Handling', () => {
     // Verify getPRChat was called to fetch the full chat data including systemContext
     expect(mockElectron.getPRChat).toHaveBeenCalledWith('owner/repo#123')
   })
+
+  describe('Auto-Switch and Empty State', () => {
+    const mockSelectedPR = {
+      number: 456,
+      title: 'New Feature Implementation',
+      base: {
+        repo: {
+          full_name: 'owner/new-repo'
+        }
+      }
+    }
+
+    it('should show empty state when selectedPR exists but no chat exists', async () => {
+      const mockElectron = setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue(null),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(<AIChatPanel onClose={mockOnClose} selectedPR={mockSelectedPR} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(/No conversation yet for this PR/i)).toBeInTheDocument()
+      })
+
+      // Should show PR info
+      expect(screen.getByText(/#456/)).toBeInTheDocument()
+      expect(screen.getByText(/New Feature/)).toBeInTheDocument()
+      expect(screen.getByText(/owner\/new-repo/)).toBeInTheDocument()
+
+      // Should check if chat exists for the selected PR
+      expect(mockElectron.getPRChat).toHaveBeenCalledWith('owner/new-repo#456')
+    })
+
+    it('should show "Start chatting about this PR" button in empty state', async () => {
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue(null),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(
+        <AIChatPanel onClose={mockOnClose} selectedPR={mockSelectedPR} onStartPRChat={vi.fn()} />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText(/Start chatting about this PR/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should call onStartPRChat when CTA button is clicked', async () => {
+      const mockOnStartPRChat = vi.fn()
+
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue(null),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(
+        <AIChatPanel
+          onClose={mockOnClose}
+          selectedPR={mockSelectedPR}
+          onStartPRChat={mockOnStartPRChat}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText(/Start chatting about this PR/i)).toBeInTheDocument()
+      })
+
+      const startButton = screen.getByText(/Start chatting about this PR/i)
+      await act(async () => {
+        fireEvent.click(startButton)
+      })
+
+      expect(mockOnStartPRChat).toHaveBeenCalledWith(mockSelectedPR)
+    })
+
+    it('should auto-switch to PR chat when selectedPR changes and chat exists', async () => {
+      const mockOnSwitchToPRChat = vi.fn()
+      const existingChat = {
+        prId: 'owner/new-repo#456',
+        prNumber: 456,
+        prTitle: 'New Feature Implementation',
+        repoFullName: 'owner/new-repo',
+        messages: [
+          { id: '1', role: 'user', content: 'Hello', timestamp: new Date().toISOString() }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue(existingChat),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(
+        <AIChatPanel
+          onClose={mockOnClose}
+          selectedPR={mockSelectedPR}
+          onSwitchToPRChat={mockOnSwitchToPRChat}
+        />
+      )
+
+      await waitFor(() => {
+        expect(mockOnSwitchToPRChat).toHaveBeenCalledWith('owner/new-repo#456')
+      })
+    })
+
+    it('should not auto-switch if already showing the selected PR chat', async () => {
+      const mockOnSwitchToPRChat = vi.fn()
+      const linkedPRChat = {
+        prId: 'owner/new-repo#456',
+        prNumber: 456,
+        prTitle: 'New Feature Implementation',
+        repoFullName: 'owner/new-repo'
+      }
+
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue({
+          ...linkedPRChat,
+          messages: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(
+        <AIChatPanel
+          onClose={mockOnClose}
+          selectedPR={mockSelectedPR}
+          linkedPRChat={linkedPRChat}
+          onSwitchToPRChat={mockOnSwitchToPRChat}
+        />,
+        {
+          prChatOverrides: { linkedPRChat }
+        }
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('PR Chat')).toBeInTheDocument()
+      })
+
+      // Should NOT call switch because we're already on this PR's chat
+      expect(mockOnSwitchToPRChat).not.toHaveBeenCalled()
+    })
+
+    it('should show API key prompt in empty state when no API key configured', async () => {
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue(null),
+        getPRChat: vi.fn().mockResolvedValue(null),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(<AIChatPanel onClose={mockOnClose} selectedPR={mockSelectedPR} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(/Enter your API key below to start chatting/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should not show CTA button when no onStartPRChat provided', async () => {
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue(null),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(
+        <AIChatPanel
+          onClose={mockOnClose}
+          selectedPR={mockSelectedPR}
+          // Note: onStartPRChat is NOT provided
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText(/No conversation yet for this PR/i)).toBeInTheDocument()
+      })
+
+      // Button should not be present when handler is not provided
+      expect(screen.queryByText(/Start chatting about this PR/i)).not.toBeInTheDocument()
+    })
+  })
 })
