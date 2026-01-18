@@ -269,7 +269,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
   })
 
   // Fetch all contributed repos
-  const { data: reposData } = useQuery({
+  const { data: reposData, isLoading: reposLoading } = useQuery({
     queryKey: ['repos'],
     queryFn: async () => {
       const result = await window.electron.fetchContributedRepos()
@@ -295,7 +295,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
   }, [filteredRepos])
 
   // Fetch all PRs for selected repos
-  const { data: prsResult } = useQuery({
+  const { data: prsResult, isLoading: prsLoading } = useQuery({
     queryKey: ['all-prs-for-repos', reposToFetch],
     queryFn: async () => {
       if (reposToFetch.length === 0) return { prs: [] as PullRequest[], currentUser: '' }
@@ -307,6 +307,9 @@ export function IDEView({ currentUser }: IDEViewProps) {
     refetchOnWindowFocus: true,
     staleTime: 60000
   })
+
+  // Combined loading state
+  const isLoading = reposLoading || prsLoading
 
   const prsData = prsResult?.prs || []
   const fetchedCurrentUser = prsResult?.currentUser || currentUser
@@ -420,24 +423,30 @@ export function IDEView({ currentUser }: IDEViewProps) {
         </div>
         <ScrollArea className="flex-1">
           <div className="p-1">
-            {sortedRepos.map((repo) => (
-              <TreeItem
-                key={repo.full_name}
-                repo={repo}
-                prs={prsByRepo[repo.full_name] || []}
-                isExpanded={expandedRepos.has(repo.full_name)}
-                onToggle={() => toggleRepo(repo.full_name)}
-                selectedPRId={selectedPR?.id || null}
-                onSelectPR={setSelectedPR}
-                currentUser={fetchedCurrentUser}
-              />
-            ))}
-            {sortedRepos.length === 0 && (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mb-2" />
+                <span className="text-sm">Loading repositories...</span>
+              </div>
+            ) : sortedRepos.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 <Folder className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No repositories</p>
                 <p className="text-xs mt-1">Select repos from the header</p>
               </div>
+            ) : (
+              sortedRepos.map((repo) => (
+                <TreeItem
+                  key={repo.full_name}
+                  repo={repo}
+                  prs={prsByRepo[repo.full_name] || []}
+                  isExpanded={expandedRepos.has(repo.full_name)}
+                  onToggle={() => toggleRepo(repo.full_name)}
+                  selectedPRId={selectedPR?.id || null}
+                  onSelectPR={setSelectedPR}
+                  currentUser={fetchedCurrentUser}
+                />
+              ))
             )}
           </div>
         </ScrollArea>

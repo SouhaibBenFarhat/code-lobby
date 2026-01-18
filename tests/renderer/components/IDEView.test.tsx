@@ -42,6 +42,71 @@ describe('IDEView', () => {
     resetMockElectron()
   })
 
+  describe('Loading State', () => {
+    it('should show loading state while fetching repos', async () => {
+      // Create a promise that won't resolve immediately
+      let resolveRepos: ((value: unknown) => void) | null = null
+      const reposPromise = new Promise((resolve) => {
+        resolveRepos = resolve
+      })
+
+      // Setup mock to return the pending promise
+      const mockElectron = setupAuthenticatedScenario({ repos: [], prs: [], selectedRepos: [] })
+      mockElectron.fetchContributedRepos.mockReturnValue(reposPromise)
+
+      render(<IDEView currentUser="testuser" />)
+
+      // Should show loading state
+      expect(screen.getByText('Loading repositories...')).toBeInTheDocument()
+
+      // Resolve the promise
+      resolveRepos?.({ success: true, data: [] })
+
+      // Loading should disappear
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should show loading spinner while fetching', async () => {
+      let resolveRepos: ((value: unknown) => void) | null = null
+      const reposPromise = new Promise((resolve) => {
+        resolveRepos = resolve
+      })
+
+      const mockElectron = setupAuthenticatedScenario({ repos: [], prs: [], selectedRepos: [] })
+      mockElectron.fetchContributedRepos.mockReturnValue(reposPromise)
+
+      const { container } = render(<IDEView currentUser="testuser" />)
+
+      // Should show spinner
+      const spinner = container.querySelector('.animate-spin')
+      expect(spinner).toBeInTheDocument()
+
+      // Resolve the promise
+      resolveRepos?.({ success: true, data: [] })
+
+      // Spinner should disappear
+      await waitFor(() => {
+        expect(container.querySelector('.animate-spin')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should show repos after loading completes', async () => {
+      const repos = [createMockRepository({ name: 'frontend' })]
+
+      setupAuthenticatedScenario({ repos, prs: [], selectedRepos: repos.map((r) => r.full_name) })
+
+      render(<IDEView currentUser="testuser" />)
+
+      // Wait for loading to complete and repos to appear
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('Rendering', () => {
     it('should render Explorer header', async () => {
       const repos = [createMockRepository({ name: 'frontend' })]
@@ -108,17 +173,33 @@ describe('IDEView', () => {
         base: { repo, ref: 'main', sha: 'abc' }
       })
 
-      setupAuthenticatedScenario({ repos: [repo], prs: [pr], selectedRepos: [repo.full_name] })
+      // Prevent auto-expand by setting a saved expanded state (auto-expand only runs if size === 0)
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [pr],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: ['some-other-repo'] // Non-empty, so auto-expand won't run
+      })
 
       render(<IDEView currentUser="testuser" />)
 
+      // Wait for loading to complete and PRs to be loaded (PR count shows)
       await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
         expect(screen.getByText('frontend')).toBeInTheDocument()
+        expect(screen.getByText('1 PR')).toBeInTheDocument()
       })
 
-      // Click on folder to expand
-      const folder = screen.getByText('frontend')
-      fireEvent.click(folder)
+      // Folder should NOT be expanded initially (we blocked auto-expand)
+      expect(screen.queryByText('Fix auth bug')).not.toBeInTheDocument()
+
+      // Click on folder row to expand
+      const folderRow = screen.getByText('frontend').closest('[role="treeitem"]')
+      expect(folderRow).toBeInTheDocument()
+      if (folderRow) fireEvent.click(folderRow)
 
       await waitFor(() => {
         expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
@@ -132,24 +213,36 @@ describe('IDEView', () => {
         base: { repo, ref: 'main', sha: 'abc' }
       })
 
-      setupAuthenticatedScenario({ repos: [repo], prs: [pr], selectedRepos: [repo.full_name] })
+      // Start with folder already expanded
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [pr],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo.full_name] // Already expanded
+      })
 
       render(<IDEView currentUser="testuser" />)
 
+      // Wait for loading to complete and PRs to be loaded
       await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
         expect(screen.getByText('frontend')).toBeInTheDocument()
+        expect(screen.getByText('1 PR')).toBeInTheDocument()
       })
 
-      const folder = screen.getByText('frontend')
-
-      // Expand
-      fireEvent.click(folder)
+      // Folder should already be expanded
       await waitFor(() => {
         expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
       })
 
-      // Collapse
-      fireEvent.click(folder)
+      const folderRow = screen.getByText('frontend').closest('[role="treeitem"]')
+      expect(folderRow).toBeInTheDocument()
+
+      // Collapse (click to toggle)
+      if (folderRow) fireEvent.click(folderRow)
       await waitFor(() => {
         expect(screen.queryByText('Fix auth bug')).not.toBeInTheDocument()
       })
@@ -165,17 +258,27 @@ describe('IDEView', () => {
         base: { repo, ref: 'main', sha: 'abc' }
       })
 
-      setupAuthenticatedScenario({ repos: [repo], prs: [pr], selectedRepos: [repo.full_name] })
+      // Start with folder expanded
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [pr],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo.full_name]
+      })
 
       render(<IDEView currentUser="testuser" />)
 
+      // Wait for loading to complete and PRs to be loaded
       await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
         expect(screen.getByText('frontend')).toBeInTheDocument()
+        expect(screen.getByText('1 PR')).toBeInTheDocument()
       })
 
-      // Expand folder first
-      fireEvent.click(screen.getByText('frontend'))
-
+      // Folder should already be expanded, wait for PR to be visible
       await waitFor(() => {
         expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
       })
@@ -204,30 +307,35 @@ describe('IDEView', () => {
         base: { repo, ref: 'main', sha: 'def' }
       })
 
-      setupAuthenticatedScenario({
+      // Start with folder expanded
+      const mockElectron = setupAuthenticatedScenario({
         user: currentUser,
         repos: [repo],
         prs: [myPR, otherPR],
         selectedRepos: [repo.full_name]
       })
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo.full_name]
+      })
 
       render(<IDEView currentUser="testuser" />)
 
+      // Wait for loading to complete and PRs to be loaded
       await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
         expect(screen.getByText('frontend')).toBeInTheDocument()
+        expect(screen.getByText('2 PRs')).toBeInTheDocument()
       })
 
-      // Expand folder
-      fireEvent.click(screen.getByText('frontend'))
-
+      // Folder should already be expanded
       await waitFor(() => {
-        // Both PRs should be visible initially (filter not enabled)
         expect(screen.getByText('My PR')).toBeInTheDocument()
         expect(screen.getByText('Other PR')).toBeInTheDocument()
       })
 
       // Find and click the My PRs toggle (hover first)
-      const folderRow = screen.getByText('frontend').closest('div')
+      const folderRow = screen.getByText('frontend').closest('[role="treeitem"]')
       if (folderRow) {
         fireEvent.mouseEnter(folderRow)
 
@@ -329,31 +437,36 @@ describe('IDEView', () => {
         base: { repo, ref: 'main', sha: 'def' }
       })
 
-      setupAuthenticatedScenario({
+      // Start with folder expanded
+      const mockElectron = setupAuthenticatedScenario({
         user: currentUser,
         repos: [repo],
         prs: [myPR, otherPR],
         selectedRepos: [repo.full_name]
       })
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo.full_name]
+      })
 
       render(<IDEView currentUser="testuser" />)
 
+      // Wait for loading to complete and PRs to be loaded
       await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
         expect(screen.getByText('frontend')).toBeInTheDocument()
+        expect(screen.getByText('2 PRs')).toBeInTheDocument()
       })
 
-      // Expand folder
-      fireEvent.click(screen.getByText('frontend'))
-
+      // Folder should already be expanded
       await waitFor(() => {
         expect(screen.getByText('My PR')).toBeInTheDocument()
         expect(screen.getByText('Other PR')).toBeInTheDocument()
       })
 
       // Find and click the My PRs toggle
-      const folderRow = screen.getByText('frontend').closest('div')
+      const folderRow = screen.getByText('frontend').closest('[role="treeitem"]')
       expect(folderRow).toBeTruthy()
-
       if (folderRow) {
         fireEvent.mouseEnter(folderRow)
         const toggleButton = folderRow.querySelector('button')
