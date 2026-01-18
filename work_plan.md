@@ -1171,7 +1171,160 @@ for managing GitHub Pull Requests.
 - Implement structured output parsing
 - Consider caching AI responses per PR state
 
-### 2.7 Code Generation 🔴 Not Started (Future Vision)
+### 2.7 PR Scoring (AI-Powered) 🔴 Not Started
+> AI-powered PR quality scoring with customizable criteria
+
+**Concept:**
+A button on each PR that uses AI to analyze and score the PR based on configurable criteria. Users can define their own scoring system through a settings UI.
+
+**Why This Matters:**
+- **Objective Assessment** — Get consistent quality scores across all PRs
+- **Customizable** — Define what matters to your team (security, tests, docs, etc.)
+- **Prioritization** — Quickly identify which PRs need more attention
+- **Learning** — Help developers understand quality expectations
+
+**UI Design - PR Score Button:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PR #123: Add authentication flow         [⭐ 8.5/10]      │
+│                                                             │
+│  Score Breakdown:                                           │
+│  ├── Code Quality:      9/10  ████████░░                   │
+│  ├── Test Coverage:     7/10  ██████░░░░                   │
+│  ├── Documentation:     8/10  ███████░░░                   │
+│  ├── Security:          9/10  ████████░░                   │
+│  └── Best Practices:    8/10  ███████░░░                   │
+│                                                             │
+│  AI Feedback:                                               │
+│  "Strong PR with good test coverage. Consider adding       │
+│   error handling docs for the OAuth edge cases."           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**UI Design - Scoring Criteria Settings:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ⚙️ PR Scoring Settings                                [×] │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Scoring Criteria                           [+ Add]         │
+│  ─────────────────────────────────────────────────────────  │
+│                                                             │
+│  📊 Code Quality (Weight: 25%)              [✏️] [🗑️]      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Check for clean code principles:                        ││
+│  │ - Single responsibility                                 ││
+│  │ - No magic numbers                                      ││
+│  │ - Meaningful variable names                             ││
+│  │ - No deeply nested conditionals (>3 levels)             ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  🧪 Test Coverage (Weight: 25%)             [✏️] [🗑️]      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Verify tests are present and meaningful:                ││
+│  │ - New functions have unit tests                         ││
+│  │ - Edge cases are covered                                ││
+│  │ - Tests are not just happy path                         ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  📚 Documentation (Weight: 15%)             [✏️] [🗑️]      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Check documentation quality:                            ││
+│  │ - Public functions have JSDoc                           ││
+│  │ - Complex logic has comments                            ││
+│  │ - README updated if needed                              ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  🔒 Security (Weight: 20%)                  [✏️] [🗑️]      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Check for security best practices:                      ││
+│  │ - No hardcoded secrets                                  ││
+│  │ - Input validation present                              ││
+│  │ - No SQL injection vulnerabilities                      ││
+│  │ - Proper error handling (no stack traces exposed)       ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  ✅ Best Practices (Weight: 15%)            [✏️] [🗑️]      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ General best practices:                                 ││
+│  │ - Follows project conventions                           ││
+│  │ - No console.log in production code                     ││
+│  │ - Proper error messages                                 ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  ─────────────────────────────────────────────────────────  │
+│  Presets: [Default] [Security-Focused] [Startup-Fast]      │
+│                                                             │
+│                           [Cancel] [Save Settings]          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- [ ] **Score Button** — Star icon button on each PR
+- [ ] **AI Scoring** — Claude analyzes PR against criteria
+- [ ] **Score Breakdown** — Show individual category scores
+- [ ] **AI Feedback** — Natural language improvement suggestions
+- [ ] **Criteria Editor** — Add, edit, delete scoring criteria
+- [ ] **Weight System** — Assign importance to each criterion
+- [ ] **Presets** — Pre-built scoring profiles (Security, Speed, Quality)
+- [ ] **Score History** — Track scores over time
+- [ ] **Team Benchmarks** — Compare against team averages (optional)
+- [ ] **Score Badge** — Show score in PR card list
+
+**Data Model:**
+```typescript
+interface ScoringCriterion {
+  id: string
+  name: string
+  weight: number          // 0-100, all weights must sum to 100
+  prompt: string          // Custom instructions for AI
+  icon?: string           // Emoji or icon identifier
+  enabled: boolean
+}
+
+interface PRScore {
+  prId: string
+  overallScore: number    // 0-10 weighted average
+  categoryScores: {
+    criterionId: string
+    score: number         // 0-10
+    feedback: string      // AI explanation for this score
+  }[]
+  summary: string         // Overall AI feedback
+  scoredAt: string        // ISO timestamp
+}
+
+interface ScoringSettings {
+  criteria: ScoringCriterion[]
+  presets: {
+    name: string
+    criteria: ScoringCriterion[]
+  }[]
+}
+```
+
+**Implementation Steps:**
+- [ ] Add `scoringSettings` to electron-store
+- [ ] Create `ScoringSettingsDialog` component
+- [ ] Create `PRScoreButton` component
+- [ ] Create `PRScorePanel` component (shows breakdown)
+- [ ] Add `scorePR(prId, criteria)` function in claude-api.ts
+- [ ] Add IPC handlers for scoring operations
+- [ ] Add score persistence (prScores array in store)
+- [ ] Create default scoring criteria presets
+
+**Technical Notes:**
+- Build prompt dynamically from user's criteria
+- Use extended thinking for deeper analysis
+- Stream scoring results for better UX
+- Cache scores per PR (invalidate on PR update)
+- Limit criteria count to prevent token overflow
+
+**Estimated Time:** ~8 hours
+
+---
+
+### 2.8 Code Generation 🔴 Not Started (Future Vision)
 > AI generates code fixes
 
 - [ ] **Generate fix for CI failure** - Analyze error, propose code change
@@ -1184,7 +1337,7 @@ for managing GitHub Pull Requests.
 - Need secure sandbox for code generation
 - Human review required before any automated commits
 
-### 2.8 AI Features Settings & Custom Context 🔴 Not Started
+### 2.9 AI Features Settings & Custom Context 🔴 Not Started
 > Allow users to see and customize AI-powered feature behavior
 
 **Concept:**
