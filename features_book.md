@@ -20,6 +20,7 @@ Built for developers who care about their workflow.
 **Canvas View** — Your PRs as draggable cards
 - Arrange your PRs however you like
 - Resize cards to show more or less detail
+- **Minimize cards** — Collapse repos to just their header to save space
 - Group by project, priority, or whatever makes sense to you
 - Perfect for visual thinkers
 
@@ -303,6 +304,7 @@ We're actively building:
 |---------|---------|
 | **Unified Dashboard** | All PRs in one place |
 | **Two View Modes** | Work the way you think |
+| **Minimize Cards** | Collapse repos to save space |
 | **Smart Filtering** | Focus on what matters |
 | **AI Assistant** | Intelligent help on demand |
 | **Context-Aware AI** | AI knows about CodeLobby |

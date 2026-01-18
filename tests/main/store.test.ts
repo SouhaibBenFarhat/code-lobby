@@ -24,6 +24,7 @@ vi.mock('electron-store', () => {
             selectedRepos: [],
             prDetailPanel: { isOpen: false, width: 400 },
             repoColors: {},
+            minimizedRepos: [],
             viewMode: 'canvas',
             ideViewSettings: { sidebarWidth: 280, expandedRepos: [] },
             dataCache: { prData: null, allRepos: null },
@@ -68,6 +69,7 @@ import {
   getAllReposCache,
   getCardLayouts,
   getIDEViewSettings,
+  getMinimizedRepos,
   getPRAnalyses,
   getPRAnalysis,
   getPRAnalysisPanelOpen,
@@ -94,6 +96,7 @@ import {
   setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
+  setRepoMinimized,
   setRepoOrder,
   setSelectedRepos,
   setSettings,
@@ -250,6 +253,50 @@ describe('Store', () => {
       const colors = getRepoColors()
       expect(colors['org/repo1']).toBe('#ff0000')
       expect(colors['org/repo2']).toBe('#00ff00')
+    })
+  })
+
+  describe('Minimized Repos', () => {
+    it('should return empty array by default', () => {
+      expect(getMinimizedRepos()).toEqual([])
+    })
+
+    it('should add a repo to minimized list', () => {
+      setRepoMinimized('org/repo1', true)
+      const minimized = getMinimizedRepos()
+      expect(minimized).toContain('org/repo1')
+    })
+
+    it('should remove a repo from minimized list', () => {
+      setRepoMinimized('org/repo1', true)
+      setRepoMinimized('org/repo1', false)
+      const minimized = getMinimizedRepos()
+      expect(minimized).not.toContain('org/repo1')
+    })
+
+    it('should handle multiple minimized repos', () => {
+      setRepoMinimized('org/repo1', true)
+      setRepoMinimized('org/repo2', true)
+      const minimized = getMinimizedRepos()
+      expect(minimized).toContain('org/repo1')
+      expect(minimized).toContain('org/repo2')
+    })
+
+    it('should not duplicate repos when minimizing twice', () => {
+      setRepoMinimized('org/repo1', true)
+      setRepoMinimized('org/repo1', true)
+      const minimized = getMinimizedRepos()
+      expect(minimized.filter((r) => r === 'org/repo1')).toHaveLength(1)
+    })
+
+    it('should not error when un-minimizing non-minimized repo', () => {
+      // Get current state before operation
+      const before = getMinimizedRepos()
+      // Try to un-minimize a repo that isn't minimized
+      setRepoMinimized('org/nonexistent', false)
+      const after = getMinimizedRepos()
+      // State should remain unchanged
+      expect(after).toEqual(before)
     })
   })
 

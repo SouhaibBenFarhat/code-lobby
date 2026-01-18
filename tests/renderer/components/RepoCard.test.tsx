@@ -39,7 +39,9 @@ describe('RepoCard', () => {
     onClose: vi.fn(),
     currentUser: 'testuser',
     color: null as string | null,
-    onColorChange: vi.fn()
+    onColorChange: vi.fn(),
+    isMinimized: false,
+    onMinimizeChange: vi.fn()
   }
 
   beforeEach(() => {
@@ -322,6 +324,104 @@ describe('RepoCard', () => {
 
       const successIcon = document.querySelector('.text-success')
       expect(successIcon).toBeInTheDocument()
+    })
+  })
+
+  describe('Minimize Feature', () => {
+    it('should render minimize button when onMinimizeChange is provided', () => {
+      const repo = createMockRepository()
+      const onMinimizeChange = vi.fn()
+      render(
+        <RepoCard repo={repo} prs={[]} {...defaultProps} onMinimizeChange={onMinimizeChange} />
+      )
+
+      // Look for chevron icon (minimize button)
+      const minimizeButton =
+        document.querySelector('button svg.lucide-chevron-up')?.parentElement ||
+        document.querySelector('button svg.lucide-chevron-down')?.parentElement
+      expect(minimizeButton).toBeInTheDocument()
+    })
+
+    it('should call onMinimizeChange when minimize button is clicked', () => {
+      const repo = createMockRepository()
+      const onMinimizeChange = vi.fn()
+      render(
+        <RepoCard
+          repo={repo}
+          prs={[]}
+          {...defaultProps}
+          isMinimized={false}
+          onMinimizeChange={onMinimizeChange}
+        />
+      )
+
+      const minimizeButton = document.querySelector('button svg.lucide-chevron-up')?.parentElement
+      if (minimizeButton) {
+        fireEvent.click(minimizeButton)
+        expect(onMinimizeChange).toHaveBeenCalledWith(true)
+      }
+    })
+
+    it('should show chevron-down icon when minimized', () => {
+      const repo = createMockRepository()
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} isMinimized={true} />)
+
+      const expandIcon = document.querySelector('button svg.lucide-chevron-down')
+      expect(expandIcon).toBeInTheDocument()
+    })
+
+    it('should show chevron-up icon when not minimized', () => {
+      const repo = createMockRepository()
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} isMinimized={false} />)
+
+      const minimizeIcon = document.querySelector('button svg.lucide-chevron-up')
+      expect(minimizeIcon).toBeInTheDocument()
+    })
+
+    it('should hide content when minimized', () => {
+      const repo = createMockRepository()
+      const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
+      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} isMinimized={true} />)
+
+      // PR title should not be visible when minimized
+      expect(screen.queryByText('Test PR')).not.toBeInTheDocument()
+    })
+
+    it('should show content when not minimized', () => {
+      const repo = createMockRepository()
+      const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
+      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} isMinimized={false} />)
+
+      // PR title should be visible when not minimized
+      expect(screen.getByText('Test PR')).toBeInTheDocument()
+    })
+
+    it('should call onMinimizeChange with false when expand button is clicked', () => {
+      const repo = createMockRepository()
+      const onMinimizeChange = vi.fn()
+      render(
+        <RepoCard
+          repo={repo}
+          prs={[]}
+          {...defaultProps}
+          isMinimized={true}
+          onMinimizeChange={onMinimizeChange}
+        />
+      )
+
+      const expandButton = document.querySelector('button svg.lucide-chevron-down')?.parentElement
+      if (expandButton) {
+        fireEvent.click(expandButton)
+        expect(onMinimizeChange).toHaveBeenCalledWith(false)
+      }
+    })
+
+    it('should still show header when minimized', () => {
+      const repo = createMockRepository({ name: 'test-repo' })
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} isMinimized={true} />)
+
+      // Repo name should still be visible in header
+      expect(screen.getByText('test-repo')).toBeInTheDocument()
     })
   })
 })

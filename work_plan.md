@@ -42,6 +42,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Dark/light themes | ✅ Complete |
 | | Fullscreen adaptation | ✅ Complete |
 | | Rate limit gauge | ✅ Complete |
+| | Minimize repo cards (Canvas) | ✅ Complete |
 | **Infrastructure** | Centralized logging | ✅ Complete |
 | | Retry & timeout logic | ✅ Complete |
 | | Error handling | ✅ Complete |
@@ -250,6 +251,39 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 - `myPRsRepos: string[]` in main store (not IDEViewSettings)
 - `MyPRsFilterContext` provides `{ myPRsRepos, toggleMyPRsFilter, isMyPRsFilterEnabled }`
 - Both `RepoCard` and `IDEView.TreeItem` consume the shared context
+
+**Completed:** January 18, 2026
+
+---
+
+### 1.1.4 Minimize Repo Cards (Canvas View) ✅ Complete
+> Allow users to minimize repo windows in Canvas view to save space
+
+**Concept:**
+Click a button on any repo card to minimize it to just the header, allowing more space for other cards while keeping the repo visible and accessible.
+
+**Implementation Summary:**
+- Chevron up/down button in repo card header
+- Minimized cards show only header (~85px height)
+- State persists across app restarts via electron-store
+- Minimized cards cannot be resized (only dragged)
+- Expand by clicking the chevron again
+
+**Technical Details:**
+- `minimizedRepos: string[]` in store schema
+- `getMinimizedRepos()` and `setRepoMinimized(repoFullName, isMinimized)` functions
+- IPC handlers: `get-minimized-repos`, `set-repo-minimized`
+- Card height adjusts automatically in PRGrid
+
+**Files Changed:**
+- `src/main/store.ts` - Added minimizedRepos persistence
+- `src/main/index.ts` - Added IPC handlers
+- `src/preload/index.ts` - Exposed minimize functions to renderer
+- `src/renderer/components/RepoCard.tsx` - Added minimize button and conditional rendering
+- `src/renderer/components/PRGrid.tsx` - Added state management and height adjustment
+- `tests/mocks/electron.ts` - Added mocks
+- `tests/renderer/components/RepoCard.test.tsx` - Added 8 tests
+- `tests/main/store.test.ts` - Added 6 tests
 
 **Completed:** January 18, 2026
 
