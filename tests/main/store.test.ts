@@ -615,6 +615,7 @@ describe('Store', () => {
   describe('PR Chat Persistence', () => {
     beforeEach(() => {
       clearAllPRChats()
+      setActivePRChatId(null) // Clear active chat ID between tests
     })
 
     describe('createPRChat', () => {
@@ -738,6 +739,28 @@ describe('Store', () => {
 
         deletePRChat('org/repo#1')
         expect(getPRChat('org/repo#1')).toBeNull()
+      })
+
+      it('should clear activePRChatId when deleting the active chat', () => {
+        createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+        setActivePRChatId('org/repo#1')
+        expect(getActivePRChatId()).toBe('org/repo#1')
+
+        deletePRChat('org/repo#1')
+
+        expect(getPRChat('org/repo#1')).toBeNull()
+        expect(getActivePRChatId()).toBeNull()
+      })
+
+      it('should NOT clear activePRChatId when deleting a non-active chat', () => {
+        createPRChat('org/repo#1', 1, 'PR 1', 'org/repo')
+        createPRChat('org/repo#2', 2, 'PR 2', 'org/repo')
+        setActivePRChatId('org/repo#1')
+
+        deletePRChat('org/repo#2')
+
+        expect(getPRChat('org/repo#2')).toBeNull()
+        expect(getActivePRChatId()).toBe('org/repo#1') // Should still be set
       })
     })
 
