@@ -183,10 +183,10 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
     <button
       type="button"
       className={cn(
-        'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors ml-2 w-full text-left',
+        'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors w-full text-left border-l-2',
         isSelected
-          ? 'bg-primary/20 text-primary border-l-2 border-primary -ml-[1px]'
-          : 'hover:bg-muted/50'
+          ? 'bg-primary/20 text-primary border-primary'
+          : 'hover:bg-muted/50 border-transparent'
       )}
       onClick={onSelect}
     >
