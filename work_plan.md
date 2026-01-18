@@ -94,13 +94,20 @@ Click a button in the PR detail header, and AI analyzes comments and description
 - Uses simple prompt engineering (no tools needed - AI just extracts, app executes)
 - Regex URL extraction from Claude response for robustness
 
+**UI:**
+- Globe icon button in PR detail header (next to external link and close buttons)
+- Loading spinner during AI analysis
+- Error message display (auto-clears after 3 seconds)
+- Rich tooltip on hover explaining: "Open Preview - AI scans comments for Vercel, Netlify, or staging URLs and opens in browser"
+- Also added tooltip to "Open in GitHub" button for consistency
+
 **Files Changed:**
 - `src/main/claude-api.ts` - Added `extractPreviewUrl` function
 - `src/main/index.ts` - Added IPC handler
 - `src/preload/index.ts` - Exposed `extractPreviewUrl` to renderer
-- `src/renderer/components/PRDetail.tsx` - Added button and UI state
+- `src/renderer/components/PRDetail.tsx` - Added button, tooltip, and UI state
 - `tests/mocks/electron.ts` - Added mock for `extractPreviewUrl`
-- `tests/renderer/components/PRDetail.test.tsx` - Added 5 tests
+- `tests/renderer/components/PRDetail.test.tsx` - Added 6 tests
 
 **Completed:** January 18, 2026
 
