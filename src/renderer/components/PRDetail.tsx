@@ -433,6 +433,8 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
 }
 
 // Component for displaying the PR description (body)
+const DESCRIPTION_PREVIEW_LENGTH = 300
+
 function PRDescription({ 
   body, 
   prUrl 
@@ -440,8 +442,26 @@ function PRDescription({
   body: string | null
   prUrl: string 
 }) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isOpen, setIsOpen] = useState(true)
+  const [isFullyExpanded, setIsFullyExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  
+  const shouldTruncate = body && body.length > DESCRIPTION_PREVIEW_LENGTH
+  
+  // Get preview content - try to break at a natural point
+  const getPreviewContent = (text: string) => {
+    if (text.length <= DESCRIPTION_PREVIEW_LENGTH) return text
+    const truncated = text.slice(0, DESCRIPTION_PREVIEW_LENGTH)
+    // Try to break at paragraph, then newline, then space
+    const lastParagraph = truncated.lastIndexOf('\n\n')
+    const lastNewline = truncated.lastIndexOf('\n')
+    const lastSpace = truncated.lastIndexOf(' ')
+    const breakPoint = lastParagraph > DESCRIPTION_PREVIEW_LENGTH * 0.5 ? lastParagraph : 
+                       lastNewline > DESCRIPTION_PREVIEW_LENGTH * 0.5 ? lastNewline :
+                       lastSpace > DESCRIPTION_PREVIEW_LENGTH * 0.5 ? lastSpace : 
+                       DESCRIPTION_PREVIEW_LENGTH
+    return truncated.slice(0, breakPoint) + '...'
+  }
   
   const handleCopy = async () => {
     if (body) {
@@ -459,10 +479,10 @@ function PRDescription({
   return (
     <div className="rounded-lg border border-border overflow-hidden">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors bg-muted/40 dark:bg-muted/50"
       >
-        {isExpanded ? (
+        {isOpen ? (
           <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         ) : (
           <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -503,11 +523,33 @@ function PRDescription({
         </div>
       </button>
       
-      {isExpanded && (
+      {isOpen && (
         <div className="border-t border-border p-3">
           {body ? (
-            <div className="text-sm text-foreground/80 dark:text-foreground/70">
-              <MarkdownContent content={body} />
+            <div className="space-y-2">
+              <div className="text-sm text-foreground/80 dark:text-foreground/70">
+                <MarkdownContent 
+                  content={isFullyExpanded || !shouldTruncate ? body : getPreviewContent(body)} 
+                />
+              </div>
+              {shouldTruncate && (
+                <button
+                  onClick={() => setIsFullyExpanded(!isFullyExpanded)}
+                  className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                >
+                  {isFullyExpanded ? (
+                    <>
+                      <ChevronRight className="w-3 h-3 rotate-90" />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronRight className="w-3 h-3 -rotate-90" />
+                      Read more
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic">

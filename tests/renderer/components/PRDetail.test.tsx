@@ -472,6 +472,34 @@ describe('PRDetail', () => {
       expect(screen.queryByText(/Test body content/)).not.toBeInTheDocument()
     })
 
+    it('should show "Read more" for long descriptions', () => {
+      const longBody = 'A'.repeat(500) // Long description
+      const pr = createMockPullRequest({ body: longBody })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      // Should show "Read more" button
+      expect(screen.getByText('Read more')).toBeInTheDocument()
+    })
+
+    it('should expand full description when "Read more" clicked', () => {
+      const longBody = 'Start of description. ' + 'Middle content. '.repeat(30) + 'End of description.'
+      const pr = createMockPullRequest({ body: longBody })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      // Initially truncated - "End of description" should not be visible
+      expect(screen.queryByText(/End of description/)).not.toBeInTheDocument()
+      
+      // Click "Read more"
+      const readMoreButton = screen.getByText('Read more')
+      fireEvent.click(readMoreButton)
+      
+      // Now full content should be visible
+      expect(screen.getByText(/End of description/)).toBeInTheDocument()
+      
+      // Button should now say "Show less"
+      expect(screen.getByText('Show less')).toBeInTheDocument()
+    })
+
     it('should have copy button', () => {
       const pr = createMockPullRequest({ body: 'Copyable content' })
       render(<PRDetail pr={pr} onClose={mockOnClose} />)

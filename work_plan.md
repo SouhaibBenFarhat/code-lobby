@@ -51,6 +51,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 **Implementation Summary:**
 - PR description displayed in collapsible section at top of PR detail view
 - Expanded by default, collapsible with click
+- **Truncated preview** (~300 chars) with "Read more" / "Show less" toggle
 - Full markdown rendering using existing MarkdownContent component
 - "No description provided" placeholder for empty/null bodies
 - Copy button to copy description to clipboard
@@ -59,6 +60,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 **Completed Features:**
 - [x] Display PR description (markdown body) in PR detail view
 - [x] Collapsible section (expanded by default)
+- [x] Truncated preview with "Read more" for long descriptions
 - [x] Markdown rendering (same as AI chat)
 - [x] "Empty description" placeholder if no body
 - [x] Copy description button
