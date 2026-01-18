@@ -153,24 +153,22 @@ export function buildPRSystemPrompt(pr: PullRequest): string {
   }
 
   // ===================
-  // RECENT COMMENTS (Summary)
+  // ALL COMMENTS
   // ===================
   if (pr.commentsList && pr.commentsList.length > 0) {
-    lines.push('## Recent Activity')
-    lines.push(`- ${pr.commentsList.length} comment(s) in this PR`)
-
-    // Show last 3 comments as a summary
-    const recentComments = pr.commentsList.slice(-3)
-    if (recentComments.length > 0) {
-      lines.push('')
-      lines.push('**Most recent comments:**')
-      for (const comment of recentComments) {
-        const truncatedBody =
-          comment.body.length > 100 ? `${comment.body.slice(0, 100)}...` : comment.body
-        lines.push(`- **${comment.author.login}:** ${truncatedBody.replace(/\n/g, ' ')}`)
-      }
-    }
+    lines.push('## Comments')
+    lines.push(`Total: ${pr.commentsList.length} comment(s)`)
     lines.push('')
+
+    for (const comment of pr.commentsList) {
+      const date = new Date(comment.created_at).toLocaleDateString()
+      lines.push(`### ${comment.author.login} (${date})`)
+      lines.push('')
+      lines.push(comment.body)
+      lines.push('')
+      lines.push('---')
+      lines.push('')
+    }
   }
 
   // ===================
