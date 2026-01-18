@@ -201,6 +201,52 @@ export interface ElectronAPI {
     }>
   }) => Promise<{ success: boolean; analysis?: string; message?: string }>
 
+  // Streaming PR analysis with extended thinking
+  analyzePRStatusStreaming: (context: {
+    prId: string
+    number: number
+    title: string
+    body: string | null
+    draft: boolean
+    createdAt: string
+    author: string
+    baseBranch: string
+    headBranch: string
+    additions: number
+    deletions: number
+    changedFiles: number
+    checks: Array<{
+      name: string
+      status: string
+      conclusion: string | null
+    }>
+    reviews: Array<{
+      author: string
+      state: string
+      body: string | null
+    }>
+    comments: Array<{ author: string; body: string }>
+    reviewThreads: Array<{
+      isResolved: boolean
+      path: string
+      commentsCount: number
+    }>
+  }) => Promise<{ success: boolean; streamId?: string; error?: string }>
+
+  onPRAnalysisStreamChunk: (
+    callback: (chunk: {
+      streamId: string
+      type: 'thinking' | 'text' | 'done' | 'error'
+      thinking?: string
+      content?: string
+      error?: string
+      fullResponse?: {
+        analysis: string
+        thinking?: string
+      }
+    }) => void
+  ) => () => void
+
   getPRAnalysis: (prId: string) => Promise<{
     prId: string
     analysis: string
@@ -380,6 +426,73 @@ const electronAPI: ElectronAPI = {
       commentsCount: number
     }>
   }) => ipcRenderer.invoke('analyze-pr-status', context),
+
+  // Streaming PR analysis with extended thinking
+  analyzePRStatusStreaming: (context: {
+    prId: string
+    number: number
+    title: string
+    body: string | null
+    draft: boolean
+    createdAt: string
+    author: string
+    baseBranch: string
+    headBranch: string
+    additions: number
+    deletions: number
+    changedFiles: number
+    checks: Array<{
+      name: string
+      status: string
+      conclusion: string | null
+    }>
+    reviews: Array<{
+      author: string
+      state: string
+      body: string | null
+    }>
+    comments: Array<{ author: string; body: string }>
+    reviewThreads: Array<{
+      isResolved: boolean
+      path: string
+      commentsCount: number
+    }>
+  }) => ipcRenderer.invoke('analyze-pr-status-streaming', context),
+
+  onPRAnalysisStreamChunk: (
+    callback: (chunk: {
+      streamId: string
+      type: 'thinking' | 'text' | 'done' | 'error'
+      thinking?: string
+      content?: string
+      error?: string
+      fullResponse?: {
+        analysis: string
+        thinking?: string
+      }
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      chunk: {
+        streamId: string
+        type: 'thinking' | 'text' | 'done' | 'error'
+        thinking?: string
+        content?: string
+        error?: string
+        fullResponse?: {
+          analysis: string
+          thinking?: string
+        }
+      }
+    ) => {
+      callback(chunk)
+    }
+    ipcRenderer.on('pr-analysis-stream-chunk', handler)
+    return () => {
+      ipcRenderer.removeListener('pr-analysis-stream-chunk', handler)
+    }
+  },
 
   getPRAnalysis: (prId: string) => ipcRenderer.invoke('get-pr-analysis', prId),
   deletePRAnalysis: (prId: string) => ipcRenderer.invoke('delete-pr-analysis', prId),

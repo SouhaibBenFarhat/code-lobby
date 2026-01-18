@@ -787,6 +787,8 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
     generatedAt: number
   } | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
+  const [streamingThinking, setStreamingThinking] = useState<string>('')
+  const [streamingAnalysis, setStreamingAnalysis] = useState<string>('')
 
   // Create a unique PR ID for persistence
   const prId = `${pr.base.repo.full_name}#${pr.number}`
@@ -826,7 +828,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
     [prId]
   )
 
-  // Handler for "Why Open?" analysis
+  // Handler for "Why Open?" analysis with streaming
   const handleAnalyzePR = useCallback(
     async (forceRefresh = false) => {
       if (forceRefresh) {
@@ -837,6 +839,8 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
       setIsAnalyzing(true)
       setAnalysisError(null)
+      setStreamingThinking('')
+      setStreamingAnalysis('')
       handleTogglePanel(true)
 
       try {
@@ -881,7 +885,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
           }
         }
 
-        const result = await window.electron.analyzePRStatus({
+        const context = {
           prId,
           number: pr.number,
           title: pr.title,
@@ -910,19 +914,40 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             path: t.path,
             commentsCount: t.comments.length
           }))
+        }
+
+        // Set up stream listener
+        const unsubscribe = window.electron.onPRAnalysisStreamChunk((chunk) => {
+          if (chunk.type === 'thinking' && chunk.thinking) {
+            setStreamingThinking((prev) => prev + chunk.thinking)
+          } else if (chunk.type === 'text' && chunk.content) {
+            setStreamingAnalysis((prev) => prev + chunk.content)
+          } else if (chunk.type === 'done' && chunk.fullResponse) {
+            setPrAnalysis({
+              analysis: chunk.fullResponse.analysis,
+              generatedAt: Date.now()
+            })
+            setStreamingThinking('')
+            setStreamingAnalysis('')
+            setIsAnalyzing(false)
+            unsubscribe()
+          } else if (chunk.type === 'error') {
+            setAnalysisError(chunk.error || 'Failed to analyze PR')
+            setIsAnalyzing(false)
+            unsubscribe()
+          }
         })
 
+        // Start streaming analysis
+        const result = await window.electron.analyzePRStatusStreaming(context)
+
         if (!result.success) {
-          setAnalysisError(result.message || 'Failed to analyze PR')
-        } else if (result.analysis) {
-          setPrAnalysis({
-            analysis: result.analysis,
-            generatedAt: Date.now()
-          })
+          setAnalysisError(result.error || 'Failed to start analysis')
+          setIsAnalyzing(false)
+          unsubscribe()
         }
       } catch {
         setAnalysisError('Failed to analyze PR status')
-      } finally {
         setIsAnalyzing(false)
       }
     },
@@ -1344,21 +1369,46 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
               </div>
             </div>
 
-            {isAnalyzing && !prAnalysis && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Analyzing PR status...</span>
+            {isAnalyzing && (
+              <div className="space-y-2">
+                {/* Show streaming thinking process */}
+                {streamingThinking && (
+                  <div className="rounded-md bg-muted/30 p-2 border border-muted">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      <span className="text-xs font-medium text-primary">Thinking...</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground font-mono max-h-24 overflow-y-auto whitespace-pre-wrap">
+                      {streamingThinking}
+                    </div>
+                  </div>
+                )}
+
+                {/* Show streaming analysis as it arrives */}
+                {streamingAnalysis && (
+                  <div className="text-sm text-foreground/90">
+                    <MarkdownContent content={streamingAnalysis} />
+                  </div>
+                )}
+
+                {/* Show initial loading state before streaming starts */}
+                {!streamingThinking && !streamingAnalysis && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Starting analysis...</span>
+                  </div>
+                )}
               </div>
             )}
 
-            {analysisError && (
+            {analysisError && !isAnalyzing && (
               <div className="flex items-center gap-2 text-sm text-destructive py-2">
                 <AlertCircle className="w-4 h-4" />
                 <span>{analysisError}</span>
               </div>
             )}
 
-            {prAnalysis && (
+            {prAnalysis && !isAnalyzing && (
               <div className="space-y-2">
                 <div className="text-sm text-foreground/90">
                   <MarkdownContent content={prAnalysis.analysis} />

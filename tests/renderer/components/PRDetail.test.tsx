@@ -659,15 +659,12 @@ describe('PRDetail', () => {
     })
 
     it('should show loading state when analyzing', async () => {
+      // Mock streaming that doesn't complete immediately
       setupMockElectron({
-        analyzePRStatus: vi
+        analyzePRStatusStreaming: vi
           .fn()
-          .mockImplementation(
-            () =>
-              new Promise((resolve) =>
-                setTimeout(() => resolve({ success: true, analysis: 'Test analysis' }), 100)
-              )
-          ),
+          .mockResolvedValue({ success: true, streamId: 'test_stream' }),
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation(() => () => {}), // No-op - doesn't call callback
         getPRAnalysis: vi.fn().mockResolvedValue(null)
       })
 
@@ -680,16 +677,28 @@ describe('PRDetail', () => {
 
         // Should show loading text
         await waitFor(() => {
-          expect(screen.getByText('Analyzing PR status...')).toBeInTheDocument()
+          expect(screen.getByText('Starting analysis...')).toBeInTheDocument()
         })
       }
     })
 
-    it('should display analysis when button clicked', async () => {
+    it('should display analysis when streaming completes', async () => {
       setupMockElectron({
-        analyzePRStatus: vi.fn().mockResolvedValue({
-          success: true,
-          analysis: 'This PR needs code review from maintainers.'
+        analyzePRStatusStreaming: vi
+          .fn()
+          .mockResolvedValue({ success: true, streamId: 'test_stream' }),
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation((callback) => {
+          setTimeout(() => {
+            callback({
+              streamId: 'test_stream',
+              type: 'done',
+              fullResponse: {
+                analysis: 'This PR needs code review from maintainers.',
+                thinking: 'Analyzing...'
+              }
+            })
+          }, 10)
+          return () => {}
         }),
         getPRAnalysis: vi.fn().mockResolvedValue(null)
       })
@@ -742,10 +751,11 @@ describe('PRDetail', () => {
 
     it('should show error message when analysis fails', async () => {
       setupMockElectron({
-        analyzePRStatus: vi.fn().mockResolvedValue({
+        analyzePRStatusStreaming: vi.fn().mockResolvedValue({
           success: false,
-          message: 'No Claude API key configured'
+          error: 'No Claude API key configured'
         }),
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation(() => () => {}),
         getPRAnalysis: vi.fn().mockResolvedValue(null)
       })
 
@@ -769,9 +779,21 @@ describe('PRDetail', () => {
 
     it('should have refresh button when analysis is displayed', async () => {
       setupMockElectron({
-        analyzePRStatus: vi.fn().mockResolvedValue({
-          success: true,
-          analysis: 'Test analysis'
+        analyzePRStatusStreaming: vi
+          .fn()
+          .mockResolvedValue({ success: true, streamId: 'test_stream' }),
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation((callback) => {
+          setTimeout(() => {
+            callback({
+              streamId: 'test_stream',
+              type: 'done',
+              fullResponse: {
+                analysis: 'Test analysis',
+                thinking: 'Thinking...'
+              }
+            })
+          }, 10)
+          return () => {}
         }),
         getPRAnalysis: vi.fn().mockResolvedValue(null)
       })
@@ -795,14 +817,15 @@ describe('PRDetail', () => {
       }
     })
 
-    it('should pass PR context to analyzePRStatus', async () => {
-      const mockAnalyze = vi.fn().mockResolvedValue({
+    it('should pass PR context to analyzePRStatusStreaming', async () => {
+      const mockAnalyzeStreaming = vi.fn().mockResolvedValue({
         success: true,
-        analysis: 'Analysis result'
+        streamId: 'test_stream'
       })
 
       setupMockElectron({
-        analyzePRStatus: mockAnalyze,
+        analyzePRStatusStreaming: mockAnalyzeStreaming,
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation(() => () => {}),
         getPRAnalysis: vi.fn().mockResolvedValue(null)
       })
 
@@ -822,7 +845,7 @@ describe('PRDetail', () => {
         fireEvent.click(whyOpenButton)
 
         await waitFor(() => {
-          expect(mockAnalyze).toHaveBeenCalledWith(
+          expect(mockAnalyzeStreaming).toHaveBeenCalledWith(
             expect.objectContaining({
               number: 42,
               title: 'Test PR',
@@ -838,13 +861,14 @@ describe('PRDetail', () => {
     })
 
     it('should include CI checks in analysis context', async () => {
-      const mockAnalyze = vi.fn().mockResolvedValue({
+      const mockAnalyzeStreaming = vi.fn().mockResolvedValue({
         success: true,
-        analysis: 'Analysis result'
+        streamId: 'test_stream'
       })
 
       setupMockElectron({
-        analyzePRStatus: mockAnalyze,
+        analyzePRStatusStreaming: mockAnalyzeStreaming,
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation(() => () => {}),
         getPRAnalysis: vi.fn().mockResolvedValue(null)
       })
 
@@ -856,7 +880,7 @@ describe('PRDetail', () => {
         fireEvent.click(whyOpenButton)
 
         await waitFor(() => {
-          expect(mockAnalyze).toHaveBeenCalledWith(
+          expect(mockAnalyzeStreaming).toHaveBeenCalledWith(
             expect.objectContaining({
               checks: expect.arrayContaining([
                 expect.objectContaining({
@@ -874,9 +898,21 @@ describe('PRDetail', () => {
       const mockDelete = vi.fn().mockResolvedValue({ success: true })
 
       setupMockElectron({
-        analyzePRStatus: vi.fn().mockResolvedValue({
-          success: true,
-          analysis: 'Test analysis'
+        analyzePRStatusStreaming: vi
+          .fn()
+          .mockResolvedValue({ success: true, streamId: 'test_stream' }),
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation((callback) => {
+          setTimeout(() => {
+            callback({
+              streamId: 'test_stream',
+              type: 'done',
+              fullResponse: {
+                analysis: 'Test analysis',
+                thinking: 'Thinking...'
+              }
+            })
+          }, 10)
+          return () => {}
         }),
         getPRAnalysis: vi.fn().mockResolvedValue(null),
         deletePRAnalysis: mockDelete
@@ -915,10 +951,10 @@ describe('PRDetail', () => {
       const mockSetPanelOpen = vi.fn().mockResolvedValue({ success: true })
 
       setupMockElectron({
-        analyzePRStatus: vi.fn().mockResolvedValue({
-          success: true,
-          analysis: 'Test analysis'
-        }),
+        analyzePRStatusStreaming: vi
+          .fn()
+          .mockResolvedValue({ success: true, streamId: 'test_stream' }),
+        onPRAnalysisStreamChunk: vi.fn().mockImplementation(() => () => {}),
         getPRAnalysis: vi.fn().mockResolvedValue(null),
         setPRAnalysisPanelOpen: mockSetPanelOpen
       })

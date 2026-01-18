@@ -3,6 +3,7 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
 import {
   analyzePRStatus,
+  analyzePRStatusStreaming,
   ClaudeMessage,
   extractPreviewUrl,
   fetchModels as fetchClaudeModels,
@@ -968,6 +969,77 @@ function setupIPCHandlers(): void {
       }
 
       return result
+    }
+  )
+
+  // Streaming PR status analysis with extended thinking
+  ipcMain.handle(
+    'analyze-pr-status-streaming',
+    async (
+      event,
+      context: {
+        prId: string
+        number: number
+        title: string
+        body: string | null
+        draft: boolean
+        createdAt: string
+        author: string
+        baseBranch: string
+        headBranch: string
+        additions: number
+        deletions: number
+        changedFiles: number
+        checks: Array<{
+          name: string
+          status: string
+          conclusion: string | null
+        }>
+        reviews: Array<{
+          author: string
+          state: string
+          body: string | null
+        }>
+        comments: Array<{ author: string; body: string }>
+        reviewThreads: Array<{
+          isResolved: boolean
+          path: string
+          commentsCount: number
+        }>
+      }
+    ) => {
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, error: 'No Claude API key configured' }
+      }
+
+      logger.info(LogCategory.API, 'Starting streaming PR status analysis', {
+        prId: context.prId,
+        title: context.title
+      })
+
+      // Generate a unique stream ID
+      const streamId = `pr_analysis_${Date.now()}`
+
+      // Get the sender's webContents to send stream updates
+      const webContents = event.sender
+
+      // Start streaming analysis
+      analyzePRStatusStreaming(apiKey, context, (chunk) => {
+        // Send chunk to renderer
+        webContents.send('pr-analysis-stream-chunk', { streamId, ...chunk })
+
+        // If done, save the analysis
+        if (chunk.type === 'done' && chunk.fullResponse) {
+          setPRAnalysis(context.prId, chunk.fullResponse.analysis)
+          logger.info(LogCategory.APP, 'Streaming PR analysis saved', {
+            prId: context.prId,
+            hasThinking: !!chunk.fullResponse.thinking
+          })
+        }
+      })
+
+      return { success: true, streamId }
     }
   )
 

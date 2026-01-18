@@ -425,6 +425,204 @@ Be direct and specific. Use bullet points if there are multiple blockers.`
   }
 }
 
+// PR Analysis streaming chunk type
+export type PRAnalysisChunk =
+  | { type: 'thinking'; thinking: string }
+  | { type: 'text'; content: string }
+  | {
+      type: 'done'
+      fullResponse: {
+        analysis: string
+        thinking?: string
+      }
+    }
+  | { type: 'error'; error: string }
+
+/**
+ * Analyze PR status with streaming and extended thinking
+ * Shows the model's reasoning process during analysis
+ */
+export async function analyzePRStatusStreaming(
+  apiKey: string,
+  context: {
+    prId: string
+    number: number
+    title: string
+    body: string | null
+    draft: boolean
+    createdAt: string
+    author: string
+    baseBranch: string
+    headBranch: string
+    additions: number
+    deletions: number
+    changedFiles: number
+    checks: Array<{
+      name: string
+      status: string
+      conclusion: string | null
+    }>
+    reviews: Array<{
+      author: string
+      state: string
+      body: string | null
+    }>
+    comments: Array<{ author: string; body: string }>
+    reviewThreads: Array<{
+      isResolved: boolean
+      path: string
+      commentsCount: number
+    }>
+  },
+  onChunk: (chunk: PRAnalysisChunk) => void
+): Promise<void> {
+  logger.info(LogCategory.API, 'Starting streaming PR status analysis', {
+    prNumber: context.number,
+    title: context.title
+  })
+
+  try {
+    const client = getClient(apiKey)
+
+    // Build comprehensive CI summary
+    const ciSummary =
+      context.checks.length > 0
+        ? context.checks
+            .map((c) => {
+              const status = c.conclusion || c.status
+              const icon = status === 'success' ? '✅' : status === 'failure' ? '❌' : '⏳'
+              return `${icon} ${c.name}: ${status}`
+            })
+            .join('\n')
+        : 'No CI checks found'
+
+    // Build reviews summary
+    const reviewsSummary =
+      context.reviews.length > 0
+        ? context.reviews
+            .map((r) => {
+              const icon =
+                r.state === 'approved' ? '✅' : r.state === 'changes_requested' ? '🔄' : '💬'
+              const body = r.body
+                ? ` - "${r.body.slice(0, 100)}${r.body.length > 100 ? '...' : ''}"`
+                : ''
+              return `${icon} ${r.author}: ${r.state}${body}`
+            })
+            .join('\n')
+        : 'No reviews yet'
+
+    // Build unresolved threads summary
+    const unresolvedThreads = context.reviewThreads.filter((t) => !t.isResolved)
+    const threadsSummary =
+      unresolvedThreads.length > 0
+        ? `${unresolvedThreads.length} unresolved thread(s) in: ${unresolvedThreads.map((t) => t.path).join(', ')}`
+        : 'All review threads resolved'
+
+    // Build comments summary (last 10)
+    const recentComments = context.comments.slice(-10)
+    const commentsSummary =
+      recentComments.length > 0
+        ? recentComments
+            .map(
+              (c) => `**${c.author}**: ${c.body.slice(0, 150)}${c.body.length > 150 ? '...' : ''}`
+            )
+            .join('\n\n')
+        : 'No comments'
+
+    const prompt = `Analyze this Pull Request and explain why it's still open. Provide a concise, actionable summary.
+
+## PR #${context.number}: ${context.title}
+- **Author**: ${context.author}
+- **Branch**: ${context.headBranch} → ${context.baseBranch}
+- **Status**: ${context.draft ? 'Draft' : 'Ready for review'}
+- **Created**: ${context.createdAt}
+- **Changes**: ${context.changedFiles} files (+${context.additions} -${context.deletions})
+
+## Description
+${context.body || 'No description provided'}
+
+## CI/CD Status
+${ciSummary}
+
+## Code Reviews
+${reviewsSummary}
+
+## Review Threads
+${threadsSummary}
+
+## Recent Comments
+${commentsSummary}
+
+---
+
+Based on this information, provide a brief analysis (2-4 sentences) explaining:
+1. Why this PR is still open (e.g., failing CI, pending reviews, unresolved discussions, draft status)
+2. What action is needed to move it forward
+
+Be direct and specific. Use bullet points if there are multiple blockers.`
+
+    // Enable extended thinking for deeper analysis
+    const requestParams: Parameters<typeof client.messages.stream>[0] = {
+      model: DEFAULT_MODEL,
+      max_tokens: MAX_TOKENS_WITH_THINKING,
+      messages: [{ role: 'user', content: prompt }],
+      thinking: {
+        type: 'enabled',
+        budget_tokens: THINKING_BUDGET
+      }
+    }
+
+    const stream = client.messages.stream(requestParams)
+
+    let fullContent = ''
+    let fullThinking = ''
+
+    // Handle text events
+    stream.on('text', (text: string) => {
+      fullContent += text
+      onChunk({ type: 'text', content: text })
+    })
+
+    // Handle thinking events
+    stream.on('thinking', (thinkingDelta: string, _accumulated: string) => {
+      fullThinking += thinkingDelta
+      onChunk({ type: 'thinking', thinking: thinkingDelta })
+    })
+
+    // Wait for completion
+    await stream.finalMessage()
+
+    logger.info(LogCategory.API, 'Streaming PR analysis complete', {
+      prNumber: context.number,
+      hasThinking: !!fullThinking,
+      analysisLength: fullContent.length
+    })
+
+    // Send done signal with full response
+    onChunk({
+      type: 'done',
+      fullResponse: {
+        analysis: fullContent,
+        thinking: fullThinking || undefined
+      }
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error in streaming PR analysis', {
+      prNumber: context.number,
+      error: errorMessage
+    })
+
+    if (error instanceof Anthropic.AuthenticationError) {
+      onChunk({ type: 'error', error: 'Invalid Claude API key' })
+    } else if (error instanceof Anthropic.RateLimitError) {
+      onChunk({ type: 'error', error: 'Rate limit exceeded. Please try again.' })
+    } else {
+      onChunk({ type: 'error', error: `Error: ${errorMessage}` })
+    }
+  }
+}
+
 /**
  * Extract a preview/demo URL from PR context using Claude
  * This is a specialized function for the "Open Preview" feature

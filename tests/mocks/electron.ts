@@ -107,6 +107,8 @@ interface MockElectronAPI {
   // AI-powered actions
   extractPreviewUrl: ReturnType<typeof vi.fn>
   analyzePRStatus: ReturnType<typeof vi.fn>
+  analyzePRStatusStreaming: ReturnType<typeof vi.fn>
+  onPRAnalysisStreamChunk: ReturnType<typeof vi.fn>
   getPRAnalysis: ReturnType<typeof vi.fn>
   deletePRAnalysis: ReturnType<typeof vi.fn>
   getPRAnalysisPanelOpen: ReturnType<typeof vi.fn>
@@ -243,6 +245,24 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     analyzePRStatus: vi.fn().mockResolvedValue({
       success: true,
       analysis: 'This PR is waiting for code review.'
+    }),
+    analyzePRStatusStreaming: vi.fn().mockResolvedValue({
+      success: true,
+      streamId: 'test_stream_123'
+    }),
+    onPRAnalysisStreamChunk: vi.fn().mockImplementation((callback) => {
+      // Simulate streaming by calling the callback with done immediately
+      setTimeout(() => {
+        callback({
+          streamId: 'test_stream_123',
+          type: 'done',
+          fullResponse: {
+            analysis: 'This PR is waiting for code review.',
+            thinking: 'Let me analyze this PR...'
+          }
+        })
+      }, 10)
+      return () => {} // Return unsubscribe function
     }),
     getPRAnalysis: vi.fn().mockResolvedValue(null),
     deletePRAnalysis: vi.fn().mockResolvedValue({ success: true }),
