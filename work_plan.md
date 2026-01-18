@@ -1014,6 +1014,124 @@ interface AIChat {
 - Need secure sandbox for code generation
 - Human review required before any automated commits
 
+### 2.8 AI Features Settings & Custom Context 🔴 Not Started
+> Allow users to see and customize AI-powered feature behavior
+
+**Concept:**
+A dedicated settings page that shows all AI-powered features, what context is provided to each, and allows users to add custom context to extend AI capabilities.
+
+**Why This Matters:**
+- **Transparency** — Users see exactly what data is sent to AI
+- **Customization** — Add project-specific context (e.g., "Preview URLs always come from Vercel bot")
+- **Power Users** — Fine-tune AI behavior without code changes
+
+**UI Design:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ⚙️ AI Features Settings                                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  🔗 Open Preview                                            │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Context Provided:                                       ││
+│  │ • PR title and description                              ││
+│  │ • All comments (general, review, threads)               ││
+│  │                                                         ││
+│  │ Custom Context (optional):                              ││
+│  │ ┌─────────────────────────────────────────────────────┐ ││
+│  │ │ Preview URLs are always posted by the "vercel[bot]" │ ││
+│  │ │ user. Look for URLs containing "vercel.app".        │ ││
+│  │ └─────────────────────────────────────────────────────┘ ││
+│  │                                          [Save] [Reset] ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  ❓ Why Open? Analysis                                      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Context Provided:                                       ││
+│  │ • PR metadata (title, author, branch, dates)            ││
+│  │ • CI/CD check statuses and conclusions                  ││
+│  │ • Reviews with state and body                           ││
+│  │ • Recent comments (last 10)                             ││
+│  │ • Review thread resolution status                       ││
+│  │                                                         ││
+│  │ Custom Context (optional):                              ││
+│  │ ┌─────────────────────────────────────────────────────┐ ││
+│  │ │ Our team requires at least 2 approvals before merge.│ ││
+│  │ │ The "e2e-tests" check is flaky and can be ignored   │ ││
+│  │ │ if it fails but other tests pass.                   │ ││
+│  │ └─────────────────────────────────────────────────────┘ ││
+│  │                                          [Save] [Reset] ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  🐕 AI Assistant                                            │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Context Provided:                                       ││
+│  │ • Full conversation history                             ││
+│  │ • Selected PR context (when applicable)                 ││
+│  │                                                         ││
+│  │ System Prompt (optional):                               ││
+│  │ ┌─────────────────────────────────────────────────────┐ ││
+│  │ │ You are helping a developer working on a TypeScript │ ││
+│  │ │ monorepo using pnpm. Always suggest pnpm commands.  │ ││
+│  │ └─────────────────────────────────────────────────────┘ ││
+│  │                                          [Save] [Reset] ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- [ ] **AI Features Overview** — List all AI-powered buttons/features
+- [ ] **Context Transparency** — Show what data is provided to each feature
+- [ ] **Custom Context Editor** — Text area to add additional instructions
+- [ ] **Per-Feature Settings** — Each AI feature can be configured independently
+- [ ] **System Prompt for Chat** — Customize the AI assistant's behavior
+- [ ] **Presets** — Save and load custom context configurations
+- [ ] **Per-Repository Overrides** — Different settings per repo (optional)
+- [ ] **Reset to Default** — Easily revert customizations
+
+**Data Model:**
+```typescript
+interface AIFeatureSettings {
+  openPreview: {
+    customContext: string | null
+    enabled: boolean
+  }
+  whyOpen: {
+    customContext: string | null
+    enabled: boolean
+  }
+  aiChat: {
+    systemPrompt: string | null
+  }
+}
+```
+
+**Implementation:**
+- [ ] Add `aiFeatureSettings` to electron-store
+- [ ] Create `AISettingsDialog` component
+- [ ] Add settings button to Header (⚙️ next to AI toggle)
+- [ ] Update `extractPreviewUrl` to include custom context in prompt
+- [ ] Update `analyzePRStatusStreaming` to include custom context in prompt
+- [ ] Update AI chat to use custom system prompt
+- [ ] Add IPC handlers for get/set AI feature settings
+
+**Technical Notes:**
+- Custom context is appended to prompts, not replacing them
+- Settings persist across app restarts via electron-store
+- Validate custom context length (prevent token overflow)
+- Show estimated token usage for custom context
+
+**Benefits:**
+| Use Case | Example Custom Context |
+|----------|------------------------|
+| Preview bots | "Preview URLs come from Netlify bot, look for deploy-preview links" |
+| Flaky tests | "The 'visual-regression' test is flaky, don't flag it as a blocker" |
+| Team rules | "We require 2 approvals, one must be from a CODEOWNERS member" |
+| Monorepo | "This is a monorepo, PRs may only affect one package" |
+
+**Estimated Time:** ~4 hours
+
 ---
 
 ## 📋 Phase 3: Advanced Features
