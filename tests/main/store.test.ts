@@ -28,7 +28,9 @@ vi.mock('electron-store', () => {
             ideViewSettings: { sidebarWidth: 280, expandedRepos: [] },
             dataCache: { prData: null, allRepos: null },
             prAnalyses: [],
-            prAnalysisPanelStates: {}
+            prAnalysisPanelStates: {},
+            prChats: [],
+            activePRChatId: null
           }
           return defaults[key]
         }
@@ -50,13 +52,19 @@ vi.mock('electron-store', () => {
 
 // Import after mocking
 import {
+  addMessageToPRChat,
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
+  clearAllPRChats,
   clearDataCache,
   clearPRAnalyses,
   clearPRAnalysisPanelStates,
+  clearPRChatMessages,
   clearToken,
+  createPRChat,
   deletePRAnalysis,
+  deletePRChat,
+  getActivePRChatId,
   getAllReposCache,
   getCardLayouts,
   getIDEViewSettings,
@@ -64,6 +72,9 @@ import {
   getPRAnalysis,
   getPRAnalysisPanelOpen,
   getPRAnalysisPanelStates,
+  getPRChat,
+  getPRChatMessages,
+  getPRChats,
   getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
@@ -74,6 +85,7 @@ import {
   getUser,
   getViewMode,
   isCacheValid,
+  setActivePRChatId,
   setAllReposCache,
   setCardLayouts,
   setIDEViewSettings,
@@ -596,6 +608,164 @@ describe('Store', () => {
         // Newest states should be kept
         expect(getPRAnalysisPanelOpen('org/repo#209')).toBe(true)
         expect(getPRAnalysisPanelOpen('org/repo#200')).toBe(true)
+      })
+    })
+  })
+
+  describe('PR Chat Persistence', () => {
+    beforeEach(() => {
+      clearAllPRChats()
+    })
+
+    describe('createPRChat', () => {
+      it('should create a new PR chat', () => {
+        const chat = createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+
+        expect(chat.prId).toBe('org/repo#1')
+        expect(chat.prNumber).toBe(1)
+        expect(chat.prTitle).toBe('Test PR')
+        expect(chat.repoFullName).toBe('org/repo')
+        expect(chat.messages).toEqual([])
+        expect(chat.createdAt).toBeDefined()
+        expect(chat.updatedAt).toBeDefined()
+      })
+
+      it('should return existing chat if already exists', () => {
+        const chat1 = createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+        const chat2 = createPRChat('org/repo#1', 1, 'Different Title', 'org/repo')
+
+        // Should return the same chat, not create a new one
+        expect(chat1.prId).toBe(chat2.prId)
+        expect(chat1.createdAt).toBe(chat2.createdAt)
+      })
+
+      it('should limit to 50 chats', () => {
+        // Create 55 chats
+        for (let i = 0; i < 55; i++) {
+          createPRChat(`org/repo#${i}`, i, `PR ${i}`, 'org/repo')
+        }
+
+        const chats = getPRChats()
+        expect(chats.length).toBeLessThanOrEqual(50)
+      })
+    })
+
+    describe('getPRChat', () => {
+      it('should return null for non-existent chat', () => {
+        const chat = getPRChat('non-existent')
+        expect(chat).toBeNull()
+      })
+
+      it('should return existing chat', () => {
+        createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+        const chat = getPRChat('org/repo#1')
+
+        expect(chat).not.toBeNull()
+        expect(chat?.prId).toBe('org/repo#1')
+      })
+    })
+
+    describe('getPRChats', () => {
+      it('should return empty array initially', () => {
+        expect(getPRChats()).toEqual([])
+      })
+
+      it('should return all chats', () => {
+        createPRChat('org/repo#1', 1, 'PR 1', 'org/repo')
+        createPRChat('org/repo#2', 2, 'PR 2', 'org/repo')
+
+        const chats = getPRChats()
+        expect(chats.length).toBe(2)
+      })
+    })
+
+    describe('addMessageToPRChat', () => {
+      it('should add message to existing chat', () => {
+        createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+
+        const message = {
+          id: 'msg-1',
+          role: 'user' as const,
+          content: 'Hello',
+          timestamp: new Date().toISOString()
+        }
+
+        addMessageToPRChat('org/repo#1', message)
+
+        const messages = getPRChatMessages('org/repo#1')
+        expect(messages.length).toBe(1)
+        expect(messages[0].content).toBe('Hello')
+      })
+
+      it('should not add message to non-existent chat', () => {
+        const message = {
+          id: 'msg-1',
+          role: 'user' as const,
+          content: 'Hello',
+          timestamp: new Date().toISOString()
+        }
+
+        addMessageToPRChat('non-existent', message)
+
+        const messages = getPRChatMessages('non-existent')
+        expect(messages).toEqual([])
+      })
+    })
+
+    describe('clearPRChatMessages', () => {
+      it('should clear messages from chat', () => {
+        createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+
+        const message = {
+          id: 'msg-1',
+          role: 'user' as const,
+          content: 'Hello',
+          timestamp: new Date().toISOString()
+        }
+
+        addMessageToPRChat('org/repo#1', message)
+        expect(getPRChatMessages('org/repo#1').length).toBe(1)
+
+        clearPRChatMessages('org/repo#1')
+        expect(getPRChatMessages('org/repo#1')).toEqual([])
+      })
+    })
+
+    describe('deletePRChat', () => {
+      it('should delete a chat', () => {
+        createPRChat('org/repo#1', 1, 'Test PR', 'org/repo')
+        expect(getPRChat('org/repo#1')).not.toBeNull()
+
+        deletePRChat('org/repo#1')
+        expect(getPRChat('org/repo#1')).toBeNull()
+      })
+    })
+
+    describe('clearAllPRChats', () => {
+      it('should clear all chats', () => {
+        createPRChat('org/repo#1', 1, 'PR 1', 'org/repo')
+        createPRChat('org/repo#2', 2, 'PR 2', 'org/repo')
+
+        clearAllPRChats()
+
+        expect(getPRChats()).toEqual([])
+      })
+    })
+
+    describe('Active PR Chat', () => {
+      it('should return null initially', () => {
+        expect(getActivePRChatId()).toBeNull()
+      })
+
+      it('should set and get active PR chat ID', () => {
+        setActivePRChatId('org/repo#1')
+        expect(getActivePRChatId()).toBe('org/repo#1')
+      })
+
+      it('should clear active PR chat ID', () => {
+        setActivePRChatId('org/repo#1')
+        setActivePRChatId(null)
+        expect(getActivePRChatId()).toBeNull()
       })
     })
   })

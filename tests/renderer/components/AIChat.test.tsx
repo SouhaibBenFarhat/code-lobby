@@ -469,3 +469,222 @@ describe('useThrottledValue Hook', () => {
     expect(true).toBe(true)
   })
 })
+
+describe('PR-Linked Chat', () => {
+  const mockOnClose = vi.fn()
+  const mockOnClosePRChat = vi.fn()
+  const mockLinkedPRChat = {
+    prId: 'owner/repo#123',
+    prNumber: 123,
+    prTitle: 'Test PR Title',
+    repoFullName: 'owner/repo'
+  }
+
+  beforeEach(() => {
+    setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getChatHistory: vi.fn().mockResolvedValue([]),
+      getPRChatMessages: vi.fn().mockResolvedValue([]),
+      fetchClaudeModels: vi.fn().mockResolvedValue({ success: true, models: [] }),
+      getSelectedModel: vi.fn().mockResolvedValue('claude-sonnet-4'),
+      getEnableThinking: vi.fn().mockResolvedValue(false)
+    })
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    resetMockElectron()
+  })
+
+  it('should display PR Chat header when linkedPRChat is provided', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('PR Chat')).toBeInTheDocument()
+    })
+  })
+
+  it('should display PR number badge when linkedPRChat is provided', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('#123')).toBeInTheDocument()
+    })
+  })
+
+  it('should display PR context banner with title and repo', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/Test PR Title/)).toBeInTheDocument()
+      expect(screen.getByText('owner/repo')).toBeInTheDocument()
+    })
+  })
+
+  it('should show back button when linkedPRChat is provided', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      // Find the back arrow button
+      const buttons = screen.getAllByRole('button')
+      const backButton = buttons.find((btn) => btn.querySelector('.lucide-arrow-left'))
+      expect(backButton).toBeInTheDocument()
+    })
+  })
+
+  it('should call onClosePRChat when back button is clicked', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button')
+      const backButton = buttons.find((btn) => btn.querySelector('.lucide-arrow-left'))
+      expect(backButton).toBeInTheDocument()
+    })
+
+    const buttons = screen.getAllByRole('button')
+    const backButton = buttons.find((btn) => btn.querySelector('.lucide-arrow-left'))
+    if (backButton) {
+      fireEvent.click(backButton)
+      expect(mockOnClosePRChat).toHaveBeenCalled()
+    }
+  })
+
+  it('should load PR chat messages when linkedPRChat is provided', async () => {
+    const mockPRMessages = [
+      {
+        id: 'msg-1',
+        role: 'user' as const,
+        content: 'Tell me about this PR',
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 'msg-2',
+        role: 'assistant' as const,
+        content: 'This PR adds authentication.',
+        timestamp: new Date().toISOString()
+      }
+    ]
+
+    const mockElectron = setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getPRChatMessages: vi.fn().mockResolvedValue(mockPRMessages)
+    })
+
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      expect(mockElectron.getPRChatMessages).toHaveBeenCalledWith('owner/repo#123')
+    })
+  })
+
+  it('should display AI Assistant header when no linkedPRChat', async () => {
+    setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getChatHistory: vi.fn().mockResolvedValue([])
+    })
+
+    render(<AIChatPanel onClose={mockOnClose} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Assistant')).toBeInTheDocument()
+    })
+  })
+
+  it('should call clearPRChatMessages when clearing history in PR chat mode', async () => {
+    const mockElectron = setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getPRChatMessages: vi.fn().mockResolvedValue([
+        {
+          id: 'msg-1',
+          role: 'user',
+          content: 'Test',
+          timestamp: new Date().toISOString()
+        }
+      ]),
+      clearPRChatMessages: vi.fn().mockResolvedValue({ success: true }),
+      fetchClaudeModels: vi.fn().mockResolvedValue({ success: true, models: [] }),
+      getSelectedModel: vi.fn().mockResolvedValue('claude-sonnet-4'),
+      getEnableThinking: vi.fn().mockResolvedValue(false)
+    })
+
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    // Wait for the component to finish loading
+    await waitFor(() => {
+      expect(screen.getByText('PR Chat')).toBeInTheDocument()
+    })
+
+    // Find the trash button by title
+    const trashButton = screen.getByTitle('Clear chat')
+    expect(trashButton).toBeInTheDocument()
+
+    fireEvent.click(trashButton)
+
+    await waitFor(() => {
+      expect(mockElectron.clearPRChatMessages).toHaveBeenCalledWith('owner/repo#123')
+    })
+  })
+})

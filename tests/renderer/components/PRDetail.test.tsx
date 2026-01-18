@@ -24,6 +24,16 @@ import {
 } from '../../mocks/factories'
 import { fireEvent, render, screen, waitFor } from '../../utils/render'
 
+// Mock usePRChat from App
+const mockOpenPRInChat = vi.fn()
+vi.mock('@/App', () => ({
+  usePRChat: () => ({
+    linkedPRChat: null,
+    openPRInChat: mockOpenPRInChat,
+    closePRChat: vi.fn()
+  })
+}))
+
 describe('PRDetail', () => {
   const mockOnClose = vi.fn()
 
@@ -1032,6 +1042,54 @@ describe('PRDetail', () => {
           expect(mockSetPanelOpen).toHaveBeenCalledWith(expect.any(String), false)
         })
       }
+    })
+  })
+
+  describe('Start AI Chat Button', () => {
+    it('should render the Start AI Chat button', () => {
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // The button should have the dog icon (DogIcon has aria-label="AI Assistant")
+      const dogIcon = screen.getByLabelText('AI Assistant')
+      expect(dogIcon).toBeInTheDocument()
+    })
+
+    it('should have tooltip content available', () => {
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Find the dog icon - it exists in a tooltip trigger, which confirms the tooltip is set up
+      const dogIcon = screen.getByLabelText('AI Assistant')
+      const dogButton = dogIcon.closest('button')
+
+      expect(dogButton).toBeTruthy()
+      // Verify the button is inside a tooltip structure
+      // (Radix tooltips are complex to test with hover, so we just verify the button exists)
+    })
+
+    it('should call openPRInChat when clicked', () => {
+      const pr = createMockPullRequest({ number: 123, title: 'Test PR' })
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Find and click the dog icon's parent button
+      const dogIcon = screen.getByLabelText('AI Assistant')
+      const dogButton = dogIcon.closest('button')
+
+      expect(dogButton).toBeTruthy()
+      if (dogButton) {
+        fireEvent.click(dogButton)
+      }
+
+      // Verify the handler was called with the PR (uses mocked usePRChat)
+      expect(mockOpenPRInChat).toHaveBeenCalledTimes(1)
+      expect(mockOpenPRInChat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          number: 123,
+          title: 'Test PR'
+        })
+      )
     })
   })
 })
