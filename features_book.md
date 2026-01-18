@@ -132,6 +132,31 @@ The analysis is saved per PR, so you don't re-analyze unnecessarily.
 
 ---
 
+### 💬 Start AI Chat on Any PR
+
+Want to discuss a specific PR with the AI? Don't copy-paste context manually.
+
+**One Click:**
+1. Click the dog icon on any PR
+2. A dedicated chat session opens for that PR
+3. Start asking questions immediately
+
+**How It Works:**
+- Each PR gets its own conversation history
+- The AI knows which PR you're discussing
+- Switch between PRs without losing context
+- Conversations persist across sessions
+
+**Use Cases:**
+- "Summarize the changes in this PR"
+- "What are the potential risks?"
+- "Help me write a review comment"
+- "Explain what this file does"
+
+Perfect for code reviews, understanding complex changes, or getting a second opinion.
+
+---
+
 ## 🎨 Designed for Developers
 
 ### Dark Mode (Obviously)
@@ -246,6 +271,7 @@ We're actively building:
 | **Two View Modes** | Work the way you think |
 | **Smart Filtering** | Focus on what matters |
 | **AI Assistant** | Intelligent help on demand |
+| **PR-Specific AI Chat** | Context-aware conversations |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
 | **Persistent State** | Pick up where you left off |

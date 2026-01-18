@@ -2,8 +2,10 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   AlertCircle,
   ArrowDown,
+  ArrowLeft,
   Brain,
   ChevronRight,
+  GitPullRequest,
   Key,
   Loader2,
   RefreshCw,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DogIcon } from './DogIcon'
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 // Utility for throttling with requestAnimationFrame
@@ -186,8 +189,26 @@ interface ClaudeModel {
   created_at: string
 }
 
+// GitHub user for avatar display
+interface GitHubUser {
+  login: string
+  avatar_url: string
+  name: string | null
+}
+
+// Linked PR chat info
+interface LinkedPRChat {
+  prId: string
+  prNumber: number
+  prTitle: string
+  repoFullName: string
+}
+
 interface AIChatPanelProps {
   onClose: () => void
+  user?: GitHubUser | null
+  linkedPRChat?: LinkedPRChat | null
+  onClosePRChat?: () => void
 }
 
 // Streaming state for the current assistant message being generated
@@ -216,6 +237,7 @@ interface VirtualizedMessageListProps {
   scrollContainerRef: React.RefObject<HTMLDivElement>
   onScroll: () => void
   onVirtualizerReady: (scrollToEnd: () => void) => void
+  user?: GitHubUser | null
 }
 
 function VirtualizedMessageList({
@@ -228,7 +250,8 @@ function VirtualizedMessageList({
   setMessageQueue,
   scrollContainerRef,
   onScroll,
-  onVirtualizerReady
+  onVirtualizerReady,
+  user
 }: VirtualizedMessageListProps) {
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
@@ -312,6 +335,7 @@ function VirtualizedMessageList({
                   message={item.data as ChatMessage}
                   expandedThinking={expandedThinking}
                   toggleThinkingExpanded={toggleThinkingExpanded}
+                  user={user}
                 />
               )}
 
@@ -324,6 +348,7 @@ function VirtualizedMessageList({
                       prev.filter((m) => m.id !== (item.data as QueuedMessage).id)
                     )
                   }
+                  user={user}
                 />
               )}
             </div>
@@ -358,11 +383,13 @@ function VirtualizedMessageList({
 const MessageBubble = React.memo(function MessageBubble({
   message,
   expandedThinking,
-  toggleThinkingExpanded
+  toggleThinkingExpanded,
+  user
 }: {
   message: ChatMessage
   expandedThinking: Set<string>
   toggleThinkingExpanded: (id: string) => void
+  user?: GitHubUser | null
 }) {
   return (
     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
@@ -375,7 +402,9 @@ const MessageBubble = React.memo(function MessageBubble({
       <div
         className={cn(
           'max-w-[85%] rounded-lg',
-          message.role === 'user' ? 'bg-primary text-primary-foreground px-3 py-2' : 'bg-muted'
+          message.role === 'user'
+            ? 'bg-primary text-primary-foreground px-3 py-2 selection:bg-white/30 selection:text-white'
+            : 'bg-muted'
         )}
       >
         {message.role === 'assistant' ? (
@@ -430,9 +459,12 @@ const MessageBubble = React.memo(function MessageBubble({
       </div>
 
       {message.role === 'user' && (
-        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-          <User className="w-3.5 h-3.5" />
-        </div>
+        <Avatar className="w-7 h-7 flex-shrink-0">
+          {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.login} /> : null}
+          <AvatarFallback className="bg-muted">
+            <User className="w-3.5 h-3.5" />
+          </AvatarFallback>
+        </Avatar>
       )}
     </div>
   )
@@ -502,15 +534,17 @@ const StreamingBubble = React.memo(function StreamingBubble({
 const QueuedMessageBubble = React.memo(function QueuedMessageBubble({
   message,
   index,
-  onRemove
+  onRemove,
+  user
 }: {
   message: QueuedMessage
   index: number
   onRemove: () => void
+  user?: GitHubUser | null
 }) {
   return (
     <div className="flex gap-2 justify-end opacity-60">
-      <div className="max-w-[85%] rounded-lg bg-primary/50 text-primary-foreground px-3 py-2 relative group">
+      <div className="max-w-[85%] rounded-lg bg-primary/50 text-primary-foreground px-3 py-2 relative group selection:bg-white/30 selection:text-white">
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         <button
           type="button"
@@ -524,14 +558,17 @@ const QueuedMessageBubble = React.memo(function QueuedMessageBubble({
           #{index + 1}
         </span>
       </div>
-      <div className="w-7 h-7 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
-        <User className="w-3.5 h-3.5 opacity-50" />
-      </div>
+      <Avatar className="w-7 h-7 flex-shrink-0 opacity-50">
+        {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.login} /> : null}
+        <AvatarFallback className="bg-muted/50">
+          <User className="w-3.5 h-3.5" />
+        </AvatarFallback>
+      </Avatar>
     </div>
   )
 })
 
-export function AIChatPanel({ onClose }: AIChatPanelProps) {
+export function AIChatPanel({ onClose, user, linkedPRChat, onClosePRChat }: AIChatPanelProps) {
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [isSettingKey, setIsSettingKey] = useState(false)
@@ -610,16 +647,23 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [key, history, model, thinking] = await Promise.all([
+      const [key, model, thinking] = await Promise.all([
         window.electron.getClaudeApiKey(),
-        window.electron.getChatHistory(),
         window.electron.getSelectedModel(),
         window.electron.getEnableThinking()
       ])
       setApiKey(key)
-      setMessages(history)
       setSelectedModel(model)
       setEnableThinking(thinking)
+
+      // Load appropriate chat history based on linkedPRChat
+      if (linkedPRChat) {
+        const prMessages = await window.electron.getPRChatMessages(linkedPRChat.prId)
+        setMessages(prMessages)
+      } else {
+        const history = await window.electron.getChatHistory()
+        setMessages(history)
+      }
 
       // If we have an API key, fetch available models
       if (key) {
@@ -630,9 +674,9 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [loadModels])
+  }, [loadModels, linkedPRChat])
 
-  // Load API key and chat history on mount
+  // Load API key and chat history on mount or when linkedPRChat changes
   useEffect(() => {
     loadData()
   }, [loadData])
@@ -918,9 +962,40 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
           } else if (chunk.type === 'done') {
             // Stream complete - reload history to get the saved message
             setStreaming({ content: '', thinking: '', isStreaming: false })
-            window.electron.getChatHistory().then((history) => {
-              setMessages(history)
-            })
+
+            // For PR chats, we need to save the messages to PR chat storage
+            // since the main process saves to general chat by default
+            if (linkedPRChat) {
+              // Save the user and assistant messages to PR chat
+              setMessages((prev) => {
+                // Find the last user message and the new assistant message
+                const userMsg = prev.find((m) => m.id === tempMsgId)
+                if (userMsg) {
+                  window.electron.addMessageToPRChat(linkedPRChat.prId, userMsg)
+                }
+                return prev
+              })
+
+              // Get the final response from general chat and add to PR chat
+              window.electron.getChatHistory().then((history) => {
+                const lastMsg = history[history.length - 1]
+                if (lastMsg && lastMsg.role === 'assistant') {
+                  window.electron.addMessageToPRChat(linkedPRChat.prId, lastMsg)
+                  setMessages((prev) => {
+                    // Update the last message if it's from the assistant
+                    const withoutTemp = prev.filter(
+                      (m) => m.role !== 'assistant' || m.content !== ''
+                    )
+                    return [...withoutTemp, lastMsg]
+                  })
+                }
+              })
+            } else {
+              window.electron.getChatHistory().then((history) => {
+                setMessages(history)
+              })
+            }
+
             setIsSending(false)
             isProcessingRef.current = false
             // Clean up listener
@@ -971,7 +1046,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         processNextInQueue()
       }
     },
-    [processNextInQueue]
+    [processNextInQueue, linkedPRChat]
   )
 
   // Keep ref updated with latest processMessage
@@ -1016,7 +1091,11 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   }, [input, isSending, processMessage])
 
   const handleClearHistory = async () => {
-    await window.electron.clearChatHistory()
+    if (linkedPRChat) {
+      await window.electron.clearPRChatMessages(linkedPRChat.prId)
+    } else {
+      await window.electron.clearChatHistory()
+    }
     setMessages([])
   }
 
@@ -1032,10 +1111,17 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border bg-muted/20">
-        <div className="flex items-center gap-2">
-          <DogIcon className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold text-sm">AI Assistant</h2>
-          {apiKey && selectedModel && (
+        <div className="flex items-center gap-2 min-w-0">
+          <DogIcon className="w-5 h-5 text-primary flex-shrink-0" />
+          <h2 className="font-semibold text-sm flex-shrink-0">
+            {linkedPRChat ? 'PR Chat' : 'AI Assistant'}
+          </h2>
+          {linkedPRChat && (
+            <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded truncate max-w-[120px]">
+              #{linkedPRChat.prNumber}
+            </span>
+          )}
+          {!linkedPRChat && apiKey && selectedModel && (
             <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
               (
               {models.find((m) => m.id === selectedModel)?.display_name ||
@@ -1045,6 +1131,17 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
           )}
         </div>
         <div className="flex items-center gap-1">
+          {linkedPRChat && onClosePRChat && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onClosePRChat}
+              title="Back to general chat"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          )}
           {apiKey && (
             <>
               <Button
@@ -1072,6 +1169,23 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
           </Button>
         </div>
       </div>
+
+      {/* PR Context Banner */}
+      {linkedPRChat && (
+        <div className="px-3 py-2 border-b border-border bg-primary/5">
+          <div className="flex items-center gap-2">
+            <GitPullRequest className="w-4 h-4 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium truncate">
+                #{linkedPRChat.prNumber} {linkedPRChat.prTitle}
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate">
+                {linkedPRChat.repoFullName}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Panel */}
       {showSettings && apiKey && (
@@ -1248,6 +1362,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
               scrollContainerRef={scrollContainerRef}
               onScroll={handleScroll}
               onVirtualizerReady={handleVirtualizerReady}
+              user={user}
             />
           )
         )}

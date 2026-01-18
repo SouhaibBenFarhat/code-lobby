@@ -31,6 +31,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
+import { usePRChat } from '../App'
+import { DogIcon } from './DogIcon'
 import { MarkdownContent } from './MarkdownContent'
 import type { PullRequest, ReviewThread } from './types'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
@@ -769,6 +771,7 @@ function _ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: str
 }
 
 export function PRDetail({ pr, onClose }: PRDetailProps) {
+  const { openPRInChat } = usePRChat()
   const [jobSearch, setJobSearch] = useState('')
   const [groupByState, setGroupByState] = useState(true)
   // Only failed is expanded by default (needs attention), others collapsed
@@ -1280,6 +1283,24 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                 <p className="font-medium">Why is this PR open?</p>
                 <p className="text-xs text-muted-foreground">
                   AI analyzes CI, reviews, and comments to explain blockers
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => openPRInChat(pr)}
+                >
+                  <DogIcon className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                <p className="font-medium">Start AI Chat</p>
+                <p className="text-xs text-muted-foreground">
+                  Open AI assistant with this PR's context
                 </p>
               </TooltipContent>
             </Tooltip>

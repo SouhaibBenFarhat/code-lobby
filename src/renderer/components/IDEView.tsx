@@ -18,6 +18,7 @@ import { cn, formatRelativeTime } from '@/lib/utils'
 import { useMyPRsFilter, usePRContext } from '../App'
 import { PRDetail } from './PRDetail'
 import type { PullRequest, Repository } from './types'
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { ScrollArea } from './ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
@@ -196,6 +197,12 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
           pr.draft ? 'text-muted-foreground' : isSelected ? 'text-primary' : 'text-blue-500'
         )}
       />
+      <Avatar className="w-4 h-4 flex-shrink-0">
+        <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
+        <AvatarFallback className="text-[6px]">
+          <User className="w-2.5 h-2.5" />
+        </AvatarFallback>
+      </Avatar>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-mono text-muted-foreground">#{pr.number}</span>

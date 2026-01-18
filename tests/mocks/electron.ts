@@ -114,6 +114,17 @@ interface MockElectronAPI {
   getPRAnalysisPanelOpen: ReturnType<typeof vi.fn>
   setPRAnalysisPanelOpen: ReturnType<typeof vi.fn>
 
+  // PR Chat
+  getPRChats: ReturnType<typeof vi.fn>
+  getPRChat: ReturnType<typeof vi.fn>
+  createPRChat: ReturnType<typeof vi.fn>
+  addMessageToPRChat: ReturnType<typeof vi.fn>
+  getPRChatMessages: ReturnType<typeof vi.fn>
+  clearPRChatMessages: ReturnType<typeof vi.fn>
+  deletePRChat: ReturnType<typeof vi.fn>
+  getActivePRChatId: ReturnType<typeof vi.fn>
+  setActivePRChatId: ReturnType<typeof vi.fn>
+
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
@@ -268,6 +279,27 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     deletePRAnalysis: vi.fn().mockResolvedValue({ success: true }),
     getPRAnalysisPanelOpen: vi.fn().mockResolvedValue(false),
     setPRAnalysisPanelOpen: vi.fn().mockResolvedValue({ success: true }),
+
+    // PR Chat
+    getPRChats: vi.fn().mockResolvedValue([]),
+    getPRChat: vi.fn().mockResolvedValue(null),
+    createPRChat: vi.fn().mockImplementation((prId, prNumber, prTitle, repoFullName) =>
+      Promise.resolve({
+        prId,
+        prNumber,
+        prTitle,
+        repoFullName,
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+    ),
+    addMessageToPRChat: vi.fn().mockResolvedValue({ success: true }),
+    getPRChatMessages: vi.fn().mockResolvedValue([]),
+    clearPRChatMessages: vi.fn().mockResolvedValue({ success: true }),
+    deletePRChat: vi.fn().mockResolvedValue({ success: true }),
+    getActivePRChatId: vi.fn().mockResolvedValue(null),
+    setActivePRChatId: vi.fn().mockResolvedValue({ success: true }),
 
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),

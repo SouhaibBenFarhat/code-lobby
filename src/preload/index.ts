@@ -259,6 +259,83 @@ export interface ElectronAPI {
   getPRAnalysisPanelOpen: (prId: string) => Promise<boolean>
   setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) => Promise<{ success: boolean }>
 
+  // PR Chat (AI chat linked to specific PRs)
+  getPRChats: () => Promise<
+    Array<{
+      prId: string
+      prNumber: number
+      prTitle: string
+      repoFullName: string
+      messages: Array<{
+        id: string
+        role: 'user' | 'assistant'
+        content: string
+        thinking?: string
+        timestamp: string
+      }>
+      createdAt: string
+      updatedAt: string
+    }>
+  >
+  getPRChat: (prId: string) => Promise<{
+    prId: string
+    prNumber: number
+    prTitle: string
+    repoFullName: string
+    messages: Array<{
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      thinking?: string
+      timestamp: string
+    }>
+    createdAt: string
+    updatedAt: string
+  } | null>
+  createPRChat: (
+    prId: string,
+    prNumber: number,
+    prTitle: string,
+    repoFullName: string
+  ) => Promise<{
+    prId: string
+    prNumber: number
+    prTitle: string
+    repoFullName: string
+    messages: Array<{
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      thinking?: string
+      timestamp: string
+    }>
+    createdAt: string
+    updatedAt: string
+  }>
+  addMessageToPRChat: (
+    prId: string,
+    message: {
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      thinking?: string
+      timestamp: string
+    }
+  ) => Promise<{ success: boolean }>
+  getPRChatMessages: (prId: string) => Promise<
+    Array<{
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      thinking?: string
+      timestamp: string
+    }>
+  >
+  clearPRChatMessages: (prId: string) => Promise<{ success: boolean }>
+  deletePRChat: (prId: string) => Promise<{ success: boolean }>
+  getActivePRChatId: () => Promise<string | null>
+  setActivePRChatId: (prId: string | null) => Promise<{ success: boolean }>
+
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
@@ -501,6 +578,27 @@ const electronAPI: ElectronAPI = {
   getPRAnalysisPanelOpen: (prId: string) => ipcRenderer.invoke('get-pr-analysis-panel-open', prId),
   setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) =>
     ipcRenderer.invoke('set-pr-analysis-panel-open', prId, isOpen),
+
+  // PR Chat (AI chat linked to specific PRs)
+  getPRChats: () => ipcRenderer.invoke('get-pr-chats'),
+  getPRChat: (prId: string) => ipcRenderer.invoke('get-pr-chat', prId),
+  createPRChat: (prId: string, prNumber: number, prTitle: string, repoFullName: string) =>
+    ipcRenderer.invoke('create-pr-chat', prId, prNumber, prTitle, repoFullName),
+  addMessageToPRChat: (
+    prId: string,
+    message: {
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      thinking?: string
+      timestamp: string
+    }
+  ) => ipcRenderer.invoke('add-message-to-pr-chat', prId, message),
+  getPRChatMessages: (prId: string) => ipcRenderer.invoke('get-pr-chat-messages', prId),
+  clearPRChatMessages: (prId: string) => ipcRenderer.invoke('clear-pr-chat-messages', prId),
+  deletePRChat: (prId: string) => ipcRenderer.invoke('delete-pr-chat', prId),
+  getActivePRChatId: () => ipcRenderer.invoke('get-active-pr-chat-id'),
+  setActivePRChatId: (prId: string | null) => ipcRenderer.invoke('set-active-pr-chat-id', prId),
 
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),

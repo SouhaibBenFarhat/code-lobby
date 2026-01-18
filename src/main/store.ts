@@ -74,6 +74,17 @@ export interface PRAnalysis {
   generatedAt: number // Timestamp when analysis was generated
 }
 
+// PR Chat - AI chat linked to a specific PR
+export interface PRChat {
+  prId: string // Unique PR identifier (e.g., "owner/repo#123")
+  prNumber: number
+  prTitle: string
+  repoFullName: string
+  messages: ChatMessage[]
+  createdAt: string
+  updatedAt: string
+}
+
 // Cache TTL constants (in milliseconds)
 export const CACHE_TTL_PR_DATA = 30 * 60 * 1000 // 30 minutes
 export const CACHE_TTL_ALL_REPOS = 30 * 60 * 1000 // 30 minutes
@@ -99,6 +110,8 @@ interface StoreSchema {
   dataCache: DataCache // Persistent cache for API data
   prAnalyses: PRAnalysis[] // Persisted AI analyses of PRs
   prAnalysisPanelStates: Record<string, boolean> // Panel open/closed state per PR (prId -> isOpen)
+  prChats: PRChat[] // AI chats linked to specific PRs
+  activePRChatId: string | null // Currently active PR chat (null = general chat)
 }
 
 const store = new Store<StoreSchema>({
@@ -139,7 +152,9 @@ const store = new Store<StoreSchema>({
       allRepos: null
     },
     prAnalyses: [],
-    prAnalysisPanelStates: {}
+    prAnalysisPanelStates: {},
+    prChats: [],
+    activePRChatId: null
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -415,4 +430,97 @@ export function setPRAnalysisPanelOpen(prId: string, isOpen: boolean): void {
 
 export function clearPRAnalysisPanelStates(): void {
   store.set('prAnalysisPanelStates', {})
+}
+
+// PR Chat functions
+const MAX_PR_CHATS = 50 // Limit to prevent unbounded growth
+
+export function getPRChats(): PRChat[] {
+  return store.get('prChats') || []
+}
+
+export function getPRChat(prId: string): PRChat | null {
+  const chats = getPRChats()
+  return chats.find((c) => c.prId === prId) || null
+}
+
+export function createPRChat(
+  prId: string,
+  prNumber: number,
+  prTitle: string,
+  repoFullName: string
+): PRChat {
+  const chats = getPRChats()
+
+  // Check if chat already exists
+  const existing = chats.find((c) => c.prId === prId)
+  if (existing) {
+    return existing
+  }
+
+  const newChat: PRChat = {
+    prId,
+    prNumber,
+    prTitle,
+    repoFullName,
+    messages: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+
+  // Add new chat and trim if over limit
+  const updatedChats = [...chats, newChat]
+  if (updatedChats.length > MAX_PR_CHATS) {
+    // Remove oldest chats (by createdAt)
+    updatedChats.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    updatedChats.splice(MAX_PR_CHATS)
+  }
+
+  store.set('prChats', updatedChats)
+  return newChat
+}
+
+export function addMessageToPRChat(prId: string, message: ChatMessage): void {
+  const chats = getPRChats()
+  const index = chats.findIndex((c) => c.prId === prId)
+
+  if (index >= 0) {
+    chats[index].messages.push(message)
+    chats[index].updatedAt = new Date().toISOString()
+    store.set('prChats', chats)
+  }
+}
+
+export function getPRChatMessages(prId: string): ChatMessage[] {
+  const chat = getPRChat(prId)
+  return chat?.messages || []
+}
+
+export function clearPRChatMessages(prId: string): void {
+  const chats = getPRChats()
+  const index = chats.findIndex((c) => c.prId === prId)
+
+  if (index >= 0) {
+    chats[index].messages = []
+    chats[index].updatedAt = new Date().toISOString()
+    store.set('prChats', chats)
+  }
+}
+
+export function deletePRChat(prId: string): void {
+  const chats = getPRChats()
+  const filtered = chats.filter((c) => c.prId !== prId)
+  store.set('prChats', filtered)
+}
+
+export function clearAllPRChats(): void {
+  store.set('prChats', [])
+}
+
+export function getActivePRChatId(): string | null {
+  return store.get('activePRChatId')
+}
+
+export function setActivePRChatId(prId: string | null): void {
+  store.set('activePRChatId', prId)
 }

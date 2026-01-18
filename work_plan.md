@@ -36,6 +36,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Conversation persistence | ✅ Complete |
 | | Open Preview (AI-powered) | ✅ Complete |
 | | Why Open? Analysis (AI-powered) | ✅ Complete |
+| | PR-Specific Chat | ✅ Complete |
 | **UI/UX** | Apple design system | ✅ Complete |
 | | Dark/light themes | ✅ Complete |
 | | Fullscreen adaptation | ✅ Complete |
@@ -796,11 +797,47 @@ function addMessageToChat(chatId: string, message: ChatMessage): void
 
 **Estimated Time:** ~6 hours
 
-### 2.4 Open PR in AI Chat 🔴 Not Started
+### 2.4 Open PR in AI Chat ✅ Complete
 > One-click to open a PR in a new AI conversation with full context
 
 **Concept:**
 Click a button on any PR to open a new AI chat session with the PR's full context pre-loaded. Claude immediately understands which PR you're discussing and can review it.
+
+**Implementation Summary:**
+- Dog icon button added to PR detail header (next to other action buttons)
+- Creates or opens existing PR-specific chat session
+- PR context banner displayed in AI chat header when in PR mode
+- Separate message history per PR (persisted to disk)
+- Back button to return to general chat
+- Chat history persists across app restarts
+
+**Technical Details:**
+- `PRChat` interface in `store.ts` - stores per-PR chat sessions
+- Max 50 PR chats stored (oldest removed when limit reached)
+- `PRChatContext` in App.tsx for state management
+- `usePRChat()` hook exported for components
+- IPC handlers: `get-pr-chats`, `get-pr-chat`, `create-pr-chat`, `add-message-to-pr-chat`, `get-pr-chat-messages`, `clear-pr-chat-messages`, `delete-pr-chat`, `get-active-pr-chat-id`, `set-active-pr-chat-id`
+
+**UI:**
+- PR Chat header: "PR Chat" with PR number badge
+- PR Context banner below header showing:
+  - PR icon
+  - PR number and title
+  - Repository name
+- Back arrow button to return to general chat
+- Clear chat clears PR-specific history
+
+**Files Changed:**
+- `src/main/store.ts` - Added PRChat interface and persistence functions
+- `src/main/index.ts` - Added 9 IPC handlers for PR chat operations
+- `src/preload/index.ts` - Exposed PR chat functions to renderer
+- `src/renderer/App.tsx` - Added PRChatContext, openPRInChat, closePRChat
+- `src/renderer/components/AIChat.tsx` - Updated to support linked PR chats
+- `src/renderer/components/PRDetail.tsx` - Added "Start AI Chat" button
+- `tests/mocks/electron.ts` - Added mocks for PR chat functions
+- `tests/utils/render.tsx` - Added PRChatProvider for tests
+
+**Completed:** January 18, 2026
 
 **UI - Entry Points:**
 ```
@@ -970,10 +1007,9 @@ interface AIChat {
 - [ ] Clear context option to use chat for other topics
 - [ ] Fetch file diffs on demand (for deeper review)
 
-**Depends On:**
-- 2.3 Multi-Chat Sessions (for separate PR chats)
+**Note:** Implemented a simplified version without full multi-chat UI. PR chats are stored separately and can be switched via the PR detail "Start Chat" button.
 
-**Estimated Time:** ~4 hours
+**Estimated Time:** ~4 hours (actual: ~2 hours)
 
 ### 2.5 PR Context for AI 🟡 In Progress
 > Provide PR context to the AI assistant

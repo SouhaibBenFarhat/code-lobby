@@ -1065,6 +1065,59 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
+  // PR Chat operations
+  ipcMain.handle('get-pr-chats', async () => {
+    const { getPRChats } = await import('./store')
+    return getPRChats()
+  })
+
+  ipcMain.handle('get-pr-chat', async (_, prId: string) => {
+    const { getPRChat } = await import('./store')
+    return getPRChat(prId)
+  })
+
+  ipcMain.handle(
+    'create-pr-chat',
+    async (_, prId: string, prNumber: number, prTitle: string, repoFullName: string) => {
+      const { createPRChat } = await import('./store')
+      return createPRChat(prId, prNumber, prTitle, repoFullName)
+    }
+  )
+
+  ipcMain.handle('add-message-to-pr-chat', async (_, prId: string, message: any) => {
+    const { addMessageToPRChat } = await import('./store')
+    addMessageToPRChat(prId, message)
+    return { success: true }
+  })
+
+  ipcMain.handle('get-pr-chat-messages', async (_, prId: string) => {
+    const { getPRChatMessages } = await import('./store')
+    return getPRChatMessages(prId)
+  })
+
+  ipcMain.handle('clear-pr-chat-messages', async (_, prId: string) => {
+    const { clearPRChatMessages } = await import('./store')
+    clearPRChatMessages(prId)
+    return { success: true }
+  })
+
+  ipcMain.handle('delete-pr-chat', async (_, prId: string) => {
+    const { deletePRChat } = await import('./store')
+    deletePRChat(prId)
+    return { success: true }
+  })
+
+  ipcMain.handle('get-active-pr-chat-id', async () => {
+    const { getActivePRChatId } = await import('./store')
+    return getActivePRChatId()
+  })
+
+  ipcMain.handle('set-active-pr-chat-id', async (_, prId: string | null) => {
+    const { setActivePRChatId } = await import('./store')
+    setActivePRChatId(prId)
+    return { success: true }
+  })
+
   // Logging
   ipcMain.handle('get-logs', async () => {
     return logger.getLogs()

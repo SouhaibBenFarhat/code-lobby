@@ -57,6 +57,29 @@ const TestMyPRsFilterContext = createContext<MyPRsFilterContextType>({
 // Export for tests that need to mock useMyPRsFilter
 export const useMyPRsFilter = () => useContext(TestMyPRsFilterContext)
 
+// Mirror the PRChatContext from App.tsx for testing
+interface LinkedPRChat {
+  prId: string
+  prNumber: number
+  prTitle: string
+  repoFullName: string
+}
+
+interface PRChatContextType {
+  linkedPRChat: LinkedPRChat | null
+  openPRInChat: (pr: PullRequest) => void
+  closePRChat: () => void
+}
+
+const TestPRChatContext = createContext<PRChatContextType>({
+  linkedPRChat: null,
+  openPRInChat: () => {},
+  closePRChat: () => {}
+})
+
+// Export for tests that need to mock usePRChat
+export const usePRChat = () => useContext(TestPRChatContext)
+
 interface WrapperProps {
   children: ReactNode
 }
@@ -67,6 +90,9 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   onSelectPR?: (pr: PullRequest | null) => void
   initialMyPRsRepos?: string[]
   onToggleMyPRsFilter?: (repoFullName: string) => void
+  initialLinkedPRChat?: LinkedPRChat | null
+  onOpenPRInChat?: (pr: PullRequest) => void
+  onClosePRChat?: () => void
 }
 
 /**
@@ -147,6 +173,45 @@ function MyPRsFilterProvider({
 }
 
 /**
+ * PRChat Provider for tests
+ */
+function PRChatProvider({
+  children,
+  initialLinkedPRChat = null,
+  onOpenPRInChat,
+  onClosePRChat
+}: {
+  children: ReactNode
+  initialLinkedPRChat?: LinkedPRChat | null
+  onOpenPRInChat?: (pr: PullRequest) => void
+  onClosePRChat?: () => void
+}): ReactElement {
+  const [linkedPRChat, setLinkedPRChat] = useState<LinkedPRChat | null>(initialLinkedPRChat)
+
+  const openPRInChat = (pr: PullRequest) => {
+    const prChat: LinkedPRChat = {
+      prId: `${pr.base.repo.full_name}#${pr.number}`,
+      prNumber: pr.number,
+      prTitle: pr.title,
+      repoFullName: pr.base.repo.full_name
+    }
+    setLinkedPRChat(prChat)
+    onOpenPRInChat?.(pr)
+  }
+
+  const closePRChat = () => {
+    setLinkedPRChat(null)
+    onClosePRChat?.()
+  }
+
+  return (
+    <TestPRChatContext.Provider value={{ linkedPRChat, openPRInChat, closePRChat }}>
+      {children}
+    </TestPRChatContext.Provider>
+  )
+}
+
+/**
  * Custom render function that wraps component with all providers
  */
 function customRender(ui: ReactElement, options?: CustomRenderOptions): RenderResult {
@@ -156,6 +221,9 @@ function customRender(ui: ReactElement, options?: CustomRenderOptions): RenderRe
     onSelectPR,
     initialMyPRsRepos,
     onToggleMyPRsFilter,
+    initialLinkedPRChat,
+    onOpenPRInChat,
+    onClosePRChat,
     ...renderOptions
   } = options || {}
 
@@ -164,7 +232,13 @@ function customRender(ui: ReactElement, options?: CustomRenderOptions): RenderRe
       <TooltipProvider>
         <PRContextProvider initialSelectedPR={initialSelectedPR} onSelectPR={onSelectPR}>
           <MyPRsFilterProvider initialMyPRsRepos={initialMyPRsRepos} onToggle={onToggleMyPRsFilter}>
-            {children}
+            <PRChatProvider
+              initialLinkedPRChat={initialLinkedPRChat}
+              onOpenPRInChat={onOpenPRInChat}
+              onClosePRChat={onClosePRChat}
+            >
+              {children}
+            </PRChatProvider>
           </MyPRsFilterProvider>
         </PRContextProvider>
       </TooltipProvider>
