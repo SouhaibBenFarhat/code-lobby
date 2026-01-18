@@ -210,6 +210,7 @@ Everything persists across sessions:
 - Filter settings per repository
 - AI conversation history
 - Panel open/closed states
+- **Selected AI conversation** — Resume exactly where you left off
 
 Close the app Friday, open it Monday — everything is exactly where you left it.
 
