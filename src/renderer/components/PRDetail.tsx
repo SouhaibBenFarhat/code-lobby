@@ -65,8 +65,9 @@ function CheckItem({
   }
 
   return (
-    <div
-      className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors overflow-hidden"
+    <button
+      type="button"
+      className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors overflow-hidden w-full text-left"
       onClick={() => window.open(check.html_url, '_blank')}
     >
       <span className="flex-shrink-0">{getIcon()}</span>
@@ -74,7 +75,7 @@ function CheckItem({
       <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">
         {check.status === 'in_progress' ? 'Running' : check.conclusion || check.status}
       </Badge>
-    </div>
+    </button>
   )
 }
 
@@ -901,7 +902,8 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
           inlineComments: []
         })
       }
-      const group = reviewerMap.get(login)!
+      const group = reviewerMap.get(login)
+      if (!group) continue
       // Use the latest review state
       if (review.state === 'approved' || review.state === 'changes_requested') {
         group.reviewState = review.state as 'approved' | 'changes_requested'
@@ -929,7 +931,8 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             inlineComments: []
           })
         }
-        const group = reviewerMap.get(login)!
+        const group = reviewerMap.get(login)
+        if (!group) continue
         group.inlineComments.push({
           id: comment.id,
           body: comment.body,
@@ -951,8 +954,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
     // Convert to array and sort by review state (approved last, changes_requested first)
     return Array.from(reviewerMap.values()).sort((a, b) => {
-      const stateOrder = { changes_requested: 0, commented: 1, approved: 2, null: 3 }
-      return (stateOrder[a.reviewState!] || 3) - (stateOrder[b.reviewState!] || 3)
+      const stateOrder: Record<string, number> = { changes_requested: 0, commented: 1, approved: 2 }
+      const aOrder = a.reviewState ? (stateOrder[a.reviewState] ?? 3) : 3
+      const bOrder = b.reviewState ? (stateOrder[b.reviewState] ?? 3) : 3
+      return aOrder - bOrder
     })
   }, [pr.reviews, pr.reviewThreads])
 

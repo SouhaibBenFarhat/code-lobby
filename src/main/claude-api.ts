@@ -55,7 +55,8 @@ function getClient(apiKey: string): Anthropic {
   if (!clientCache.has(apiKey)) {
     clientCache.set(apiKey, new Anthropic({ apiKey }))
   }
-  return clientCache.get(apiKey)!
+  // Safe to cast - we just set it if it didn't exist
+  return clientCache.get(apiKey) as Anthropic
 }
 
 /**

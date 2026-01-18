@@ -259,16 +259,8 @@ export function LogsViewer() {
                 const isExpanded = expandedLogs.has(log.id)
                 const hasDetails = log.details !== undefined
 
-                return (
-                  <div
-                    key={log.id}
-                    className={cn(
-                      'rounded-md p-2 text-sm font-mono',
-                      config.bg,
-                      hasDetails && 'cursor-pointer hover:opacity-80'
-                    )}
-                    onClick={() => hasDetails && toggleExpand(log.id)}
-                  >
+                const logContent = (
+                  <>
                     <div className="flex items-start gap-2">
                       <LevelIcon className={cn('h-4 w-4 mt-0.5 flex-shrink-0', config.color)} />
                       <span className="text-muted-foreground text-xs whitespace-nowrap">
@@ -289,6 +281,29 @@ export function LogsViewer() {
                         {JSON.stringify(log.details, null, 2)}
                       </pre>
                     )}
+                  </>
+                )
+
+                if (hasDetails) {
+                  return (
+                    <button
+                      type="button"
+                      key={log.id}
+                      className={cn(
+                        'rounded-md p-2 text-sm font-mono w-full text-left',
+                        config.bg,
+                        'cursor-pointer hover:opacity-80'
+                      )}
+                      onClick={() => toggleExpand(log.id)}
+                    >
+                      {logContent}
+                    </button>
+                  )
+                }
+
+                return (
+                  <div key={log.id} className={cn('rounded-md p-2 text-sm font-mono', config.bg)}>
+                    {logContent}
                   </div>
                 )
               })

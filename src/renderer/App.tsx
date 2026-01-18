@@ -301,10 +301,25 @@ function App() {
                   >
                     {/* Resize handle */}
                     <div
+                      role="slider"
+                      aria-orientation="horizontal"
+                      aria-label="Resize panel"
+                      aria-valuemin={MIN_PANEL_WIDTH}
+                      aria-valuemax={MAX_PANEL_WIDTH}
+                      aria-valuenow={panelWidth}
+                      tabIndex={0}
                       className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
                         isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
                       }`}
                       onMouseDown={handleResizeStart}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowLeft') {
+                          setPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - 20))
+                        }
+                        if (e.key === 'ArrowRight') {
+                          setPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + 20))
+                        }
+                      }}
                     />
                     <div className="flex-1 overflow-hidden flex flex-col min-w-0">
                       {selectedPR ? (
@@ -362,10 +377,25 @@ function App() {
               >
                 {/* Resize handle */}
                 <div
+                  role="slider"
+                  aria-orientation="horizontal"
+                  aria-label="Resize AI panel"
+                  aria-valuemin={MIN_PANEL_WIDTH}
+                  aria-valuemax={MAX_PANEL_WIDTH}
+                  aria-valuenow={aiPanelWidth}
+                  tabIndex={0}
                   className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
                     isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
                   }`}
                   onMouseDown={handleAIResizeStart}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft') {
+                      setAIPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - 20))
+                    }
+                    if (e.key === 'ArrowRight') {
+                      setAIPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + 20))
+                    }
+                  }}
                 />
                 <div className="flex-1 overflow-hidden flex flex-col min-w-0">
                   <AIChatPanel onClose={toggleAIPanel} />

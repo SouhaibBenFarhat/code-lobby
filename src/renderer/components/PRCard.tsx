@@ -71,9 +71,10 @@ export function PRCard({ pr }: PRCardProps) {
   const totalComments = pr.comments + pr.review_comments
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item',
+        'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item text-left w-full',
         pr.draft && 'opacity-70',
         isSelected && 'selected'
       )}
@@ -207,6 +208,6 @@ export function PRCard({ pr }: PRCardProps) {
           </Tooltip>
         </div>
       </div>
-    </div>
+    </button>
   )
 }

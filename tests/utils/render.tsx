@@ -8,8 +8,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RenderOptions, RenderResult, render } from '@testing-library/react'
 import { createContext, ReactElement, ReactNode, useContext, useState } from 'react'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import type { PullRequest } from '@/components/types'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Create a new QueryClient for each test
 function createTestQueryClient(): QueryClient {

@@ -14,19 +14,19 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "off",
-        "noArrayIndexKey": "warn"
+        "noArrayIndexKey": "error"
       },
       "style": {
         "useImportType": "off",
-        "noNonNullAssertion": "warn"
+        "noNonNullAssertion": "error"
       },
       "a11y": {
-        "noStaticElementInteractions": "warn",
-        "useKeyWithClickEvents": "warn",
-        "noSvgWithoutTitle": "warn"
+        "noStaticElementInteractions": "error",
+        "useKeyWithClickEvents": "error",
+        "noSvgWithoutTitle": "error"
       },
       "correctness": {
-        "useExhaustiveDependencies": "warn"
+        "useExhaustiveDependencies": "error"
       }
     }
   },

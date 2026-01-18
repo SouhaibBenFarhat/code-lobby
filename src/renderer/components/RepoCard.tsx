@@ -112,10 +112,10 @@ export function RepoCard({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="grid grid-cols-6 gap-1">
-                {COLOR_PALETTE.map((c, i) => (
+                {COLOR_PALETTE.map((c) => (
                   <button
                     type="button"
-                    key={i}
+                    key={c || 'no-color'}
                     className={cn(
                       'w-6 h-6 rounded-md border-2 transition-all hover:scale-110',
                       c === color ? 'ring-2 ring-offset-2 ring-primary' : 'border-transparent',

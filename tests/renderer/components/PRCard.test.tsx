@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PRCard } from '@/components/PRCard'
+import type { PullRequest } from '@/components/types'
 import { resetMockElectron, setupMockElectron } from '../../mocks/electron'
 import {
   createMockDraftPR,
@@ -13,7 +14,6 @@ import {
   resetIdCounter
 } from '../../mocks/factories'
 import { fireEvent, render, screen } from '../../utils/render'
-import type { PullRequest } from '@/components/types'
 
 // Mock the usePRContext hook
 const mockSetSelectedPR = vi.fn()
@@ -160,7 +160,8 @@ describe('PRCard', () => {
       const { container } = render(<PRCard pr={pr} />)
 
       const card = container.querySelector('.pr-card-item')
-      fireEvent.click(card!)
+      expect(card).not.toBeNull()
+      if (card) fireEvent.click(card)
 
       expect(mockSetSelectedPR).toHaveBeenCalledTimes(1)
       expect(mockSetSelectedPR).toHaveBeenCalledWith(pr)
@@ -171,7 +172,8 @@ describe('PRCard', () => {
       const { container } = render(<PRCard pr={pr} />)
 
       const card = container.querySelector('.pr-card-item')
-      fireEvent.click(card!)
+      expect(card).not.toBeNull()
+      if (card) fireEvent.click(card)
 
       expect(mockSetSelectedPR).toHaveBeenCalledWith(pr)
     })

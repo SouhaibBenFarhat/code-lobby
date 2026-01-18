@@ -313,7 +313,7 @@ describe('PRDetail', () => {
       pr.reviewThreads[0].comments[0].user = reviewer1
       pr.reviewThreads[1].comments[0].user = reviewer2
 
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
       await waitFor(() => {
         expect(screen.getByText('reviewer1')).toBeInTheDocument()

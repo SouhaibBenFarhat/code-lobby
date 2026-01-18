@@ -59,13 +59,22 @@ function TreeItem({
 
   return (
     <div className="select-none">
-      {/* Repo folder */}
+      {/* Repo folder - using div with role for compound interactive element */}
       <div
+        role="treeitem"
+        aria-expanded={isExpanded}
+        tabIndex={0}
         className={cn(
-          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-muted/50 rounded transition-colors group',
+          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-muted/50 rounded transition-colors group w-full text-left',
           isExpanded && 'bg-muted/30'
         )}
         onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
       >
         <span className="w-4 h-4 flex items-center justify-center text-muted-foreground">
           {hasPRs ? (
@@ -172,9 +181,10 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
   }
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors ml-2',
+        'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors ml-2 w-full text-left',
         isSelected
           ? 'bg-primary/20 text-primary border-l-2 border-primary -ml-[1px]'
           : 'hover:bg-muted/50'
@@ -199,7 +209,7 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
         </span>
         {getStatusIcon()}
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -444,11 +454,26 @@ export function IDEView({ currentUser }: IDEViewProps) {
 
       {/* Resize handle */}
       <div
+        role="slider"
+        aria-orientation="horizontal"
+        aria-label="Resize sidebar"
+        aria-valuemin={200}
+        aria-valuemax={500}
+        aria-valuenow={sidebarWidth}
+        tabIndex={0}
         className={cn(
           'w-1 cursor-col-resize hover:bg-primary/50 transition-colors flex-shrink-0',
           isResizing && 'bg-primary'
         )}
         onMouseDown={handleResizeStart}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') {
+            setSidebarWidth((w) => Math.max(200, w - 20))
+          }
+          if (e.key === 'ArrowRight') {
+            setSidebarWidth((w) => Math.min(500, w + 20))
+          }
+        }}
       />
 
       {/* Main content - PR Detail */}

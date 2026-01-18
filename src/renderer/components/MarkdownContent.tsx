@@ -88,7 +88,8 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             // For GitHub authenticated images, show a clickable link instead of trying to load
             if (isGitHubUserAttachment) {
               return (
-                <span
+                <button
+                  type="button"
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded border border-border cursor-pointer transition-colors my-1"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -98,7 +99,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                 >
                   <span className="text-primary hover:underline">View image in browser</span>
                   <span className="text-muted-foreground">↗</span>
-                </span>
+                </button>
               )
             }
 
@@ -106,7 +107,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               <span className="inline-block my-2">
                 <img
                   src={src}
-                  alt={alt || 'Image'}
+                  alt={alt || 'Image - click to open'}
                   width={width}
                   height={height}
                   className="max-w-full h-auto rounded border border-border cursor-pointer hover:opacity-90 transition-opacity"
@@ -116,6 +117,12 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                     e.stopPropagation()
                     if (src) window.open(src, '_blank')
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (src) window.open(src, '_blank')
+                    }
+                  }}
                   onError={(e) => {
                     // Hide broken images and show clickable placeholder
                     const target = e.target as HTMLImageElement
@@ -124,7 +131,8 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                     if (placeholder) placeholder.style.display = 'inline-flex'
                   }}
                 />
-                <span
+                <button
+                  type="button"
                   className="hidden items-center gap-1 px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded border border-border cursor-pointer transition-colors"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -133,7 +141,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                 >
                   <span className="text-primary hover:underline">View image in browser</span>
                   <span className="text-muted-foreground">↗</span>
-                </span>
+                </button>
                 {alt && alt !== 'image' && (
                   <span className="block text-[10px] text-muted-foreground mt-1">{alt}</span>
                 )}

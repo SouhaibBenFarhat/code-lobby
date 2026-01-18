@@ -14,6 +14,8 @@ export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn(className)}
+      role="img"
+      aria-label="CodeLobby Logo"
     >
       {/* Background */}
       <rect width="64" height="64" rx="14" className="fill-primary/10" />
@@ -66,6 +68,8 @@ export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn(className)}
+      role="img"
+      aria-label="CodeLobby Icon"
     >
       {/* Left bracket */}
       <path

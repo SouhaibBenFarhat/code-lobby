@@ -92,11 +92,26 @@ export function ResizableSidebar({
         >
           {/* Resize handle */}
           <div
+            role="slider"
+            aria-orientation="horizontal"
+            aria-label="Resize sidebar"
+            aria-valuemin={minWidth}
+            aria-valuemax={maxWidth}
+            aria-valuenow={width}
+            tabIndex={0}
             className={cn(
               'absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10',
               isResizing && 'bg-primary'
             )}
             onMouseDown={startResizing}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                setWidth((w) => Math.max(minWidth, w - 20))
+              }
+              if (e.key === 'ArrowRight') {
+                setWidth((w) => Math.min(maxWidth, w + 20))
+              }
+            }}
           />
 
           {/* Close button */}

@@ -14,6 +14,8 @@ export function DogIcon({ className, ...props }: DogIconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      role="img"
+      aria-label="AI Assistant"
       {...props}
     >
       {/* Head outline */}

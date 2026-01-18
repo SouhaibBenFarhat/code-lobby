@@ -318,7 +318,7 @@ function VirtualizedMessageList({
               {item.type === 'queued' && (
                 <QueuedMessageBubble
                   message={item.data as QueuedMessage}
-                  index={item.index!}
+                  index={item.index ?? 0}
                   onRemove={() =>
                     setMessageQueue((prev) =>
                       prev.filter((m) => m.id !== (item.data as QueuedMessage).id)
@@ -1189,25 +1189,31 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         {(isLoading || (!isConversationReady && messages.length > 0)) && (
           <div className="absolute inset-0 z-10 bg-background p-3 space-y-3 overflow-hidden">
             {/* Skeleton messages */}
-            {[...Array(5)].map((_, i) => (
+            {[
+              { id: 'skeleton-1', isUser: false, width: 65, height: 55 },
+              { id: 'skeleton-2', isUser: true, width: 50, height: 45 },
+              { id: 'skeleton-3', isUser: false, width: 75, height: 60 },
+              { id: 'skeleton-4', isUser: true, width: 45, height: 50 },
+              { id: 'skeleton-5', isUser: false, width: 60, height: 48 }
+            ].map((skeleton) => (
               <div
-                key={i}
-                className={cn('flex gap-2', i % 2 === 0 ? 'justify-start' : 'justify-end')}
+                key={skeleton.id}
+                className={cn('flex gap-2', skeleton.isUser ? 'justify-end' : 'justify-start')}
               >
-                {i % 2 === 0 && (
+                {!skeleton.isUser && (
                   <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
                 )}
                 <div
                   className={cn(
                     'rounded-lg animate-pulse',
-                    i % 2 === 0 ? 'bg-muted' : 'bg-primary/20'
+                    skeleton.isUser ? 'bg-primary/20' : 'bg-muted'
                   )}
                   style={{
-                    width: `${40 + Math.random() * 40}%`,
-                    height: `${40 + Math.random() * 40}px`
+                    width: `${skeleton.width}%`,
+                    height: `${skeleton.height}px`
                   }}
                 />
-                {i % 2 !== 0 && (
+                {skeleton.isUser && (
                   <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
                 )}
               </div>

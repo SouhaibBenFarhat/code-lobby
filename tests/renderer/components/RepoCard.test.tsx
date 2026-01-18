@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RepoCard } from '@/components/RepoCard'
+import type { PullRequest } from '@/components/types'
 import { resetMockElectron, setupMockElectron } from '../../mocks/electron'
 import {
   createMockPRWithChecks,
@@ -13,7 +14,6 @@ import {
   resetIdCounter
 } from '../../mocks/factories'
 import { fireEvent, render, screen, waitFor } from '../../utils/render'
-import type { PullRequest } from '@/components/types'
 
 // Mock the usePRContext hook
 const mockSetSelectedPR = vi.fn()
