@@ -1,10 +1,10 @@
 /**
  * Logger Tests
- * 
+ *
  * Tests for the main process logging utility
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock console methods
 const originalConsoleLog = console.log
@@ -25,7 +25,7 @@ afterAll(() => {
 })
 
 // Import logger (will be mocked)
-import { logger, LogCategory, LogLevel } from '@main/logger'
+import { LogCategory, logger } from '@main/logger'
 
 describe('Logger', () => {
   beforeEach(() => {
@@ -117,7 +117,7 @@ describe('Logger', () => {
       logger.info(LogCategory.APP, 'Message 1')
       logger.info(LogCategory.APP, 'Message 2')
       logger.info(LogCategory.APP, 'Message 3')
-      
+
       const logs = logger.getLogs()
       expect(logs).toHaveLength(3)
     })
@@ -125,19 +125,19 @@ describe('Logger', () => {
     it('should clear logs', () => {
       logger.info(LogCategory.APP, 'Message 1')
       logger.info(LogCategory.APP, 'Message 2')
-      
+
       logger.clearLogs()
-      
+
       const logs = logger.getLogs()
       expect(logs).toHaveLength(0)
     })
 
     it('should export logs as JSON', () => {
       logger.info(LogCategory.APP, 'Test message')
-      
+
       const exported = logger.exportLogs()
       const parsed = JSON.parse(exported)
-      
+
       expect(Array.isArray(parsed)).toBe(true)
       expect(parsed).toHaveLength(1)
       expect(parsed[0].message).toBe('Test message')
@@ -148,9 +148,9 @@ describe('Logger', () => {
       logger.info(LogCategory.API, 'Info 2')
       logger.warn(LogCategory.APP, 'Warning')
       logger.error(LogCategory.APP, 'Error')
-      
+
       const summary = logger.getLogsSummary()
-      
+
       expect(summary.total).toBe(4)
       expect(summary.byLevel.info).toBe(2)
       expect(summary.byLevel.warn).toBe(1)
@@ -164,7 +164,7 @@ describe('Logger', () => {
     it('should include id, timestamp, level, category, message', () => {
       logger.info(LogCategory.APP, 'Test message')
       const log = logger.getLogs()[0]
-      
+
       expect(log).toHaveProperty('id')
       expect(log).toHaveProperty('timestamp')
       expect(log).toHaveProperty('level')
@@ -175,7 +175,7 @@ describe('Logger', () => {
     it('should generate unique ids', () => {
       logger.info(LogCategory.APP, 'Message 1')
       logger.info(LogCategory.APP, 'Message 2')
-      
+
       const logs = logger.getLogs()
       expect(logs[0].id).not.toBe(logs[1].id)
     })
@@ -183,7 +183,7 @@ describe('Logger', () => {
     it('should include valid ISO timestamp', () => {
       logger.info(LogCategory.APP, 'Test message')
       const log = logger.getLogs()[0]
-      
+
       const date = new Date(log.timestamp)
       expect(date.toString()).not.toBe('Invalid Date')
     })
@@ -195,7 +195,7 @@ describe('Logger', () => {
       for (let i = 0; i < 1500; i++) {
         logger.info(LogCategory.APP, `Message ${i}`)
       }
-      
+
       const logs = logger.getLogs()
       // Should be capped at 1000 (the default limit)
       expect(logs.length).toBeLessThanOrEqual(1000)

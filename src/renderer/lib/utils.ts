@@ -44,17 +44,20 @@ export function formatRelativeTime(dateString: string): string {
 }
 
 export function groupBy<T>(array: T[], key: (item: T) => string): Record<string, T[]> {
-  return array.reduce((result, item) => {
-    const groupKey = key(item)
-    if (!result[groupKey]) {
-      result[groupKey] = []
-    }
-    result[groupKey].push(item)
-    return result
-  }, {} as Record<string, T[]>)
+  return array.reduce(
+    (result, item) => {
+      const groupKey = key(item)
+      if (!result[groupKey]) {
+        result[groupKey] = []
+      }
+      result[groupKey].push(item)
+      return result
+    },
+    {} as Record<string, T[]>
+  )
 }
 
 export function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str
-  return str.slice(0, maxLength - 3) + '...'
+  return `${str.slice(0, maxLength - 3)}...`
 }

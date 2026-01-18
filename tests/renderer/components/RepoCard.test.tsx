@@ -2,17 +2,17 @@
  * RepoCard Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '../../utils/render'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RepoCard } from '@/components/RepoCard'
-import { setupMockElectron, resetMockElectron } from '../../mocks/electron'
+import { resetMockElectron, setupMockElectron } from '../../mocks/electron'
 import {
-  createMockRepository,
-  createMockPullRequest,
   createMockPRWithChecks,
+  createMockPullRequest,
+  createMockRepository,
   createMockUser,
   resetIdCounter
 } from '../../mocks/factories'
+import { fireEvent, render, screen, waitFor } from '../../utils/render'
 
 // Mock react-rnd
 vi.mock('react-rnd', () => ({
@@ -52,35 +52,31 @@ describe('RepoCard', () => {
     it('should render repo name', () => {
       const repo = createMockRepository({ name: 'frontend' })
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       expect(screen.getByText('frontend')).toBeInTheDocument()
     })
 
     it('should render owner name', () => {
-      const repo = createMockRepository({ 
-        owner: { login: 'myorg', avatar_url: '' } 
+      const repo = createMockRepository({
+        owner: { login: 'myorg', avatar_url: '' }
       })
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       expect(screen.getByText(/myorg/)).toBeInTheDocument()
     })
 
     it('should render language badge', () => {
       const repo = createMockRepository({ language: 'TypeScript' })
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       expect(screen.getByText(/TypeScript/)).toBeInTheDocument()
     })
 
     it('should render PR count', () => {
       const repo = createMockRepository()
-      const prs = [
-        createMockPullRequest(),
-        createMockPullRequest(),
-        createMockPullRequest()
-      ]
+      const prs = [createMockPullRequest(), createMockPullRequest(), createMockPullRequest()]
       render(<RepoCard repo={repo} prs={prs} {...defaultProps} />)
-      
+
       expect(screen.getByText('3')).toBeInTheDocument()
     })
 
@@ -89,7 +85,7 @@ describe('RepoCard', () => {
         pushed_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
       })
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       expect(screen.getByText(/ago/i)).toBeInTheDocument()
     })
   })
@@ -102,7 +98,7 @@ describe('RepoCard', () => {
         createMockPullRequest({ title: 'Add feature', base: { repo, ref: 'main', sha: 'b' } })
       ]
       render(<RepoCard repo={repo} prs={prs} {...defaultProps} />)
-      
+
       expect(screen.getByText('Fix bug #1')).toBeInTheDocument()
       expect(screen.getByText('Add feature')).toBeInTheDocument()
     })
@@ -111,18 +107,18 @@ describe('RepoCard', () => {
       const onPRClick = vi.fn()
       const repo = createMockRepository()
       const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
-      
+
       render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} onPRClick={onPRClick} />)
-      
+
       fireEvent.click(screen.getByText('Test PR'))
-      
+
       expect(onPRClick).toHaveBeenCalledWith(pr)
     })
 
     it('should show empty state when no PRs', () => {
       const repo = createMockRepository()
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       expect(screen.getByText(/No open PRs/i) || screen.getByText(/0/)).toBeInTheDocument()
     })
   })
@@ -131,7 +127,7 @@ describe('RepoCard', () => {
     it('should render close button in header', () => {
       const repo = createMockRepository()
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       const closeButton = document.querySelector('button svg.lucide-x')?.parentElement
       expect(closeButton).toBeInTheDocument()
     })
@@ -140,7 +136,7 @@ describe('RepoCard', () => {
       const onRemove = vi.fn()
       const repo = createMockRepository()
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} onRemove={onRemove} />)
-      
+
       const closeButton = document.querySelector('button svg.lucide-x')?.parentElement
       if (closeButton) {
         fireEvent.click(closeButton)
@@ -154,9 +150,10 @@ describe('RepoCard', () => {
       const repo = createMockRepository()
       const prs = [createMockPullRequest({ base: { repo, ref: 'main', sha: 'a' } })]
       render(<RepoCard repo={repo} prs={prs} {...defaultProps} />)
-      
+
       // Look for toggle button (User/Users icon)
-      const toggle = document.querySelector('button svg.lucide-user')?.parentElement ||
+      const toggle =
+        document.querySelector('button svg.lucide-user')?.parentElement ||
         document.querySelector('button svg.lucide-users')?.parentElement
       expect(toggle).toBeInTheDocument()
     })
@@ -165,36 +162,31 @@ describe('RepoCard', () => {
       const currentUser = createMockUser({ login: 'testuser' })
       const otherUser = createMockUser({ login: 'otheruser' })
       const repo = createMockRepository()
-      
-      const myPR = createMockPullRequest({ 
+
+      const myPR = createMockPullRequest({
         title: 'My PR',
         user: currentUser,
         base: { repo, ref: 'main', sha: 'a' }
       })
-      const otherPR = createMockPullRequest({ 
+      const otherPR = createMockPullRequest({
         title: 'Other PR',
         user: otherUser,
         base: { repo, ref: 'main', sha: 'b' }
       })
-      
+
       render(
-        <RepoCard 
-          repo={repo} 
-          prs={[myPR, otherPR]} 
-          {...defaultProps}
-          currentUser="testuser"
-        />
+        <RepoCard repo={repo} prs={[myPR, otherPR]} {...defaultProps} currentUser="testuser" />
       )
-      
+
       // Both should be visible initially
       expect(screen.getByText('My PR')).toBeInTheDocument()
       expect(screen.getByText('Other PR')).toBeInTheDocument()
-      
+
       // Click toggle
       const toggle = document.querySelector('button svg.lucide-users')?.parentElement
       if (toggle) {
         fireEvent.click(toggle)
-        
+
         await waitFor(() => {
           expect(screen.getByText('My PR')).toBeInTheDocument()
           expect(screen.queryByText('Other PR')).not.toBeInTheDocument()
@@ -207,8 +199,9 @@ describe('RepoCard', () => {
     it('should render color picker button', () => {
       const repo = createMockRepository()
       render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
-      const colorButton = document.querySelector('button svg.lucide-palette')?.parentElement ||
+
+      const colorButton =
+        document.querySelector('button svg.lucide-palette')?.parentElement ||
         document.querySelector('[title*="color" i]')
       expect(colorButton || true).toBeTruthy() // May be hidden by default
     })
@@ -218,9 +211,10 @@ describe('RepoCard', () => {
       const { container } = render(
         <RepoCard repo={repo} prs={[]} {...defaultProps} color="#ff0000" />
       )
-      
+
       // Card should have custom color applied
-      const card = container.querySelector('[style*="border-color"]') ||
+      const _card =
+        container.querySelector('[style*="border-color"]') ||
         container.querySelector('[style*="rgb"]')
       // Color may be applied via style or class
     })
@@ -230,9 +224,10 @@ describe('RepoCard', () => {
     it('should render footer with visual marker', () => {
       const repo = createMockRepository()
       const { container } = render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
-      
+
       // Look for footer element
-      const footer = container.querySelector('[class*="footer"]') ||
+      const footer =
+        container.querySelector('[class*="footer"]') ||
         document.querySelector('.text-muted-foreground.text-center')
       expect(footer || container.querySelector('[class*="dots"]')).toBeTruthy()
     })
@@ -244,7 +239,7 @@ describe('RepoCard', () => {
       const { container } = render(
         <RepoCard repo={repo} prs={[]} {...defaultProps} lockedLayout={true} />
       )
-      
+
       // Rnd component should have disableDragging prop
       const rndContainer = container.querySelector('[data-testid="rnd-container"]')
       expect(rndContainer).toBeInTheDocument()
@@ -255,18 +250,12 @@ describe('RepoCard', () => {
     it('should highlight selected PR', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ id: 'PR_123', base: { repo, ref: 'main', sha: 'a' } })
-      
-      render(
-        <RepoCard 
-          repo={repo} 
-          prs={[pr]} 
-          {...defaultProps}
-          selectedPRId="PR_123"
-        />
-      )
-      
+
+      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} selectedPRId="PR_123" />)
+
       // Selected PR should have special styling
-      const prCard = document.querySelector('[data-selected="true"]') ||
+      const prCard =
+        document.querySelector('[data-selected="true"]') ||
         document.querySelector('[class*="selected"]') ||
         document.querySelector('[class*="primary"]')
       expect(prCard || true).toBeTruthy()
@@ -276,25 +265,25 @@ describe('RepoCard', () => {
   describe('Sorting', () => {
     it('should sort PRs by created date (newest first)', () => {
       const repo = createMockRepository()
-      const oldPR = createMockPullRequest({ 
+      const oldPR = createMockPullRequest({
         title: 'Old PR',
         created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
         base: { repo, ref: 'main', sha: 'a' }
       })
-      const newPR = createMockPullRequest({ 
+      const newPR = createMockPullRequest({
         title: 'New PR',
         created_at: new Date().toISOString(),
         base: { repo, ref: 'main', sha: 'b' }
       })
-      
+
       render(<RepoCard repo={repo} prs={[oldPR, newPR]} {...defaultProps} />)
-      
+
       const prElements = screen.getAllByText(/PR/)
       // Newest should appear first
-      const titles = prElements.map(el => el.textContent)
-      const newIndex = titles.findIndex(t => t?.includes('New'))
-      const oldIndex = titles.findIndex(t => t?.includes('Old'))
-      
+      const titles = prElements.map((el) => el.textContent)
+      const newIndex = titles.findIndex((t) => t?.includes('New'))
+      const oldIndex = titles.findIndex((t) => t?.includes('Old'))
+
       if (newIndex !== -1 && oldIndex !== -1) {
         expect(newIndex).toBeLessThan(oldIndex)
       }
@@ -306,9 +295,9 @@ describe('RepoCard', () => {
       const repo = createMockRepository()
       const pr = createMockPRWithChecks('success')
       pr.base = { repo, ref: 'main', sha: 'a' }
-      
+
       render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} />)
-      
+
       const successIcon = document.querySelector('.text-success')
       expect(successIcon).toBeInTheDocument()
     })

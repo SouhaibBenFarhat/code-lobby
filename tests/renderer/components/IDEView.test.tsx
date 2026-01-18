@@ -2,17 +2,16 @@
  * IDEView Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '../../utils/render'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IDEView } from '@/components/IDEView'
-import { setupAuthenticatedScenario, resetMockElectron } from '../../mocks/electron'
+import { resetMockElectron, setupAuthenticatedScenario } from '../../mocks/electron'
 import {
-  createMockRepository,
   createMockPullRequest,
+  createMockRepository,
   createMockUser,
   resetIdCounter
 } from '../../mocks/factories'
-import React from 'react'
+import { fireEvent, render, screen, waitFor } from '../../utils/render'
 
 // Mock the PRContext
 const mockSetSelectedPR = vi.fn()
@@ -39,11 +38,11 @@ describe('IDEView', () => {
     it('should render Explorer header', async () => {
       const repos = [createMockRepository({ name: 'frontend' })]
       const prs = [createMockPullRequest({ base: { repo: repos[0], ref: 'main', sha: 'abc' } })]
-      
-      setupAuthenticatedScenario({ repos, prs, selectedRepos: repos.map(r => r.full_name) })
-      
+
+      setupAuthenticatedScenario({ repos, prs, selectedRepos: repos.map((r) => r.full_name) })
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Explorer')).toBeInTheDocument()
       })
@@ -54,11 +53,11 @@ describe('IDEView', () => {
         createMockRepository({ name: 'frontend', owner: { login: 'myorg', avatar_url: '' } }),
         createMockRepository({ name: 'backend', owner: { login: 'myorg', avatar_url: '' } })
       ]
-      
-      setupAuthenticatedScenario({ repos, selectedRepos: repos.map(r => r.full_name) })
-      
+
+      setupAuthenticatedScenario({ repos, selectedRepos: repos.map((r) => r.full_name) })
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('frontend')).toBeInTheDocument()
         expect(screen.getByText('backend')).toBeInTheDocument()
@@ -71,11 +70,11 @@ describe('IDEView', () => {
         createMockPullRequest({ base: { repo, ref: 'main', sha: 'abc' } }),
         createMockPullRequest({ base: { repo, ref: 'main', sha: 'def' } })
       ]
-      
+
       setupAuthenticatedScenario({ repos: [repo], prs, selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         // Should show count badge
         expect(screen.getByText('2')).toBeInTheDocument()
@@ -84,9 +83,9 @@ describe('IDEView', () => {
 
     it('should display "No repositories" when no repos selected', async () => {
       setupAuthenticatedScenario({ repos: [], prs: [], selectedRepos: [] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/No repositories/i)).toBeInTheDocument()
       })
@@ -96,23 +95,23 @@ describe('IDEView', () => {
   describe('Folder Expansion', () => {
     it('should expand folder when clicked', async () => {
       const repo = createMockRepository({ name: 'frontend' })
-      const pr = createMockPullRequest({ 
+      const pr = createMockPullRequest({
         title: 'Fix auth bug',
-        base: { repo, ref: 'main', sha: 'abc' } 
+        base: { repo, ref: 'main', sha: 'abc' }
       })
-      
+
       setupAuthenticatedScenario({ repos: [repo], prs: [pr], selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('frontend')).toBeInTheDocument()
       })
-      
+
       // Click on folder to expand
       const folder = screen.getByText('frontend')
       fireEvent.click(folder)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
       })
@@ -120,27 +119,27 @@ describe('IDEView', () => {
 
     it('should collapse folder when clicked again', async () => {
       const repo = createMockRepository({ name: 'frontend' })
-      const pr = createMockPullRequest({ 
+      const pr = createMockPullRequest({
         title: 'Fix auth bug',
-        base: { repo, ref: 'main', sha: 'abc' } 
+        base: { repo, ref: 'main', sha: 'abc' }
       })
-      
+
       setupAuthenticatedScenario({ repos: [repo], prs: [pr], selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('frontend')).toBeInTheDocument()
       })
-      
+
       const folder = screen.getByText('frontend')
-      
+
       // Expand
       fireEvent.click(folder)
       await waitFor(() => {
         expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
       })
-      
+
       // Collapse
       fireEvent.click(folder)
       await waitFor(() => {
@@ -152,30 +151,30 @@ describe('IDEView', () => {
   describe('PR Selection', () => {
     it('should call setSelectedPR when PR is clicked', async () => {
       const repo = createMockRepository({ name: 'frontend' })
-      const pr = createMockPullRequest({ 
+      const pr = createMockPullRequest({
         title: 'Fix auth bug',
         number: 42,
-        base: { repo, ref: 'main', sha: 'abc' } 
+        base: { repo, ref: 'main', sha: 'abc' }
       })
-      
+
       setupAuthenticatedScenario({ repos: [repo], prs: [pr], selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('frontend')).toBeInTheDocument()
       })
-      
+
       // Expand folder first
       fireEvent.click(screen.getByText('frontend'))
-      
+
       await waitFor(() => {
         expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
       })
-      
+
       // Click on PR
       fireEvent.click(screen.getByText('Fix auth bug'))
-      
+
       expect(mockSetSelectedPR).toHaveBeenCalledWith(pr)
     })
   })
@@ -185,50 +184,50 @@ describe('IDEView', () => {
       const currentUser = createMockUser({ login: 'testuser' })
       const otherUser = createMockUser({ login: 'otheruser' })
       const repo = createMockRepository({ name: 'frontend' })
-      
-      const myPR = createMockPullRequest({ 
+
+      const myPR = createMockPullRequest({
         title: 'My PR',
         user: currentUser,
-        base: { repo, ref: 'main', sha: 'abc' } 
+        base: { repo, ref: 'main', sha: 'abc' }
       })
-      const otherPR = createMockPullRequest({ 
+      const otherPR = createMockPullRequest({
         title: 'Other PR',
         user: otherUser,
-        base: { repo, ref: 'main', sha: 'def' } 
+        base: { repo, ref: 'main', sha: 'def' }
       })
-      
-      setupAuthenticatedScenario({ 
+
+      setupAuthenticatedScenario({
         user: currentUser,
-        repos: [repo], 
-        prs: [myPR, otherPR], 
-        selectedRepos: [repo.full_name] 
+        repos: [repo],
+        prs: [myPR, otherPR],
+        selectedRepos: [repo.full_name]
       })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('frontend')).toBeInTheDocument()
       })
-      
+
       // Expand folder
       fireEvent.click(screen.getByText('frontend'))
-      
+
       await waitFor(() => {
         // Both PRs should be visible initially
         expect(screen.getByText('My PR')).toBeInTheDocument()
         expect(screen.getByText('Other PR')).toBeInTheDocument()
       })
-      
+
       // Find and click the My PRs toggle (hover first)
       const folderRow = screen.getByText('frontend').closest('div')
       if (folderRow) {
         fireEvent.mouseEnter(folderRow)
-        
+
         // Find the toggle button
         const toggleButton = folderRow.querySelector('button')
         if (toggleButton) {
           fireEvent.click(toggleButton)
-          
+
           await waitFor(() => {
             expect(screen.getByText('My PR')).toBeInTheDocument()
             expect(screen.queryByText('Other PR')).not.toBeInTheDocument()
@@ -241,11 +240,11 @@ describe('IDEView', () => {
   describe('Empty State', () => {
     it('should show placeholder when no PR is selected', async () => {
       const repo = createMockRepository({ name: 'frontend' })
-      
+
       setupAuthenticatedScenario({ repos: [repo], prs: [], selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/Select a Pull Request/i)).toBeInTheDocument()
       })
@@ -255,11 +254,11 @@ describe('IDEView', () => {
   describe('Sidebar Resize', () => {
     it('should render resize handle', async () => {
       const repo = createMockRepository({ name: 'frontend' })
-      
+
       setupAuthenticatedScenario({ repos: [repo], selectedRepos: [repo.full_name] })
-      
+
       const { container } = render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         // Look for the resize handle with cursor-col-resize class
         const resizeHandle = container.querySelector('.cursor-col-resize')
@@ -276,11 +275,11 @@ describe('IDEView', () => {
         createMockPullRequest({ base: { repo, ref: 'main', sha: 'def' } }),
         createMockPullRequest({ base: { repo, ref: 'main', sha: 'ghi' } })
       ]
-      
+
       setupAuthenticatedScenario({ repos: [repo], prs, selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('3 PRs')).toBeInTheDocument()
       })
@@ -288,14 +287,12 @@ describe('IDEView', () => {
 
     it('should use singular "PR" for count of 1', async () => {
       const repo = createMockRepository({ name: 'frontend' })
-      const prs = [
-        createMockPullRequest({ base: { repo, ref: 'main', sha: 'abc' } })
-      ]
-      
+      const prs = [createMockPullRequest({ base: { repo, ref: 'main', sha: 'abc' } })]
+
       setupAuthenticatedScenario({ repos: [repo], prs, selectedRepos: [repo.full_name] })
-      
+
       render(<IDEView currentUser="testuser" />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('1 PR')).toBeInTheDocument()
       })

@@ -1,16 +1,16 @@
-import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { TokenInput } from './components/TokenInput'
-import { PRGrid } from './components/PRGrid'
-import { PRDetail } from './components/PRDetail'
-import { IDEView } from './components/IDEView'
+import { MousePointerClick, PanelRight, PanelRightClose } from 'lucide-react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { AIChatPanel } from './components/AIChat'
 import { Header, ViewMode } from './components/Header'
+import { IDEView } from './components/IDEView'
+import { PRDetail } from './components/PRDetail'
+import { PRGrid } from './components/PRGrid'
+import { TokenInput } from './components/TokenInput'
+import type { PullRequest } from './components/types'
+import { Button } from './components/ui/button'
 import { Toaster } from './components/ui/toaster'
 import { TooltipProvider } from './components/ui/tooltip'
-import { MousePointerClick, PanelRightClose, PanelRight } from 'lucide-react'
-import { Button } from './components/ui/button'
-import { AIChatPanel } from './components/AIChat'
-import type { PullRequest } from './components/types'
 
 const MIN_PANEL_WIDTH = 300
 const MAX_PANEL_WIDTH = 800
@@ -47,7 +47,7 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('canvas')
   const [viewModeLoaded, setViewModeLoaded] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
-  
+
   // AI Panel state
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false)
   const [aiPanelWidth, setAIPanelWidth] = useState(DEFAULT_AI_PANEL_WIDTH)
@@ -61,7 +61,7 @@ function App() {
       try {
         const mode = await window.electron.getViewMode()
         setViewMode(mode)
-      } catch (e) {
+      } catch (_e) {
         // Use default
       }
       setViewModeLoaded(true)
@@ -82,7 +82,7 @@ function App() {
         const settings = await window.electron.getPRDetailPanel()
         setIsPanelOpen(settings.isOpen)
         setPanelWidth(settings.width || DEFAULT_PANEL_WIDTH)
-      } catch (e) {
+      } catch (_e) {
         // Use defaults if loading fails
       }
       setPanelSettingsLoaded(true)
@@ -103,7 +103,7 @@ function App() {
         const settings = await window.electron.getAIPanel()
         setIsAIPanelOpen(settings.isOpen)
         setAIPanelWidth(settings.width || DEFAULT_AI_PANEL_WIDTH)
-      } catch (e) {
+      } catch (_e) {
         // Use defaults if loading fails
       }
       setAIPanelSettingsLoaded(true)
@@ -125,43 +125,55 @@ function App() {
   }, [selectedPR])
 
   // Handle PR panel resize
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-    resizeRef.current = {
-      startX: e.clientX,
-      startWidth: panelWidth
-    }
-  }, [panelWidth])
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsResizing(true)
+      resizeRef.current = {
+        startX: e.clientX,
+        startWidth: panelWidth
+      }
+    },
+    [panelWidth]
+  )
 
   const togglePanel = useCallback(() => {
-    setIsPanelOpen(prev => !prev)
+    setIsPanelOpen((prev) => !prev)
   }, [])
 
   // Handle AI panel resize
-  const handleAIResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsAIResizing(true)
-    aiResizeRef.current = {
-      startX: e.clientX,
-      startWidth: aiPanelWidth
-    }
-  }, [aiPanelWidth])
+  const handleAIResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsAIResizing(true)
+      aiResizeRef.current = {
+        startX: e.clientX,
+        startWidth: aiPanelWidth
+      }
+    },
+    [aiPanelWidth]
+  )
 
   const toggleAIPanel = useCallback(() => {
-    setIsAIPanelOpen(prev => !prev)
+    setIsAIPanelOpen((prev) => !prev)
   }, [])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && resizeRef.current) {
         const delta = resizeRef.current.startX - e.clientX
-        const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, resizeRef.current.startWidth + delta))
+        const newWidth = Math.min(
+          MAX_PANEL_WIDTH,
+          Math.max(MIN_PANEL_WIDTH, resizeRef.current.startWidth + delta)
+        )
         setPanelWidth(newWidth)
       }
       if (isAIResizing && aiResizeRef.current) {
         const delta = aiResizeRef.current.startX - e.clientX
-        const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, aiResizeRef.current.startWidth + delta))
+        const newWidth = Math.min(
+          MAX_PANEL_WIDTH,
+          Math.max(MIN_PANEL_WIDTH, aiResizeRef.current.startWidth + delta)
+        )
         setAIPanelWidth(newWidth)
       }
     }
@@ -220,7 +232,13 @@ function App() {
   }
 
   // Loading state - wait for token check and panel settings
-  if (checkingToken || isAuthenticated === null || !panelSettingsLoaded || !aiPanelSettingsLoaded || !viewModeLoaded) {
+  if (
+    checkingToken ||
+    isAuthenticated === null ||
+    !panelSettingsLoaded ||
+    !aiPanelSettingsLoaded ||
+    !viewModeLoaded
+  ) {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -246,113 +264,117 @@ function App() {
     <TooltipProvider>
       <PRContext.Provider value={{ selectedPR, setSelectedPR }}>
         <div className="h-screen bg-background flex flex-col overflow-hidden">
-        <Header 
-          user={user} 
-          onLogout={handleLogout} 
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          isAIPanelOpen={isAIPanelOpen}
-          onToggleAIPanel={toggleAIPanel}
-        />
-        
-        {/* Main content area with views */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Canvas View */}
-          {viewMode === 'canvas' && (
-            <div className="flex-1 flex overflow-hidden">
-              <main className="flex-1 overflow-auto bg-muted/20">
-                <PRGrid currentUser={user?.login || null} />
-              </main>
-              
-              {/* Panel toggle button when collapsed */}
-              {!isPanelOpen && (
-                <button
-                  onClick={togglePanel}
-                  className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-                  title="Open PR details panel"
-                >
-                  <PanelRight className="w-5 h-5" />
-                </button>
-              )}
-              
-              {isPanelOpen && (
-                <aside 
-                  className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
-                  style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
-                >
-                  {/* Resize handle */}
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                      isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                    }`}
-                    onMouseDown={handleResizeStart}
-                  />
-                  <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                    {selectedPR ? (
-                      <PRDetail pr={selectedPR} onClose={() => setSelectedPR(null)} />
-                    ) : (
-                      /* Placeholder when no PR selected */
-                      <div className="flex flex-col h-full">
-                        <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
-                          <h3 className="font-semibold text-sm">PR Details</h3>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={togglePanel}
-                          >
-                            <PanelRightClose className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div className="flex-1 flex items-center justify-center p-6">
-                          <div className="text-center space-y-4">
-                            <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
-                              <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium text-muted-foreground">No PR selected</p>
-                              <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                                Click on a pull request card to view its details, CI status, and comments
-                              </p>
+          <Header
+            user={user}
+            onLogout={handleLogout}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            isAIPanelOpen={isAIPanelOpen}
+            onToggleAIPanel={toggleAIPanel}
+          />
+
+          {/* Main content area with views */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Canvas View */}
+            {viewMode === 'canvas' && (
+              <div className="flex-1 flex overflow-hidden">
+                <main className="flex-1 overflow-auto bg-muted/20">
+                  <PRGrid currentUser={user?.login || null} />
+                </main>
+
+                {/* Panel toggle button when collapsed */}
+                {!isPanelOpen && (
+                  <button
+                    type="button"
+                    onClick={togglePanel}
+                    className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+                    title="Open PR details panel"
+                  >
+                    <PanelRight className="w-5 h-5" />
+                  </button>
+                )}
+
+                {isPanelOpen && (
+                  <aside
+                    className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
+                    style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
+                  >
+                    {/* Resize handle */}
+                    <div
+                      className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                        isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                      }`}
+                      onMouseDown={handleResizeStart}
+                    />
+                    <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                      {selectedPR ? (
+                        <PRDetail pr={selectedPR} onClose={() => setSelectedPR(null)} />
+                      ) : (
+                        /* Placeholder when no PR selected */
+                        <div className="flex flex-col h-full">
+                          <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
+                            <h3 className="font-semibold text-sm">PR Details</h3>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={togglePanel}
+                            >
+                              <PanelRightClose className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="flex-1 flex items-center justify-center p-6">
+                            <div className="text-center space-y-4">
+                              <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
+                                <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  No PR selected
+                                </p>
+                                <p className="text-xs text-muted-foreground/70 max-w-[200px]">
+                                  Click on a pull request card to view its details, CI status, and
+                                  comments
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </aside>
-              )}
-            </div>
-          )}
-
-          {/* IDE View */}
-          {viewMode === 'ide' && (
-            <div className="flex-1 overflow-hidden">
-              <IDEView currentUser={user?.login || null} />
-            </div>
-          )}
-
-          {/* AI Panel - rendered OUTSIDE view conditionals to persist across view switches */}
-          {isAIPanelOpen && (
-            <aside 
-              className="apple-panel overflow-hidden flex relative flex-shrink-0"
-              style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
-            >
-              {/* Resize handle */}
-              <div
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                  isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                }`}
-                onMouseDown={handleAIResizeStart}
-              />
-              <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                <AIChatPanel onClose={toggleAIPanel} />
+                      )}
+                    </div>
+                  </aside>
+                )}
               </div>
-            </aside>
-          )}
-        </div>
-        
-        <Toaster />
+            )}
+
+            {/* IDE View */}
+            {viewMode === 'ide' && (
+              <div className="flex-1 overflow-hidden">
+                <IDEView currentUser={user?.login || null} />
+              </div>
+            )}
+
+            {/* AI Panel - rendered OUTSIDE view conditionals to persist across view switches */}
+            {isAIPanelOpen && (
+              <aside
+                className="apple-panel overflow-hidden flex relative flex-shrink-0"
+                style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
+              >
+                {/* Resize handle */}
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                    isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                  }`}
+                  onMouseDown={handleAIResizeStart}
+                />
+                <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                  <AIChatPanel onClose={toggleAIPanel} />
+                </div>
+              </aside>
+            )}
+          </div>
+
+          <Toaster />
         </div>
       </PRContext.Provider>
     </TooltipProvider>

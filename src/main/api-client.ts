@@ -1,11 +1,11 @@
 /**
  * API Client Utility
- * 
+ *
  * Provides robust error handling, retry logic with exponential backoff,
  * and detection of GitHub's HTML error responses (like the "Unicorn" 503 page).
  */
 
-import { logger, LogCategory } from './logger'
+import { LogCategory, logger } from './logger'
 
 // Custom error types for GitHub API failures
 export class GitHubAPIError extends Error {
@@ -63,14 +63,14 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
  * Sleep for a given number of milliseconds
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 /**
  * Calculate delay with exponential backoff and jitter
  */
 function calculateDelay(attempt: number, config: RetryConfig): number {
-  const exponentialDelay = config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt)
+  const exponentialDelay = config.initialDelayMs * config.backoffMultiplier ** attempt
   const cappedDelay = Math.min(exponentialDelay, config.maxDelayMs)
   // Add jitter (±25%) to prevent thundering herd
   const jitter = cappedDelay * 0.25 * (Math.random() * 2 - 1)
@@ -82,19 +82,19 @@ function calculateDelay(attempt: number, config: RetryConfig): number {
  */
 export function isHtmlErrorResponse(error: unknown): boolean {
   if (!error) return false
-  
+
   // Check error message for HTML indicators
   const errorMessage = error instanceof Error ? error.message : String(error)
   const htmlIndicators = [
     '<!DOCTYPE html>',
     '<html>',
     'Unicorn',
-    'couldn\'t respond to your request',
-    'We couldn\'t respond',
+    "couldn't respond to your request",
+    "We couldn't respond",
     'githubstatus.com'
   ]
-  
-  return htmlIndicators.some(indicator => 
+
+  return htmlIndicators.some((indicator) =>
     errorMessage.toLowerCase().includes(indicator.toLowerCase())
   )
 }
@@ -107,11 +107,11 @@ export function isRetryableError(error: unknown): boolean {
   if (isHtmlErrorResponse(error)) {
     return true
   }
-  
+
   if (error instanceof GitHubAPIError) {
     return error.isRetryable
   }
-  
+
   // Check for specific error types/messages
   const errorMessage = error instanceof Error ? error.message : String(error)
   const retryablePatterns = [
@@ -128,8 +128,8 @@ export function isRetryableError(error: unknown): boolean {
     /secondary rate limit/i,
     /abuse detection/i
   ]
-  
-  return retryablePatterns.some(pattern => pattern.test(errorMessage))
+
+  return retryablePatterns.some((pattern) => pattern.test(errorMessage))
 }
 
 /**
@@ -137,7 +137,7 @@ export function isRetryableError(error: unknown): boolean {
  */
 export function parseGitHubError(error: unknown): GitHubAPIError {
   const errorMessage = error instanceof Error ? error.message : String(error)
-  
+
   // Check for HTML error response (GitHub Unicorn page)
   if (isHtmlErrorResponse(error)) {
     logger.warn(LogCategory.API, 'Received HTML error page from GitHub (likely 503 timeout)', {
@@ -147,38 +147,32 @@ export function parseGitHubError(error: unknown): GitHubAPIError {
       'GitHub is temporarily unavailable. Please try again in a moment.'
     )
   }
-  
+
   // Check for rate limit errors
   if (/rate limit/i.test(errorMessage) || /abuse detection/i.test(errorMessage)) {
     const resetMatch = errorMessage.match(/reset at (\d+)/i)
-    const resetAt = resetMatch ? new Date(parseInt(resetMatch[1]) * 1000) : undefined
+    const resetAt = resetMatch ? new Date(parseInt(resetMatch[1], 10) * 1000) : undefined
     return new GitHubRateLimitError(
       'GitHub API rate limit exceeded. Please wait before making more requests.',
       resetAt
     )
   }
-  
+
   // Check for timeout errors
   if (/timeout/i.test(errorMessage) || /ETIMEDOUT/i.test(errorMessage)) {
     return new GitHubTimeoutError()
   }
-  
+
   // Check for specific HTTP status codes
   const statusMatch = errorMessage.match(/\b(4\d{2}|5\d{2})\b/)
-  const statusCode = statusMatch ? parseInt(statusMatch[1]) : undefined
-  
+  const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : undefined
+
   if (statusCode === 503 || statusCode === 502 || statusCode === 504) {
-    return new GitHubUnavailableError(
-      `GitHub API returned ${statusCode}. Please try again.`
-    )
+    return new GitHubUnavailableError(`GitHub API returned ${statusCode}. Please try again.`)
   }
-  
+
   // Generic API error
-  return new GitHubAPIError(
-    errorMessage,
-    statusCode,
-    isRetryableError(error)
-  )
+  return new GitHubAPIError(errorMessage, statusCode, isRetryableError(error))
 }
 
 /**
@@ -191,24 +185,28 @@ export async function withRetry<T>(
 ): Promise<T> {
   const config = { ...DEFAULT_RETRY_CONFIG, ...options }
   let lastError: Error | undefined
-  
+
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     try {
       return await fn()
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      
+
       // Parse the error to get more context
       const parsedError = parseGitHubError(error)
-      
+
       // Log the attempt
-      logger.warn(LogCategory.API, `API call failed (attempt ${attempt + 1}/${config.maxRetries + 1})`, {
-        context,
-        error: parsedError.message,
-        isRetryable: parsedError.isRetryable,
-        isHtmlResponse: parsedError.isHtmlResponse
-      })
-      
+      logger.warn(
+        LogCategory.API,
+        `API call failed (attempt ${attempt + 1}/${config.maxRetries + 1})`,
+        {
+          context,
+          error: parsedError.message,
+          isRetryable: parsedError.isRetryable,
+          isHtmlResponse: parsedError.isHtmlResponse
+        }
+      )
+
       // Check if we should retry
       if (attempt < config.maxRetries && parsedError.isRetryable) {
         const delay = calculateDelay(attempt, config)
@@ -216,12 +214,12 @@ export async function withRetry<T>(
         await sleep(delay)
         continue
       }
-      
+
       // Throw the parsed error for better context
       throw parsedError
     }
   }
-  
+
   // This shouldn't be reached, but just in case
   throw lastError || new Error('Unknown error in retry logic')
 }
@@ -239,13 +237,13 @@ export async function withTimeout<T>(
       logger.warn(LogCategory.API, `Request timed out after ${timeoutMs}ms`, { context })
       reject(new GitHubTimeoutError(`Request timed out after ${timeoutMs}ms`))
     }, timeoutMs)
-    
+
     fn()
-      .then(result => {
+      .then((result) => {
         clearTimeout(timeoutId)
         resolve(result)
       })
-      .catch(error => {
+      .catch((error) => {
         clearTimeout(timeoutId)
         reject(error)
       })
@@ -264,10 +262,6 @@ export async function withRetryAndTimeout<T>(
   } = {}
 ): Promise<T> {
   const { retry = {}, timeoutMs = 30000, context } = options
-  
-  return withRetry(
-    () => withTimeout(fn, timeoutMs, context),
-    retry,
-    context
-  )
+
+  return withRetry(() => withTimeout(fn, timeoutMs, context), retry, context)
 }

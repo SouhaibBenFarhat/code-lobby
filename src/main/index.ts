@@ -1,28 +1,72 @@
-import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
-import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { getToken, setToken, clearToken, getSettings, setSettings, getRepoOrder, setRepoOrder, getUser, setUser, getCardLayouts, setCardLayouts, LayoutItem, getSelectedRepos, setSelectedRepos, getPRDetailPanel, setPRDetailPanel, PanelSettings, getRepoColors, setRepoColor, getViewMode, setViewMode, ViewMode, getIDEViewSettings, setIDEViewSettings, IDEViewSettings, getClaudeApiKey, setClaudeApiKey, getSelectedModel, setSelectedModel, getEnableThinking, setEnableThinking, getChatHistory, addChatMessage, clearChatHistory, ChatMessage, getAIPanel, setAIPanel, AIPanelSettings } from './store'
-import { sendMessage as sendClaudeMessage, sendMessageStreaming as sendClaudeMessageStreaming, fetchModels as fetchClaudeModels, getDefaultModel, ClaudeMessage } from './claude-api'
-import { 
-  validateToken,
-  fetchAllPRData,
-  fetchAllRepositories,
-  fetchAllPRsForRepos,
+import { join } from 'node:path'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
+import {
+  ClaudeMessage,
+  fetchModels as fetchClaudeModels,
+  getDefaultModel,
+  sendMessage as sendClaudeMessage,
+  sendMessageStreaming as sendClaudeMessageStreaming
+} from './claude-api'
+import {
   extractEventsFromPRs,
+  fetchAllPRData,
+  fetchAllPRsForRepos,
+  fetchAllRepositories,
   fetchRateLimitOnly,
-  GitHubUser,
   PullRequest,
   RateLimitInfo,
-  Repository
+  Repository,
+  validateToken
 } from './github-graphql'
-import { logger, LogCategory } from './logger'
+import { LogCategory, logger } from './logger'
+import {
+  AIPanelSettings,
+  addChatMessage,
+  ChatMessage,
+  clearChatHistory,
+  clearToken,
+  getAIPanel,
+  getCardLayouts,
+  getChatHistory,
+  getClaudeApiKey,
+  getEnableThinking,
+  getIDEViewSettings,
+  getPRDetailPanel,
+  getRepoColors,
+  getRepoOrder,
+  getSelectedModel,
+  getSelectedRepos,
+  getSettings,
+  getToken,
+  getUser,
+  getViewMode,
+  IDEViewSettings,
+  LayoutItem,
+  PanelSettings,
+  setAIPanel,
+  setCardLayouts,
+  setClaudeApiKey,
+  setEnableThinking,
+  setIDEViewSettings,
+  setPRDetailPanel,
+  setRepoColor,
+  setRepoOrder,
+  setSelectedModel,
+  setSelectedRepos,
+  setSettings,
+  setToken,
+  setUser,
+  setViewMode,
+  ViewMode
+} from './store'
 
 // Cache for GraphQL data to avoid repeated queries
-let cachedPRData: { 
+let cachedPRData: {
   pullRequests: PullRequest[]
   repositories: any[]
   rateLimit: RateLimitInfo
-  lastFetch: number 
+  lastFetch: number
 } | null = null
 
 // Separate cache for all repos (longer TTL since it changes less)
@@ -62,7 +106,7 @@ function createWindow(): void {
   mainWindow.on('enter-full-screen', () => {
     mainWindow?.webContents.send('fullscreen-change', true)
   })
-  
+
   mainWindow.on('leave-full-screen', () => {
     mainWindow?.webContents.send('fullscreen-change', false)
   })
@@ -72,8 +116,8 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
@@ -82,12 +126,12 @@ function createWindow(): void {
 // IPC Handlers
 function setupIPCHandlers(): void {
   logger.info(LogCategory.APP, 'Setting up IPC handlers')
-  
+
   // Window state
   ipcMain.handle('is-fullscreen', () => {
     return mainWindow?.isFullScreen() ?? false
   })
-  
+
   // Token management
   ipcMain.handle('get-token', async () => {
     return getToken()
@@ -108,8 +152,13 @@ function setupIPCHandlers(): void {
     } catch (error: unknown) {
       const err = error as { status?: number; message?: string }
       if (err.status === 403) {
-        logger.error(LogCategory.AUTH, 'Rate limit exceeded during token validation', { status: 403 })
-        return { success: false, error: 'GitHub API rate limit exceeded. Please wait a few minutes and try again.' }
+        logger.error(LogCategory.AUTH, 'Rate limit exceeded during token validation', {
+          status: 403
+        })
+        return {
+          success: false,
+          error: 'GitHub API rate limit exceeded. Please wait a few minutes and try again.'
+        }
       }
       logger.error(LogCategory.AUTH, 'Token validation error', { error: err.message })
       return { success: false, error: err.message || 'Failed to validate token' }
@@ -131,14 +180,14 @@ function setupIPCHandlers(): void {
       logger.debug(LogCategory.AUTH, 'No token found')
       return { valid: false }
     }
-    
+
     // First check if we have cached user info (no API call needed)
     const cachedUser = getUser()
     if (cachedUser) {
       logger.debug(LogCategory.AUTH, 'Using cached user info', { user: cachedUser.login })
       return { valid: true, user: cachedUser }
     }
-    
+
     // If no cached user, validate token (makes API call)
     try {
       logger.info(LogCategory.AUTH, 'Validating token via API')
@@ -158,20 +207,20 @@ function setupIPCHandlers(): void {
 
   // GitHub API - Now using GraphQL for efficiency!
   // One query fetches everything: PRs, repos, checks, comments, reviews
-  
+
   async function fetchAndCacheData() {
     const token = getToken()
     if (!token) throw new Error('No token')
-    
+
     // Return cached data if fresh
     if (cachedPRData && Date.now() - cachedPRData.lastFetch < CACHE_TTL) {
-      logger.debug(LogCategory.CACHE, 'Using cached PR data', { 
+      logger.debug(LogCategory.CACHE, 'Using cached PR data', {
         age: Date.now() - cachedPRData.lastFetch,
-        prs: cachedPRData.pullRequests.length 
+        prs: cachedPRData.pullRequests.length
       })
       return cachedPRData
     }
-    
+
     logger.info(LogCategory.GRAPHQL, 'Fetching all PR data via GraphQL')
     const data = await fetchAllPRData(token)
     logger.info(LogCategory.GRAPHQL, 'PR data fetched successfully', {
@@ -179,7 +228,7 @@ function setupIPCHandlers(): void {
       repos: data.repositories.length,
       rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
     })
-    
+
     cachedPRData = {
       pullRequests: data.pullRequests,
       repositories: data.repositories,
@@ -209,10 +258,19 @@ function setupIPCHandlers(): void {
     try {
       logger.info(LogCategory.API, 'Fetching all PRs for repos', { repos: repoFullNames })
       const data = await fetchAllPRsForRepos(token, repoFullNames)
-      logger.debug(LogCategory.API, 'Returning all PRs for repos', { count: data.pullRequests.length })
-      return { success: true, data: data.pullRequests, currentUser: data.currentUser, rateLimit: data.rateLimit }
+      logger.debug(LogCategory.API, 'Returning all PRs for repos', {
+        count: data.pullRequests.length
+      })
+      return {
+        success: true,
+        data: data.pullRequests,
+        currentUser: data.currentUser,
+        rateLimit: data.rateLimit
+      }
     } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch all PRs for repos', { error: (error as Error).message })
+      logger.error(LogCategory.API, 'Failed to fetch all PRs for repos', {
+        error: (error as Error).message
+      })
       return { success: false, error: (error as Error).message }
     }
   })
@@ -226,7 +284,9 @@ function setupIPCHandlers(): void {
       logger.debug(LogCategory.API, 'Returning PR events', { count: events.length })
       return { success: true, data: events }
     } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch PR events', { error: (error as Error).message })
+      logger.error(LogCategory.API, 'Failed to fetch PR events', {
+        error: (error as Error).message
+      })
       return { success: false, error: (error as Error).message }
     }
   })
@@ -239,10 +299,15 @@ function setupIPCHandlers(): void {
     try {
       const data = await fetchAndCacheData()
       // Find the PR by ref (sha)
-      const pr = data.pullRequests.find(p => p.head.sha === _ref)
-      return { success: true, data: pr?.checks || { state: 'pending', total_count: 0, check_runs: [] } }
+      const pr = data.pullRequests.find((p) => p.head.sha === _ref)
+      return {
+        success: true,
+        data: pr?.checks || { state: 'pending', total_count: 0, check_runs: [] }
+      }
     } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch PR checks', { error: (error as Error).message })
+      logger.error(LogCategory.API, 'Failed to fetch PR checks', {
+        error: (error as Error).message
+      })
       return { success: false, error: (error as Error).message }
     }
   })
@@ -253,25 +318,27 @@ function setupIPCHandlers(): void {
     try {
       // Use cached all repos if fresh
       if (cachedAllRepos && Date.now() - cachedAllRepos.lastFetch < ALL_REPOS_CACHE_TTL) {
-        logger.debug(LogCategory.CACHE, 'Using cached repos', { 
+        logger.debug(LogCategory.CACHE, 'Using cached repos', {
           count: cachedAllRepos.repositories.length,
-          age: Date.now() - cachedAllRepos.lastFetch 
+          age: Date.now() - cachedAllRepos.lastFetch
         })
         return { success: true, data: cachedAllRepos.repositories }
       }
-      
+
       // Fetch ALL repos the user has access to
       logger.info(LogCategory.GRAPHQL, 'Fetching all repositories')
       const allRepos = await fetchAllRepositories(token)
       logger.info(LogCategory.GRAPHQL, 'Repositories fetched', { count: allRepos.length })
-      
+
       cachedAllRepos = {
         repositories: allRepos,
         lastFetch: Date.now()
       }
       return { success: true, data: allRepos }
     } catch (error) {
-      logger.error(LogCategory.GRAPHQL, 'Failed to fetch repositories', { error: (error as Error).message })
+      logger.error(LogCategory.GRAPHQL, 'Failed to fetch repositories', {
+        error: (error as Error).message
+      })
       return { success: false, error: (error as Error).message }
     }
   })
@@ -320,7 +387,9 @@ function setupIPCHandlers(): void {
       })
       return { success: true, data: rateLimit }
     } catch (error) {
-      logger.error(LogCategory.RATE_LIMIT, 'Failed to get rate limit', { error: (error as Error).message })
+      logger.error(LogCategory.RATE_LIMIT, 'Failed to get rate limit', {
+        error: (error as Error).message
+      })
       return { success: false, error: (error as Error).message }
     }
   })
@@ -404,22 +473,22 @@ function setupIPCHandlers(): void {
   })
 
   ipcMain.handle('set-claude-api-key', async (_, key: string | null) => {
-    logger.info(LogCategory.AUTH, 'Setting Claude API key', { 
+    logger.info(LogCategory.AUTH, 'Setting Claude API key', {
       action: key ? 'set' : 'clear',
       keyLength: key?.length || 0,
-      keyPrefix: key ? key.substring(0, 10) + '...' : null
+      keyPrefix: key ? `${key.substring(0, 10)}...` : null
     })
-    
+
     if (key) {
       // Simple format validation - actual validation happens on first message
       if (!key.startsWith('sk-ant-')) {
-        logger.warn(LogCategory.AUTH, 'Invalid Claude API key format', { 
+        logger.warn(LogCategory.AUTH, 'Invalid Claude API key format', {
           keyPrefix: key.substring(0, 10),
           expectedPrefix: 'sk-ant-'
         })
         return { success: false, error: 'Invalid API key format. Key should start with sk-ant-' }
       }
-      
+
       try {
         setClaudeApiKey(key)
         logger.info(LogCategory.AUTH, 'Claude API key saved successfully', {
@@ -503,9 +572,9 @@ function setupIPCHandlers(): void {
 
     const selectedModel = getSelectedModel() || getDefaultModel()
     const enableThinking = getEnableThinking()
-    logger.info(LogCategory.API, 'Sending chat message to Claude', { 
-      model: selectedModel, 
-      thinking: enableThinking 
+    logger.info(LogCategory.API, 'Sending chat message to Claude', {
+      model: selectedModel,
+      thinking: enableThinking
     })
 
     // Create user message
@@ -519,14 +588,20 @@ function setupIPCHandlers(): void {
 
     // Get history and convert to Claude format
     const history = getChatHistory()
-    const claudeMessages: ClaudeMessage[] = history.map(m => ({
+    const claudeMessages: ClaudeMessage[] = history.map((m) => ({
       role: m.role,
       content: m.content
     }))
 
     try {
-      const response = await sendClaudeMessage(apiKey, claudeMessages, selectedModel, undefined, enableThinking)
-      
+      const response = await sendClaudeMessage(
+        apiKey,
+        claudeMessages,
+        selectedModel,
+        undefined,
+        enableThinking
+      )
+
       // Create assistant message (include thinking if present)
       const assistantMsg: ChatMessage = {
         id: response.id || `msg_${Date.now()}_assistant`,
@@ -537,15 +612,15 @@ function setupIPCHandlers(): void {
       }
       addChatMessage(assistantMsg)
 
-      logger.info(LogCategory.API, 'Chat message sent successfully', { 
+      logger.info(LogCategory.API, 'Chat message sent successfully', {
         model: response.model,
         hasThinking: !!response.thinking,
         usage: response.usage
       })
       return { success: true, message: assistantMsg }
     } catch (error) {
-      logger.error(LogCategory.API, 'Failed to send chat message', { 
-        error: (error as Error).message 
+      logger.error(LogCategory.API, 'Failed to send chat message', {
+        error: (error as Error).message
       })
       return { success: false, error: (error as Error).message }
     }
@@ -566,9 +641,9 @@ function setupIPCHandlers(): void {
 
     const selectedModel = getSelectedModel() || getDefaultModel()
     const enableThinking = getEnableThinking()
-    logger.info(LogCategory.API, 'Sending streaming chat message to Claude', { 
-      model: selectedModel, 
-      thinking: enableThinking 
+    logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
+      model: selectedModel,
+      thinking: enableThinking
     })
 
     // Create user message
@@ -582,14 +657,14 @@ function setupIPCHandlers(): void {
 
     // Get history and convert to Claude format
     const history = getChatHistory()
-    const claudeMessages: ClaudeMessage[] = history.map(m => ({
+    const claudeMessages: ClaudeMessage[] = history.map((m) => ({
       role: m.role,
       content: m.content
     }))
 
     // Generate a unique stream ID for this conversation
     const streamId = `stream_${Date.now()}`
-    
+
     // Get the sender's webContents to send stream updates
     const webContents = event.sender
 
@@ -600,7 +675,7 @@ function setupIPCHandlers(): void {
       (chunk) => {
         // Send chunk to renderer
         webContents.send('chat-stream-chunk', { streamId, ...chunk })
-        
+
         // If done, save the assistant message
         if (chunk.type === 'done' && chunk.fullResponse) {
           const assistantMsg: ChatMessage = {
@@ -611,8 +686,8 @@ function setupIPCHandlers(): void {
             timestamp: new Date().toISOString()
           }
           addChatMessage(assistantMsg)
-          
-          logger.info(LogCategory.API, 'Streaming chat message complete', { 
+
+          logger.info(LogCategory.API, 'Streaming chat message complete', {
             model: chunk.fullResponse.model,
             hasThinking: !!chunk.fullResponse.thinking,
             usage: chunk.fullResponse.usage
@@ -647,36 +722,39 @@ function setupIPCHandlers(): void {
   })
 
   // Log from renderer
-  ipcMain.handle('log-from-renderer', async (_, level: string, category: string, message: string, data?: Record<string, unknown>) => {
-    const cat = (LogCategory as Record<string, string>)[category] || LogCategory.APP
-    switch (level) {
-      case 'error':
-        logger.error(cat, `[Renderer] ${message}`, data)
-        break
-      case 'warn':
-        logger.warn(cat, `[Renderer] ${message}`, data)
-        break
-      case 'debug':
-        logger.debug(cat, `[Renderer] ${message}`, data)
-        break
-      default:
-        logger.info(cat, `[Renderer] ${message}`, data)
+  ipcMain.handle(
+    'log-from-renderer',
+    async (_, level: string, category: string, message: string, data?: Record<string, unknown>) => {
+      const cat = (LogCategory as Record<string, string>)[category] || LogCategory.APP
+      switch (level) {
+        case 'error':
+          logger.error(cat, `[Renderer] ${message}`, data)
+          break
+        case 'warn':
+          logger.warn(cat, `[Renderer] ${message}`, data)
+          break
+        case 'debug':
+          logger.debug(cat, `[Renderer] ${message}`, data)
+          break
+        default:
+          logger.info(cat, `[Renderer] ${message}`, data)
+      }
+      return { success: true }
     }
-    return { success: true }
-  })
+  )
 }
 
 app.whenReady().then(() => {
   // Initialize logger (creates logs directory, cleans old sessions)
   logger.init()
-  
-  logger.info(LogCategory.APP, 'CodeLobby starting', { 
+
+  logger.info(LogCategory.APP, 'CodeLobby starting', {
     version: app.getVersion(),
     platform: process.platform,
     arch: process.arch,
     logsPath: logger.getLogsPath()
   })
-  
+
   electronApp.setAppUserModelId('com.codelobby.app')
 
   app.on('browser-window-created', (_, window) => {
@@ -685,10 +763,10 @@ app.whenReady().then(() => {
 
   setupIPCHandlers()
   createWindow()
-  
+
   logger.info(LogCategory.APP, 'App initialized successfully')
 
-  app.on('activate', function () {
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })

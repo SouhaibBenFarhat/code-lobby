@@ -1,48 +1,52 @@
-import { useState, useMemo } from 'react'
-import { 
-  X,
-  GitPullRequest, 
-  MessageSquare, 
-  CheckCircle2, 
-  XCircle, 
-  Circle,
-  Loader2,
-  ExternalLink,
-  GitBranch,
-  Clock,
-  FileEdit,
-  User,
+import {
   AlertCircle,
-  PlayCircle,
-  Search,
+  Bot,
+  Check,
+  CheckCheck,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Layers,
-  Bot,
-  Users,
+  Circle,
+  Clock,
   Copy,
-  Check,
+  Edit,
+  ExternalLink,
   FileCode,
-  CheckCheck,
+  FileEdit,
   FileText,
-  Edit
+  GitBranch,
+  GitPullRequest,
+  Layers,
+  Loader2,
+  MessageSquare,
+  PlayCircle,
+  Search,
+  User,
+  Users,
+  X,
+  XCircle
 } from 'lucide-react'
-import { ScrollArea } from './ui/scroll-area'
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
-import { Separator } from './ui/separator'
-import { Input } from './ui/input'
+import { useMemo, useState } from 'react'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import { MarkdownContent } from './MarkdownContent'
-import type { PullRequest, CheckStatus, ReviewThread } from './types'
+import type { PullRequest, ReviewThread } from './types'
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { ScrollArea } from './ui/scroll-area'
+import { Separator } from './ui/separator'
 
 interface PRDetailProps {
   pr: PullRequest
   onClose: () => void
 }
 
-function CheckItem({ check }: { check: { name: string; status: string; conclusion: string | null; html_url: string } }) {
+function CheckItem({
+  check
+}: {
+  check: { name: string; status: string; conclusion: string | null; html_url: string }
+}) {
   const getIcon = () => {
     if (check.status === 'in_progress' || check.status === 'queued') {
       return <Loader2 className="w-4 h-4 text-warning animate-spin" />
@@ -61,7 +65,7 @@ function CheckItem({ check }: { check: { name: string; status: string; conclusio
   }
 
   return (
-    <div 
+    <div
       className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors overflow-hidden"
       onClick={() => window.open(check.html_url, '_blank')}
     >
@@ -91,7 +95,7 @@ const TRUNCATE_LENGTH = 200
 function CommentItem({ comment }: { comment: CommentData }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
-  
+
   if (!comment.actor) return null
 
   const shouldTruncate = comment.body && comment.body.length > TRUNCATE_LENGTH
@@ -107,16 +111,34 @@ function CommentItem({ comment }: { comment: CommentData }) {
   const getEventBadge = () => {
     switch (comment.event) {
       case 'approved':
-        return <Badge variant="default" className="bg-success/20 text-success text-[9px] h-[18px] px-1.5">Approved</Badge>
+        return (
+          <Badge
+            variant="default"
+            className="bg-success/20 text-success text-[9px] h-[18px] px-1.5"
+          >
+            Approved
+          </Badge>
+        )
       case 'changes_requested':
-        return <Badge variant="default" className="bg-destructive/20 text-destructive text-[9px] h-[18px] px-1.5">Changes</Badge>
+        return (
+          <Badge
+            variant="default"
+            className="bg-destructive/20 text-destructive text-[9px] h-[18px] px-1.5"
+          >
+            Changes
+          </Badge>
+        )
       case 'reviewed':
-        return <Badge variant="secondary" className="text-[9px] h-[18px] px-1.5">Reviewed</Badge>
+        return (
+          <Badge variant="secondary" className="text-[9px] h-[18px] px-1.5">
+            Reviewed
+          </Badge>
+        )
       default:
         return null
     }
   }
-  
+
   // Truncate markdown content for preview
   const getPreviewContent = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text
@@ -124,21 +146,28 @@ function CommentItem({ comment }: { comment: CommentData }) {
     const truncated = text.slice(0, maxLength)
     const lastNewline = truncated.lastIndexOf('\n')
     const lastSpace = truncated.lastIndexOf(' ')
-    const breakPoint = lastNewline > maxLength * 0.5 ? lastNewline : lastSpace > maxLength * 0.5 ? lastSpace : maxLength
-    return truncated.slice(0, breakPoint) + '...'
+    const breakPoint =
+      lastNewline > maxLength * 0.5
+        ? lastNewline
+        : lastSpace > maxLength * 0.5
+          ? lastSpace
+          : maxLength
+    return `${truncated.slice(0, breakPoint)}...`
   }
-  
+
   return (
-    <div className={cn(
-      "p-2.5 rounded-lg space-y-1.5 overflow-hidden border-l-2 group/comment",
-      comment.actor.isBot 
-        ? "bg-purple-500/15 border-l-purple-500 dark:bg-purple-500/20" 
-        : comment.event === 'approved'
-        ? "bg-success/15 border-l-success dark:bg-success/20"
-        : comment.event === 'changes_requested'
-        ? "bg-destructive/15 border-l-destructive dark:bg-destructive/20"
-        : "bg-muted/40 border-l-primary/50 dark:bg-muted/50"
-    )}>
+    <div
+      className={cn(
+        'p-2.5 rounded-lg space-y-1.5 overflow-hidden border-l-2 group/comment',
+        comment.actor.isBot
+          ? 'bg-purple-500/15 border-l-purple-500 dark:bg-purple-500/20'
+          : comment.event === 'approved'
+            ? 'bg-success/15 border-l-success dark:bg-success/20'
+            : comment.event === 'changes_requested'
+              ? 'bg-destructive/15 border-l-destructive dark:bg-destructive/20'
+              : 'bg-muted/40 border-l-primary/50 dark:bg-muted/50'
+      )}
+    >
       <div className="flex items-center gap-1.5 flex-wrap">
         <Avatar className="h-5 w-5 flex-shrink-0">
           <AvatarImage src={comment.actor.avatar_url} alt={comment.actor.login} />
@@ -148,7 +177,10 @@ function CommentItem({ comment }: { comment: CommentData }) {
         </Avatar>
         <span className="text-xs font-medium truncate max-w-[100px]">{comment.actor.login}</span>
         {comment.actor.isBot && (
-          <Badge variant="outline" className="text-[9px] h-[16px] px-1 gap-0.5 text-purple-500 border-purple-500/50">
+          <Badge
+            variant="outline"
+            className="text-[9px] h-[16px] px-1 gap-0.5 text-purple-500 border-purple-500/50"
+          >
             <Bot className="w-2 h-2" />
             Bot
           </Badge>
@@ -160,6 +192,7 @@ function CommentItem({ comment }: { comment: CommentData }) {
         {/* Copy button - visible on hover */}
         {comment.body && (
           <button
+            type="button"
             onClick={handleCopy}
             className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
             title="Copy comment"
@@ -175,12 +208,17 @@ function CommentItem({ comment }: { comment: CommentData }) {
       {comment.body && (
         <div className="space-y-1.5">
           <div className="text-xs text-foreground/80 dark:text-foreground/70 overflow-hidden">
-            <MarkdownContent 
-              content={isExpanded || !shouldTruncate ? comment.body : getPreviewContent(comment.body, TRUNCATE_LENGTH)} 
+            <MarkdownContent
+              content={
+                isExpanded || !shouldTruncate
+                  ? comment.body
+                  : getPreviewContent(comment.body, TRUNCATE_LENGTH)
+              }
             />
           </div>
           {shouldTruncate && (
             <button
+              type="button"
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-[10px] text-primary hover:text-primary/80 font-medium flex items-center gap-0.5"
             >
@@ -203,7 +241,13 @@ function CommentItem({ comment }: { comment: CommentData }) {
   )
 }
 
-type CheckRun = { id: string; name: string; status: string; conclusion: string | null; html_url: string }
+type CheckRun = {
+  id: string
+  name: string
+  status: string
+  conclusion: string | null
+  html_url: string
+}
 
 interface GroupedChecks {
   running: CheckRun[]
@@ -234,7 +278,7 @@ interface ReviewerFeedback {
 function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: string }) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [copied, setCopied] = useState(false)
-  
+
   const handleCopy = async () => {
     let text = `Review by ${reviewer.login}\n`
     if (reviewer.reviewState) {
@@ -253,7 +297,7 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-  
+
   const getStateIcon = () => {
     switch (reviewer.reviewState) {
       case 'approved':
@@ -264,38 +308,60 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
         return <MessageSquare className="w-4 h-4 text-muted-foreground" />
     }
   }
-  
+
   const getStateBadge = () => {
     switch (reviewer.reviewState) {
       case 'approved':
-        return <Badge variant="outline" className="text-[9px] h-4 text-success border-success/50">Approved</Badge>
+        return (
+          <Badge variant="outline" className="text-[9px] h-4 text-success border-success/50">
+            Approved
+          </Badge>
+        )
       case 'changes_requested':
-        return <Badge variant="outline" className="text-[9px] h-4 text-destructive border-destructive/50">Changes requested</Badge>
+        return (
+          <Badge
+            variant="outline"
+            className="text-[9px] h-4 text-destructive border-destructive/50"
+          >
+            Changes requested
+          </Badge>
+        )
       case 'commented':
-        return <Badge variant="outline" className="text-[9px] h-4 text-muted-foreground">Commented</Badge>
+        return (
+          <Badge variant="outline" className="text-[9px] h-4 text-muted-foreground">
+            Commented
+          </Badge>
+        )
       default:
         return null
     }
   }
-  
-  const resolvedCount = reviewer.inlineComments.filter(c => c.isResolved).length
-  const unresolvedCount = reviewer.inlineComments.filter(c => !c.isResolved).length
-  
+
+  const resolvedCount = reviewer.inlineComments.filter((c) => c.isResolved).length
+  const unresolvedCount = reviewer.inlineComments.filter((c) => !c.isResolved).length
+
   return (
-    <div className={cn(
-      "rounded-lg border overflow-hidden",
-      reviewer.reviewState === 'approved' ? "border-success/30" :
-      reviewer.reviewState === 'changes_requested' ? "border-destructive/30" :
-      "border-border"
-    )}>
+    <div
+      className={cn(
+        'rounded-lg border overflow-hidden',
+        reviewer.reviewState === 'approved'
+          ? 'border-success/30'
+          : reviewer.reviewState === 'changes_requested'
+            ? 'border-destructive/30'
+            : 'border-border'
+      )}
+    >
       {/* Reviewer header */}
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors",
-          reviewer.reviewState === 'approved' ? "bg-success/15 dark:bg-success/20" :
-          reviewer.reviewState === 'changes_requested' ? "bg-destructive/15 dark:bg-destructive/20" :
-          "bg-muted/40 dark:bg-muted/50"
+          'w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors',
+          reviewer.reviewState === 'approved'
+            ? 'bg-success/15 dark:bg-success/20'
+            : reviewer.reviewState === 'changes_requested'
+              ? 'bg-destructive/15 dark:bg-destructive/20'
+              : 'bg-muted/40 dark:bg-muted/50'
         )}
       >
         {isExpanded ? (
@@ -311,7 +377,10 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
         </Avatar>
         <span className="text-sm font-medium">{reviewer.login}</span>
         {reviewer.isBot && (
-          <Badge variant="outline" className="text-[9px] h-4 gap-0.5 text-purple-500 border-purple-500/50">
+          <Badge
+            variant="outline"
+            className="text-[9px] h-4 gap-0.5 text-purple-500 border-purple-500/50"
+          >
             <Bot className="w-2 h-2" />
             Bot
           </Badge>
@@ -324,12 +393,10 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
               {reviewer.inlineComments.length}
             </span>
           )}
-          {reviewer.reviewDate && (
-            <span>{formatRelativeTime(reviewer.reviewDate)}</span>
-          )}
+          {reviewer.reviewDate && <span>{formatRelativeTime(reviewer.reviewDate)}</span>}
         </div>
       </button>
-      
+
       {isExpanded && (
         <div className="border-t border-border">
           {/* Review body (summary comment) */}
@@ -344,7 +411,7 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
               </div>
             </div>
           )}
-          
+
           {/* Inline comments */}
           {reviewer.inlineComments.length > 0 && (
             <div className="p-2">
@@ -359,16 +426,18 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
                   <span className="text-[10px] text-success">{resolvedCount} resolved</span>
                 )}
               </div>
-              
+
               <div className="space-y-2">
-                {reviewer.inlineComments.map(comment => {
+                {reviewer.inlineComments.map((comment) => {
                   const fileName = comment.path.split('/').pop() || comment.path
                   return (
-                    <div 
+                    <div
                       key={comment.id}
                       className={cn(
-                        "rounded border p-2",
-                        comment.isResolved ? "bg-success/15 border-success/30 dark:bg-success/20" : "bg-muted/40 border-border dark:bg-muted/50"
+                        'rounded border p-2',
+                        comment.isResolved
+                          ? 'bg-success/15 border-success/30 dark:bg-success/20'
+                          : 'bg-muted/40 border-border dark:bg-muted/50'
                       )}
                     >
                       <div className="flex items-center gap-2 mb-1.5 text-[10px]">
@@ -378,7 +447,10 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
                           <span className="text-muted-foreground">L{comment.line}</span>
                         )}
                         {comment.isResolved && (
-                          <Badge variant="outline" className="text-[8px] h-3.5 text-success border-success/50 gap-0.5">
+                          <Badge
+                            variant="outline"
+                            className="text-[8px] h-3.5 text-success border-success/50 gap-0.5"
+                          >
                             <CheckCheck className="w-2 h-2" />
                             Resolved
                           </Badge>
@@ -387,14 +459,14 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
                           {formatRelativeTime(comment.created_at)}
                         </span>
                       </div>
-                      
+
                       {/* Diff hunk preview */}
                       {comment.diffHunk && (
                         <pre className="p-1.5 mb-1.5 bg-muted/60 dark:bg-muted/70 text-[9px] font-mono overflow-x-auto rounded max-h-16 overflow-y-auto border border-border/50">
                           {comment.diffHunk.split('\n').slice(-4).join('\n')}
                         </pre>
                       )}
-                      
+
                       <div className="text-xs text-foreground/80 dark:text-foreground/70">
                         <MarkdownContent content={comment.body} />
                       </div>
@@ -404,7 +476,7 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
               </div>
             </div>
           )}
-          
+
           {/* Actions */}
           <div className="flex items-center gap-1 p-2 border-t border-border bg-muted/30 dark:bg-muted/40">
             <Button
@@ -435,19 +507,13 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
 // Component for displaying the PR description (body)
 const DESCRIPTION_PREVIEW_LENGTH = 300
 
-function PRDescription({ 
-  body, 
-  prUrl 
-}: { 
-  body: string | null
-  prUrl: string 
-}) {
+function PRDescription({ body, prUrl }: { body: string | null; prUrl: string }) {
   const [isOpen, setIsOpen] = useState(true)
   const [isFullyExpanded, setIsFullyExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
-  
+
   const shouldTruncate = body && body.length > DESCRIPTION_PREVIEW_LENGTH
-  
+
   // Get preview content - try to break at a natural point
   const getPreviewContent = (text: string) => {
     if (text.length <= DESCRIPTION_PREVIEW_LENGTH) return text
@@ -456,13 +522,17 @@ function PRDescription({
     const lastParagraph = truncated.lastIndexOf('\n\n')
     const lastNewline = truncated.lastIndexOf('\n')
     const lastSpace = truncated.lastIndexOf(' ')
-    const breakPoint = lastParagraph > DESCRIPTION_PREVIEW_LENGTH * 0.5 ? lastParagraph : 
-                       lastNewline > DESCRIPTION_PREVIEW_LENGTH * 0.5 ? lastNewline :
-                       lastSpace > DESCRIPTION_PREVIEW_LENGTH * 0.5 ? lastSpace : 
-                       DESCRIPTION_PREVIEW_LENGTH
-    return truncated.slice(0, breakPoint) + '...'
+    const breakPoint =
+      lastParagraph > DESCRIPTION_PREVIEW_LENGTH * 0.5
+        ? lastParagraph
+        : lastNewline > DESCRIPTION_PREVIEW_LENGTH * 0.5
+          ? lastNewline
+          : lastSpace > DESCRIPTION_PREVIEW_LENGTH * 0.5
+            ? lastSpace
+            : DESCRIPTION_PREVIEW_LENGTH
+    return `${truncated.slice(0, breakPoint)}...`
   }
-  
+
   const handleCopy = async () => {
     if (body) {
       await navigator.clipboard.writeText(body)
@@ -470,15 +540,16 @@ function PRDescription({
       setTimeout(() => setCopied(false), 2000)
     }
   }
-  
+
   const handleEdit = () => {
     // Open the PR edit page in GitHub
     window.open(prUrl, '_blank')
   }
-  
+
   return (
     <div className="rounded-lg border border-border overflow-hidden">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors bg-muted/40 dark:bg-muted/50"
       >
@@ -522,18 +593,19 @@ function PRDescription({
           </Button>
         </div>
       </button>
-      
+
       {isOpen && (
         <div className="border-t border-border p-3">
           {body ? (
             <div className="space-y-2">
               <div className="text-sm text-foreground/80 dark:text-foreground/70">
-                <MarkdownContent 
-                  content={isFullyExpanded || !shouldTruncate ? body : getPreviewContent(body)} 
+                <MarkdownContent
+                  content={isFullyExpanded || !shouldTruncate ? body : getPreviewContent(body)}
                 />
               </div>
               {shouldTruncate && (
                 <button
+                  type="button"
                   onClick={() => setIsFullyExpanded(!isFullyExpanded)}
                   className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                 >
@@ -552,9 +624,7 @@ function PRDescription({
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">
-              No description provided
-            </p>
+            <p className="text-sm text-muted-foreground italic">No description provided</p>
           )}
         </div>
       )}
@@ -563,33 +633,38 @@ function PRDescription({
 }
 
 // Component for displaying a code review thread (inline comments on code)
-function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: string }) {
+function _ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: string }) {
   const [isExpanded, setIsExpanded] = useState(!thread.isResolved)
   const [copied, setCopied] = useState(false)
-  
+
   const fileName = thread.path.split('/').pop() || thread.path
   const firstComment = thread.comments[0]
-  
+
   const handleCopy = async () => {
-    const allText = thread.comments.map(c => `${c.author.login}: ${c.body}`).join('\n\n')
+    const allText = thread.comments.map((c) => `${c.author.login}: ${c.body}`).join('\n\n')
     await navigator.clipboard.writeText(allText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-  
+
   const handleOpenInGithub = () => {
     // GitHub URLs for review comments follow this pattern
     const fileUrl = `${prUrl}/files#diff-${thread.path.replace(/\//g, '-')}`
     window.open(fileUrl, '_blank')
   }
-  
+
   return (
-    <div className={cn(
-      "rounded-lg border overflow-hidden",
-      thread.isResolved ? "border-success/30 bg-success/10 dark:bg-success/15" : "border-border bg-muted/20 dark:bg-muted/30"
-    )}>
+    <div
+      className={cn(
+        'rounded-lg border overflow-hidden',
+        thread.isResolved
+          ? 'border-success/30 bg-success/10 dark:bg-success/15'
+          : 'border-border bg-muted/20 dark:bg-muted/30'
+      )}
+    >
       {/* Thread header - file path and line */}
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/60 transition-colors"
       >
@@ -600,11 +675,12 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
         )}
         <FileCode className="w-3.5 h-3.5 text-primary flex-shrink-0" />
         <span className="font-mono text-primary truncate">{fileName}</span>
-        {thread.line && (
-          <span className="text-muted-foreground flex-shrink-0">L{thread.line}</span>
-        )}
+        {thread.line && <span className="text-muted-foreground flex-shrink-0">L{thread.line}</span>}
         {thread.isResolved && (
-          <Badge variant="outline" className="text-[9px] h-4 gap-0.5 text-success border-success/50 ml-auto">
+          <Badge
+            variant="outline"
+            className="text-[9px] h-4 gap-0.5 text-success border-success/50 ml-auto"
+          >
             <CheckCheck className="w-2.5 h-2.5" />
             Resolved
           </Badge>
@@ -613,7 +689,7 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
           {thread.comments.length} {thread.comments.length === 1 ? 'comment' : 'comments'}
         </span>
       </button>
-      
+
       {isExpanded && (
         <div className="border-t border-border">
           {/* Diff hunk preview if available */}
@@ -622,15 +698,15 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
               {firstComment.diffHunk.split('\n').slice(-5).join('\n')}
             </pre>
           )}
-          
+
           {/* Comments in thread */}
           <div className="p-2 space-y-2">
             {thread.comments.map((comment, idx) => (
-              <div 
-                key={comment.id} 
+              <div
+                key={comment.id}
                 className={cn(
-                  "p-2 rounded text-xs",
-                  idx === 0 ? "bg-muted/40 dark:bg-muted/50" : "bg-muted/20 dark:bg-muted/30 ml-4"
+                  'p-2 rounded text-xs',
+                  idx === 0 ? 'bg-muted/40 dark:bg-muted/50' : 'bg-muted/20 dark:bg-muted/30 ml-4'
                 )}
               >
                 <div className="flex items-center gap-1.5 mb-1">
@@ -642,7 +718,10 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
                   </Avatar>
                   <span className="font-medium truncate max-w-[80px]">{comment.author.login}</span>
                   {comment.author.isBot && (
-                    <Badge variant="outline" className="text-[8px] h-3.5 px-1 text-purple-500 border-purple-500/50">
+                    <Badge
+                      variant="outline"
+                      className="text-[8px] h-3.5 px-1 text-purple-500 border-purple-500/50"
+                    >
                       Bot
                     </Badge>
                   )}
@@ -656,7 +735,7 @@ function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: stri
               </div>
             ))}
           </div>
-          
+
           {/* Actions */}
           <div className="flex items-center gap-1 p-2 border-t border-border bg-muted/30 dark:bg-muted/40">
             <Button
@@ -688,8 +767,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const [jobSearch, setJobSearch] = useState('')
   const [groupByState, setGroupByState] = useState(true)
   // Only failed is expanded by default (needs attention), others collapsed
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(['running', 'success', 'other']))
-  
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(['running', 'success', 'other'])
+  )
+
   // With GraphQL, all data is already included in the PR object!
   // No extra API calls needed 🎉
   const checks = pr.checks
@@ -700,19 +781,20 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const filteredChecks = useMemo(() => {
     if (!checks?.check_runs) return []
     if (!jobSearch.trim()) return checks.check_runs
-    
+
     const searchLower = jobSearch.toLowerCase()
-    return checks.check_runs.filter(check => 
-      check.name.toLowerCase().includes(searchLower) ||
-      (check.conclusion && check.conclusion.toLowerCase().includes(searchLower)) ||
-      check.status.toLowerCase().includes(searchLower)
+    return checks.check_runs.filter(
+      (check) =>
+        check.name.toLowerCase().includes(searchLower) ||
+        check.conclusion?.toLowerCase().includes(searchLower) ||
+        check.status.toLowerCase().includes(searchLower)
     )
   }, [checks?.check_runs, jobSearch])
 
   // Group checks by state
   const groupedChecks = useMemo((): GroupedChecks => {
     const groups: GroupedChecks = { running: [], failed: [], success: [], other: [] }
-    
+
     for (const check of filteredChecks) {
       if (check.status === 'in_progress' || check.status === 'queued') {
         groups.running.push(check)
@@ -724,12 +806,12 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
         groups.other.push(check)
       }
     }
-    
+
     return groups
   }, [filteredChecks])
 
   const toggleGroup = (group: string) => {
-    setCollapsedGroups(prev => {
+    setCollapsedGroups((prev) => {
       const next = new Set(prev)
       if (next.has(group)) {
         next.delete(group)
@@ -745,35 +827,43 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
   // Combine comments and reviews into a unified list with isBot flag
   // Sorted chronologically: oldest first, newest last (like a conversation timeline)
-  const allComments = useMemo(() => [
-    ...(pr.commentsList || []).map(c => ({
-      id: c.id,
-      body: c.body,
-      created_at: c.created_at,
-      actor: { ...c.author, isBot: c.author.isBot || false },
-      event: 'commented' as const
-    })),
-    ...(pr.reviews || []).map(r => ({
-      id: r.id,
-      body: r.body || '',
-      created_at: r.created_at,
-      actor: { ...r.author, isBot: r.author.isBot || false },
-      event: r.state === 'approved' ? 'approved' as const : 
-             r.state === 'changes_requested' ? 'changes_requested' as const : 'reviewed' as const
-    }))
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [pr.commentsList, pr.reviews])
+  const allComments = useMemo(
+    () =>
+      [
+        ...(pr.commentsList || []).map((c) => ({
+          id: c.id,
+          body: c.body,
+          created_at: c.created_at,
+          actor: { ...c.author, isBot: c.author.isBot || false },
+          event: 'commented' as const
+        })),
+        ...(pr.reviews || []).map((r) => ({
+          id: r.id,
+          body: r.body || '',
+          created_at: r.created_at,
+          actor: { ...r.author, isBot: r.author.isBot || false },
+          event:
+            r.state === 'approved'
+              ? ('approved' as const)
+              : r.state === 'changes_requested'
+                ? ('changes_requested' as const)
+                : ('reviewed' as const)
+        }))
+      ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [pr.commentsList, pr.reviews]
+  )
 
   // Filter comments based on selected tab
   const comments = useMemo(() => {
     if (commentTab === 'all') return allComments
-    if (commentTab === 'humans') return allComments.filter(c => !c.actor.isBot)
-    if (commentTab === 'bots') return allComments.filter(c => c.actor.isBot)
+    if (commentTab === 'humans') return allComments.filter((c) => !c.actor.isBot)
+    if (commentTab === 'bots') return allComments.filter((c) => c.actor.isBot)
     return allComments
   }, [allComments, commentTab])
 
   // Count bots and humans
-  const botComments = allComments.filter(c => c.actor.isBot).length
-  const humanComments = allComments.filter(c => !c.actor.isBot).length
+  const botComments = allComments.filter((c) => c.actor.isBot).length
+  const humanComments = allComments.filter((c) => !c.actor.isBot).length
 
   // Group code review comments by reviewer
   interface ReviewerGroup {
@@ -796,9 +886,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
   const reviewsByReviewer = useMemo(() => {
     const reviewerMap = new Map<string, ReviewerGroup>()
-    
+
     // First, get review states from reviews array
-    for (const review of (pr.reviews || [])) {
+    for (const review of pr.reviews || []) {
       const login = review.author.login
       if (!reviewerMap.has(login)) {
         reviewerMap.set(login, {
@@ -823,9 +913,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
         group.reviewDate = review.created_at
       }
     }
-    
+
     // Then, add inline comments from review threads
-    for (const thread of (pr.reviewThreads || [])) {
+    for (const thread of pr.reviewThreads || []) {
       for (const comment of thread.comments) {
         const login = comment.author.login
         if (!reviewerMap.has(login)) {
@@ -851,41 +941,54 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
         })
       }
     }
-    
+
     // Sort inline comments by date for each reviewer
     for (const group of reviewerMap.values()) {
-      group.inlineComments.sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      group.inlineComments.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
     }
-    
+
     // Convert to array and sort by review state (approved last, changes_requested first)
     return Array.from(reviewerMap.values()).sort((a, b) => {
-      const stateOrder = { 'changes_requested': 0, 'commented': 1, 'approved': 2, null: 3 }
+      const stateOrder = { changes_requested: 0, commented: 1, approved: 2, null: 3 }
       return (stateOrder[a.reviewState!] || 3) - (stateOrder[b.reviewState!] || 3)
     })
   }, [pr.reviews, pr.reviewThreads])
 
   const checksCount = checks?.check_runs.length || 0
-  const passedChecks = checks?.check_runs.filter(c => c.conclusion === 'success').length || 0
-  const failedChecks = checks?.check_runs.filter(c => c.conclusion === 'failure').length || 0
-  const runningChecks = checks?.check_runs.filter(c => c.status === 'in_progress' || c.status === 'queued').length || 0
+  const passedChecks = checks?.check_runs.filter((c) => c.conclusion === 'success').length || 0
+  const failedChecks = checks?.check_runs.filter((c) => c.conclusion === 'failure').length || 0
+  const runningChecks =
+    checks?.check_runs.filter((c) => c.status === 'in_progress' || c.status === 'queued').length ||
+    0
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-background" style={{ maxWidth: '100%' }}>
+    <div
+      className="flex flex-col h-full w-full overflow-hidden bg-background"
+      style={{ maxWidth: '100%' }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border flex-shrink-0 overflow-hidden bg-card/80 dark:bg-card/60">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2 mb-1">
-              <GitPullRequest className={cn(
-                'w-4 h-4 flex-shrink-0',
-                pr.draft ? 'text-muted-foreground' : 'text-primary'
-              )} />
+              <GitPullRequest
+                className={cn(
+                  'w-4 h-4 flex-shrink-0',
+                  pr.draft ? 'text-muted-foreground' : 'text-primary'
+                )}
+              />
               <span className="text-xs text-muted-foreground font-mono">#{pr.number}</span>
-              {pr.draft && <Badge variant="secondary" className="text-[10px] h-4">Draft</Badge>}
+              {pr.draft && (
+                <Badge variant="secondary" className="text-[10px] h-4">
+                  Draft
+                </Badge>
+              )}
             </div>
-            <h2 className="font-semibold text-sm leading-tight line-clamp-2 break-words">{pr.title}</h2>
+            <h2 className="font-semibold text-sm leading-tight line-clamp-2 break-words">
+              {pr.title}
+            </h2>
             <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground overflow-hidden">
               <GitBranch className="w-3 h-3 flex-shrink-0" />
               <span className="font-mono truncate max-w-[100px]">{truncate(pr.head.ref, 25)}</span>
@@ -902,12 +1005,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             >
               <ExternalLink className="w-4 h-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onClose}
-            >
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -992,11 +1090,11 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                   )}
                 </div>
                 <Button
-                  variant={groupByState ? "secondary" : "ghost"}
+                  variant={groupByState ? 'secondary' : 'ghost'}
                   size="sm"
                   className="h-8 px-2"
                   onClick={() => setGroupByState(!groupByState)}
-                  title={groupByState ? "Show flat list" : "Group by state"}
+                  title={groupByState ? 'Show flat list' : 'Group by state'}
                 >
                   <Layers className="w-3.5 h-3.5" />
                 </Button>
@@ -1017,6 +1115,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                       {groupedChecks.running.length > 0 && (
                         <div className="rounded-lg border border-warning/30 bg-warning/10 dark:bg-warning/15 overflow-hidden">
                           <button
+                            type="button"
                             onClick={() => toggleGroup('running')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-warning hover:bg-warning/20 transition-colors"
                           >
@@ -1030,7 +1129,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                           </button>
                           {!collapsedGroups.has('running') && (
                             <div className="border-t border-warning/20 p-1 space-y-0.5">
-                              {groupedChecks.running.map(check => (
+                              {groupedChecks.running.map((check) => (
                                 <CheckItem key={check.id} check={check} />
                               ))}
                             </div>
@@ -1042,6 +1141,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                       {groupedChecks.failed.length > 0 && (
                         <div className="rounded-lg border border-destructive/30 bg-destructive/10 dark:bg-destructive/15 overflow-hidden">
                           <button
+                            type="button"
                             onClick={() => toggleGroup('failed')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
                           >
@@ -1055,7 +1155,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                           </button>
                           {!collapsedGroups.has('failed') && (
                             <div className="border-t border-destructive/20 p-1 space-y-0.5">
-                              {groupedChecks.failed.map(check => (
+                              {groupedChecks.failed.map((check) => (
                                 <CheckItem key={check.id} check={check} />
                               ))}
                             </div>
@@ -1067,6 +1167,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                       {groupedChecks.success.length > 0 && (
                         <div className="rounded-lg border border-success/30 bg-success/10 dark:bg-success/15 overflow-hidden">
                           <button
+                            type="button"
                             onClick={() => toggleGroup('success')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-success hover:bg-success/20 transition-colors"
                           >
@@ -1080,7 +1181,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                           </button>
                           {!collapsedGroups.has('success') && (
                             <div className="border-t border-success/20 p-1 space-y-0.5">
-                              {groupedChecks.success.map(check => (
+                              {groupedChecks.success.map((check) => (
                                 <CheckItem key={check.id} check={check} />
                               ))}
                             </div>
@@ -1092,6 +1193,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                       {groupedChecks.other.length > 0 && (
                         <div className="rounded-lg border border-border bg-muted/40 dark:bg-muted/50 overflow-hidden">
                           <button
+                            type="button"
                             onClick={() => toggleGroup('other')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
                           >
@@ -1105,7 +1207,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                           </button>
                           {!collapsedGroups.has('other') && (
                             <div className="border-t border-border p-1 space-y-0.5">
-                              {groupedChecks.other.map(check => (
+                              {groupedChecks.other.map((check) => (
                                 <CheckItem key={check.id} check={check} />
                               ))}
                             </div>
@@ -1155,48 +1257,52 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             {/* Tab filter - All, People, Bots, Reviews */}
             <div className="flex gap-1 mb-3 p-1 bg-muted/60 dark:bg-muted/70 rounded-lg">
               <button
+                type="button"
                 onClick={() => setCommentTab('all')}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors",
-                  commentTab === 'all' 
-                    ? "bg-background shadow-sm text-foreground" 
-                    : "text-muted-foreground hover:text-foreground"
+                  'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                  commentTab === 'all'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <MessageSquare className="w-3 h-3" />
                 All ({allComments.length})
               </button>
               <button
+                type="button"
                 onClick={() => setCommentTab('humans')}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors",
-                  commentTab === 'humans' 
-                    ? "bg-background shadow-sm text-foreground" 
-                    : "text-muted-foreground hover:text-foreground"
+                  'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                  commentTab === 'humans'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Users className="w-3 h-3" />
                 People ({humanComments})
               </button>
               <button
+                type="button"
                 onClick={() => setCommentTab('bots')}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors",
-                  commentTab === 'bots' 
-                    ? "bg-background shadow-sm text-foreground" 
-                    : "text-muted-foreground hover:text-foreground"
+                  'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                  commentTab === 'bots'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Bot className="w-3 h-3" />
                 Bots ({botComments})
               </button>
               <button
+                type="button"
                 onClick={() => setCommentTab('reviews')}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors",
-                  commentTab === 'reviews' 
-                    ? "bg-background shadow-sm text-foreground" 
-                    : "text-muted-foreground hover:text-foreground"
+                  'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                  commentTab === 'reviews'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <FileCode className="w-3 h-3" />
@@ -1205,130 +1311,139 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             </div>
 
             {/* Comments content (All, People, Bots tabs) */}
-            {commentTab !== 'reviews' && (
-              <>
-                {eventsLoading ? (
-                  <div className="flex items-center justify-center py-6">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : comments.length > 0 ? (
-                  <div className="relative ml-2">
-                    {/* Timeline line - thicker and more visible */}
-                    <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
-                    
-                    {/* Start marker */}
-                    <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
-                    
-                    <div className="space-y-0 pt-4">
-                      {comments.slice(0, 30).map((comment, index) => (
-                        <div key={`${comment.id}-${index}`} className="relative pl-12 pb-5 group">
-                          {/* Timeline dot - larger and more prominent */}
-                          <div className={cn(
-                            "absolute left-[4px] top-3 w-[26px] h-[26px] rounded-full border-[3px] bg-background flex items-center justify-center shadow-sm transition-transform group-hover:scale-110",
-                            comment.event === 'approved' ? "border-success" :
-                            comment.event === 'changes_requested' ? "border-destructive" :
-                            comment.actor.isBot ? "border-purple-500" : "border-primary"
-                          )}>
-                            {comment.event === 'approved' ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                            ) : comment.event === 'changes_requested' ? (
-                              <XCircle className="w-3.5 h-3.5 text-destructive" />
-                            ) : comment.actor.isBot ? (
-                              <Bot className="w-3.5 h-3.5 text-purple-500" />
-                            ) : (
-                              <MessageSquare className="w-3.5 h-3.5 text-primary" />
-                            )}
-                          </div>
-                          
-                          {/* Connector line from dot to card */}
-                          <div className={cn(
-                            "absolute left-[30px] top-[22px] w-[18px] h-[2px]",
-                            comment.event === 'approved' ? "bg-success/50" :
-                            comment.event === 'changes_requested' ? "bg-destructive/50" :
-                            comment.actor.isBot ? "bg-purple-500/50" : "bg-primary/50"
-                          )} />
-                          
-                          <CommentItem comment={comment} />
+            {commentTab !== 'reviews' &&
+              (eventsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : comments.length > 0 ? (
+                <div className="relative ml-2">
+                  {/* Timeline line - thicker and more visible */}
+                  <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
+
+                  {/* Start marker */}
+                  <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+
+                  <div className="space-y-0 pt-4">
+                    {comments.slice(0, 30).map((comment, index) => (
+                      <div key={`${comment.id}-${index}`} className="relative pl-12 pb-5 group">
+                        {/* Timeline dot - larger and more prominent */}
+                        <div
+                          className={cn(
+                            'absolute left-[4px] top-3 w-[26px] h-[26px] rounded-full border-[3px] bg-background flex items-center justify-center shadow-sm transition-transform group-hover:scale-110',
+                            comment.event === 'approved'
+                              ? 'border-success'
+                              : comment.event === 'changes_requested'
+                                ? 'border-destructive'
+                                : comment.actor.isBot
+                                  ? 'border-purple-500'
+                                  : 'border-primary'
+                          )}
+                        >
+                          {comment.event === 'approved' ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                          ) : comment.event === 'changes_requested' ? (
+                            <XCircle className="w-3.5 h-3.5 text-destructive" />
+                          ) : comment.actor.isBot ? (
+                            <Bot className="w-3.5 h-3.5 text-purple-500" />
+                          ) : (
+                            <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                          )}
                         </div>
-                      ))}
-                    </div>
-                    
-                    {/* End marker */}
-                    <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
-                    
-                    {comments.length > 30 && (
-                      <p className="text-xs text-muted-foreground text-center py-2 pl-12 mt-2">
-                        Showing 30 of {comments.length} comments
-                      </p>
-                    )}
+
+                        {/* Connector line from dot to card */}
+                        <div
+                          className={cn(
+                            'absolute left-[30px] top-[22px] w-[18px] h-[2px]',
+                            comment.event === 'approved'
+                              ? 'bg-success/50'
+                              : comment.event === 'changes_requested'
+                                ? 'bg-destructive/50'
+                                : comment.actor.isBot
+                                  ? 'bg-purple-500/50'
+                                  : 'bg-primary/50'
+                          )}
+                        />
+
+                        <CommentItem comment={comment} />
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <div className="text-center py-6 text-sm text-muted-foreground">
-                    {commentTab === 'bots' ? (
-                      <>
-                        <Bot className="w-5 h-5 mx-auto mb-2 opacity-50" />
-                        No bot comments
-                      </>
-                    ) : commentTab === 'humans' ? (
-                      <>
-                        <Users className="w-5 h-5 mx-auto mb-2 opacity-50" />
-                        No human comments
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare className="w-5 h-5 mx-auto mb-2 opacity-50" />
-                        No comments yet
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+
+                  {/* End marker */}
+                  <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+
+                  {comments.length > 30 && (
+                    <p className="text-xs text-muted-foreground text-center py-2 pl-12 mt-2">
+                      Showing 30 of {comments.length} comments
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-sm text-muted-foreground">
+                  {commentTab === 'bots' ? (
+                    <>
+                      <Bot className="w-5 h-5 mx-auto mb-2 opacity-50" />
+                      No bot comments
+                    </>
+                  ) : commentTab === 'humans' ? (
+                    <>
+                      <Users className="w-5 h-5 mx-auto mb-2 opacity-50" />
+                      No human comments
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-5 h-5 mx-auto mb-2 opacity-50" />
+                      No comments yet
+                    </>
+                  )}
+                </div>
+              ))}
 
             {/* Code Reviews content (Code tab) - Grouped by Reviewer */}
-            {commentTab === 'reviews' && (
-              <>
-                {reviewsByReviewer.length > 0 ? (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Users className="w-3 h-3" />
-                        <span>{reviewsByReviewer.length} reviewer{reviewsByReviewer.length !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {reviewsByReviewer.filter(r => r.reviewState === 'approved').length > 0 && (
-                          <span className="text-success flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {reviewsByReviewer.filter(r => r.reviewState === 'approved').length}
-                          </span>
-                        )}
-                        {reviewsByReviewer.filter(r => r.reviewState === 'changes_requested').length > 0 && (
-                          <span className="text-destructive flex items-center gap-1">
-                            <XCircle className="w-3 h-3" />
-                            {reviewsByReviewer.filter(r => r.reviewState === 'changes_requested').length}
-                          </span>
-                        )}
-                      </div>
+            {commentTab === 'reviews' &&
+              (reviewsByReviewer.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Users className="w-3 h-3" />
+                      <span>
+                        {reviewsByReviewer.length} reviewer
+                        {reviewsByReviewer.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
-                    
-                    <div className="space-y-2">
-                      {reviewsByReviewer.map(reviewer => (
-                        <ReviewerCard 
-                          key={reviewer.login} 
-                          reviewer={reviewer} 
-                          prUrl={pr.html_url}
-                        />
-                      ))}
+                    <div className="flex items-center gap-2 text-xs">
+                      {reviewsByReviewer.filter((r) => r.reviewState === 'approved').length > 0 && (
+                        <span className="text-success flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {reviewsByReviewer.filter((r) => r.reviewState === 'approved').length}
+                        </span>
+                      )}
+                      {reviewsByReviewer.filter((r) => r.reviewState === 'changes_requested')
+                        .length > 0 && (
+                        <span className="text-destructive flex items-center gap-1">
+                          <XCircle className="w-3 h-3" />
+                          {
+                            reviewsByReviewer.filter((r) => r.reviewState === 'changes_requested')
+                              .length
+                          }
+                        </span>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="text-center py-6 text-sm text-muted-foreground">
-                    <FileCode className="w-5 h-5 mx-auto mb-2 opacity-50" />
-                    No code reviews yet
+
+                  <div className="space-y-2">
+                    {reviewsByReviewer.map((reviewer) => (
+                      <ReviewerCard key={reviewer.login} reviewer={reviewer} prUrl={pr.html_url} />
+                    ))}
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-sm text-muted-foreground">
+                  <FileCode className="w-5 h-5 mx-auto mb-2 opacity-50" />
+                  No code reviews yet
+                </div>
+              ))}
           </div>
         </div>
       </ScrollArea>

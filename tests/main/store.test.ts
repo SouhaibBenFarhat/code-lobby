@@ -1,15 +1,15 @@
 /**
  * Store Tests
- * 
+ *
  * Tests for electron-store persistence layer
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 // Mock electron-store before importing the module
 vi.mock('electron-store', () => {
   const mockStore = new Map<string, unknown>()
-  
+
   return {
     default: vi.fn().mockImplementation(() => ({
       get: vi.fn((key: string) => {
@@ -47,27 +47,27 @@ vi.mock('electron-store', () => {
 
 // Import after mocking
 import {
-  getToken,
-  setToken,
   clearToken,
-  getUser,
-  setUser,
-  getSettings,
-  setSettings,
-  getRepoOrder,
-  setRepoOrder,
   getCardLayouts,
-  setCardLayouts,
-  getSelectedRepos,
-  setSelectedRepos,
-  getPRDetailPanel,
-  setPRDetailPanel,
-  getRepoColors,
-  setRepoColor,
-  getViewMode,
-  setViewMode,
   getIDEViewSettings,
-  setIDEViewSettings
+  getPRDetailPanel,
+  getRepoColors,
+  getRepoOrder,
+  getSelectedRepos,
+  getSettings,
+  getToken,
+  getUser,
+  getViewMode,
+  setCardLayouts,
+  setIDEViewSettings,
+  setPRDetailPanel,
+  setRepoColor,
+  setRepoOrder,
+  setSelectedRepos,
+  setSettings,
+  setToken,
+  setUser,
+  setViewMode
 } from '@main/store'
 
 describe('Store', () => {
@@ -95,7 +95,12 @@ describe('Store', () => {
     })
 
     it('should set and get user', () => {
-      const user = { login: 'testuser', avatar_url: 'https://example.com/avatar.png', name: 'Test User', html_url: 'https://github.com/testuser' }
+      const user = {
+        login: 'testuser',
+        avatar_url: 'https://example.com/avatar.png',
+        name: 'Test User',
+        html_url: 'https://github.com/testuser'
+      }
       setUser(user)
       expect(getUser()).toEqual(user)
     })

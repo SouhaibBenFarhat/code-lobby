@@ -1,13 +1,23 @@
-import { useState, useMemo } from 'react'
-import { GitFork, ExternalLink, GitPullRequest, Code, Move, X, Palette, User, Users } from 'lucide-react'
-import { Card, CardContent, CardHeader } from './ui/card'
+import {
+  Code,
+  ExternalLink,
+  GitFork,
+  GitPullRequest,
+  Move,
+  Palette,
+  User,
+  Users,
+  X
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import { PRCard } from './PRCard'
+import type { PullRequest, Repository } from './types'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { Card, CardContent, CardHeader } from './ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
-import { cn, formatRelativeTime } from '@/lib/utils'
-import type { PullRequest, Repository } from './types'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 // Preset color palette
 const COLOR_PALETTE = [
@@ -21,7 +31,7 @@ const COLOR_PALETTE = [
   '#6366f1', // Indigo
   '#8b5cf6', // Violet
   '#ec4899', // Pink
-  '#64748b', // Slate
+  '#64748b' // Slate
 ]
 
 interface RepoCardProps {
@@ -36,10 +46,10 @@ interface RepoCardProps {
   currentUser?: string | null
 }
 
-export function RepoCard({ 
-  repo, 
-  prs, 
-  className, 
+export function RepoCard({
+  repo,
+  prs,
+  className,
   style,
   isDraggable = true,
   onClose,
@@ -49,31 +59,33 @@ export function RepoCard({
 }: RepoCardProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
   const [showOnlyMyPRs, setShowOnlyMyPRs] = useState(false)
-  
+
   // Filter PRs based on toggle
   const filteredPRs = useMemo(() => {
     if (!showOnlyMyPRs || !currentUser) return prs
-    return prs.filter(pr => pr.user.login === currentUser)
+    return prs.filter((pr) => pr.user.login === currentUser)
   }, [prs, showOnlyMyPRs, currentUser])
-  
+
   const hasPRs = filteredPRs.length > 0
   const totalPRs = prs.length
-  const myPRsCount = currentUser ? prs.filter(pr => pr.user.login === currentUser).length : 0
+  const myPRsCount = currentUser ? prs.filter((pr) => pr.user.login === currentUser).length : 0
 
   return (
-    <Card 
-      className={cn('flex flex-col overflow-hidden h-full', className)} 
+    <Card
+      className={cn('flex flex-col overflow-hidden h-full', className)}
       style={{
         ...style,
-        ...(color ? {
-          borderColor: color,
-          borderWidth: '2px',
-          boxShadow: `0 0 0 1px ${color}20, 0 4px 12px ${color}15`
-        } : {})
+        ...(color
+          ? {
+              borderColor: color,
+              borderWidth: '2px',
+              boxShadow: `0 0 0 1px ${color}20, 0 4px 12px ${color}15`
+            }
+          : {})
       }}
     >
       {/* Top bar with drag handle, color picker, and close button */}
-      <div 
+      <div
         className="flex items-center border-b border-border bg-muted/80 dark:bg-black/20"
         style={color ? { backgroundColor: `${color}15`, borderBottomColor: `${color}40` } : {}}
       >
@@ -84,6 +96,7 @@ export function RepoCard({
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <button
+                    type="button"
                     className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -93,15 +106,20 @@ export function RepoCard({
               </TooltipTrigger>
               <TooltipContent>Change card color</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-auto p-2" align="start" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent
+              className="w-auto p-2"
+              align="start"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="grid grid-cols-6 gap-1">
                 {COLOR_PALETTE.map((c, i) => (
                   <button
+                    type="button"
                     key={i}
                     className={cn(
-                      "w-6 h-6 rounded-md border-2 transition-all hover:scale-110",
-                      c === color ? "ring-2 ring-offset-2 ring-primary" : "border-transparent",
-                      !c && "bg-muted border-dashed border-muted-foreground/30"
+                      'w-6 h-6 rounded-md border-2 transition-all hover:scale-110',
+                      c === color ? 'ring-2 ring-offset-2 ring-primary' : 'border-transparent',
+                      !c && 'bg-muted border-dashed border-muted-foreground/30'
                     )}
                     style={c ? { backgroundColor: c } : {}}
                     onClick={() => {
@@ -117,12 +135,13 @@ export function RepoCard({
             </PopoverContent>
           </Popover>
         )}
-        
+
         {/* Drag handle - only this area is draggable */}
-        <div 
+        <div
           className={cn(
-            "drag-handle flex-1 flex items-center justify-center gap-1 py-1 text-muted-foreground/50 transition-colors",
-            isDraggable && "cursor-grab active:cursor-grabbing hover:bg-muted/50 hover:text-muted-foreground"
+            'drag-handle flex-1 flex items-center justify-center gap-1 py-1 text-muted-foreground/50 transition-colors',
+            isDraggable &&
+              'cursor-grab active:cursor-grabbing hover:bg-muted/50 hover:text-muted-foreground'
           )}
         >
           {isDraggable && (
@@ -137,6 +156,7 @@ export function RepoCard({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
+                type="button"
                 className="px-2 py-1 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
                 onClick={(e) => {
                   e.preventDefault()
@@ -173,7 +193,9 @@ export function RepoCard({
                 </>
               )}
               <span className="text-muted-foreground/40 mx-1.5">•</span>
-              <span className="text-muted-foreground text-[10px]">{formatRelativeTime(repo.updated_at)}</span>
+              <span className="text-muted-foreground text-[10px]">
+                {formatRelativeTime(repo.updated_at)}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -188,11 +210,12 @@ export function RepoCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     className={cn(
-                      "p-1 rounded transition-colors",
-                      showOnlyMyPRs 
-                        ? "text-primary bg-primary/20" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      'p-1 rounded transition-colors',
+                      showOnlyMyPRs
+                        ? 'text-primary bg-primary/20'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     )}
                     onClick={(e) => {
                       e.preventDefault()
@@ -200,12 +223,16 @@ export function RepoCard({
                       setShowOnlyMyPRs(!showOnlyMyPRs)
                     }}
                   >
-                    {showOnlyMyPRs ? <User className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                    {showOnlyMyPRs ? (
+                      <User className="w-3.5 h-3.5" />
+                    ) : (
+                      <Users className="w-3.5 h-3.5" />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {showOnlyMyPRs 
-                    ? `Showing my PRs only (${myPRsCount}/${totalPRs})` 
+                  {showOnlyMyPRs
+                    ? `Showing my PRs only (${myPRsCount}/${totalPRs})`
                     : `Show only my PRs (${myPRsCount} of ${totalPRs})`}
                 </TooltipContent>
               </Tooltip>
@@ -230,7 +257,6 @@ export function RepoCard({
             </Tooltip>
           </div>
         </div>
-
       </CardHeader>
 
       <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-1">
@@ -253,20 +279,20 @@ export function RepoCard({
       </CardContent>
 
       {/* Footer - visual end marker */}
-      <div 
+      <div
         className="flex-shrink-0 border-t border-border bg-muted/80 dark:bg-black/20 px-3 py-1.5 flex items-center justify-center gap-2"
         style={color ? { borderTopColor: `${color}40`, backgroundColor: `${color}15` } : {}}
       >
         <div className="flex items-center gap-1.5">
-          <div 
+          <div
             className="w-1 h-1 rounded-full bg-muted-foreground/40"
             style={color ? { backgroundColor: `${color}60` } : {}}
           />
-          <div 
+          <div
             className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50"
             style={color ? { backgroundColor: `${color}70` } : {}}
           />
-          <div 
+          <div
             className="w-1 h-1 rounded-full bg-muted-foreground/40"
             style={color ? { backgroundColor: `${color}60` } : {}}
           />

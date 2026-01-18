@@ -1,7 +1,17 @@
-# Run all unit tests before committing
-# If tests fail, the commit will be aborted
+# Run linting and tests before committing
+# If any check fails, the commit will be aborted
 
-echo "🧪 Running tests before commit..."
+echo "🔍 Running Biome lint check..."
+npm run lint
+
+if [ $? -ne 0 ]; then
+  echo "❌ Lint check failed! Run 'npm run lint:fix' to fix issues."
+  exit 1
+fi
+
+echo "✅ Lint check passed!"
+
+echo "🧪 Running tests..."
 npm test
 
 if [ $? -ne 0 ]; then
@@ -9,4 +19,4 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "✅ All tests passed!"
+echo "✅ All checks passed!"

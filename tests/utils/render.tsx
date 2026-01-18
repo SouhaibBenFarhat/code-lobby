@@ -1,13 +1,13 @@
 /**
  * Test Render Utilities
- * 
+ *
  * Provides wrapper components and utilities for testing React components
  * with all necessary providers (React Query, Tooltip, etc.)
  */
 
-import React, { ReactElement, ReactNode } from 'react'
-import { render, RenderOptions, RenderResult } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { RenderOptions, RenderResult, render } from '@testing-library/react'
+import { ReactElement, ReactNode } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Create a new QueryClient for each test
@@ -37,14 +37,12 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 /**
  * All Providers Wrapper
  */
-function AllProviders({ children }: WrapperProps): ReactElement {
+function _AllProviders({ children }: WrapperProps): ReactElement {
   const queryClient = createTestQueryClient()
-  
+
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {children}
-      </TooltipProvider>
+      <TooltipProvider>{children}</TooltipProvider>
     </QueryClientProvider>
   )
 }
@@ -52,20 +50,15 @@ function AllProviders({ children }: WrapperProps): ReactElement {
 /**
  * Custom render function that wraps component with all providers
  */
-function customRender(
-  ui: ReactElement,
-  options?: CustomRenderOptions
-): RenderResult {
+function customRender(ui: ReactElement, options?: CustomRenderOptions): RenderResult {
   const queryClient = options?.queryClient || createTestQueryClient()
-  
+
   const Wrapper = ({ children }: WrapperProps) => (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {children}
-      </TooltipProvider>
+      <TooltipProvider>{children}</TooltipProvider>
     </QueryClientProvider>
   )
-  
+
   return render(ui, { wrapper: Wrapper, ...options })
 }
 

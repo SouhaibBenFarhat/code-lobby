@@ -1,6 +1,19 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Send, Trash2, Key, Loader2, User, AlertCircle, Settings, X, RefreshCw, Brain, ChevronRight, ArrowDown, Info } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowDown,
+  Brain,
+  ChevronRight,
+  Key,
+  Loader2,
+  RefreshCw,
+  Send,
+  Settings,
+  Trash2,
+  User,
+  X
+} from 'lucide-react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DogIcon } from './DogIcon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
@@ -13,7 +26,7 @@ function useThrottledValue<T>(value: T, fps = 30): T {
   useEffect(() => {
     const minInterval = 1000 / fps
     const now = performance.now()
-    
+
     if (now - lastUpdateRef.current >= minInterval) {
       setThrottledValue(value)
       lastUpdateRef.current = now
@@ -36,11 +49,12 @@ function useThrottledValue<T>(value: T, fps = 30): T {
 
   return throttledValue
 }
+
+import { cn } from '@/lib/utils'
+import { MarkdownContent } from './MarkdownContent'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { cn } from '@/lib/utils'
-import { MarkdownContent } from './MarkdownContent'
 
 interface ChatMessage {
   id: string
@@ -62,7 +76,7 @@ const CONTEXT_WINDOWS: Record<string, number> = {
   'claude-3-5-haiku-20241022': 200000,
   'claude-3-opus-20240229': 200000,
   'claude-3-sonnet-20240229': 200000,
-  'claude-3-haiku-20240307': 200000,
+  'claude-3-haiku-20240307': 200000
 }
 const DEFAULT_CONTEXT_WINDOW = 200000
 
@@ -76,9 +90,13 @@ function estimateTokens(text: string): number {
 
 // Calculate total tokens from messages
 // Uses estimation - actual tokens are tracked separately via API responses
-function calculateTotalTokens(messages: ChatMessage[], streamingContent?: string, streamingThinking?: string): number {
+function calculateTotalTokens(
+  messages: ChatMessage[],
+  streamingContent?: string,
+  streamingThinking?: string
+): number {
   let total = 0
-  
+
   // Add tokens from all messages
   for (const msg of messages) {
     total += estimateTokens(msg.content)
@@ -86,7 +104,7 @@ function calculateTotalTokens(messages: ChatMessage[], streamingContent?: string
       total += estimateTokens(msg.thinking)
     }
   }
-  
+
   // Add streaming content if present
   if (streamingContent) {
     total += estimateTokens(streamingContent)
@@ -94,10 +112,10 @@ function calculateTotalTokens(messages: ChatMessage[], streamingContent?: string
   if (streamingThinking) {
     total += estimateTokens(streamingThinking)
   }
-  
+
   // Add overhead for message formatting (~20 tokens per message)
   total += messages.length * 20
-  
+
   return total
 }
 
@@ -110,11 +128,19 @@ interface ContextIndicatorProps {
   inputText?: string
 }
 
-function ContextIndicator({ messages, streamingContent, streamingThinking, model, inputText }: ContextIndicatorProps) {
+function ContextIndicator({
+  messages,
+  streamingContent,
+  streamingThinking,
+  model,
+  inputText
+}: ContextIndicatorProps) {
   const maxTokens = CONTEXT_WINDOWS[model] || DEFAULT_CONTEXT_WINDOW
-  const usedTokens = calculateTotalTokens(messages, streamingContent, streamingThinking) + estimateTokens(inputText || '')
+  const usedTokens =
+    calculateTotalTokens(messages, streamingContent, streamingThinking) +
+    estimateTokens(inputText || '')
   const percentage = Math.min((usedTokens / maxTokens) * 100, 100)
-  
+
   // Color based on usage
   const getColor = () => {
     if (percentage < 50) return 'bg-green-500'
@@ -122,31 +148,32 @@ function ContextIndicator({ messages, streamingContent, streamingThinking, model
     if (percentage < 95) return 'bg-orange-500'
     return 'bg-red-500'
   }
-  
+
   // Format numbers with K suffix
   const formatTokens = (n: number) => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
     return n.toString()
   }
-  
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1.5 cursor-help">
             <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={cn("h-full rounded-full transition-all duration-300", getColor())}
+              <div
+                className={cn('h-full rounded-full transition-all duration-300', getColor())}
                 style={{ width: `${percentage}%` }}
               />
             </div>
-            {percentage >= 95 && (
-              <span className="text-[10px] text-red-500">⚠️</span>
-            )}
+            {percentage >= 95 && <span className="text-[10px] text-red-500">⚠️</span>}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs px-2 py-1">
-          <span>{percentage.toFixed(1)}% • {formatTokens(usedTokens)} / {formatTokens(maxTokens)} context used</span>
+          <span>
+            {percentage.toFixed(1)}% • {formatTokens(usedTokens)} / {formatTokens(maxTokens)}{' '}
+            context used
+          </span>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -201,22 +228,26 @@ function VirtualizedMessageList({
   setMessageQueue,
   scrollContainerRef,
   onScroll,
-  onVirtualizerReady,
+  onVirtualizerReady
 }: VirtualizedMessageListProps) {
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
-    const items: Array<{ type: 'message' | 'queued'; data: ChatMessage | QueuedMessage; index?: number }> = []
-    
+    const items: Array<{
+      type: 'message' | 'queued'
+      data: ChatMessage | QueuedMessage
+      index?: number
+    }> = []
+
     // Add messages
-    messages.forEach(msg => {
+    messages.forEach((msg) => {
       items.push({ type: 'message', data: msg })
     })
-    
+
     // Add queued messages (these are static, ok to virtualize)
     messageQueue.forEach((msg, idx) => {
       items.push({ type: 'queued', data: msg, index: idx })
     })
-    
+
     return items
   }, [messages, messageQueue])
 
@@ -224,11 +255,11 @@ function VirtualizedMessageList({
     count: allItems.length,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => 100, // Slightly larger estimate for safety
-    overscan: 5, // Render 5 extra items above/below viewport
+    overscan: 5 // Render 5 extra items above/below viewport
   })
 
   const virtualItems = virtualizer.getVirtualItems()
-  
+
   // Expose scrollToEnd function to parent via callback
   // This uses virtualizer's scrollToIndex which is more reliable
   useLayoutEffect(() => {
@@ -236,7 +267,7 @@ function VirtualizedMessageList({
       if (allItems.length > 0) {
         // Use virtualizer's scrollToIndex for accurate positioning
         virtualizer.scrollToIndex(allItems.length - 1, { align: 'end' })
-        
+
         // Also scroll to absolute bottom to include streaming content
         requestAnimationFrame(() => {
           const container = scrollContainerRef.current
@@ -250,22 +281,18 @@ function VirtualizedMessageList({
   }, [allItems.length, virtualizer, onVirtualizerReady, scrollContainerRef])
 
   return (
-    <div
-      ref={scrollContainerRef}
-      className="h-full overflow-auto p-3"
-      onScroll={onScroll}
-    >
+    <div ref={scrollContainerRef} className="h-full overflow-auto p-3" onScroll={onScroll}>
       {/* Virtualized messages */}
       <div
         style={{
           height: allItems.length > 0 ? `${virtualizer.getTotalSize()}px` : 'auto',
           width: '100%',
-          position: 'relative',
+          position: 'relative'
         }}
       >
         {virtualItems.map((virtualItem) => {
           const item = allItems[virtualItem.index]
-          
+
           return (
             <div
               key={virtualItem.key}
@@ -276,7 +303,7 @@ function VirtualizedMessageList({
                 top: 0,
                 left: 0,
                 width: '100%',
-                transform: `translateY(${virtualItem.start}px)`,
+                transform: `translateY(${virtualItem.start}px)`
               }}
               className="pb-3"
             >
@@ -287,34 +314,40 @@ function VirtualizedMessageList({
                   toggleThinkingExpanded={toggleThinkingExpanded}
                 />
               )}
-              
+
               {item.type === 'queued' && (
                 <QueuedMessageBubble
                   message={item.data as QueuedMessage}
                   index={item.index!}
-                  onRemove={() => setMessageQueue(prev => prev.filter(m => m.id !== (item.data as QueuedMessage).id))}
+                  onRemove={() =>
+                    setMessageQueue((prev) =>
+                      prev.filter((m) => m.id !== (item.data as QueuedMessage).id)
+                    )
+                  }
                 />
               )}
             </div>
           )
         })}
       </div>
-      
+
       {/* Streaming content - rendered OUTSIDE virtualizer for smooth updates */}
       {streaming.isStreaming && (
         <div className="pb-3">
           <StreamingBubble streaming={throttledStreaming} />
         </div>
       )}
-      
+
       {/* Queue header - rendered outside virtualizer when streaming */}
       {streaming.isStreaming && messageQueue.length > 0 && (
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-2 pb-3 border-t border-dashed border-border/50">
           <Loader2 className="w-3 h-3 animate-spin" />
-          <span>{messageQueue.length} message{messageQueue.length > 1 ? 's' : ''} queued</span>
+          <span>
+            {messageQueue.length} message{messageQueue.length > 1 ? 's' : ''} queued
+          </span>
         </div>
       )}
-      
+
       {/* Scroll anchor at absolute bottom */}
       <div data-scroll-anchor className="h-px" />
     </div>
@@ -325,53 +358,58 @@ function VirtualizedMessageList({
 const MessageBubble = React.memo(function MessageBubble({
   message,
   expandedThinking,
-  toggleThinkingExpanded,
+  toggleThinkingExpanded
 }: {
   message: ChatMessage
   expandedThinking: Set<string>
   toggleThinkingExpanded: (id: string) => void
 }) {
   return (
-    <div
-      className={cn(
-        "flex gap-2",
-        message.role === 'user' ? 'justify-end' : 'justify-start'
-      )}
-    >
+    <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
       {message.role === 'assistant' && (
         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
           <DogIcon className="w-3.5 h-3.5 text-primary" />
         </div>
       )}
-      
+
       <div
         className={cn(
-          "max-w-[85%] rounded-lg",
-          message.role === 'user'
-            ? 'bg-primary text-primary-foreground px-3 py-2'
-            : 'bg-muted'
+          'max-w-[85%] rounded-lg',
+          message.role === 'user' ? 'bg-primary text-primary-foreground px-3 py-2' : 'bg-muted'
         )}
       >
         {message.role === 'assistant' ? (
           <div className="space-y-0">
             {message.thinking && (
-              <div className={cn(
-                "border-b transition-colors",
-                expandedThinking.has(message.id) ? "border-primary/20 bg-primary/5" : "border-border/50"
-              )}>
+              <div
+                className={cn(
+                  'border-b transition-colors',
+                  expandedThinking.has(message.id)
+                    ? 'border-primary/20 bg-primary/5'
+                    : 'border-border/50'
+                )}
+              >
                 <button
+                  type="button"
                   onClick={() => toggleThinkingExpanded(message.id)}
                   className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <ChevronRight 
+                  <ChevronRight
                     className={cn(
-                      "w-3 h-3 transition-transform",
-                      expandedThinking.has(message.id) && "rotate-90"
-                    )} 
+                      'w-3 h-3 transition-transform',
+                      expandedThinking.has(message.id) && 'rotate-90'
+                    )}
                   />
-                  <Brain className={cn("w-3.5 h-3.5", expandedThinking.has(message.id) && "text-primary")} />
+                  <Brain
+                    className={cn(
+                      'w-3.5 h-3.5',
+                      expandedThinking.has(message.id) && 'text-primary'
+                    )}
+                  />
                   <span>Thinking</span>
-                  <span className="text-[10px] text-muted-foreground/60 ml-auto">Click to {expandedThinking.has(message.id) ? 'hide' : 'show'}</span>
+                  <span className="text-[10px] text-muted-foreground/60 ml-auto">
+                    Click to {expandedThinking.has(message.id) ? 'hide' : 'show'}
+                  </span>
                 </button>
                 {expandedThinking.has(message.id) && (
                   <div className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded">
@@ -390,7 +428,7 @@ const MessageBubble = React.memo(function MessageBubble({
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         )}
       </div>
-      
+
       {message.role === 'user' && (
         <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
           <User className="w-3.5 h-3.5" />
@@ -403,14 +441,14 @@ const MessageBubble = React.memo(function MessageBubble({
 // Streaming bubble component - optimized for frequent updates
 // Uses will-change to hint GPU acceleration and contain: content to isolate layout
 const StreamingBubble = React.memo(function StreamingBubble({
-  streaming,
+  streaming
 }: {
   streaming: StreamingState
 }) {
   return (
-    <div 
+    <div
       className="flex gap-2"
-      style={{ 
+      style={{
         contain: 'content', // Isolate layout changes to this subtree
         willChange: 'contents' // Hint to browser about updates
       }}
@@ -426,7 +464,7 @@ const StreamingBubble = React.memo(function StreamingBubble({
               <span className="font-medium">Thinking...</span>
               <span className="text-[10px] text-muted-foreground ml-auto">Extended reasoning</span>
             </div>
-            <div 
+            <div
               className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded"
               style={{ contain: 'content' }}
             >
@@ -437,7 +475,7 @@ const StreamingBubble = React.memo(function StreamingBubble({
             </div>
           </div>
         )}
-        <div 
+        <div
           className="prose prose-sm dark:prose-invert max-w-none text-sm px-3 py-2"
           style={{ contain: 'content' }}
         >
@@ -464,7 +502,7 @@ const StreamingBubble = React.memo(function StreamingBubble({
 const QueuedMessageBubble = React.memo(function QueuedMessageBubble({
   message,
   index,
-  onRemove,
+  onRemove
 }: {
   message: QueuedMessage
   index: number
@@ -475,6 +513,7 @@ const QueuedMessageBubble = React.memo(function QueuedMessageBubble({
       <div className="max-w-[85%] rounded-lg bg-primary/50 text-primary-foreground px-3 py-2 relative group">
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         <button
+          type="button"
           onClick={onRemove}
           className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
           title="Remove from queue"
@@ -507,7 +546,11 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [enableThinking, setEnableThinking] = useState(false)
   const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set())
-  const [streaming, setStreaming] = useState<StreamingState>({ content: '', thinking: '', isStreaming: false })
+  const [streaming, setStreaming] = useState<StreamingState>({
+    content: '',
+    thinking: '',
+    isStreaming: false
+  })
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false)
   const [isConversationReady, setIsConversationReady] = useState(false)
@@ -519,33 +562,52 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   const scrollFrameRef = useRef<number | null>(null)
   const virtualizerScrollToEndRef = useRef<(() => void) | null>(null)
   const initialScrollDoneRef = useRef(false)
-  
+
   // Throttle streaming content to ~30fps to avoid layout thrashing
   const throttledStreaming = useThrottledValue(streaming, 30)
-  
-  // Callback when virtualizer is ready with scrollToEnd function
-  const handleVirtualizerReady = useCallback((scrollToEnd: () => void) => {
-    virtualizerScrollToEndRef.current = scrollToEnd
-    
-    // If we haven't done initial scroll yet and data is loaded, do it now
-    if (!initialScrollDoneRef.current && !isLoading && messages.length > 0) {
-      initialScrollDoneRef.current = true
-      // Small delay to ensure DOM is painted
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollToEnd()
-          setIsConversationReady(true)
-        })
-      })
-    }
-  }, [isLoading, messages.length])
 
-  // Load API key and chat history on mount
-  useEffect(() => {
-    loadData()
+  // Callback when virtualizer is ready with scrollToEnd function
+  const handleVirtualizerReady = useCallback(
+    (scrollToEnd: () => void) => {
+      virtualizerScrollToEndRef.current = scrollToEnd
+
+      // If we haven't done initial scroll yet and data is loaded, do it now
+      if (!initialScrollDoneRef.current && !isLoading && messages.length > 0) {
+        initialScrollDoneRef.current = true
+        // Small delay to ensure DOM is painted
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollToEnd()
+            setIsConversationReady(true)
+          })
+        })
+      }
+    },
+    [isLoading, messages.length]
+  )
+
+  const loadModels = useCallback(async () => {
+    setIsLoadingModels(true)
+    try {
+      const result = await window.electron.fetchClaudeModels()
+      if (result.success && result.models) {
+        setModels(result.models)
+        window.electron.logFromRenderer('info', 'API', 'Claude models loaded', {
+          count: result.models.length
+        })
+      } else {
+        window.electron.logFromRenderer('error', 'API', 'Failed to load Claude models', {
+          error: result.error
+        })
+      }
+    } catch (e) {
+      console.error('Failed to load models:', e)
+    } finally {
+      setIsLoadingModels(false)
+    }
   }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       const [key, history, model, thinking] = await Promise.all([
@@ -558,7 +620,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
       setMessages(history)
       setSelectedModel(model)
       setEnableThinking(thinking)
-      
+
       // If we have an API key, fetch available models
       if (key) {
         loadModels()
@@ -568,28 +630,12 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [loadModels])
 
-  const loadModels = async () => {
-    setIsLoadingModels(true)
-    try {
-      const result = await window.electron.fetchClaudeModels()
-      if (result.success && result.models) {
-        setModels(result.models)
-        window.electron.logFromRenderer('info', 'API', 'Claude models loaded', { 
-          count: result.models.length 
-        })
-      } else {
-        window.electron.logFromRenderer('error', 'API', 'Failed to load Claude models', { 
-          error: result.error 
-        })
-      }
-    } catch (e) {
-      console.error('Failed to load models:', e)
-    } finally {
-      setIsLoadingModels(false)
-    }
-  }
+  // Load API key and chat history on mount
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleModelChange = async (modelId: string) => {
     setSelectedModel(modelId)
@@ -604,7 +650,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   }
 
   const toggleThinkingExpanded = (messageId: string) => {
-    setExpandedThinking(prev => {
+    setExpandedThinking((prev) => {
       const next = new Set(prev)
       if (next.has(messageId)) {
         next.delete(messageId)
@@ -624,37 +670,40 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
   }, [])
 
   // Scroll to bottom - uses virtualizer's scrollToIndex when available, falls back to scrollTop
-  const scrollToBottom = useCallback((force = false, _instant = false) => {
-    if (scrollFrameRef.current) {
-      cancelAnimationFrame(scrollFrameRef.current)
-    }
-    
-    scrollFrameRef.current = requestAnimationFrame(() => {
-      if (!force && isUserScrolledUp) return
-      
-      // Use virtualizer's scrollToEnd if available (more accurate)
-      if (virtualizerScrollToEndRef.current) {
-        virtualizerScrollToEndRef.current()
-      } else {
-        // Fallback to direct scroll
-        const container = scrollContainerRef.current
-        if (container) {
-          container.scrollTop = container.scrollHeight
-        }
+  const scrollToBottom = useCallback(
+    (force = false, _instant = false) => {
+      if (scrollFrameRef.current) {
+        cancelAnimationFrame(scrollFrameRef.current)
       }
-      setIsUserScrolledUp(false)
-    })
-  }, [isUserScrolledUp])
+
+      scrollFrameRef.current = requestAnimationFrame(() => {
+        if (!force && isUserScrolledUp) return
+
+        // Use virtualizer's scrollToEnd if available (more accurate)
+        if (virtualizerScrollToEndRef.current) {
+          virtualizerScrollToEndRef.current()
+        } else {
+          // Fallback to direct scroll
+          const container = scrollContainerRef.current
+          if (container) {
+            container.scrollTop = container.scrollHeight
+          }
+        }
+        setIsUserScrolledUp(false)
+      })
+    },
+    [isUserScrolledUp]
+  )
 
   // Handle user scroll to detect if they scrolled up
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current
     if (!container) return
-    
+
     const currentScrollTop = container.scrollTop
     const wasScrollingUp = currentScrollTop < lastScrollTopRef.current
     lastScrollTopRef.current = currentScrollTop
-    
+
     if (wasScrollingUp && !isNearBottom()) {
       setIsUserScrolledUp(true)
     } else if (isNearBottom()) {
@@ -667,8 +716,8 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     if (!isUserScrolledUp && !streaming.isStreaming) {
       scrollToBottom(false, false) // smooth scroll for new messages
     }
-  }, [messages, scrollToBottom, isUserScrolledUp, streaming.isStreaming])
-  
+  }, [scrollToBottom, isUserScrolledUp, streaming.isStreaming])
+
   // Auto-scroll during streaming - use instant scroll to avoid jerkiness
   // Use useLayoutEffect to sync with paint cycle
   useLayoutEffect(() => {
@@ -676,8 +725,8 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
       // Use instant scroll during streaming
       scrollToBottom(false, true)
     }
-  }, [throttledStreaming.content, throttledStreaming.thinking, streaming.isStreaming, scrollToBottom, isUserScrolledUp])
-  
+  }, [streaming.isStreaming, scrollToBottom, isUserScrolledUp])
+
   // Cleanup scroll animation frame on unmount
   useEffect(() => {
     return () => {
@@ -702,7 +751,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
       setTimeout(() => textareaRef.current?.focus(), 100)
     }
   }, [isLoading, apiKey])
-  
+
   // Auto-resize textarea based on content
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current
@@ -739,60 +788,70 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   const handleSetApiKey = async () => {
     // Log immediately when button is clicked
-    console.log('[AIChat] handleSetApiKey called, apiKeyInput:', apiKeyInput ? `${apiKeyInput.length} chars` : 'empty')
-    window.electron.logFromRenderer('info', 'AUTH', 'API key button clicked', { 
+    console.log(
+      '[AIChat] handleSetApiKey called, apiKeyInput:',
+      apiKeyInput ? `${apiKeyInput.length} chars` : 'empty'
+    )
+    window.electron.logFromRenderer('info', 'AUTH', 'API key button clicked', {
       hasInput: !!apiKeyInput,
-      inputLength: apiKeyInput?.length || 0 
+      inputLength: apiKeyInput?.length || 0
     })
-    
+
     if (!apiKeyInput.trim()) {
       console.log('[AIChat] Empty input, returning')
       window.electron.logFromRenderer('warn', 'AUTH', 'Empty API key input, ignoring')
       return
     }
-    
+
     const keyToSet = apiKeyInput.trim()
-    console.log('[AIChat] Setting key, length:', keyToSet.length, 'prefix:', keyToSet.substring(0, 10))
-    
+    console.log(
+      '[AIChat] Setting key, length:',
+      keyToSet.length,
+      'prefix:',
+      keyToSet.substring(0, 10)
+    )
+
     await window.electron.logFromRenderer('info', 'AUTH', 'Setting Claude API key from UI', {
       keyLength: keyToSet.length,
-      keyPrefix: keyToSet.substring(0, 10) + '...'
+      keyPrefix: `${keyToSet.substring(0, 10)}...`
     })
-    
+
     setIsSettingKey(true)
     setError(null)
-    
+
     try {
       console.log('[AIChat] Calling IPC setClaudeApiKey...')
       await window.electron.logFromRenderer('info', 'AUTH', 'Calling setClaudeApiKey IPC...')
       const result = await window.electron.setClaudeApiKey(keyToSet)
-      
+
       console.log('[AIChat] IPC result:', result)
-      await window.electron.logFromRenderer('info', 'AUTH', 'setClaudeApiKey IPC result', { result })
-      
+      await window.electron.logFromRenderer('info', 'AUTH', 'setClaudeApiKey IPC result', {
+        result
+      })
+
       if (result.success) {
         console.log('[AIChat] Success!')
         await window.electron.logFromRenderer('info', 'AUTH', 'API key set successfully')
         setApiKey(keyToSet)
         setApiKeyInput('')
         // Load available models and get default
-        const [defaultModel] = await Promise.all([
-          window.electron.getSelectedModel(),
-        ])
+        const [defaultModel] = await Promise.all([window.electron.getSelectedModel()])
         setSelectedModel(defaultModel)
         loadModels()
       } else {
         console.log('[AIChat] Failed:', result.error)
-        await window.electron.logFromRenderer('error', 'AUTH', 'API key set failed', { error: result.error })
+        await window.electron.logFromRenderer('error', 'AUTH', 'API key set failed', {
+          error: result.error
+        })
         setError(result.error || 'Invalid API key')
       }
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e)
       const stack = e instanceof Error ? e.stack : undefined
       console.error('[AIChat] Exception:', errorMsg, e)
-      await window.electron.logFromRenderer('error', 'AUTH', 'Exception setting API key', { 
-        error: errorMsg, 
-        stack 
+      await window.electron.logFromRenderer('error', 'AUTH', 'Exception setting API key', {
+        error: errorMsg,
+        stack
       })
       setError(`Failed to set API key: ${errorMsg}`)
     } finally {
@@ -808,89 +867,16 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
     setMessageQueue([])
   }
 
-  // Process a single message (internal function)
-  const processMessage = useCallback(async (userMessage: string, tempMsgId: string) => {
-    isProcessingRef.current = true
-    setIsSending(true)
-    setError(null)
-    setStreaming({ content: '', thinking: '', isStreaming: true })
-    
-    try {
-      // Clean up any previous stream listener
-      if (streamCleanupRef.current) {
-        streamCleanupRef.current()
-      }
-
-      // Set up stream chunk handler
-      const cleanup = window.electron.onChatStreamChunk((chunk) => {
-        if (chunk.type === 'text' && chunk.content) {
-          setStreaming(prev => ({ ...prev, content: prev.content + chunk.content }))
-        } else if (chunk.type === 'thinking' && chunk.thinking) {
-          setStreaming(prev => ({ ...prev, thinking: prev.thinking + chunk.thinking }))
-        } else if (chunk.type === 'done') {
-          // Stream complete - reload history to get the saved message
-          setStreaming({ content: '', thinking: '', isStreaming: false })
-          window.electron.getChatHistory().then(history => {
-            setMessages(history)
-          })
-          setIsSending(false)
-          isProcessingRef.current = false
-          // Clean up listener
-          if (streamCleanupRef.current) {
-            streamCleanupRef.current()
-            streamCleanupRef.current = null
-          }
-          // Process next message in queue
-          processNextInQueue()
-        } else if (chunk.type === 'error') {
-          setError(chunk.error || 'Failed to send message')
-          setStreaming({ content: '', thinking: '', isStreaming: false })
-          setIsSending(false)
-          isProcessingRef.current = false
-          // Remove the optimistic message on error
-          setMessages(prev => prev.filter(m => m.id !== tempMsgId))
-          // Clean up listener
-          if (streamCleanupRef.current) {
-            streamCleanupRef.current()
-            streamCleanupRef.current = null
-          }
-          // Still try to process next in queue
-          processNextInQueue()
-        }
-      })
-      streamCleanupRef.current = cleanup
-
-      // Start streaming
-      const result = await window.electron.sendChatMessageStreaming(userMessage)
-      if (!result.success) {
-        setError(result.error || 'Failed to send message')
-        setStreaming({ content: '', thinking: '', isStreaming: false })
-        setMessages(prev => prev.filter(m => m.id !== tempMsgId))
-        setIsSending(false)
-        isProcessingRef.current = false
-        if (streamCleanupRef.current) {
-          streamCleanupRef.current()
-          streamCleanupRef.current = null
-        }
-        processNextInQueue()
-      }
-    } catch (e) {
-      setError('Failed to communicate with Claude')
-      setStreaming({ content: '', thinking: '', isStreaming: false })
-      setMessages(prev => prev.filter(m => m.id !== tempMsgId))
-      setIsSending(false)
-      isProcessingRef.current = false
-      processNextInQueue()
-    }
-  }, [])
+  // Ref for processMessage to break circular dependency
+  const processMessageRef = useRef<(userMessage: string, tempMsgId: string) => Promise<void>>()
 
   // Process next message in queue
   const processNextInQueue = useCallback(() => {
-    setMessageQueue(prev => {
+    setMessageQueue((prev) => {
       if (prev.length === 0) return prev
-      
+
       const [next, ...rest] = prev
-      
+
       // Add next message to UI and start processing
       const tempUserMsg: ChatMessage = {
         id: next.id,
@@ -898,40 +884,124 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
         content: next.content,
         timestamp: new Date().toISOString()
       }
-      setMessages(msgs => [...msgs, tempUserMsg])
-      
+      setMessages((msgs) => [...msgs, tempUserMsg])
+
       // Process the message (delayed to allow state to update)
       setTimeout(() => {
-        processMessage(next.content, next.id)
+        processMessageRef.current?.(next.content, next.id)
       }, 100)
-      
+
       return rest
     })
+  }, [])
+
+  // Process a single message (internal function)
+  const processMessage = useCallback(
+    async (userMessage: string, tempMsgId: string) => {
+      isProcessingRef.current = true
+      setIsSending(true)
+      setError(null)
+      setStreaming({ content: '', thinking: '', isStreaming: true })
+
+      try {
+        // Clean up any previous stream listener
+        if (streamCleanupRef.current) {
+          streamCleanupRef.current()
+        }
+
+        // Set up stream chunk handler
+        const cleanup = window.electron.onChatStreamChunk((chunk) => {
+          if (chunk.type === 'text' && chunk.content) {
+            setStreaming((prev) => ({ ...prev, content: prev.content + chunk.content }))
+          } else if (chunk.type === 'thinking' && chunk.thinking) {
+            setStreaming((prev) => ({ ...prev, thinking: prev.thinking + chunk.thinking }))
+          } else if (chunk.type === 'done') {
+            // Stream complete - reload history to get the saved message
+            setStreaming({ content: '', thinking: '', isStreaming: false })
+            window.electron.getChatHistory().then((history) => {
+              setMessages(history)
+            })
+            setIsSending(false)
+            isProcessingRef.current = false
+            // Clean up listener
+            if (streamCleanupRef.current) {
+              streamCleanupRef.current()
+              streamCleanupRef.current = null
+            }
+            // Process next message in queue
+            processNextInQueue()
+          } else if (chunk.type === 'error') {
+            setError(chunk.error || 'Failed to send message')
+            setStreaming({ content: '', thinking: '', isStreaming: false })
+            setIsSending(false)
+            isProcessingRef.current = false
+            // Remove the optimistic message on error
+            setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+            // Clean up listener
+            if (streamCleanupRef.current) {
+              streamCleanupRef.current()
+              streamCleanupRef.current = null
+            }
+            // Still try to process next in queue
+            processNextInQueue()
+          }
+        })
+        streamCleanupRef.current = cleanup
+
+        // Start streaming
+        const result = await window.electron.sendChatMessageStreaming(userMessage)
+        if (!result.success) {
+          setError(result.error || 'Failed to send message')
+          setStreaming({ content: '', thinking: '', isStreaming: false })
+          setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+          setIsSending(false)
+          isProcessingRef.current = false
+          if (streamCleanupRef.current) {
+            streamCleanupRef.current()
+            streamCleanupRef.current = null
+          }
+          processNextInQueue()
+        }
+      } catch (_e) {
+        setError('Failed to communicate with Claude')
+        setStreaming({ content: '', thinking: '', isStreaming: false })
+        setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
+        setIsSending(false)
+        isProcessingRef.current = false
+        processNextInQueue()
+      }
+    },
+    [processNextInQueue]
+  )
+
+  // Keep ref updated with latest processMessage
+  useEffect(() => {
+    processMessageRef.current = processMessage
   }, [processMessage])
 
   // Main send message handler
   const handleSendMessage = useCallback(async () => {
     if (!input.trim()) return
-    
+
     const userMessage = input.trim()
     const msgId = `temp_${Date.now()}`
     setInput('')
-    
+
     // Reset textarea height after clearing
     if (textareaRef.current) {
       textareaRef.current.style.height = '72px'
     }
-    
+
     // If already processing, add to queue
     if (isProcessingRef.current || isSending) {
       const queuedMsg: QueuedMessage = {
         id: msgId,
         content: userMessage
       }
-      setMessageQueue(prev => [...prev, queuedMsg])
+      setMessageQueue((prev) => [...prev, queuedMsg])
       return
     }
-    
+
     // Optimistically add user message to UI
     const tempUserMsg: ChatMessage = {
       id: msgId,
@@ -939,8 +1009,8 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
       content: userMessage,
       timestamp: new Date().toISOString()
     }
-    setMessages(prev => [...prev, tempUserMsg])
-    
+    setMessages((prev) => [...prev, tempUserMsg])
+
     // Process immediately
     processMessage(userMessage, msgId)
   }, [input, isSending, processMessage])
@@ -967,7 +1037,10 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
           <h2 className="font-semibold text-sm">AI Assistant</h2>
           {apiKey && selectedModel && (
             <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-              ({models.find(m => m.id === selectedModel)?.display_name || selectedModel.split('-').slice(0, 2).join(' ')})
+              (
+              {models.find((m) => m.id === selectedModel)?.display_name ||
+                selectedModel.split('-').slice(0, 2).join(' ')}
+              )
             </span>
           )}
         </div>
@@ -1015,7 +1088,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                 disabled={isLoadingModels}
                 title="Refresh models"
               >
-                <RefreshCw className={cn("w-3 h-3", isLoadingModels && "animate-spin")} />
+                <RefreshCw className={cn('w-3 h-3', isLoadingModels && 'animate-spin')} />
               </Button>
             </div>
             {models.length > 0 ? (
@@ -1024,7 +1097,10 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                   <SelectValue placeholder="Select a model">
                     {selectedModel && (
                       <div className="flex flex-col items-start">
-                        <span>{models.find(m => m.id === selectedModel)?.display_name || selectedModel}</span>
+                        <span>
+                          {models.find((m) => m.id === selectedModel)?.display_name ||
+                            selectedModel}
+                        </span>
                         <span className="text-[10px] text-muted-foreground">{selectedModel}</span>
                       </div>
                     )}
@@ -1047,7 +1123,9 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                   </>
                 ) : (
                   <>
-                    <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">{selectedModel}</code>
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                      {selectedModel}
+                    </code>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1069,16 +1147,17 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
               <span className="text-xs text-muted-foreground">Extended Thinking</span>
             </div>
             <button
+              type="button"
               onClick={() => handleThinkingChange(!enableThinking)}
               className={cn(
-                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                enableThinking ? "bg-primary" : "bg-muted"
+                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                enableThinking ? 'bg-primary' : 'bg-muted'
               )}
             >
               <span
                 className={cn(
-                  "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                  enableThinking ? "translate-x-5" : "translate-x-1"
+                  'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform',
+                  enableThinking ? 'translate-x-5' : 'translate-x-1'
                 )}
               />
             </button>
@@ -1088,7 +1167,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
               Shows Claude's reasoning process. Uses more tokens.
             </p>
           )}
-          
+
           {/* API Key */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <span className="text-xs text-muted-foreground">API Key configured</span>
@@ -1111,16 +1190,19 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
           <div className="absolute inset-0 z-10 bg-background p-3 space-y-3 overflow-hidden">
             {/* Skeleton messages */}
             {[...Array(5)].map((_, i) => (
-              <div key={i} className={cn("flex gap-2", i % 2 === 0 ? "justify-start" : "justify-end")}>
+              <div
+                key={i}
+                className={cn('flex gap-2', i % 2 === 0 ? 'justify-start' : 'justify-end')}
+              >
                 {i % 2 === 0 && (
                   <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
                 )}
-                <div 
+                <div
                   className={cn(
-                    "rounded-lg animate-pulse",
-                    i % 2 === 0 ? "bg-muted" : "bg-primary/20"
+                    'rounded-lg animate-pulse',
+                    i % 2 === 0 ? 'bg-muted' : 'bg-primary/20'
                   )}
-                  style={{ 
+                  style={{
                     width: `${40 + Math.random() * 40}%`,
                     height: `${40 + Math.random() * 40}px`
                   }}
@@ -1136,7 +1218,7 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
             </div>
           </div>
         )}
-        
+
         {/* Empty state */}
         {!isLoading && messages.length === 0 && !streaming.isStreaming ? (
           <div className="h-full flex items-center justify-center min-h-[200px]">
@@ -1147,24 +1229,27 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
               </p>
             </div>
           </div>
-        ) : !isLoading && (
-          <VirtualizedMessageList
-            messages={messages}
-            streaming={streaming}
-            throttledStreaming={throttledStreaming}
-            messageQueue={messageQueue}
-            expandedThinking={expandedThinking}
-            toggleThinkingExpanded={toggleThinkingExpanded}
-            setMessageQueue={setMessageQueue}
-            scrollContainerRef={scrollContainerRef}
-            onScroll={handleScroll}
-            onVirtualizerReady={handleVirtualizerReady}
-          />
+        ) : (
+          !isLoading && (
+            <VirtualizedMessageList
+              messages={messages}
+              streaming={streaming}
+              throttledStreaming={throttledStreaming}
+              messageQueue={messageQueue}
+              expandedThinking={expandedThinking}
+              toggleThinkingExpanded={toggleThinkingExpanded}
+              setMessageQueue={setMessageQueue}
+              scrollContainerRef={scrollContainerRef}
+              onScroll={handleScroll}
+              onVirtualizerReady={handleVirtualizerReady}
+            />
+          )
         )}
-        
+
         {/* Scroll to bottom button */}
         {isUserScrolledUp && messages.length > 0 && (
           <button
+            type="button"
             onClick={() => scrollToBottom(true)}
             className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
             title="Scroll to bottom"
@@ -1214,9 +1299,9 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
             </div>
             <p className="text-[10px] text-muted-foreground text-center">
               Get your key from{' '}
-              <a 
-                href="https://console.anthropic.com/settings/keys" 
-                target="_blank" 
+              <a
+                href="https://console.anthropic.com/settings/keys"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
@@ -1230,7 +1315,11 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
             <div className="flex gap-2 items-end">
               <textarea
                 ref={textareaRef}
-                placeholder={isSending ? "Type to queue another message..." : "Type a message... (Shift+Enter for new line)"}
+                placeholder={
+                  isSending
+                    ? 'Type to queue another message...'
+                    : 'Type a message... (Shift+Enter for new line)'
+                }
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value)
@@ -1244,8 +1333,11 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                 onClick={handleSendMessage}
                 disabled={!input.trim()}
                 size="icon"
-                className={cn("h-9 w-9 flex-shrink-0 mb-1", isSending && input.trim() && "bg-primary/70")}
-                title={isSending ? "Add to queue (Enter)" : "Send message (Enter)"}
+                className={cn(
+                  'h-9 w-9 flex-shrink-0 mb-1',
+                  isSending && input.trim() && 'bg-primary/70'
+                )}
+                title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -1259,9 +1351,9 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                 inputText={input}
               />
               <p className="text-[10px] text-muted-foreground">
-                {isSending 
-                  ? "Enter to queue • Shift+Enter for new line" 
-                  : "Enter to send • Shift+Enter for new line"}
+                {isSending
+                  ? 'Enter to queue • Shift+Enter for new line'
+                  : 'Enter to send • Shift+Enter for new line'}
               </p>
             </div>
           </div>

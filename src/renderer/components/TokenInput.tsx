@@ -1,12 +1,13 @@
+import { ChevronDown, ChevronUp, ExternalLink, Key, Loader2, Shield } from 'lucide-react'
 import { useState } from 'react'
-import { Key, Loader2, ExternalLink, Shield, ChevronDown, ChevronUp } from 'lucide-react'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { Button } from './ui/button'
-import { Input } from './ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Input } from './ui/input'
 import { toast } from './ui/toaster'
 
-const GITHUB_TOKEN_URL = 'https://github.com/settings/tokens/new?scopes=repo,read:org&description=CodeLobby%20App'
+const GITHUB_TOKEN_URL =
+  'https://github.com/settings/tokens/new?scopes=repo,read:org&description=CodeLobby%20App'
 
 interface User {
   login: string
@@ -37,17 +38,17 @@ export function TokenInput({ onAuthenticated }: TokenInputProps) {
         toast({ title: 'Success', description: 'Connected to GitHub!' })
         onAuthenticated(result.user as User)
       } else {
-        toast({ 
-          title: 'Invalid Token', 
-          description: result.error || 'Could not authenticate with GitHub', 
-          variant: 'destructive' 
+        toast({
+          title: 'Invalid Token',
+          description: result.error || 'Could not authenticate with GitHub',
+          variant: 'destructive'
         })
       }
-    } catch (error) {
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to validate token', 
-        variant: 'destructive' 
+    } catch (_error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to validate token',
+        variant: 'destructive'
       })
     } finally {
       setIsLoading(false)
@@ -60,7 +61,7 @@ export function TokenInput({ onAuthenticated }: TokenInputProps) {
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
       <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      
+
       <Card className="w-full max-w-md relative animate-slideUp border-border/50 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto">
@@ -73,7 +74,7 @@ export function TokenInput({ onAuthenticated }: TokenInputProps) {
             </CardDescription>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -91,10 +92,10 @@ export function TokenInput({ onAuthenticated }: TokenInputProps) {
                 disabled={isLoading}
               />
             </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full h-11 font-medium" 
+
+            <Button
+              type="submit"
+              className="w-full h-11 font-medium"
               disabled={isLoading || !token.trim()}
             >
               {isLoading ? (
@@ -143,36 +144,53 @@ export function TokenInput({ onAuthenticated }: TokenInputProps) {
                 <ol className="space-y-2 list-decimal list-inside">
                   <li>
                     Go to{' '}
-                    <button 
+                    <button
+                      type="button"
                       onClick={() => window.open('https://github.com/settings/tokens', '_blank')}
                       className="text-primary hover:underline"
                     >
                       GitHub Settings → Developer settings → Personal access tokens
                     </button>
                   </li>
-                  <li>Click <strong>"Generate new token"</strong> → <strong>"Generate new token (classic)"</strong></li>
+                  <li>
+                    Click <strong>"Generate new token"</strong> →{' '}
+                    <strong>"Generate new token (classic)"</strong>
+                  </li>
                   <li>Give it a name (e.g., "CodeLobby App")</li>
                   <li>
                     Select these scopes:
                     <ul className="mt-1.5 ml-4 space-y-1">
                       <li>
                         <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">repo</code>
-                        <span className="text-muted-foreground ml-1.5">— access to repositories</span>
+                        <span className="text-muted-foreground ml-1.5">
+                          — access to repositories
+                        </span>
                       </li>
                       <li>
                         <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">read:org</code>
-                        <span className="text-muted-foreground ml-1.5">— access to organization repos</span>
+                        <span className="text-muted-foreground ml-1.5">
+                          — access to organization repos
+                        </span>
                       </li>
                     </ul>
                   </li>
-                  <li>Click <strong>"Generate token"</strong></li>
-                  <li>Copy the token (starts with <code className="bg-muted px-1 py-0.5 rounded text-[10px]">ghp_</code>) and paste it above</li>
+                  <li>
+                    Click <strong>"Generate token"</strong>
+                  </li>
+                  <li>
+                    Copy the token (starts with{' '}
+                    <code className="bg-muted px-1 py-0.5 rounded text-[10px]">ghp_</code>) and
+                    paste it above
+                  </li>
                 </ol>
 
                 <div className="border-t border-border pt-3 mt-3 space-y-2">
                   <p className="flex items-start gap-2">
                     <span className="text-primary">💡</span>
-                    <span>Or click the button above - it will pre-fill the token name and scopes for you!</span>
+                    <span>
+                      Or click the button above - it will pre-fill the token name and scopes for
+                      you!
+                    </span>
                   </p>
                   <p className="flex items-start gap-2">
                     <span className="text-success">🔒</span>

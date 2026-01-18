@@ -94,10 +94,10 @@ export async function validateToken(token: string): Promise<GitHubUser | null> {
 
 export async function fetchUserPRs(token: string): Promise<PullRequest[]> {
   const octokit = new Octokit({ auth: token })
-  
+
   // Get current user
   const { data: user } = await octokit.users.getAuthenticated()
-  
+
   // Search for open PRs authored by the user
   const { data: searchResults } = await octokit.search.issuesAndPullRequests({
     q: `is:pr is:open author:${user.login}`,
@@ -115,7 +115,7 @@ export async function fetchUserPRs(token: string): Promise<PullRequest[]> {
         repo,
         pull_number: item.number
       })
-      
+
       return {
         id: pr.id,
         number: pr.number,
@@ -145,7 +145,7 @@ export async function fetchUserPRs(token: string): Promise<PullRequest[]> {
             }
           }
         },
-        labels: pr.labels.map(l => ({
+        labels: pr.labels.map((l) => ({
           name: typeof l === 'string' ? l : l.name || '',
           color: typeof l === 'string' ? '000000' : l.color || '000000'
         })),
@@ -158,7 +158,7 @@ export async function fetchUserPRs(token: string): Promise<PullRequest[]> {
     })
   )
 
-  return prs.filter(pr => !pr.merged_at)
+  return prs.filter((pr) => !pr.merged_at)
 }
 
 export async function fetchPREvents(
@@ -199,13 +199,15 @@ export async function fetchPREvents(
   timeline.forEach((event: Record<string, unknown>) => {
     const actor = event.actor as { login: string; avatar_url: string } | undefined
     events.push({
-      id: event.id as number || Math.random(),
-      event: event.event as string || 'unknown',
-      created_at: event.created_at as string || new Date().toISOString(),
-      actor: actor ? {
-        login: actor.login,
-        avatar_url: actor.avatar_url
-      } : undefined,
+      id: (event.id as number) || Math.random(),
+      event: (event.event as string) || 'unknown',
+      created_at: (event.created_at as string) || new Date().toISOString(),
+      actor: actor
+        ? {
+            login: actor.login,
+            avatar_url: actor.avatar_url
+          }
+        : undefined,
       body: event.body as string | undefined,
       state: event.state as string | undefined,
       commit_id: event.commit_id as string | undefined,
@@ -214,37 +216,39 @@ export async function fetchPREvents(
   })
 
   // Process comments
-  comments.forEach(comment => {
+  comments.forEach((comment) => {
     events.push({
       id: comment.id,
       event: 'commented',
       created_at: comment.created_at,
-      actor: comment.user ? {
-        login: comment.user.login,
-        avatar_url: comment.user.avatar_url
-      } : undefined,
+      actor: comment.user
+        ? {
+            login: comment.user.login,
+            avatar_url: comment.user.avatar_url
+          }
+        : undefined,
       body: comment.body || undefined
     })
   })
 
   // Process review comments
-  reviewComments.forEach(comment => {
+  reviewComments.forEach((comment) => {
     events.push({
       id: comment.id,
       event: 'review_comment',
       created_at: comment.created_at,
-      actor: comment.user ? {
-        login: comment.user.login,
-        avatar_url: comment.user.avatar_url
-      } : undefined,
+      actor: comment.user
+        ? {
+            login: comment.user.login,
+            avatar_url: comment.user.avatar_url
+          }
+        : undefined,
       body: comment.body
     })
   })
 
   // Sort by date, most recent first
-  return events.sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  )
+  return events.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 }
 
 export interface Repository {
@@ -266,7 +270,7 @@ export interface Repository {
 export async function fetchContributedRepos(token: string): Promise<Repository[]> {
   const octokit = new Octokit({ auth: token })
   const repoMap = new Map<string, Repository>()
-  
+
   // Get current user
   const { data: user } = await octokit.users.getAuthenticated()
 
@@ -317,8 +321,8 @@ export async function fetchContributedRepos(token: string): Promise<Repository[]
     })
 
     // Only look at PushEvent and PullRequestEvent
-    const contributionEvents = events.filter(e => 
-      e.type === 'PushEvent' || e.type === 'PullRequestEvent'
+    const contributionEvents = events.filter(
+      (e) => e.type === 'PushEvent' || e.type === 'PullRequestEvent'
     )
 
     for (const event of contributionEvents) {
@@ -350,8 +354,8 @@ export async function fetchContributedRepos(token: string): Promise<Repository[]
     console.error('Error fetching event repos:', error)
   }
 
-  return Array.from(repoMap.values()).sort((a, b) => 
-    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  return Array.from(repoMap.values()).sort(
+    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   )
 }
 
@@ -380,13 +384,13 @@ export async function fetchPRCheckStatus(
   return {
     state: combinedStatus.state as CheckStatus['state'],
     total_count: combinedStatus.total_count + checkRuns.total_count,
-    statuses: combinedStatus.statuses.map(s => ({
+    statuses: combinedStatus.statuses.map((s) => ({
       state: s.state,
       context: s.context,
       description: s.description,
       target_url: s.target_url
     })),
-    check_runs: checkRuns.check_runs.map(cr => ({
+    check_runs: checkRuns.check_runs.map((cr) => ({
       id: cr.id,
       name: cr.name,
       status: cr.status,

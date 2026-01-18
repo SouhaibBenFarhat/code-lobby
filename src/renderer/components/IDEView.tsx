@@ -1,25 +1,25 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  GitPullRequest, 
-  Folder, 
-  FolderOpen,
-  Circle,
+import {
   CheckCircle2,
-  XCircle,
-  Loader2,
+  ChevronDown,
+  ChevronRight,
+  Circle,
   FileText,
+  Folder,
+  FolderOpen,
+  GitPullRequest,
+  Loader2,
+  User,
   Users,
-  User
+  XCircle
 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn, formatRelativeTime } from '@/lib/utils'
+import { usePRContext } from '../App'
+import { PRDetail } from './PRDetail'
+import type { PullRequest, Repository } from './types'
 import { ScrollArea } from './ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-import { PRDetail } from './PRDetail'
-import { usePRContext } from '../App'
-import type { PullRequest, Repository } from './types'
 
 interface IDEViewProps {
   currentUser: string | null
@@ -37,29 +37,43 @@ interface TreeItemProps {
   currentUser: string | null
 }
 
-function TreeItem({ repo, prs, isExpanded, onToggle, selectedPRId, onSelectPR, showOnlyMyPRs, onToggleMyPRs, currentUser }: TreeItemProps) {
+function TreeItem({
+  repo,
+  prs,
+  isExpanded,
+  onToggle,
+  selectedPRId,
+  onSelectPR,
+  showOnlyMyPRs,
+  onToggleMyPRs,
+  currentUser
+}: TreeItemProps) {
   // Filter PRs based on "My PRs" toggle for this repo
   const filteredPRs = useMemo(() => {
     if (!showOnlyMyPRs || !currentUser) return prs
-    return prs.filter(pr => pr.user.login === currentUser)
+    return prs.filter((pr) => pr.user.login === currentUser)
   }, [prs, showOnlyMyPRs, currentUser])
-  
+
   const hasPRs = prs.length > 0
   const hasFilteredPRs = filteredPRs.length > 0
-  
+
   return (
     <div className="select-none">
       {/* Repo folder */}
-      <div 
+      <div
         className={cn(
-          "flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-muted/50 rounded transition-colors group",
-          isExpanded && "bg-muted/30"
+          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-muted/50 rounded transition-colors group',
+          isExpanded && 'bg-muted/30'
         )}
         onClick={onToggle}
       >
         <span className="w-4 h-4 flex items-center justify-center text-muted-foreground">
           {hasPRs ? (
-            isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+            isExpanded ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )
           ) : (
             <span className="w-3.5" />
           )}
@@ -70,67 +84,62 @@ function TreeItem({ repo, prs, isExpanded, onToggle, selectedPRId, onSelectPR, s
           <Folder className="w-4 h-4 text-yellow-500/70" />
         )}
         <span className="text-sm font-medium truncate flex-1">{repo.name}</span>
-        
+
         {/* My PRs toggle - only show if repo has PRs */}
         {hasPRs && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleMyPRs()
                 }}
                 className={cn(
-                  "p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100",
-                  showOnlyMyPRs 
-                    ? "bg-primary/20 text-primary opacity-100" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  'p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100',
+                  showOnlyMyPRs
+                    ? 'bg-primary/20 text-primary opacity-100'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 )}
               >
-                {showOnlyMyPRs ? (
-                  <User className="w-3 h-3" />
-                ) : (
-                  <Users className="w-3 h-3" />
-                )}
+                {showOnlyMyPRs ? <User className="w-3 h-3" /> : <Users className="w-3 h-3" />}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              {showOnlyMyPRs ? 'My PRs' : 'All PRs'}
-            </TooltipContent>
+            <TooltipContent side="right">{showOnlyMyPRs ? 'My PRs' : 'All PRs'}</TooltipContent>
           </Tooltip>
         )}
-        
+
         {hasPRs && (
-          <span className={cn(
-            "text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded",
-            showOnlyMyPRs && filteredPRs.length !== prs.length && "text-primary"
-          )}>
-            {showOnlyMyPRs && filteredPRs.length !== prs.length 
-              ? `${filteredPRs.length}/${prs.length}` 
+          <span
+            className={cn(
+              'text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded',
+              showOnlyMyPRs && filteredPRs.length !== prs.length && 'text-primary'
+            )}
+          >
+            {showOnlyMyPRs && filteredPRs.length !== prs.length
+              ? `${filteredPRs.length}/${prs.length}`
               : prs.length}
           </span>
         )}
       </div>
-      
+
       {/* PR files */}
       {isExpanded && hasFilteredPRs && (
         <div className="ml-4 border-l border-border/50">
           {filteredPRs.map((pr) => (
-            <PRTreeItem 
-              key={pr.id} 
-              pr={pr} 
+            <PRTreeItem
+              key={pr.id}
+              pr={pr}
               isSelected={selectedPRId === pr.id}
               onSelect={() => onSelectPR(pr)}
             />
           ))}
         </div>
       )}
-      
+
       {/* Empty state when filtering */}
       {isExpanded && hasPRs && !hasFilteredPRs && showOnlyMyPRs && (
-        <div className="ml-8 py-2 text-xs text-muted-foreground italic">
-          No PRs by you
-        </div>
+        <div className="ml-8 py-2 text-xs text-muted-foreground italic">No PRs by you</div>
       )}
     </div>
   )
@@ -145,10 +154,12 @@ interface PRTreeItemProps {
 function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
   const getStatusIcon = () => {
     if (!pr.checks) return <Circle className="w-3 h-3 text-muted-foreground" />
-    
-    const hasRunning = pr.checks.check_runs.some(cr => cr.status === 'in_progress' || cr.status === 'queued')
+
+    const hasRunning = pr.checks.check_runs.some(
+      (cr) => cr.status === 'in_progress' || cr.status === 'queued'
+    )
     if (hasRunning) return <Loader2 className="w-3 h-3 text-warning animate-spin" />
-    
+
     switch (pr.checks.state) {
       case 'success':
         return <CheckCircle2 className="w-3 h-3 text-success" />
@@ -161,28 +172,25 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
   }
 
   return (
-    <div 
+    <div
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors ml-2",
-        isSelected 
-          ? "bg-primary/20 text-primary border-l-2 border-primary -ml-[1px]" 
-          : "hover:bg-muted/50"
+        'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors ml-2',
+        isSelected
+          ? 'bg-primary/20 text-primary border-l-2 border-primary -ml-[1px]'
+          : 'hover:bg-muted/50'
       )}
       onClick={onSelect}
     >
-      <GitPullRequest className={cn(
-        "w-4 h-4 flex-shrink-0",
-        pr.draft ? "text-muted-foreground" : isSelected ? "text-primary" : "text-blue-500"
-      )} />
+      <GitPullRequest
+        className={cn(
+          'w-4 h-4 flex-shrink-0',
+          pr.draft ? 'text-muted-foreground' : isSelected ? 'text-primary' : 'text-blue-500'
+        )}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-mono text-muted-foreground">#{pr.number}</span>
-          <span className={cn(
-            "text-sm truncate",
-            isSelected && "font-medium"
-          )}>
-            {pr.title}
-          </span>
+          <span className={cn('text-sm truncate', isSelected && 'font-medium')}>{pr.title}</span>
         </div>
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -216,7 +224,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
         if (savedExpanded.length > 0) {
           hasAutoExpanded.current = true
         }
-      } catch (e) {
+      } catch (_e) {
         // Use defaults
       }
       setSettingsLoaded(true)
@@ -262,13 +270,13 @@ export function IDEView({ currentUser }: IDEViewProps) {
     if (!reposData) return []
     if (!selectedReposFilter || selectedReposFilter.length === 0) return reposData
     const selectedSet = new Set(selectedReposFilter)
-    return reposData.filter(repo => selectedSet.has(repo.full_name))
+    return reposData.filter((repo) => selectedSet.has(repo.full_name))
   }, [reposData, selectedReposFilter])
 
   // Get list of repos to fetch PRs for
   const reposToFetch = useMemo(() => {
     if (!filteredRepos || filteredRepos.length === 0) return []
-    return filteredRepos.map(r => r.full_name)
+    return filteredRepos.map((r) => r.full_name)
   }, [filteredRepos])
 
   // Fetch all PRs for selected repos
@@ -298,8 +306,8 @@ export function IDEView({ currentUser }: IDEViewProps) {
     }
     // Sort PRs by created_at descending
     for (const repoName of Object.keys(grouped)) {
-      grouped[repoName].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      grouped[repoName].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     }
     return grouped
@@ -309,8 +317,8 @@ export function IDEView({ currentUser }: IDEViewProps) {
   const totalPRCount = prsData.length
 
   // Repos map for quick lookup
-  const reposMap = useMemo(() => {
-    return new Map((filteredRepos || []).map(r => [r.full_name, r]))
+  const _reposMap = useMemo(() => {
+    return new Map((filteredRepos || []).map((r) => [r.full_name, r]))
   }, [filteredRepos])
 
   // Sort repos: those with PRs first, then alphabetically
@@ -325,7 +333,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
   }, [filteredRepos, prsByRepo])
 
   const toggleRepo = useCallback((repoName: string) => {
-    setExpandedRepos(prev => {
+    setExpandedRepos((prev) => {
       const next = new Set(prev)
       if (next.has(repoName)) {
         next.delete(repoName)
@@ -337,7 +345,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
   }, [])
 
   const toggleMyPRsForRepo = useCallback((repoName: string) => {
-    setMyPRsRepos(prev => {
+    setMyPRsRepos((prev) => {
       const next = new Set(prev)
       if (next.has(repoName)) {
         next.delete(repoName)
@@ -385,7 +393,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
     if (!settingsLoaded) return
     if (hasAutoExpanded.current) return
     if (Object.keys(prsByRepo).length === 0) return
-    
+
     // Only auto-expand if we have no saved expanded repos
     if (expandedRepos.size === 0) {
       const reposWithPRs = Object.keys(prsByRepo).slice(0, 5) // Expand first 5
@@ -397,10 +405,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
   return (
     <div className="flex h-full">
       {/* Sidebar - File tree */}
-      <div 
-        className="flex-shrink-0 apple-sidebar flex flex-col"
-        style={{ width: sidebarWidth }}
-      >
+      <div className="flex-shrink-0 apple-sidebar flex flex-col" style={{ width: sidebarWidth }}>
         <div className="p-2 border-b border-border bg-muted/20">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5" />
@@ -440,8 +445,8 @@ export function IDEView({ currentUser }: IDEViewProps) {
       {/* Resize handle */}
       <div
         className={cn(
-          "w-1 cursor-col-resize hover:bg-primary/50 transition-colors flex-shrink-0",
-          isResizing && "bg-primary"
+          'w-1 cursor-col-resize hover:bg-primary/50 transition-colors flex-shrink-0',
+          isResizing && 'bg-primary'
         )}
         onMouseDown={handleResizeStart}
       />
@@ -459,7 +464,8 @@ export function IDEView({ currentUser }: IDEViewProps) {
               <div className="space-y-2">
                 <p className="text-lg font-medium text-muted-foreground">Select a Pull Request</p>
                 <p className="text-sm text-muted-foreground/70 max-w-[300px]">
-                  Click on a PR in the explorer to view its details, CI status, comments, and reviews
+                  Click on a PR in the explorer to view its details, CI status, comments, and
+                  reviews
                 </p>
               </div>
             </div>

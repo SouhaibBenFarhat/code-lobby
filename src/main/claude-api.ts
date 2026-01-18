@@ -4,7 +4,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
-import { logger, LogCategory } from './logger'
+import { LogCategory, logger } from './logger'
 
 // Re-export types for use elsewhere
 export interface ClaudeMessage {
@@ -15,7 +15,7 @@ export interface ClaudeMessage {
 export interface ClaudeResponse {
   id: string
   content: string
-  thinking?: string  // Extended thinking content
+  thinking?: string // Extended thinking content
   model: string
   stop_reason: string | null
   usage?: {
@@ -33,7 +33,7 @@ export interface ClaudeModel {
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 const MAX_TOKENS = 4096
-const MAX_TOKENS_WITH_THINKING = 16000  // Must be > thinking budget
+const MAX_TOKENS_WITH_THINKING = 16000 // Must be > thinking budget
 const THINKING_BUDGET = 8000
 
 // Cache client instances by API key
@@ -70,26 +70,26 @@ export function clearClientCache(): void {
  */
 export async function fetchModels(apiKey: string): Promise<ClaudeModel[]> {
   logger.info(LogCategory.API, 'Fetching available Claude models (SDK)')
-  
+
   try {
     const client = getClient(apiKey)
     const response = await client.models.list()
-    
-    const models: ClaudeModel[] = response.data.map(model => ({
+
+    const models: ClaudeModel[] = response.data.map((model) => ({
       id: model.id,
       display_name: model.display_name,
       created_at: model.created_at,
       type: model.type
     }))
-    
-    logger.info(LogCategory.API, 'Claude models fetched successfully', { 
+
+    logger.info(LogCategory.API, 'Claude models fetched successfully', {
       count: models.length,
-      models: models.map(m => m.id)
+      models: models.map((m) => m.id)
     })
-    
+
     // Sort by created_at descending (newest first)
-    return models.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return models.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
@@ -114,7 +114,7 @@ const THINKING_SUPPORTED_MODELS = [
 ]
 
 function supportsThinking(model: string): boolean {
-  return THINKING_SUPPORTED_MODELS.some(m => model.includes(m))
+  return THINKING_SUPPORTED_MODELS.some((m) => model.includes(m))
 }
 
 /**
@@ -129,8 +129,8 @@ export async function sendMessage(
 ): Promise<ClaudeResponse> {
   const selectedModel = model || DEFAULT_MODEL
   const useThinking = enableThinking && supportsThinking(selectedModel)
-  
-  logger.info(LogCategory.API, 'Sending message to Claude API (SDK)', { 
+
+  logger.info(LogCategory.API, 'Sending message to Claude API (SDK)', {
     messageCount: messages.length,
     model: selectedModel,
     thinking: useThinking
@@ -138,19 +138,19 @@ export async function sendMessage(
 
   try {
     const client = getClient(apiKey)
-    
+
     // Build request parameters
     // When thinking is enabled, max_tokens must be > thinking.budget_tokens
     const requestParams: Parameters<typeof client.messages.create>[0] = {
       model: selectedModel,
       max_tokens: useThinking ? MAX_TOKENS_WITH_THINKING : MAX_TOKENS,
       system: systemPrompt,
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         role: m.role,
         content: m.content
       }))
     }
-    
+
     // Add thinking configuration if supported and enabled
     if (useThinking) {
       requestParams.thinking = {
@@ -158,13 +158,13 @@ export async function sendMessage(
         budget_tokens: THINKING_BUDGET
       }
     }
-    
+
     const response = await client.messages.create(requestParams)
-    
+
     // Extract text and thinking content from the response
     let content = ''
     let thinking = ''
-    
+
     for (const block of response.content) {
       if (block.type === 'text') {
         content = block.text
@@ -172,8 +172,8 @@ export async function sendMessage(
         thinking = block.thinking
       }
     }
-    
-    logger.info(LogCategory.API, 'Claude API response received', { 
+
+    logger.info(LogCategory.API, 'Claude API response received', {
       id: response.id,
       model: response.model,
       stopReason: response.stop_reason,
@@ -196,12 +196,12 @@ export async function sendMessage(
   } catch (error) {
     // SDK provides typed errors
     if (error instanceof Anthropic.APIError) {
-      logger.error(LogCategory.API, 'Claude API error', { 
+      logger.error(LogCategory.API, 'Claude API error', {
         status: error.status,
         message: error.message,
         type: error.constructor.name
       })
-      
+
       // Provide user-friendly error messages
       if (error instanceof Anthropic.AuthenticationError) {
         throw new Error('Invalid API key. Please check your Claude API key.')
@@ -212,12 +212,12 @@ export async function sendMessage(
       if (error instanceof Anthropic.BadRequestError) {
         throw new Error(`Invalid request: ${error.message}`)
       }
-      
+
       throw new Error(`Claude API error: ${error.message}`)
     }
-    
-    logger.error(LogCategory.API, 'Failed to send message to Claude', { 
-      error: error instanceof Error ? error.message : String(error) 
+
+    logger.error(LogCategory.API, 'Failed to send message to Claude', {
+      error: error instanceof Error ? error.message : String(error)
     })
     throw error
   }
@@ -259,8 +259,8 @@ export async function sendMessageStreaming(
 ): Promise<void> {
   const selectedModel = model || DEFAULT_MODEL
   const useThinking = enableThinking && supportsThinking(selectedModel)
-  
-  logger.info(LogCategory.API, 'Sending streaming message to Claude API', { 
+
+  logger.info(LogCategory.API, 'Sending streaming message to Claude API', {
     messageCount: messages.length,
     model: selectedModel,
     thinking: useThinking
@@ -268,20 +268,20 @@ export async function sendMessageStreaming(
 
   try {
     const client = getClient(apiKey)
-    
+
     // Build request parameters
     // When thinking is enabled, max_tokens must be > thinking.budget_tokens
     const requestParams: Parameters<typeof client.messages.create>[0] = {
       model: selectedModel,
       max_tokens: useThinking ? MAX_TOKENS_WITH_THINKING : MAX_TOKENS,
       system: systemPrompt,
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         role: m.role,
         content: m.content
       })),
       stream: true
     }
-    
+
     // Add thinking configuration if supported and enabled
     if (useThinking) {
       requestParams.thinking = {
@@ -289,10 +289,10 @@ export async function sendMessageStreaming(
         budget_tokens: THINKING_BUDGET
       }
     }
-    
+
     // Create streaming response
     const stream = client.messages.stream(requestParams)
-    
+
     let fullContent = ''
     let fullThinking = ''
     let responseId = ''
@@ -300,30 +300,30 @@ export async function sendMessageStreaming(
     let stopReason: string | null = null
     let inputTokens = 0
     let outputTokens = 0
-    
+
     // Handle stream events
     stream.on('text', (text) => {
       fullContent += text
       onChunk({ type: 'text', content: text })
     })
-    
+
     // Handle thinking events (if extended thinking is enabled)
     // The SDK emits 'thinking' event with (delta, accumulated) args
     stream.on('thinking', (thinkingDelta: string, _accumulated: string) => {
       fullThinking += thinkingDelta
       onChunk({ type: 'thinking', thinking: thinkingDelta })
     })
-    
+
     // Wait for completion
     const finalMessage = await stream.finalMessage()
-    
+
     responseId = finalMessage.id
     responseModel = finalMessage.model
     stopReason = finalMessage.stop_reason
     inputTokens = finalMessage.usage.input_tokens
     outputTokens = finalMessage.usage.output_tokens
-    
-    logger.info(LogCategory.API, 'Claude streaming response complete', { 
+
+    logger.info(LogCategory.API, 'Claude streaming response complete', {
       id: responseId,
       model: responseModel,
       stopReason,
@@ -331,7 +331,7 @@ export async function sendMessageStreaming(
       outputTokens,
       hasThinking: !!fullThinking
     })
-    
+
     // Send done signal with full response
     onChunk({
       type: 'done',
@@ -350,14 +350,14 @@ export async function sendMessageStreaming(
   } catch (error) {
     // SDK provides typed errors
     let errorMessage = 'Unknown error'
-    
+
     if (error instanceof Anthropic.APIError) {
-      logger.error(LogCategory.API, 'Claude streaming API error', { 
+      logger.error(LogCategory.API, 'Claude streaming API error', {
         status: error.status,
         message: error.message,
         type: error.constructor.name
       })
-      
+
       if (error instanceof Anthropic.AuthenticationError) {
         errorMessage = 'Invalid API key. Please check your Claude API key.'
       } else if (error instanceof Anthropic.RateLimitError) {
@@ -371,7 +371,7 @@ export async function sendMessageStreaming(
       errorMessage = error instanceof Error ? error.message : String(error)
       logger.error(LogCategory.API, 'Failed to stream message from Claude', { error: errorMessage })
     }
-    
+
     onChunk({ type: 'error', error: errorMessage })
   }
 }

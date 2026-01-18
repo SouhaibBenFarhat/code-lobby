@@ -3,7 +3,7 @@
  * Covers retry logic, error handling, and HTML error detection
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   GitHubAPIError,
   GitHubRateLimitError,
@@ -13,8 +13,8 @@ import {
   isRetryableError,
   parseGitHubError,
   withRetry,
-  withTimeout,
-  withRetryAndTimeout
+  withRetryAndTimeout,
+  withTimeout
 } from '../../src/main/api-client'
 
 // Mock the logger
@@ -194,29 +194,30 @@ describe('API Client', () => {
   describe('withRetry', () => {
     it('should return result on first success', async () => {
       const fn = vi.fn().mockResolvedValue('success')
-      
+
       const resultPromise = withRetry(fn, { maxRetries: 3 })
       await vi.runAllTimersAsync()
       const result = await resultPromise
-      
+
       expect(result).toBe('success')
       expect(fn).toHaveBeenCalledTimes(1)
     })
 
     it('should retry on retryable error', async () => {
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce(new Error('ETIMEDOUT'))
         .mockResolvedValueOnce('success')
-      
+
       const resultPromise = withRetry(fn, { maxRetries: 3, initialDelayMs: 100 })
-      
+
       // Let the first call fail
       await vi.advanceTimersByTimeAsync(0)
       // Wait for retry delay
       await vi.advanceTimersByTimeAsync(200)
       // Let the second call succeed
       await vi.runAllTimersAsync()
-      
+
       const result = await resultPromise
       expect(result).toBe('success')
       expect(fn).toHaveBeenCalledTimes(2)
@@ -224,31 +225,31 @@ describe('API Client', () => {
 
     it('should throw after max retries', async () => {
       const fn = vi.fn().mockRejectedValue(new Error('ETIMEDOUT'))
-      
+
       let thrownError: Error | undefined
-      const resultPromise = withRetry(fn, { maxRetries: 2, initialDelayMs: 100 }).catch(e => {
+      const resultPromise = withRetry(fn, { maxRetries: 2, initialDelayMs: 100 }).catch((e) => {
         thrownError = e
       })
-      
+
       // Run through all retries
       await vi.runAllTimersAsync()
       await resultPromise
-      
+
       expect(thrownError).toBeInstanceOf(GitHubTimeoutError)
       expect(fn).toHaveBeenCalledTimes(3) // Initial + 2 retries
     })
 
     it('should not retry non-retryable errors', async () => {
       const fn = vi.fn().mockRejectedValue(new Error('Invalid token'))
-      
+
       let thrownError: Error | undefined
-      const resultPromise = withRetry(fn, { maxRetries: 3 }).catch(e => {
+      const resultPromise = withRetry(fn, { maxRetries: 3 }).catch((e) => {
         thrownError = e
       })
-      
+
       await vi.runAllTimersAsync()
       await resultPromise
-      
+
       expect(thrownError).toBeDefined()
       expect(fn).toHaveBeenCalledTimes(1) // No retries
     })
@@ -257,15 +258,13 @@ describe('API Client', () => {
       const unicornError = new Error(`<!DOCTYPE html>
         <html><head><title>Unicorn! · GitHub</title></head>
         <body>We couldn't respond to your request in time.</body></html>`)
-      
-      const fn = vi.fn()
-        .mockRejectedValueOnce(unicornError)
-        .mockResolvedValueOnce('success')
-      
+
+      const fn = vi.fn().mockRejectedValueOnce(unicornError).mockResolvedValueOnce('success')
+
       const resultPromise = withRetry(fn, { maxRetries: 3, initialDelayMs: 100 })
-      
+
       await vi.runAllTimersAsync()
-      
+
       const result = await resultPromise
       expect(result).toBe('success')
       expect(fn).toHaveBeenCalledTimes(2)
@@ -275,50 +274,51 @@ describe('API Client', () => {
   describe('withTimeout', () => {
     it('should return result before timeout', async () => {
       const fn = vi.fn().mockImplementation(async () => {
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, 100))
         return 'success'
       })
-      
+
       const resultPromise = withTimeout(fn, 5000)
       await vi.runAllTimersAsync()
       const result = await resultPromise
-      
+
       expect(result).toBe('success')
     })
 
     it('should throw on timeout', async () => {
       const fn = vi.fn().mockImplementation(async () => {
-        await new Promise(resolve => setTimeout(resolve, 10000))
+        await new Promise((resolve) => setTimeout(resolve, 10000))
         return 'success'
       })
-      
+
       let thrownError: Error | undefined
-      const resultPromise = withTimeout(fn, 1000).catch(e => {
+      const resultPromise = withTimeout(fn, 1000).catch((e) => {
         thrownError = e
       })
-      
+
       // Advance past the timeout
       await vi.advanceTimersByTimeAsync(1100)
       await resultPromise
-      
+
       expect(thrownError).toBeInstanceOf(GitHubTimeoutError)
     })
   })
 
   describe('withRetryAndTimeout', () => {
     it('should combine retry and timeout functionality', async () => {
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce(new Error('ETIMEDOUT'))
         .mockResolvedValueOnce('success')
-      
+
       const resultPromise = withRetryAndTimeout(fn, {
         retry: { maxRetries: 2, initialDelayMs: 100 },
         timeoutMs: 5000,
         context: 'test'
       })
-      
+
       await vi.runAllTimersAsync()
-      
+
       const result = await resultPromise
       expect(result).toBe('success')
     })
@@ -362,7 +362,7 @@ describe('Integration: GitHub Unicorn Error Handling', () => {
   it('should parse Unicorn error to GitHubUnavailableError', () => {
     const error = new Error(GITHUB_UNICORN_HTML)
     const parsed = parseGitHubError(error)
-    
+
     expect(parsed).toBeInstanceOf(GitHubUnavailableError)
     expect(parsed.isRetryable).toBe(true)
     expect(parsed.isHtmlResponse).toBe(true)
@@ -371,18 +371,23 @@ describe('Integration: GitHub Unicorn Error Handling', () => {
 
   it('should retry on Unicorn error and succeed on subsequent attempt', async () => {
     const unicornError = new Error(GITHUB_UNICORN_HTML)
-    const fn = vi.fn()
+    const fn = vi
+      .fn()
       .mockRejectedValueOnce(unicornError)
       .mockRejectedValueOnce(unicornError)
       .mockResolvedValueOnce({ data: 'success' })
-    
-    const resultPromise = withRetry(fn, { 
-      maxRetries: 3, 
-      initialDelayMs: 1000 
-    }, 'test-unicorn')
-    
+
+    const resultPromise = withRetry(
+      fn,
+      {
+        maxRetries: 3,
+        initialDelayMs: 1000
+      },
+      'test-unicorn'
+    )
+
     await vi.runAllTimersAsync()
-    
+
     const result = await resultPromise
     expect(result).toEqual({ data: 'success' })
     expect(fn).toHaveBeenCalledTimes(3)
@@ -391,18 +396,18 @@ describe('Integration: GitHub Unicorn Error Handling', () => {
   it('should throw GitHubUnavailableError after exhausting retries', async () => {
     const unicornError = new Error(GITHUB_UNICORN_HTML)
     const fn = vi.fn().mockRejectedValue(unicornError)
-    
+
     let thrownError: Error | undefined
-    const resultPromise = withRetry(fn, { 
-      maxRetries: 2, 
-      initialDelayMs: 100 
-    }).catch(e => {
+    const resultPromise = withRetry(fn, {
+      maxRetries: 2,
+      initialDelayMs: 100
+    }).catch((e) => {
       thrownError = e
     })
-    
+
     await vi.runAllTimersAsync()
     await resultPromise
-    
+
     expect(thrownError).toBeInstanceOf(GitHubUnavailableError)
     expect(fn).toHaveBeenCalledTimes(3) // Initial + 2 retries
   })

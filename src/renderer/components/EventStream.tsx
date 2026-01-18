@@ -1,23 +1,23 @@
 import { useQuery } from '@tanstack/react-query'
-import { 
-  Activity, 
-  MessageSquare, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Activity,
+  CheckCircle2,
   Eye,
-  GitMerge,
-  UserPlus,
-  Tag,
   GitCommit,
+  GitMerge,
   Loader2,
-  RefreshCw
+  MessageSquare,
+  RefreshCw,
+  Tag,
+  UserPlus,
+  XCircle
 } from 'lucide-react'
-import { ScrollArea } from './ui/scroll-area'
+import { formatRelativeTime, truncate } from '@/lib/utils'
+import type { PREvent, PullRequest } from './types'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Button } from './ui/button'
+import { ScrollArea } from './ui/scroll-area'
 import { Separator } from './ui/separator'
-import { cn, formatRelativeTime, truncate } from '@/lib/utils'
-import type { PullRequest, PREvent } from './types'
 
 interface EventItemProps {
   event: PREvent & { prTitle?: string; prNumber?: number; repoName?: string }
@@ -96,31 +96,26 @@ function EventItem({ event }: EventItemProps) {
           </div>
         )}
       </div>
-      
+
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate">
-            {event.actor?.login || 'GitHub'}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {getEventText(event)}
-          </span>
+          <span className="text-sm font-medium truncate">{event.actor?.login || 'GitHub'}</span>
+          <span className="text-xs text-muted-foreground">{getEventText(event)}</span>
         </div>
-        
+
         {event.prTitle && (
           <p className="text-xs text-muted-foreground truncate">
-            <span className="text-foreground/80">#{event.prNumber}</span>
-            {' '}
+            <span className="text-foreground/80">#{event.prNumber}</span>{' '}
             {truncate(event.prTitle, 40)}
           </p>
         )}
-        
+
         {event.body && (
           <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/50 rounded p-2 mt-1">
             {truncate(event.body, 100)}
           </p>
         )}
-        
+
         <p className="text-[10px] text-muted-foreground">
           {formatRelativeTime(event.created_at)}
           {event.repoName && (
@@ -132,9 +127,7 @@ function EventItem({ event }: EventItemProps) {
         </p>
       </div>
 
-      <div className="flex-shrink-0 text-muted-foreground">
-        {getEventIcon(event.event)}
-      </div>
+      <div className="flex-shrink-0 text-muted-foreground">{getEventIcon(event.event)}</div>
     </div>
   )
 }
@@ -155,19 +148,25 @@ export function EventStream() {
   const prs = prsData || []
 
   // Extract events from PR data (comments, reviews already included)
-  const { data: allEvents, isLoading, refetch, isFetching } = useQuery({
+  const {
+    data: allEvents,
+    isLoading,
+    refetch,
+    isFetching
+  } = useQuery({
     queryKey: ['pr-events'],
     queryFn: async () => {
       const result = await window.electron.fetchPREvents()
       if (!result.success) return []
-      
+
       // Add PR context to each event
-      const eventsWithContext = (result.data as PREvent[]).map(event => {
+      const eventsWithContext = (result.data as PREvent[]).map((event) => {
         // Find the PR this event belongs to by matching timestamps/authors
         const eventId = String(event.id)
-        const matchingPR = prs.find(pr => 
-          pr.commentsList?.some(c => String(c.id) === eventId) ||
-          pr.reviews?.some(r => String(r.id) === eventId)
+        const matchingPR = prs.find(
+          (pr) =>
+            pr.commentsList?.some((c) => String(c.id) === eventId) ||
+            pr.reviews?.some((r) => String(r.id) === eventId)
         )
         return {
           ...event,
@@ -176,7 +175,7 @@ export function EventStream() {
           repoName: matchingPR?.base.repo.full_name
         }
       })
-      
+
       return eventsWithContext
     },
     refetchOnWindowFocus: true,
@@ -196,12 +195,7 @@ export function EventStream() {
           {isFetching && !isLoading && (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
           )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-7 w-7" 
-            onClick={() => refetch()}
-          >
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
         </div>
@@ -227,9 +221,7 @@ export function EventStream() {
               {events.map((event, index) => (
                 <div key={`${event.id}-${index}`}>
                   <EventItem event={event} />
-                  {index < events.length - 1 && (
-                    <Separator className="my-1 mx-3" />
-                  )}
+                  {index < events.length - 1 && <Separator className="my-1 mx-3" />}
                 </div>
               ))}
             </div>

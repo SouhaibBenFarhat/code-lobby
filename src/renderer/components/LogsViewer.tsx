@@ -1,38 +1,25 @@
-import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { 
-  ScrollText, 
-  RefreshCw, 
-  Trash2, 
-  Download, 
-  AlertCircle, 
-  AlertTriangle, 
-  Info, 
+import {
+  AlertCircle,
+  AlertTriangle,
   Bug,
-  Filter,
-  X,
+  Check,
   Copy,
-  Check
+  Download,
+  Filter,
+  Info,
+  RefreshCw,
+  ScrollText,
+  Trash2
 } from 'lucide-react'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
-import { ScrollArea } from './ui/scroll-area'
-import { Input } from './ui/input'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from './ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select'
+import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { Input } from './ui/input'
+import { ScrollArea } from './ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 interface LogEntry {
   id: string
@@ -47,7 +34,7 @@ const levelConfig = {
   error: { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
   warn: { icon: AlertTriangle, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
   info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  debug: { icon: Bug, color: 'text-gray-500', bg: 'bg-gray-500/10' },
+  debug: { icon: Bug, color: 'text-gray-500', bg: 'bg-gray-500/10' }
 }
 
 export function LogsViewer() {
@@ -59,13 +46,17 @@ export function LogsViewer() {
   const [copied, setCopied] = useState(false)
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
 
-  const { data: logs = [], refetch, isLoading } = useQuery({
+  const {
+    data: logs = [],
+    refetch,
+    isLoading
+  } = useQuery({
     queryKey: ['logs'],
     queryFn: async () => {
-      return await window.electron.getLogs() as LogEntry[]
+      return (await window.electron.getLogs()) as LogEntry[]
     },
     enabled: open,
-    refetchInterval: open ? 2000 : false, // Auto-refresh every 2s when open
+    refetchInterval: open ? 2000 : false // Auto-refresh every 2s when open
   })
 
   const { data: summary } = useQuery({
@@ -73,19 +64,21 @@ export function LogsViewer() {
     queryFn: async () => {
       return await window.electron.getLogsSummary()
     },
-    enabled: open,
+    enabled: open
   })
 
   // Get unique categories from logs
   const categories = useMemo(() => {
     const cats = new Set<string>()
-    logs.forEach(log => cats.add(log.category))
+    logs.forEach((log) => {
+      cats.add(log.category)
+    })
     return Array.from(cats).sort()
   }, [logs])
 
   // Filter logs
   const filteredLogs = useMemo(() => {
-    return logs.filter(log => {
+    return logs.filter((log) => {
       if (levelFilter !== 'all' && log.level !== levelFilter) return false
       if (categoryFilter !== 'all' && log.category !== categoryFilter) return false
       if (search) {
@@ -93,7 +86,9 @@ export function LogsViewer() {
         return (
           log.message.toLowerCase().includes(searchLower) ||
           log.category.toLowerCase().includes(searchLower) ||
-          JSON.stringify(log.details || '').toLowerCase().includes(searchLower)
+          JSON.stringify(log.details || '')
+            .toLowerCase()
+            .includes(searchLower)
         )
       }
       return true
@@ -143,10 +138,10 @@ export function LogsViewer() {
   // Format timestamp
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp)
-    return date.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
       second: '2-digit',
       fractionalSecondDigits: 3
     })
@@ -178,9 +173,7 @@ export function LogsViewer() {
                   </Badge>
                 )}
                 {summary.byLevel?.warn > 0 && (
-                  <Badge className="text-xs bg-yellow-500">
-                    {summary.byLevel.warn} warnings
-                  </Badge>
+                  <Badge className="text-xs bg-yellow-500">{summary.byLevel.warn} warnings</Badge>
                 )}
               </div>
             )}
@@ -197,7 +190,7 @@ export function LogsViewer() {
               className="h-8 text-sm"
             />
           </div>
-          
+
           <Select value={levelFilter} onValueChange={setLevelFilter}>
             <SelectTrigger className="w-[120px] h-8 text-xs">
               <Filter className="h-3 w-3 mr-1" />
@@ -219,15 +212,17 @@ export function LogsViewer() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(cat => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <div className="flex gap-1">
             <Button variant="outline" size="sm" className="h-8" onClick={() => refetch()}>
-              <RefreshCw className={cn("h-3 w-3 mr-1", isLoading && "animate-spin")} />
+              <RefreshCw className={cn('h-3 w-3 mr-1', isLoading && 'animate-spin')} />
               Refresh
             </Button>
             <Button variant="outline" size="sm" className="h-8" onClick={handleCopy}>
@@ -238,7 +233,12 @@ export function LogsViewer() {
               <Download className="h-3 w-3 mr-1" />
               Export
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-red-500 hover:text-red-600" onClick={handleClear}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-red-500 hover:text-red-600"
+              onClick={handleClear}
+            >
               <Trash2 className="h-3 w-3 mr-1" />
               Clear
             </Button>
@@ -258,19 +258,19 @@ export function LogsViewer() {
                 const LevelIcon = config.icon
                 const isExpanded = expandedLogs.has(log.id)
                 const hasDetails = log.details !== undefined
-                
+
                 return (
                   <div
                     key={log.id}
                     className={cn(
-                      "rounded-md p-2 text-sm font-mono",
+                      'rounded-md p-2 text-sm font-mono',
                       config.bg,
-                      hasDetails && "cursor-pointer hover:opacity-80"
+                      hasDetails && 'cursor-pointer hover:opacity-80'
                     )}
                     onClick={() => hasDetails && toggleExpand(log.id)}
                   >
                     <div className="flex items-start gap-2">
-                      <LevelIcon className={cn("h-4 w-4 mt-0.5 flex-shrink-0", config.color)} />
+                      <LevelIcon className={cn('h-4 w-4 mt-0.5 flex-shrink-0', config.color)} />
                       <span className="text-muted-foreground text-xs whitespace-nowrap">
                         {formatTime(log.timestamp)}
                       </span>
@@ -300,9 +300,9 @@ export function LogsViewer() {
         <div className="pt-2 border-t border-border text-xs text-muted-foreground text-center">
           Showing {filteredLogs.length} of {logs.length} logs
           {search || levelFilter !== 'all' || categoryFilter !== 'all' ? (
-            <Button 
-              variant="link" 
-              size="sm" 
+            <Button
+              variant="link"
+              size="sm"
               className="h-auto p-0 ml-2 text-xs"
               onClick={() => {
                 setSearch('')

@@ -1,11 +1,9 @@
 /**
  * Mock Factories for CodeLobby Tests
- * 
+ *
  * These factories generate realistic test data for all GitHub API responses,
  * Electron IPC calls, and component props.
  */
-
-import { vi } from 'vitest'
 
 // ============================================================================
 // Type Definitions
@@ -133,7 +131,9 @@ export interface MockRateLimit {
 
 let idCounter = 1
 const getNextId = () => idCounter++
-const resetIdCounter = () => { idCounter = 1 }
+const resetIdCounter = () => {
+  idCounter = 1
+}
 
 export { resetIdCounter }
 
@@ -175,7 +175,7 @@ export function createMockRepository(overrides: Partial<MockRepository> = {}): M
   const id = getNextId()
   const name = overrides.name || `repo-${id}`
   const ownerLogin = overrides.owner?.login || 'test-org'
-  
+
   return {
     id,
     name,
@@ -204,7 +204,7 @@ export function createMockPullRequest(overrides: Partial<MockPullRequest> = {}):
   const id = getNextId()
   const repo = overrides.base?.repo || createMockRepository()
   const user = overrides.user || createMockUser()
-  
+
   return {
     id: `PR_${id}`,
     number: id,
@@ -249,7 +249,7 @@ export function createMockDraftPR(overrides: Partial<MockPullRequest> = {}): Moc
 export function createMockComment(overrides: Partial<MockPRComment> = {}): MockPRComment {
   const id = getNextId()
   const user = overrides.user || createMockUser()
-  
+
   return {
     id: `IC_${id}`,
     body: `This is comment ${id}. LGTM! 👍`,
@@ -279,7 +279,7 @@ export function createMockBotComment(overrides: Partial<MockPRComment> = {}): Mo
 export function createMockReview(overrides: Partial<MockPRReview> = {}): MockPRReview {
   const id = getNextId()
   const user = overrides.user || createMockUser()
-  
+
   return {
     id: `PRR_${id}`,
     user,
@@ -297,10 +297,10 @@ export function createMockApproval(overrides: Partial<MockPRReview> = {}): MockP
 }
 
 export function createMockChangesRequested(overrides: Partial<MockPRReview> = {}): MockPRReview {
-  return createMockReview({ 
-    state: 'CHANGES_REQUESTED', 
+  return createMockReview({
+    state: 'CHANGES_REQUESTED',
     body: 'Please fix the following issues:\n- [ ] Fix linting errors\n- [ ] Add tests',
-    ...overrides 
+    ...overrides
   })
 }
 
@@ -308,9 +308,11 @@ export function createMockChangesRequested(overrides: Partial<MockPRReview> = {}
 // Review Thread Factory
 // ============================================================================
 
-export function createMockReviewThread(overrides: Partial<MockReviewThread> = {}): MockReviewThread {
+export function createMockReviewThread(
+  overrides: Partial<MockReviewThread> = {}
+): MockReviewThread {
   const id = getNextId()
-  
+
   return {
     id: `PRT_${id}`,
     path: 'src/components/Button.tsx',
@@ -321,10 +323,12 @@ export function createMockReviewThread(overrides: Partial<MockReviewThread> = {}
   }
 }
 
-export function createMockReviewComment(overrides: Partial<MockReviewComment> = {}): MockReviewComment {
+export function createMockReviewComment(
+  overrides: Partial<MockReviewComment> = {}
+): MockReviewComment {
   const id = getNextId()
   const user = overrides.user || createMockUser()
-  
+
   return {
     id: `PRRC_${id}`,
     body: 'Consider using a more descriptive class name here.',
@@ -341,7 +345,7 @@ export function createMockReviewComment(overrides: Partial<MockReviewComment> = 
 
 export function createMockCheckRun(overrides: Partial<MockCheckRun> = {}): MockCheckRun {
   const id = getNextId()
-  
+
   return {
     id,
     name: `check-${id}`,
@@ -360,10 +364,10 @@ export function createMockCheckStatus(overrides: Partial<MockCheckStatus> = {}):
     createMockCheckRun({ name: 'test', conclusion: 'success' }),
     createMockCheckRun({ name: 'lint', conclusion: 'success' })
   ]
-  
-  const hasFailure = check_runs.some(cr => cr.conclusion === 'failure')
-  const hasPending = check_runs.some(cr => cr.status !== 'completed')
-  
+
+  const hasFailure = check_runs.some((cr) => cr.conclusion === 'failure')
+  const hasPending = check_runs.some((cr) => cr.status !== 'completed')
+
   return {
     state: hasFailure ? 'failure' : hasPending ? 'pending' : 'success',
     total_count: check_runs.length,
@@ -401,7 +405,7 @@ export function createMockRateLimit(overrides: Partial<MockRateLimit> = {}): Moc
   const limit = 5000
   const used = overrides.used ?? Math.floor(Math.random() * 1000)
   const remaining = limit - used
-  
+
   return {
     limit,
     remaining,
@@ -439,7 +443,9 @@ export function createMockPRWithMixedComments(): MockPullRequest {
   return pr
 }
 
-export function createMockPRWithChecks(status: 'success' | 'failure' | 'pending' = 'success'): MockPullRequest {
+export function createMockPRWithChecks(
+  status: 'success' | 'failure' | 'pending' = 'success'
+): MockPullRequest {
   const pr = createMockPullRequest()
   switch (status) {
     case 'failure':
@@ -468,9 +474,12 @@ export function createMockPRWithCodeReviews(): MockPullRequest {
 // Full Scenario Factories
 // ============================================================================
 
-export function createMockRepoWithPRs(prCount = 3): { repo: MockRepository; prs: MockPullRequest[] } {
+export function createMockRepoWithPRs(prCount = 3): {
+  repo: MockRepository
+  prs: MockPullRequest[]
+} {
   const repo = createMockRepository()
-  const prs = Array.from({ length: prCount }, () => 
+  const prs = Array.from({ length: prCount }, () =>
     createMockPullRequest({ base: { repo, ref: 'main', sha: `sha-${getNextId()}` } })
   )
   return { repo, prs }
@@ -479,13 +488,13 @@ export function createMockRepoWithPRs(prCount = 3): { repo: MockRepository; prs:
 export function createMockDashboardData(repoCount = 2, prsPerRepo = 3) {
   const repos: MockRepository[] = []
   const prs: MockPullRequest[] = []
-  
+
   for (let i = 0; i < repoCount; i++) {
     const { repo, prs: repoPRs } = createMockRepoWithPRs(prsPerRepo)
     repos.push(repo)
     prs.push(...repoPRs)
   }
-  
+
   return { repos, prs, rateLimit: createMockRateLimit() }
 }
 
@@ -516,7 +525,10 @@ export interface MockLayoutItem {
   h: number
 }
 
-export function createMockLayoutItem(repoFullName: string, overrides: Partial<MockLayoutItem> = {}): MockLayoutItem {
+export function createMockLayoutItem(
+  repoFullName: string,
+  overrides: Partial<MockLayoutItem> = {}
+): MockLayoutItem {
   return {
     i: repoFullName,
     x: Math.floor(Math.random() * 800),
@@ -532,7 +544,9 @@ export interface MockPanelSettings {
   width: number
 }
 
-export function createMockPanelSettings(overrides: Partial<MockPanelSettings> = {}): MockPanelSettings {
+export function createMockPanelSettings(
+  overrides: Partial<MockPanelSettings> = {}
+): MockPanelSettings {
   return {
     isOpen: false,
     width: 400,
@@ -545,7 +559,9 @@ export interface MockIDEViewSettings {
   expandedRepos: string[]
 }
 
-export function createMockIDEViewSettings(overrides: Partial<MockIDEViewSettings> = {}): MockIDEViewSettings {
+export function createMockIDEViewSettings(
+  overrides: Partial<MockIDEViewSettings> = {}
+): MockIDEViewSettings {
   return {
     sidebarWidth: 280,
     expandedRepos: [],
@@ -576,7 +592,9 @@ export function createMockChatMessage(overrides: Partial<MockChatMessage> = {}):
   }
 }
 
-export function createMockAssistantMessage(overrides: Partial<MockChatMessage> = {}): MockChatMessage {
+export function createMockAssistantMessage(
+  overrides: Partial<MockChatMessage> = {}
+): MockChatMessage {
   return createMockChatMessage({
     role: 'assistant',
     content: 'I am Claude, an AI assistant. How can I help you today?',
@@ -617,7 +635,9 @@ export interface MockAIPanelSettings {
   width: number
 }
 
-export function createMockAIPanelSettings(overrides: Partial<MockAIPanelSettings> = {}): MockAIPanelSettings {
+export function createMockAIPanelSettings(
+  overrides: Partial<MockAIPanelSettings> = {}
+): MockAIPanelSettings {
   return {
     isOpen: false,
     width: 380,

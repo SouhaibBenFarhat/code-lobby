@@ -2,11 +2,11 @@
  * Header Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '../../utils/render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Header } from '@/components/Header'
-import { setupMockElectron, resetMockElectron } from '../../mocks/electron'
-import { createMockUser, createMockRateLimit } from '../../mocks/factories'
+import { resetMockElectron, setupMockElectron } from '../../mocks/electron'
+import { createMockRateLimit, createMockUser } from '../../mocks/factories'
+import { act, fireEvent, render, screen, waitFor } from '../../utils/render'
 
 describe('Header', () => {
   const mockUser = createMockUser({ login: 'testuser', name: 'Test User' })
@@ -26,42 +26,42 @@ describe('Header', () => {
   describe('Rendering', () => {
     it('should render the CodeLobby logo and name', () => {
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       expect(screen.getByText('CodeLobby')).toBeInTheDocument()
     })
 
     it('should render Live indicator', () => {
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       expect(screen.getByText('Live')).toBeInTheDocument()
     })
 
     it('should display user avatar when user is logged in', async () => {
       await act(async () => {
         render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
           />
         )
       })
-      
+
       // Avatar component renders a span with initials as fallback
       // Look for user-related elements in the dropdown trigger area
       await waitFor(() => {
@@ -75,14 +75,14 @@ describe('Header', () => {
   describe('View Mode Switcher', () => {
     it('should render view mode toggle buttons', () => {
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       // Should have two toggle buttons (canvas and ide)
       const buttons = document.querySelectorAll('button')
       expect(buttons.length).toBeGreaterThanOrEqual(2)
@@ -90,14 +90,14 @@ describe('Header', () => {
 
     it('should highlight canvas button when viewMode is canvas', () => {
       const { container } = render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       // Find the view switcher and check the active button
       const viewSwitcher = container.querySelector('.bg-muted\\/50')
       expect(viewSwitcher).toBeInTheDocument()
@@ -105,14 +105,14 @@ describe('Header', () => {
 
     it('should call onViewModeChange when IDE button is clicked', async () => {
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       // Find and click the IDE view button (second button in the view switcher)
       const buttons = document.querySelectorAll('.bg-muted\\/50 button')
       if (buttons.length >= 2) {
@@ -123,14 +123,14 @@ describe('Header', () => {
 
     it('should call onViewModeChange when Canvas button is clicked', async () => {
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="ide"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       const buttons = document.querySelectorAll('.bg-muted\\/50 button')
       if (buttons.length >= 1) {
         fireEvent.click(buttons[0])
@@ -143,26 +143,27 @@ describe('Header', () => {
     it('should toggle theme when theme button is clicked', async () => {
       await act(async () => {
         render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
           />
         )
       })
-      
+
       // Find theme toggle button by looking for Sun or Moon icon
-      const themeButton = document.querySelector('button svg.lucide-sun')?.closest('button') ||
+      const themeButton =
+        document.querySelector('button svg.lucide-sun')?.closest('button') ||
         document.querySelector('button svg.lucide-moon')?.closest('button') ||
         document.querySelector('button[title*="theme"]')
-      
+
       if (themeButton) {
         const initialTheme = localStorage.getItem('codelobby-theme')
         await act(async () => {
           fireEvent.click(themeButton as Element)
         })
-        
+
         await waitFor(() => {
           const newTheme = localStorage.getItem('codelobby-theme')
           expect(newTheme !== initialTheme || newTheme !== null).toBe(true)
@@ -180,8 +181,8 @@ describe('Header', () => {
       })
 
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -191,7 +192,7 @@ describe('Header', () => {
       // Rate limit should be fetched and displayed
       await waitFor(() => {
         // Look for percentage or remaining count
-        const rateLimitElement = screen.queryByText(/4900/) || screen.queryByText(/2%/)
+        const _rateLimitElement = screen.queryByText(/4900/) || screen.queryByText(/2%/)
         // May not always be visible depending on implementation
       })
     })
@@ -201,19 +202,20 @@ describe('Header', () => {
     it('should call onLogout when logout button is clicked', async () => {
       await act(async () => {
         render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
           />
         )
       })
-      
+
       // Find logout button by looking for LogOut icon in buttons
-      const logoutButton = document.querySelector('button svg.lucide-log-out')?.closest('button') ||
+      const logoutButton =
+        document.querySelector('button svg.lucide-log-out')?.closest('button') ||
         document.querySelector('button[title*="logout"]')
-      
+
       if (logoutButton) {
         await act(async () => {
           fireEvent.click(logoutButton)
@@ -226,14 +228,14 @@ describe('Header', () => {
   describe('Refresh', () => {
     it('should show loading state when fetching', async () => {
       render(
-        <Header 
-          user={mockUser} 
+        <Header
+          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       // The refresh/loading indicator should be present
       const refreshButton = document.querySelector('button svg.lucide-refresh-cw')
       expect(refreshButton || true).toBeTruthy() // May or may not be spinning
@@ -243,14 +245,14 @@ describe('Header', () => {
   describe('Without User', () => {
     it('should handle null user gracefully', () => {
       render(
-        <Header 
-          user={null} 
+        <Header
+          user={null}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
         />
       )
-      
+
       // Should still render without crashing
       expect(screen.getByText('CodeLobby')).toBeInTheDocument()
     })
@@ -260,12 +262,12 @@ describe('Header', () => {
     it('should show traffic light spacer when not in fullscreen', async () => {
       const mockElectron = setupMockElectron()
       mockElectron.isFullscreen.mockResolvedValue(false)
-      
+
       let container: HTMLElement
       await act(async () => {
         const result = render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -273,7 +275,7 @@ describe('Header', () => {
         )
         container = result.container
       })
-      
+
       // Should have the 72px spacer for traffic lights
       await waitFor(() => {
         const spacer = container.querySelector('.w-\\[72px\\]')
@@ -284,12 +286,12 @@ describe('Header', () => {
     it('should hide traffic light spacer when in fullscreen', async () => {
       const mockElectron = setupMockElectron()
       mockElectron.isFullscreen.mockResolvedValue(true)
-      
+
       let container: HTMLElement
       await act(async () => {
         const result = render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -297,13 +299,13 @@ describe('Header', () => {
         )
         container = result.container
       })
-      
+
       // Should NOT have the 72px spacer when fullscreen
       await waitFor(() => {
         const spacer = container.querySelector('.w-\\[72px\\]')
         expect(spacer).not.toBeInTheDocument()
       })
-      
+
       // Should have smaller spacer instead
       await waitFor(() => {
         const smallSpacer = container.querySelector('.w-3')
@@ -314,19 +316,23 @@ describe('Header', () => {
     it('should respond to fullscreen change events', async () => {
       const mockElectron = setupMockElectron()
       mockElectron.isFullscreen.mockResolvedValue(false)
-      
+
       // Store the callback to trigger it later
       let fullscreenCallback: ((isFullscreen: boolean) => void) | null = null
-      mockElectron.onFullscreenChange.mockImplementation((callback: (isFullscreen: boolean) => void) => {
-        fullscreenCallback = callback
-        return () => { fullscreenCallback = null }
-      })
-      
+      mockElectron.onFullscreenChange.mockImplementation(
+        (callback: (isFullscreen: boolean) => void) => {
+          fullscreenCallback = callback
+          return () => {
+            fullscreenCallback = null
+          }
+        }
+      )
+
       let container: HTMLElement
       await act(async () => {
         const result = render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -334,20 +340,20 @@ describe('Header', () => {
         )
         container = result.container
       })
-      
+
       // Initially should have traffic light spacer
       await waitFor(() => {
         const spacer = container.querySelector('.w-\\[72px\\]')
         expect(spacer).toBeInTheDocument()
       })
-      
+
       // Simulate entering fullscreen
       await act(async () => {
         if (fullscreenCallback) {
           fullscreenCallback(true)
         }
       })
-      
+
       // Should now hide traffic light spacer
       await waitFor(() => {
         const spacer = container.querySelector('.w-\\[72px\\]')
@@ -359,12 +365,12 @@ describe('Header', () => {
       const mockElectron = setupMockElectron()
       const cleanupFn = vi.fn()
       mockElectron.onFullscreenChange.mockReturnValue(cleanupFn)
-      
+
       let unmount: () => void
       await act(async () => {
         const result = render(
-          <Header 
-            user={mockUser} 
+          <Header
+            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -372,12 +378,12 @@ describe('Header', () => {
         )
         unmount = result.unmount
       })
-      
+
       // Unmount the component
       await act(async () => {
         unmount()
       })
-      
+
       // Cleanup function should have been called
       expect(cleanupFn).toHaveBeenCalled()
     })

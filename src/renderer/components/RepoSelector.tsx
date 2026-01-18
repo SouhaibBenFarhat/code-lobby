@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
+import type { Repository } from './types'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { ScrollArea } from './ui/scroll-area'
-import { Badge } from './ui/badge'
-import { cn } from '@/lib/utils'
-import type { Repository } from './types'
 
 export function RepoSelector() {
   const queryClient = useQueryClient()
@@ -41,7 +41,7 @@ export function RepoSelector() {
       setSelectedRepos(new Set(savedSelection))
     } else if (allRepos && savedSelection && savedSelection.length === 0) {
       // If no saved selection, default to all repos selected
-      setSelectedRepos(new Set(allRepos.map(r => r.full_name)))
+      setSelectedRepos(new Set(allRepos.map((r) => r.full_name)))
     }
   }, [savedSelection, allRepos])
 
@@ -49,12 +49,13 @@ export function RepoSelector() {
   const filteredRepos = useMemo(() => {
     if (!allRepos) return []
     if (!search.trim()) return allRepos
-    
+
     const searchLower = search.toLowerCase()
-    return allRepos.filter(repo =>
-      repo.full_name.toLowerCase().includes(searchLower) ||
-      repo.name.toLowerCase().includes(searchLower) ||
-      repo.owner.login.toLowerCase().includes(searchLower)
+    return allRepos.filter(
+      (repo) =>
+        repo.full_name.toLowerCase().includes(searchLower) ||
+        repo.name.toLowerCase().includes(searchLower) ||
+        repo.owner.login.toLowerCase().includes(searchLower)
     )
   }, [allRepos, search])
 
@@ -80,7 +81,7 @@ export function RepoSelector() {
   // Select all
   const selectAll = () => {
     if (!allRepos) return
-    const newSelection = new Set(allRepos.map(r => r.full_name))
+    const newSelection = new Set(allRepos.map((r) => r.full_name))
     setSelectedRepos(newSelection)
     saveSelection(newSelection)
   }
@@ -112,20 +113,10 @@ export function RepoSelector() {
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-semibold">Select Repositories</h4>
             <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={selectAll}
-              >
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={selectAll}>
                 All
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={deselectAll}
-              >
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={deselectAll}>
                 None
               </Button>
             </div>
@@ -163,21 +154,20 @@ export function RepoSelector() {
                   const isSelected = selectedRepos.has(repo.full_name)
                   return (
                     <button
+                      type="button"
                       key={repo.id}
                       onClick={() => toggleRepo(repo.full_name)}
                       className={cn(
-                        "w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors",
-                        isSelected 
-                          ? "bg-primary/10 hover:bg-primary/20" 
-                          : "hover:bg-muted/50"
+                        'w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors',
+                        isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'
                       )}
                     >
-                      <div className={cn(
-                        "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0",
-                        isSelected 
-                          ? "bg-primary border-primary" 
-                          : "border-muted-foreground/30"
-                      )}>
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded border flex items-center justify-center flex-shrink-0',
+                          isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                        )}
+                      >
                         {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                       </div>
                       <img
@@ -204,8 +194,8 @@ export function RepoSelector() {
 
         <div className="p-2 border-t border-border bg-muted/30">
           <p className="text-xs text-muted-foreground text-center">
-            {selectedCount === 0 
-              ? "No repos selected - all hidden" 
+            {selectedCount === 0
+              ? 'No repos selected - all hidden'
               : `${selectedCount} repo${selectedCount !== 1 ? 's' : ''} will be displayed`}
           </p>
         </div>

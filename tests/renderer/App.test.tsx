@@ -2,16 +2,15 @@
  * App Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../utils/render'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
-import { 
-  setupMockElectron, 
-  setupAuthenticatedScenario, 
-  setupUnauthenticatedScenario,
-  resetMockElectron 
+import {
+  resetMockElectron,
+  setupAuthenticatedScenario,
+  setupMockElectron,
+  setupUnauthenticatedScenario
 } from '../mocks/electron'
-import { createMockUser, createMockRepository, createMockPullRequest } from '../mocks/factories'
+import { render, screen, waitFor } from '../utils/render'
 
 describe('App', () => {
   beforeEach(() => {
@@ -164,7 +163,7 @@ describe('App', () => {
       const logoutButton = document.querySelector('button svg.lucide-log-out')?.parentElement
       if (logoutButton) {
         logoutButton.click()
-        
+
         await waitFor(() => {
           expect(mockElectron.clearToken).toHaveBeenCalled()
         })
@@ -237,7 +236,7 @@ describe('App', () => {
       mockElectron.getClaudeApiKey.mockResolvedValue('sk-ant-test-key')
       mockElectron.getChatHistory.mockResolvedValue([])
 
-      const { rerender } = render(<App />)
+      render(<App />)
 
       await waitFor(() => {
         expect(screen.getByText(/AI Assistant/i)).toBeInTheDocument()
@@ -266,7 +265,7 @@ describe('App', () => {
       // Note: The actual view switching happens via Header callbacks
       // Here we verify the structural pattern - AI panel should be
       // a sibling to view content, not nested inside view conditionals
-      
+
       // Check that getChatHistory was only called once during initial load
       // not again when view changes
       const initialCallCount = mockElectron.getChatHistory.mock.calls.length
@@ -274,7 +273,7 @@ describe('App', () => {
       // The panel should maintain its position in the DOM
       const aiPanelBefore = screen.getByText(/AI Assistant/i)
       expect(aiPanelBefore).toBeInTheDocument()
-      
+
       // Verify it was only called once (during mount)
       expect(mockElectron.getChatHistory).toHaveBeenCalledTimes(initialCallCount)
     })

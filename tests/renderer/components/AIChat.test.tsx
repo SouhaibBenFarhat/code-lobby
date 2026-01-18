@@ -1,6 +1,6 @@
 /**
  * AIChat Component Tests
- * 
+ *
  * Tests for the AI Chat panel including:
  * - API key management
  * - Chat message display
@@ -10,16 +10,11 @@
  * - Component persistence
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '../../utils/render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AIChatPanel } from '@/components/AIChat'
-import { setupMockElectron, resetMockElectron } from '../../mocks/electron'
-import { 
-  createMockChatMessage, 
-  createMockAssistantMessage, 
-  createMockChatHistory,
-  createMockClaudeModel
-} from '../../mocks/factories'
+import { resetMockElectron, setupMockElectron } from '../../mocks/electron'
+import { createMockChatHistory, createMockClaudeModel } from '../../mocks/factories'
+import { act, fireEvent, render, screen, waitFor } from '../../utils/render'
 
 describe('AIChatPanel', () => {
   const mockOnClose = vi.fn()
@@ -38,16 +33,18 @@ describe('AIChatPanel', () => {
   describe('Loading State', () => {
     it('should show loading state initially', () => {
       render(<AIChatPanel onClose={mockOnClose} />)
-      
+
       // Should show loading spinner or skeleton
-      expect(document.querySelector('.animate-spin') || document.querySelector('.animate-pulse')).toBeInTheDocument()
+      expect(
+        document.querySelector('.animate-spin') || document.querySelector('.animate-pulse')
+      ).toBeInTheDocument()
     })
 
     it('should load API key and chat history on mount', async () => {
       const mockElectron = setupMockElectron()
-      
+
       render(<AIChatPanel onClose={mockOnClose} />)
-      
+
       await waitFor(() => {
         expect(mockElectron.getClaudeApiKey).toHaveBeenCalled()
         expect(mockElectron.getChatHistory).toHaveBeenCalled()
@@ -57,7 +54,7 @@ describe('AIChatPanel', () => {
 
   describe('API Key Input (No API Key)', () => {
     it('should show API key input when no key is configured', async () => {
-      const mockElectron = setupMockElectron({
+      const _mockElectron = setupMockElectron({
         getClaudeApiKey: vi.fn().mockResolvedValue(null)
       })
 
@@ -93,14 +90,15 @@ describe('AIChatPanel', () => {
 
       const input = screen.getByPlaceholderText(/Enter Claude API key/i)
       fireEvent.change(input, { target: { value: 'sk-ant-test-key-123' } })
-      
+
       // Find the submit button (it's next to the input, contains a Key icon)
-      const submitButton = document.querySelector('button svg.lucide-key')?.parentElement ||
+      const submitButton =
+        document.querySelector('button svg.lucide-key')?.parentElement ||
         document.querySelector('button:not([disabled])')
-      
+
       if (submitButton) {
         fireEvent.click(submitButton)
-        
+
         await waitFor(() => {
           expect(mockElectron.setClaudeApiKey).toHaveBeenCalledWith('sk-ant-test-key-123')
         })
@@ -137,7 +135,7 @@ describe('AIChatPanel', () => {
 
     it('should display chat history', async () => {
       const chatHistory = createMockChatHistory(4)
-      
+
       const mockElectron = setupMockElectron({
         getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
         getChatHistory: vi.fn().mockResolvedValue(chatHistory)
@@ -149,7 +147,7 @@ describe('AIChatPanel', () => {
       await waitFor(() => {
         expect(mockElectron.getChatHistory).toHaveBeenCalled()
       })
-      
+
       // With virtual scrolling, not all messages may be visible
       // So we just verify the chat history was loaded
     })
@@ -340,7 +338,7 @@ describe('AIChatPanel', () => {
       await waitFor(() => {
         expect(mockElectron.getChatHistory).toHaveBeenCalled()
       })
-      
+
       // The clear button is in a settings menu, so we verify the API exists
       expect(mockElectron.clearChatHistory).toBeDefined()
     })
@@ -349,7 +347,7 @@ describe('AIChatPanel', () => {
   describe('Scroll Behavior', () => {
     it('should load long chat history', async () => {
       const longHistory = createMockChatHistory(20)
-      
+
       const mockElectron = setupMockElectron({
         getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
         getChatHistory: vi.fn().mockResolvedValue(longHistory)
@@ -371,8 +369,10 @@ describe('AIChatPanel', () => {
     it('should show loading indicator while loading conversation', async () => {
       // Delay the response to see loading state
       let resolveChat: (value: unknown[]) => void
-      const chatPromise = new Promise<unknown[]>(resolve => { resolveChat = resolve })
-      
+      const chatPromise = new Promise<unknown[]>((resolve) => {
+        resolveChat = resolve
+      })
+
       setupMockElectron({
         getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
         getChatHistory: vi.fn().mockReturnValue(chatPromise)
@@ -381,12 +381,13 @@ describe('AIChatPanel', () => {
       render(<AIChatPanel onClose={mockOnClose} />)
 
       // Should show loading indicator (spinner or skeleton)
-      const loadingIndicator = document.querySelector('.animate-pulse') || document.querySelector('.animate-spin')
+      const loadingIndicator =
+        document.querySelector('.animate-pulse') || document.querySelector('.animate-spin')
       expect(loadingIndicator).toBeInTheDocument()
-      
+
       // Resolve the promise to complete the test
       await act(async () => {
-        resolveChat!(createMockChatHistory(4))
+        resolveChat?.(createMockChatHistory(4))
       })
     })
   })
@@ -396,9 +397,9 @@ describe('AIChatPanel', () => {
       setupMockElectron({
         getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
         getChatHistory: vi.fn().mockResolvedValue([]),
-        sendChatMessageStreaming: vi.fn().mockResolvedValue({ 
-          success: false, 
-          error: 'API Error: Rate limited' 
+        sendChatMessageStreaming: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'API Error: Rate limited'
         })
       })
 
@@ -458,12 +459,12 @@ describe('useThrottledValue Hook', () => {
     })
 
     const { rerender } = render(<AIChatPanel onClose={vi.fn()} />)
-    
+
     // Component should handle rapid updates without crashing
     for (let i = 0; i < 10; i++) {
       rerender(<AIChatPanel onClose={vi.fn()} />)
     }
-    
+
     // If we get here without errors, the throttling is working
     expect(true).toBe(true)
   })

@@ -2,7 +2,7 @@
  * Utility Functions Tests
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 
 describe('Utils', () => {

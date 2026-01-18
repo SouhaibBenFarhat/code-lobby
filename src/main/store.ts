@@ -9,11 +9,11 @@ interface GitHubUser {
 
 // Layout item for free-form canvas (pixel-based)
 export interface LayoutItem {
-  i: string      // Repo full_name as ID
-  x: number      // X position in pixels
-  y: number      // Y position in pixels
-  w: number      // Width in pixels
-  h: number      // Height in pixels
+  i: string // Repo full_name as ID
+  x: number // X position in pixels
+  y: number // Y position in pixels
+  w: number // Width in pixels
+  h: number // Height in pixels
 }
 
 // PR Detail panel settings
@@ -36,7 +36,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
-  thinking?: string  // Extended thinking content (for assistant messages)
+  thinking?: string // Extended thinking content (for assistant messages)
   timestamp: string
 }
 
@@ -239,9 +239,9 @@ export function getChatHistory(): ChatMessage[] {
 
 export function addChatMessage(message: ChatMessage): void {
   const current = store.get('aiChat')
-  store.set('aiChat', { 
-    ...current, 
-    chatHistory: [...current.chatHistory, message] 
+  store.set('aiChat', {
+    ...current,
+    chatHistory: [...current.chatHistory, message]
   })
 }
 

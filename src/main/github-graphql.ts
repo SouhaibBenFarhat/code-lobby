@@ -1,6 +1,6 @@
 import { graphql } from '@octokit/graphql'
-import { logger, LogCategory } from './logger'
-import { withRetryAndTimeout, parseGitHubError, GitHubAPIError } from './api-client'
+import { parseGitHubError, withRetryAndTimeout } from './api-client'
+import { LogCategory, logger } from './logger'
 
 export interface GitHubUser {
   login: string
@@ -153,32 +153,32 @@ export interface RateLimitInfo {
  */
 export async function fetchRateLimitOnly(token: string): Promise<RateLimitInfo> {
   logger.info(LogCategory.API, 'Fetching rate limit from /rate_limit endpoint')
-  
+
   const response = await fetch('https://api.github.com/rate_limit', {
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'CodeLobby-App'
     }
   })
-  
+
   if (!response.ok) {
     logger.error(LogCategory.API, 'Failed to fetch rate limit', { status: response.status })
     throw new Error(`Failed to fetch rate limit: ${response.status}`)
   }
-  
+
   const data = await response.json()
-  
+
   // Log all rate limit resources for debugging
   logger.debug(LogCategory.API, 'Rate limit response', {
     core: data.resources.core,
     graphql: data.resources.graphql,
     search: data.resources.search
   })
-  
+
   // Use GraphQL rate limit since that's what the app uses for data fetching
   const graphql = data.resources.graphql
-  
+
   const result = {
     limit: graphql.limit,
     remaining: graphql.remaining,
@@ -186,7 +186,7 @@ export async function fetchRateLimitOnly(token: string): Promise<RateLimitInfo> 
     resetAt: new Date(graphql.reset * 1000).toISOString(),
     percentage: Math.round(((graphql.limit - graphql.remaining) / graphql.limit) * 100)
   }
-  
+
   logger.info(LogCategory.API, 'GraphQL rate limit status', {
     used: result.used,
     remaining: result.remaining,
@@ -194,7 +194,7 @@ export async function fetchRateLimitOnly(token: string): Promise<RateLimitInfo> 
     percentage: result.percentage,
     resetAt: result.resetAt
   })
-  
+
   return result
 }
 
@@ -591,7 +591,7 @@ async function executeGraphQL<T>(
   return withRetryAndTimeout<T>(
     async () => {
       try {
-        return await client(query, variables) as T
+        return (await client(query, variables)) as T
       } catch (error) {
         // Re-throw parsed error for better handling
         throw parseGitHubError(error)
@@ -612,15 +612,12 @@ async function executeGraphQL<T>(
 
 export async function validateToken(token: string): Promise<GitHubUser | null> {
   const client = createGraphQLClient(token)
-  
+
   try {
-    const response = await executeGraphQL<{ viewer: { login: string; avatarUrl: string; name: string | null; url: string } }>(
-      client,
-      GET_USER,
-      undefined,
-      'validateToken'
-    )
-    
+    const response = await executeGraphQL<{
+      viewer: { login: string; avatarUrl: string; name: string | null; url: string }
+    }>(client, GET_USER, undefined, 'validateToken')
+
     return {
       login: response.viewer.login,
       avatar_url: response.viewer.avatarUrl,
@@ -628,8 +625,8 @@ export async function validateToken(token: string): Promise<GitHubUser | null> {
       html_url: response.viewer.url
     }
   } catch (error) {
-    logger.error(LogCategory.API, 'Failed to validate token', { 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.error(LogCategory.API, 'Failed to validate token', {
+      error: error instanceof Error ? error.message : String(error)
     })
     throw error
   }
@@ -642,16 +639,11 @@ export async function fetchAllPRData(token: string): Promise<{
   rateLimit: RateLimitInfo
 }> {
   const client = createGraphQLClient(token)
-  
+
   logger.info(LogCategory.API, 'Fetching all PR data', { context: 'fetchAllPRData' })
-  
-  const response: any = await executeGraphQL(
-    client,
-    GET_ALL_DATA,
-    undefined,
-    'fetchAllPRData'
-  )
-  
+
+  const response: any = await executeGraphQL(client, GET_ALL_DATA, undefined, 'fetchAllPRData')
+
   // Parse rate limit info
   const rateLimit: RateLimitInfo = {
     limit: response.rateLimit.limit,
@@ -660,24 +652,24 @@ export async function fetchAllPRData(token: string): Promise<{
     resetAt: response.rateLimit.resetAt,
     percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100)
   }
-  
+
   const user: GitHubUser = {
     login: response.viewer.login,
     avatar_url: response.viewer.avatarUrl,
     name: response.viewer.name,
     html_url: response.viewer.url
   }
-  
+
   const repoMap = new Map<string, Repository>()
   const pullRequests: PullRequest[] = []
-  
+
   for (const pr of response.viewer.pullRequests.nodes) {
     // Skip merged PRs
     if (pr.merged) continue
-    
+
     const repo = pr.repository
     const repoFullName = repo.nameWithOwner
-    
+
     // Collect unique repositories
     if (!repoMap.has(repoFullName)) {
       repoMap.set(repoFullName, {
@@ -695,12 +687,12 @@ export async function fetchAllPRData(token: string): Promise<{
         updated_at: repo.updatedAt
       })
     }
-    
+
     // Parse check runs
     const statusCheckRollup = pr.commits.nodes[0]?.commit?.statusCheckRollup
     const checkState = statusCheckRollup?.state?.toLowerCase() || 'pending'
     const checkContexts = statusCheckRollup?.contexts?.nodes || []
-    
+
     const checkRuns = checkContexts.map((ctx: any) => {
       if (ctx.__typename === 'CheckRun') {
         return {
@@ -721,13 +713,14 @@ export async function fetchAllPRData(token: string): Promise<{
         }
       }
     })
-    
+
     // Parse comments - detect bots by __typename or username pattern
     const commentsList: PRComment[] = pr.comments.nodes.map((c: any) => {
       const login = c.author?.login || 'ghost'
-      const isBot = c.author?.__typename === 'Bot' || 
-                    login.endsWith('[bot]') || 
-                    login.includes('bot') && login.includes('-')
+      const isBot =
+        c.author?.__typename === 'Bot' ||
+        login.endsWith('[bot]') ||
+        (login.includes('bot') && login.includes('-'))
       return {
         id: c.id,
         body: c.body,
@@ -739,13 +732,14 @@ export async function fetchAllPRData(token: string): Promise<{
         }
       }
     })
-    
+
     // Parse reviews - detect bots by __typename or username pattern
     const reviews: PRReview[] = pr.reviews.nodes.map((r: any) => {
       const login = r.author?.login || 'ghost'
-      const isBot = r.author?.__typename === 'Bot' || 
-                    login.endsWith('[bot]') || 
-                    login.includes('bot') && login.includes('-')
+      const isBot =
+        r.author?.__typename === 'Bot' ||
+        login.endsWith('[bot]') ||
+        (login.includes('bot') && login.includes('-'))
       return {
         id: r.id,
         state: r.state?.toLowerCase() || 'commented',
@@ -758,14 +752,15 @@ export async function fetchAllPRData(token: string): Promise<{
         body: r.body
       }
     })
-    
+
     // Parse review threads (inline code comments)
     const reviewThreads: ReviewThread[] = (pr.reviewThreads?.nodes || []).map((thread: any) => {
       const comments: ReviewComment[] = (thread.comments?.nodes || []).map((c: any) => {
         const login = c.author?.login || 'ghost'
-        const isBot = c.author?.__typename === 'Bot' || 
-                      login.endsWith('[bot]') || 
-                      login.includes('bot') && login.includes('-')
+        const isBot =
+          c.author?.__typename === 'Bot' ||
+          login.endsWith('[bot]') ||
+          (login.includes('bot') && login.includes('-'))
         return {
           id: c.id,
           body: c.body,
@@ -780,7 +775,7 @@ export async function fetchAllPRData(token: string): Promise<{
           diffHunk: c.diffHunk
         }
       })
-      
+
       return {
         id: thread.id,
         isResolved: thread.isResolved,
@@ -789,7 +784,7 @@ export async function fetchAllPRData(token: string): Promise<{
         comments
       }
     })
-    
+
     pullRequests.push({
       id: pr.id,
       number: pr.number,
@@ -840,7 +835,7 @@ export async function fetchAllPRData(token: string): Promise<{
       reviewThreads
     })
   }
-  
+
   return {
     user,
     pullRequests,
@@ -854,9 +849,9 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
   const client = createGraphQLClient(token)
   const allRepos: Repository[] = []
   const seenIds = new Set<string>()
-  
+
   logger.info(LogCategory.API, 'Fetching all repositories', { context: 'fetchAllRepositories' })
-  
+
   // First, get the user's login
   const userResponse: any = await executeGraphQL(
     client,
@@ -865,7 +860,7 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
     'fetchAllRepositories:getUser'
   )
   const userLogin = userResponse.viewer.login
-  
+
   // Try to get user's organizations (requires read:org scope)
   let orgs: string[] = []
   try {
@@ -878,21 +873,21 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
     orgs = userOrgsResponse.viewer.organizations.nodes.map((o: any) => o.login)
   } catch (error) {
     // Could not fetch orgs (may need read:org scope), continuing with user repos only
-    logger.warn(LogCategory.API, 'Could not fetch user organizations', { 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.warn(LogCategory.API, 'Could not fetch user organizations', {
+      error: error instanceof Error ? error.message : String(error)
     })
   }
-  
+
   // Build search queries for user's repos and all their orgs
   const searchQueries = [
     `user:${userLogin}`, // Repos owned by user
     ...orgs.map((org: string) => `org:${org}`) // Repos in user's organizations
   ]
-  
+
   for (const searchQuery of searchQueries) {
     let cursor: string | null = null
     let hasNextPage = true
-    
+
     while (hasNextPage) {
       try {
         const response: any = await executeGraphQL(
@@ -901,15 +896,15 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
           { searchQuery: searchQuery, cursor },
           `fetchAllRepositories:search(${searchQuery.substring(0, 30)})`
         )
-        
+
         const nodes = response?.search?.nodes || []
-        
+
         for (const repo of nodes) {
           if (!repo || !repo.id) continue
           if (repo.isArchived) continue
           // Use full_name for deduplication (consistent identifier)
           if (seenIds.has(repo.nameWithOwner)) continue
-          
+
           seenIds.add(repo.nameWithOwner)
           allRepos.push({
             id: repo.id,
@@ -926,11 +921,11 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
             updated_at: repo.updatedAt
           })
         }
-        
+
         hasNextPage = response.search.pageInfo.hasNextPage
         cursor = response.search.pageInfo.endCursor
       } catch (error) {
-        logger.warn(LogCategory.API, 'Failed to fetch repos for query', { 
+        logger.warn(LogCategory.API, 'Failed to fetch repos for query', {
           query: searchQuery,
           error: error instanceof Error ? error.message : String(error)
         })
@@ -938,7 +933,7 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
       }
     }
   }
-  
+
   // Also include repos from PRs (the user may have contributed to repos they don't own)
   try {
     const prData = await fetchAllPRData(token)
@@ -946,7 +941,7 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
       const repoId = pr.base.repo.full_name
       if (seenIds.has(repoId)) continue
       seenIds.add(repoId)
-      
+
       allRepos.push({
         id: repoId,
         name: pr.base.repo.name,
@@ -961,18 +956,18 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
     }
   } catch (error) {
     // Error fetching repos from PRs, continuing with what we have
-    logger.warn(LogCategory.API, 'Error fetching repos from PRs', { 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.warn(LogCategory.API, 'Error fetching repos from PRs', {
+      error: error instanceof Error ? error.message : String(error)
     })
   }
-  
+
   return allRepos
 }
 
 // For activity stream - get recent events across all PRs
 export function extractEventsFromPRs(pullRequests: PullRequest[]): PREvent[] {
   const events: PREvent[] = []
-  
+
   for (const pr of pullRequests) {
     // Add comments as events
     for (const comment of pr.commentsList) {
@@ -984,13 +979,17 @@ export function extractEventsFromPRs(pullRequests: PullRequest[]): PREvent[] {
         body: comment.body
       })
     }
-    
+
     // Add reviews as events
     for (const review of pr.reviews) {
       events.push({
         id: review.id,
-        event: review.state === 'approved' ? 'approved' : 
-               review.state === 'changes_requested' ? 'changes_requested' : 'reviewed',
+        event:
+          review.state === 'approved'
+            ? 'approved'
+            : review.state === 'changes_requested'
+              ? 'changes_requested'
+              : 'reviewed',
         created_at: review.created_at,
         actor: review.author,
         body: review.body || undefined,
@@ -998,36 +997,46 @@ export function extractEventsFromPRs(pullRequests: PullRequest[]): PREvent[] {
       })
     }
   }
-  
+
   // Sort by date, most recent first
-  return events.sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  ).slice(0, 50)
+  return events
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 50)
 }
 
 // Fetch ALL open PRs from specific repositories (not just user's PRs)
-export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]): Promise<{
+export async function fetchAllPRsForRepos(
+  token: string,
+  repoFullNames: string[]
+): Promise<{
   pullRequests: PullRequest[]
   currentUser: string
   rateLimit: RateLimitInfo
 }> {
   if (repoFullNames.length === 0) {
-    return { pullRequests: [], currentUser: '', rateLimit: { limit: 0, remaining: 0, used: 0, resetAt: '', percentage: 0 } }
+    return {
+      pullRequests: [],
+      currentUser: '',
+      rateLimit: { limit: 0, remaining: 0, used: 0, resetAt: '', percentage: 0 }
+    }
   }
 
   const client = createGraphQLClient(token)
   const allPRs: PullRequest[] = []
-  
+
   // Build search query: "repo:owner/name repo:owner/name2 is:pr is:open"
-  const repoQueries = repoFullNames.map(name => `repo:${name}`).join(' ')
+  const repoQueries = repoFullNames.map((name) => `repo:${name}`).join(' ')
   const searchQuery = `${repoQueries} is:pr is:open`
-  
-  logger.info('GraphQL', `Fetching all PRs for repos`, { repoCount: repoFullNames.length, searchQuery: searchQuery.substring(0, 100) })
-  
+
+  logger.info('GraphQL', `Fetching all PRs for repos`, {
+    repoCount: repoFullNames.length,
+    searchQuery: searchQuery.substring(0, 100)
+  })
+
   let cursor: string | null = null
   let rateLimit: RateLimitInfo = { limit: 0, remaining: 0, used: 0, resetAt: '', percentage: 0 }
   let currentUser = ''
-  
+
   // Paginate through results
   do {
     const response: any = await executeGraphQL(
@@ -1036,7 +1045,7 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
       { searchQuery, cursor },
       'fetchAllPRsForRepos:search'
     )
-    
+
     currentUser = response.viewer.login
     rateLimit = {
       limit: response.rateLimit.limit,
@@ -1045,20 +1054,20 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
       resetAt: response.rateLimit.resetAt,
       percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100)
     }
-    
+
     const searchResults = response.search
-    
+
     for (const pr of searchResults.nodes) {
       if (!pr || !pr.id) continue
-      
+
       const repo = pr.repository
       const repoFullName = repo.nameWithOwner
-      
+
       // Parse check runs
       const statusRollup = pr.commits?.nodes?.[0]?.commit?.statusCheckRollup
       const checkContexts = statusRollup?.contexts?.nodes || []
-      let checkState = statusRollup?.state?.toLowerCase() || 'pending'
-      
+      const checkState = statusRollup?.state?.toLowerCase() || 'pending'
+
       const checkRuns = checkContexts.map((ctx: any) => {
         if (ctx.__typename === 'CheckRun') {
           return {
@@ -1078,13 +1087,14 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
           }
         }
       })
-      
+
       // Parse comments
       const commentsList: PRComment[] = (pr.comments?.nodes || []).map((c: any) => {
         const login = c.author?.login || 'ghost'
-        const isBot = c.author?.__typename === 'Bot' || 
-                      login.endsWith('[bot]') || 
-                      (login.includes('bot') && login.includes('-'))
+        const isBot =
+          c.author?.__typename === 'Bot' ||
+          login.endsWith('[bot]') ||
+          (login.includes('bot') && login.includes('-'))
         return {
           id: c.id,
           body: c.body,
@@ -1096,13 +1106,14 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
           }
         }
       })
-      
+
       // Parse reviews
       const reviews: PRReview[] = (pr.reviews?.nodes || []).map((r: any) => {
         const login = r.author?.login || 'ghost'
-        const isBot = r.author?.__typename === 'Bot' || 
-                      login.endsWith('[bot]') || 
-                      (login.includes('bot') && login.includes('-'))
+        const isBot =
+          r.author?.__typename === 'Bot' ||
+          login.endsWith('[bot]') ||
+          (login.includes('bot') && login.includes('-'))
         return {
           id: r.id,
           state: r.state?.toLowerCase() || 'commented',
@@ -1115,14 +1126,15 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
           body: r.body
         }
       })
-      
+
       // Parse review threads
       const reviewThreads: ReviewThread[] = (pr.reviewThreads?.nodes || []).map((thread: any) => {
         const comments: ReviewComment[] = (thread.comments?.nodes || []).map((c: any) => {
           const login = c.author?.login || 'ghost'
-          const isBot = c.author?.__typename === 'Bot' || 
-                        login.endsWith('[bot]') || 
-                        (login.includes('bot') && login.includes('-'))
+          const isBot =
+            c.author?.__typename === 'Bot' ||
+            login.endsWith('[bot]') ||
+            (login.includes('bot') && login.includes('-'))
           return {
             id: c.id,
             body: c.body,
@@ -1137,7 +1149,7 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
             diffHunk: c.diffHunk
           }
         })
-        
+
         return {
           id: thread.id,
           isResolved: thread.isResolved,
@@ -1146,7 +1158,7 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
           comments
         }
       })
-      
+
       allPRs.push({
         id: pr.id,
         number: pr.number,
@@ -1196,11 +1208,14 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
         reviewThreads
       })
     }
-    
+
     cursor = searchResults.pageInfo.hasNextPage ? searchResults.pageInfo.endCursor : null
   } while (cursor)
-  
-  logger.info('GraphQL', `Fetched all PRs for repos`, { prCount: allPRs.length, rateLimit: `${rateLimit.remaining}/${rateLimit.limit}` })
-  
+
+  logger.info('GraphQL', `Fetched all PRs for repos`, {
+    prCount: allPRs.length,
+    rateLimit: `${rateLimit.remaining}/${rateLimit.limit}`
+  })
+
   return { pullRequests: allPRs, currentUser, rateLimit }
 }

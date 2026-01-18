@@ -1,10 +1,10 @@
 import '@testing-library/jest-dom'
-import { vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -34,12 +34,14 @@ class MockIntersectionObserver {
   root: Element | null = null
   rootMargin: string = ''
   thresholds: readonly number[] = []
-  
+
   constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
     this.callback = callback
-    this.root = options?.root as Element || null
+    this.root = (options?.root as Element) || null
     this.rootMargin = options?.rootMargin || ''
-    this.thresholds = Array.isArray(options?.threshold) ? options.threshold : [options?.threshold || 0]
+    this.thresholds = Array.isArray(options?.threshold)
+      ? options.threshold
+      : [options?.threshold || 0]
   }
   observe = vi.fn()
   unobserve = vi.fn()

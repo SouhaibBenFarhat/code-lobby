@@ -1,7 +1,7 @@
-import * as React from 'react'
 import * as ToastPrimitives from '@radix-ui/react-toast'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
+import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const ToastProvider = ToastPrimitives.Provider
@@ -28,19 +28,18 @@ const toastVariants = cva(
       variant: {
         default: 'border bg-background text-foreground',
         destructive:
-          'destructive group border-destructive bg-destructive text-destructive-foreground',
-      },
+          'destructive group border-destructive bg-destructive text-destructive-foreground'
+      }
     },
     defaultVariants: {
-      variant: 'default',
-    },
+      variant: 'default'
+    }
   }
 )
 
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
@@ -89,11 +88,7 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
 >(({ className, ...props }, ref) => (
-  <ToastPrimitives.Title
-    ref={ref}
-    className={cn('text-sm font-semibold', className)}
-    {...props}
-  />
+  <ToastPrimitives.Title ref={ref} className={cn('text-sm font-semibold', className)} {...props} />
 ))
 ToastTitle.displayName = ToastPrimitives.Title.displayName
 
@@ -127,13 +122,15 @@ const toastState: ToastState = { toasts: [] }
 const listeners: Array<() => void> = []
 
 function notifyListeners() {
-  listeners.forEach((listener) => listener())
+  listeners.forEach((listener) => {
+    listener()
+  })
 }
 
 export function toast({
   title,
   description,
-  variant = 'default',
+  variant = 'default'
 }: {
   title?: string
   description?: string
@@ -142,7 +139,7 @@ export function toast({
   const id = Math.random().toString(36).slice(2)
   toastState.toasts.push({ id, title, description, variant })
   notifyListeners()
-  
+
   setTimeout(() => {
     toastState.toasts = toastState.toasts.filter((t) => t.id !== id)
     notifyListeners()
@@ -186,5 +183,5 @@ export {
   ToastTitle,
   ToastDescription,
   ToastProvider,
-  ToastViewport,
+  ToastViewport
 }

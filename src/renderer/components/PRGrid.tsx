@@ -1,12 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Loader2, AlertCircle, RefreshCw, FolderGit2, Lock, Unlock, LayoutGrid, Maximize2 } from 'lucide-react'
+import {
+  AlertCircle,
+  FolderGit2,
+  LayoutGrid,
+  Loader2,
+  Lock,
+  Maximize2,
+  RefreshCw,
+  Unlock
+} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Rnd } from 'react-rnd'
+import { groupBy } from '@/lib/utils'
 import { RepoCard } from './RepoCard'
+import type { PullRequest, Repository } from './types'
 import { Button } from './ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-import { groupBy } from '@/lib/utils'
-import type { PullRequest, Repository } from './types'
 
 interface CardLayout {
   i: string
@@ -70,7 +79,11 @@ export function PRGrid({ currentUser }: PRGridProps) {
   })
 
   // Fetch all contributed repos (no polling - refresh on window focus or manual)
-  const { data: reposData, isLoading: reposLoading, error: reposError } = useQuery({
+  const {
+    data: reposData,
+    isLoading: reposLoading,
+    error: reposError
+  } = useQuery({
     queryKey: ['repos'],
     queryFn: async () => {
       const result = await window.electron.fetchContributedRepos()
@@ -92,39 +105,45 @@ export function PRGrid({ currentUser }: PRGridProps) {
     }
     // Filter to only selected repos
     const selectedSet = new Set(selectedReposFilter)
-    return reposData.filter(repo => selectedSet.has(repo.full_name))
+    return reposData.filter((repo) => selectedSet.has(repo.full_name))
   }, [reposData, selectedReposFilter])
 
   // Handle closing/hiding a repo card
-  const handleCloseRepo = useCallback(async (repoFullName: string) => {
-    // Get current selection
-    const currentSelection = selectedReposFilter || []
-    
-    // If no selection exists, we need to select all EXCEPT the one being closed
-    let newSelection: string[]
-    if (currentSelection.length === 0 && reposData) {
-      // Currently showing all - select all except the one being closed
-      newSelection = reposData
-        .map(r => r.full_name)
-        .filter(name => name !== repoFullName)
-    } else {
-      // Remove from current selection
-      newSelection = currentSelection.filter(name => name !== repoFullName)
-    }
-    
-    // Save to store and update query cache
-    await window.electron.setSelectedRepos(newSelection)
-    queryClient.setQueryData(['selected-repos'], newSelection)
-  }, [selectedReposFilter, reposData, queryClient])
+  const handleCloseRepo = useCallback(
+    async (repoFullName: string) => {
+      // Get current selection
+      const currentSelection = selectedReposFilter || []
+
+      // If no selection exists, we need to select all EXCEPT the one being closed
+      let newSelection: string[]
+      if (currentSelection.length === 0 && reposData) {
+        // Currently showing all - select all except the one being closed
+        newSelection = reposData.map((r) => r.full_name).filter((name) => name !== repoFullName)
+      } else {
+        // Remove from current selection
+        newSelection = currentSelection.filter((name) => name !== repoFullName)
+      }
+
+      // Save to store and update query cache
+      await window.electron.setSelectedRepos(newSelection)
+      queryClient.setQueryData(['selected-repos'], newSelection)
+    },
+    [selectedReposFilter, reposData, queryClient]
+  )
 
   // Get list of repos to fetch PRs for
   const reposToFetch = useMemo(() => {
     if (!filteredRepos || filteredRepos.length === 0) return []
-    return filteredRepos.map(r => r.full_name)
+    return filteredRepos.map((r) => r.full_name)
   }, [filteredRepos])
 
   // Fetch ALL PRs for selected repos (not just user's PRs)
-  const { data: prsResult, isLoading: prsLoading, error: prsError, refetch } = useQuery({
+  const {
+    data: prsResult,
+    isLoading: prsLoading,
+    error: prsError,
+    refetch
+  } = useQuery({
     queryKey: ['all-prs-for-repos', reposToFetch],
     queryFn: async () => {
       if (reposToFetch.length === 0) return { prs: [] as PullRequest[], currentUser: '' }
@@ -138,7 +157,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
     refetchOnWindowFocus: true,
     staleTime: 60000 // Consider data stale after 1 minute
   })
-  
+
   const prsData = prsResult?.prs
   const fetchedCurrentUser = prsResult?.currentUser
 
@@ -152,97 +171,114 @@ export function PRGrid({ currentUser }: PRGridProps) {
         })
       }
     }
-    
+
     updateSize()
     window.addEventListener('resize', updateSize)
     return () => window.removeEventListener('resize', updateSize)
   }, [])
 
   // Generate default layout for repos (scattered nicely)
-  const generateDefaultLayout = useCallback((repos: Repository[], existingLayouts: CardLayout[]): CardLayout[] => {
-    const layoutMap = new Map(existingLayouts.map(l => [l.i, l]))
-    const newLayouts: CardLayout[] = []
-    
-    // Calculate how many cards can fit per row
-    const cardsPerRow = Math.max(1, Math.floor((containerSize.width - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP)))
-    
-    repos.forEach((repo, index) => {
-      const existing = layoutMap.get(repo.full_name)
-      if (existing) {
-        newLayouts.push(existing)
-      } else {
-        // Calculate position in a grid-like pattern for new cards
-        const col = index % cardsPerRow
-        const row = Math.floor(index / cardsPerRow)
-        
-        newLayouts.push({
-          i: repo.full_name,
-          x: col * (DEFAULT_CARD_W + CARD_GAP) + CARD_GAP,
-          y: row * (DEFAULT_CARD_H + CARD_GAP) + CARD_GAP,
-          w: DEFAULT_CARD_W,
-          h: DEFAULT_CARD_H
-        })
-      }
-    })
+  const generateDefaultLayout = useCallback(
+    (repos: Repository[], existingLayouts: CardLayout[]): CardLayout[] => {
+      const layoutMap = new Map(existingLayouts.map((l) => [l.i, l]))
+      const newLayouts: CardLayout[] = []
 
-    return newLayouts
-  }, [containerSize.width])
+      // Calculate how many cards can fit per row
+      const cardsPerRow = Math.max(
+        1,
+        Math.floor((containerSize.width - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP))
+      )
+
+      repos.forEach((repo, index) => {
+        const existing = layoutMap.get(repo.full_name)
+        if (existing) {
+          newLayouts.push(existing)
+        } else {
+          // Calculate position in a grid-like pattern for new cards
+          const col = index % cardsPerRow
+          const row = Math.floor(index / cardsPerRow)
+
+          newLayouts.push({
+            i: repo.full_name,
+            x: col * (DEFAULT_CARD_W + CARD_GAP) + CARD_GAP,
+            y: row * (DEFAULT_CARD_H + CARD_GAP) + CARD_GAP,
+            w: DEFAULT_CARD_W,
+            h: DEFAULT_CARD_H
+          })
+        }
+      })
+
+      return newLayouts
+    },
+    [containerSize.width]
+  )
 
   // Apply saved layouts when data loads
   useEffect(() => {
     if (!filteredRepos || filteredRepos.length === 0 || layoutsLoading) return
-    
+
     const existingLayouts = savedLayouts || []
     const newLayouts = generateDefaultLayout(filteredRepos, existingLayouts)
     setLayouts(newLayouts)
   }, [filteredRepos, savedLayouts, layoutsLoading, generateDefaultLayout])
 
   // Save layouts to store
-  const saveLayouts = useCallback(async (newLayouts: CardLayout[]) => {
-    await window.electron.setCardLayouts(newLayouts)
-    queryClient.setQueryData(['card-layouts'], newLayouts)
-  }, [queryClient])
+  const saveLayouts = useCallback(
+    async (newLayouts: CardLayout[]) => {
+      await window.electron.setCardLayouts(newLayouts)
+      queryClient.setQueryData(['card-layouts'], newLayouts)
+    },
+    [queryClient]
+  )
 
   // Handle repo color change
-  const handleColorChange = useCallback(async (repoFullName: string, color: string | null) => {
-    await window.electron.setRepoColor(repoFullName, color)
-    const currentColors = repoColors || {}
-    const newColors = { ...currentColors }
-    if (color === null) {
-      delete newColors[repoFullName]
-    } else {
-      newColors[repoFullName] = color
-    }
-    queryClient.setQueryData(['repo-colors'], newColors)
-  }, [repoColors, queryClient])
+  const handleColorChange = useCallback(
+    async (repoFullName: string, color: string | null) => {
+      await window.electron.setRepoColor(repoFullName, color)
+      const currentColors = repoColors || {}
+      const newColors = { ...currentColors }
+      if (color === null) {
+        delete newColors[repoFullName]
+      } else {
+        newColors[repoFullName] = color
+      }
+      queryClient.setQueryData(['repo-colors'], newColors)
+    },
+    [repoColors, queryClient]
+  )
 
   // Handle drag/resize end
-  const handleDragStop = useCallback((id: string, x: number, y: number) => {
-    const newLayouts = layouts.map(l => 
-      l.i === id ? { ...l, x, y } : l
-    )
-    setLayouts(newLayouts)
-    saveLayouts(newLayouts)
-  }, [layouts, saveLayouts])
+  const handleDragStop = useCallback(
+    (id: string, x: number, y: number) => {
+      const newLayouts = layouts.map((l) => (l.i === id ? { ...l, x, y } : l))
+      setLayouts(newLayouts)
+      saveLayouts(newLayouts)
+    },
+    [layouts, saveLayouts]
+  )
 
-  const handleResizeStop = useCallback((id: string, w: number, h: number, x: number, y: number) => {
-    const newLayouts = layouts.map(l => 
-      l.i === id ? { ...l, w, h, x, y } : l
-    )
-    setLayouts(newLayouts)
-    saveLayouts(newLayouts)
-  }, [layouts, saveLayouts])
+  const handleResizeStop = useCallback(
+    (id: string, w: number, h: number, x: number, y: number) => {
+      const newLayouts = layouts.map((l) => (l.i === id ? { ...l, w, h, x, y } : l))
+      setLayouts(newLayouts)
+      saveLayouts(newLayouts)
+    },
+    [layouts, saveLayouts]
+  )
 
   // Auto-arrange cards in a grid
   const autoArrange = useCallback(() => {
     if (!filteredRepos || filteredRepos.length === 0) return
-    
-    const cardsPerRow = Math.max(1, Math.floor((containerSize.width - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP)))
-    
+
+    const cardsPerRow = Math.max(
+      1,
+      Math.floor((containerSize.width - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP))
+    )
+
     const newLayouts = filteredRepos.map((repo, index) => {
       const col = index % cardsPerRow
       const row = Math.floor(index / cardsPerRow)
-      
+
       return {
         i: repo.full_name,
         x: col * (DEFAULT_CARD_W + CARD_GAP) + CARD_GAP,
@@ -251,7 +287,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
         h: DEFAULT_CARD_H
       }
     })
-    
+
     setLayouts(newLayouts)
     saveLayouts(newLayouts)
   }, [filteredRepos, containerSize.width, saveLayouts])
@@ -259,18 +295,18 @@ export function PRGrid({ currentUser }: PRGridProps) {
   // Fill container with equal-sized cards
   const fillContainer = useCallback(() => {
     if (!filteredRepos || filteredRepos.length === 0) return
-    
+
     const count = filteredRepos.length
     const cols = Math.ceil(Math.sqrt(count))
     const rows = Math.ceil(count / cols)
-    
+
     const cardW = Math.floor((containerSize.width - CARD_GAP * (cols + 1)) / cols)
     const cardH = Math.floor((containerSize.height - CARD_GAP * (rows + 1)) / rows)
-    
+
     const newLayouts = filteredRepos.map((repo, index) => {
       const col = index % cols
       const row = Math.floor(index / cols)
-      
+
       return {
         i: repo.full_name,
         x: col * (cardW + CARD_GAP) + CARD_GAP,
@@ -279,7 +315,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
         h: Math.max(MIN_CARD_H, cardH)
       }
     })
-    
+
     setLayouts(newLayouts)
     saveLayouts(newLayouts)
   }, [filteredRepos, containerSize, saveLayouts])
@@ -292,8 +328,8 @@ export function PRGrid({ currentUser }: PRGridProps) {
     const grouped = groupBy(prsData || [], (pr) => pr.base.repo.full_name)
     // Sort PRs within each repo by created_at descending (newest first)
     for (const repoName of Object.keys(grouped)) {
-      grouped[repoName].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      grouped[repoName].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     }
     return grouped
@@ -301,19 +337,19 @@ export function PRGrid({ currentUser }: PRGridProps) {
 
   // Memoize repos map for quick lookup (use filtered repos for rendering)
   const reposMap = useMemo(() => {
-    return new Map((filteredRepos || []).map(r => [r.full_name, r]))
+    return new Map((filteredRepos || []).map((r) => [r.full_name, r]))
   }, [filteredRepos])
 
   // Calculate canvas size (extends beyond container if cards are placed outside)
   const canvasSize = useMemo(() => {
     let maxX = containerSize.width
     let maxY = containerSize.height
-    
+
     for (const layout of layouts) {
       maxX = Math.max(maxX, layout.x + layout.w + CARD_GAP)
       maxY = Math.max(maxY, layout.y + layout.h + CARD_GAP)
     }
-    
+
     return { width: maxX, height: maxY }
   }, [layouts, containerSize])
 
@@ -388,79 +424,79 @@ export function PRGrid({ currentUser }: PRGridProps) {
     <div className="h-full w-full relative">
       {/* Toolbar - positioned at bottom right of container */}
       <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={autoArrange}
-                className="h-8 gap-1.5"
-                disabled={isLayoutLocked}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="text-xs">Grid</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Auto-arrange cards in a grid</TooltipContent>
-          </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={autoArrange}
+              className="h-8 gap-1.5"
+              disabled={isLayoutLocked}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="text-xs">Grid</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Auto-arrange cards in a grid</TooltipContent>
+        </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fillContainer}
-                className="h-8 gap-1.5"
-                disabled={isLayoutLocked}
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-                <span className="text-xs">Fill</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Fill container with equal-sized cards</TooltipContent>
-          </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fillContainer}
+              className="h-8 gap-1.5"
+              disabled={isLayoutLocked}
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span className="text-xs">Fill</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Fill container with equal-sized cards</TooltipContent>
+        </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={isLayoutLocked ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setIsLayoutLocked(!isLayoutLocked)}
-                className="h-8 gap-1.5"
-              >
-                {isLayoutLocked ? (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    <span className="text-xs">Locked</span>
-                  </>
-                ) : (
-                  <>
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span className="text-xs">Unlocked</span>
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isLayoutLocked ? 'Unlock to move and resize cards' : 'Lock layout to prevent changes'}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={isLayoutLocked ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setIsLayoutLocked(!isLayoutLocked)}
+              className="h-8 gap-1.5"
+            >
+              {isLayoutLocked ? (
+                <>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="text-xs">Locked</span>
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span className="text-xs">Unlocked</span>
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isLayoutLocked ? 'Unlock to move and resize cards' : 'Lock layout to prevent changes'}
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       {/* Scrollable canvas area */}
       <div ref={containerRef} className="h-full w-full overflow-auto bg-muted/20">
         {/* Canvas - extends if cards go beyond viewport */}
-        <div 
+        <div
           className="relative"
-          style={{ 
-            width: canvasSize.width, 
+          style={{
+            width: canvasSize.width,
             height: canvasSize.height,
             minWidth: '100%',
             minHeight: '100%'
           }}
         >
           {/* Grid pattern background */}
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none opacity-30"
             style={{
               backgroundImage: `
@@ -474,7 +510,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
           {layouts.map((layout) => {
             const repo = reposMap.get(layout.i)
             if (!repo) return null
-            
+
             return (
               <Rnd
                 key={layout.i}
@@ -489,8 +525,8 @@ export function PRGrid({ currentUser }: PRGridProps) {
                 onResizeStop={(_, __, ref, ___, pos) => {
                   handleResizeStop(
                     layout.i,
-                    parseInt(ref.style.width),
-                    parseInt(ref.style.height),
+                    parseInt(ref.style.width, 10),
+                    parseInt(ref.style.height, 10),
                     pos.x,
                     pos.y
                   )
