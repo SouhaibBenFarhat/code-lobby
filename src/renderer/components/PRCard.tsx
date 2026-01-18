@@ -170,7 +170,7 @@ export function PRCard({ pr }: PRCardProps) {
           </div>
 
           {/* Right group: Changes, comments, time */}
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2">
             {/* Changes */}
             <Tooltip>
               <TooltipTrigger asChild>
