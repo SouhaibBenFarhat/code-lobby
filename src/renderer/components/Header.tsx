@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { AboutDialog } from './AboutDialog'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
 import { DogIcon } from './DogIcon'
 import { EventStream } from './EventStream'
@@ -380,6 +381,15 @@ export function Header({
             </div>
           </TooltipTrigger>
           <TooltipContent>Application logs</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <AboutDialog />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>About CodeLobby</TooltipContent>
         </Tooltip>
 
         <Separator orientation="vertical" className="h-6" />
