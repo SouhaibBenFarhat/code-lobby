@@ -175,7 +175,7 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 - File change stats (additions, deletions, changed files)
 - CI/CD checks with status and conclusions
 - Reviews with state (approved, changes_requested, commented) and bodies
-- Recent comments (last 10 with authors)
+- All comments with full content
 - Review thread status (resolved/unresolved count)
 
 **Technical Details:**
