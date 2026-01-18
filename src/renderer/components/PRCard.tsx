@@ -130,82 +130,85 @@ export function PRCard({ pr }: PRCardProps) {
         )}
 
         {/* Stats row */}
-        <div className="flex items-center gap-3 pt-1">
-          {/* PR number */}
-          <span className="text-xs text-muted-foreground font-mono">#{pr.number}</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+          {/* Left group: PR number, author, draft, CI */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-mono">#{pr.number}</span>
 
-          {/* Author */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1">
-                <Avatar className="h-4 w-4">
-                  <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
-                  <AvatarFallback className="text-[8px]">
-                    {pr.user.login.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground truncate max-w-[60px]">
-                  {pr.user.login}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Author: {pr.user.login}</TooltipContent>
-          </Tooltip>
+            {/* Author */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1">
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
+                    <AvatarFallback className="text-[8px]">
+                      {pr.user.login.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground truncate max-w-[60px]">
+                    {pr.user.login}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Author: {pr.user.login}</TooltipContent>
+            </Tooltip>
 
-          {/* Draft badge */}
-          {pr.draft && (
-            <Badge variant="secondary" className="h-5 text-[10px] px-1.5">
-              Draft
-            </Badge>
-          )}
+            {/* Draft badge */}
+            {pr.draft && (
+              <Badge variant="secondary" className="h-5 text-[10px] px-1.5">
+                Draft
+              </Badge>
+            )}
 
-          {/* CI Status */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1">{getCheckStatusIcon()}</div>
-            </TooltipTrigger>
-            <TooltipContent>{getCheckStatusText()}</TooltipContent>
-          </Tooltip>
+            {/* CI Status */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1">{getCheckStatusIcon()}</div>
+              </TooltipTrigger>
+              <TooltipContent>{getCheckStatusText()}</TooltipContent>
+            </Tooltip>
+          </div>
 
-          <div className="flex-1" />
+          {/* Right group: Changes, comments, time */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Changes */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 text-xs">
+                  <FileEdit className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-success">+{pr.additions}</span>
+                  <span className="text-destructive">-{pr.deletions}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>{pr.changed_files} files changed</TooltipContent>
+            </Tooltip>
 
-          {/* Changes */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 text-xs">
-                <FileEdit className="w-3 h-3 text-muted-foreground" />
-                <span className="text-success">+{pr.additions}</span>
-                <span className="text-destructive">-{pr.deletions}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>{pr.changed_files} files changed</TooltipContent>
-          </Tooltip>
+            {/* Comments */}
+            {totalComments > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <MessageSquare className="w-3 h-3" />
+                    <span>{totalComments}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {totalComments} comment{totalComments !== 1 ? 's' : ''}
+                </TooltipContent>
+              </Tooltip>
+            )}
 
-          {/* Comments */}
-          {totalComments > 0 && (
+            {/* Time */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <MessageSquare className="w-3 h-3" />
-                  <span>{totalComments}</span>
+                  <Clock className="w-3 h-3" />
+                  <span>{formatRelativeTime(pr.created_at)}</span>
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
-                {totalComments} comment{totalComments !== 1 ? 's' : ''}
-              </TooltipContent>
+              <TooltipContent>Updated {formatRelativeTime(pr.updated_at)}</TooltipContent>
             </Tooltip>
-          )}
-
-          {/* Time */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="w-3 h-3" />
-                <span>{formatRelativeTime(pr.created_at)}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Updated {formatRelativeTime(pr.updated_at)}</TooltipContent>
-          </Tooltip>
+          </div>
         </div>
       </div>
     </button>
