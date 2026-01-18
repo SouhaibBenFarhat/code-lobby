@@ -238,6 +238,140 @@ describe('PRDetail', () => {
     })
   })
 
+  describe('Find Jira Ticket', () => {
+    it('should render Find Jira Ticket button (ticket icon)', () => {
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const jiraButton = document.querySelector('button svg.lucide-ticket')?.parentElement
+      expect(jiraButton).toBeInTheDocument()
+    })
+
+    it('should call extractJiraTicket when Find Jira Ticket button clicked', async () => {
+      const mockExtractJiraTicket = vi.fn().mockResolvedValue({
+        success: true,
+        ticketKey: 'ABC-123'
+      })
+      window.electron.extractJiraTicket = mockExtractJiraTicket
+
+      const pr = createMockPullRequest({
+        title: 'ABC-123: Test PR',
+        body: 'Some description',
+        commentsList: []
+      })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const jiraButton = document.querySelector('button svg.lucide-ticket')?.parentElement
+      if (jiraButton) {
+        fireEvent.click(jiraButton)
+
+        await waitFor(() => {
+          expect(mockExtractJiraTicket).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'ABC-123: Test PR',
+              branchName: expect.any(String)
+            })
+          )
+        })
+      }
+    })
+
+    it('should disable button when extracting Jira ticket', async () => {
+      let resolveExtract: ((value: { success: boolean; ticketKey?: string }) => void) | null = null
+      const extractPromise = new Promise<{ success: boolean; ticketKey?: string }>((resolve) => {
+        resolveExtract = resolve
+      })
+      const mockExtractJiraTicket = vi.fn().mockReturnValue(extractPromise)
+      window.electron.extractJiraTicket = mockExtractJiraTicket
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const jiraButton = document.querySelector('button svg.lucide-ticket')?.parentElement
+      if (jiraButton) {
+        fireEvent.click(jiraButton)
+
+        // Button should be disabled during loading
+        await waitFor(() => {
+          expect(jiraButton).toBeDisabled()
+        })
+
+        // Resolve the promise
+        resolveExtract?.({ success: true, ticketKey: 'ABC-123' })
+
+        // Button should be enabled again
+        await waitFor(() => {
+          expect(jiraButton).not.toBeDisabled()
+        })
+      }
+    })
+
+    it('should show error message when no Jira ticket found', async () => {
+      const mockExtractJiraTicket = vi.fn().mockResolvedValue({
+        success: false,
+        message: 'No Jira ticket found in this PR'
+      })
+      window.electron.extractJiraTicket = mockExtractJiraTicket
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const jiraButton = document.querySelector('button svg.lucide-ticket')?.parentElement
+      if (jiraButton) {
+        fireEvent.click(jiraButton)
+
+        await waitFor(() => {
+          expect(screen.getByText('No Jira ticket found in this PR')).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should include branch name in Jira ticket extraction context', async () => {
+      const mockExtractJiraTicket = vi.fn().mockResolvedValue({
+        success: true,
+        ticketKey: 'PROJ-456'
+      })
+      window.electron.extractJiraTicket = mockExtractJiraTicket
+
+      const pr = createMockPullRequest()
+      pr.head = { ...pr.head, ref: 'feature/PROJ-456-add-new-feature' }
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const jiraButton = document.querySelector('button svg.lucide-ticket')?.parentElement
+      if (jiraButton) {
+        fireEvent.click(jiraButton)
+
+        await waitFor(() => {
+          expect(mockExtractJiraTicket).toHaveBeenCalledWith(
+            expect.objectContaining({
+              branchName: 'feature/PROJ-456-add-new-feature'
+            })
+          )
+        })
+      }
+    })
+
+    it('should show success message with ticket key when Jira ticket found', async () => {
+      const mockExtractJiraTicket = vi.fn().mockResolvedValue({
+        success: true,
+        ticketKey: 'DEV-789'
+      })
+      window.electron.extractJiraTicket = mockExtractJiraTicket
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const jiraButton = document.querySelector('button svg.lucide-ticket')?.parentElement
+      if (jiraButton) {
+        fireEvent.click(jiraButton)
+
+        await waitFor(() => {
+          expect(screen.getByText('Opening DEV-789...')).toBeInTheDocument()
+        })
+      }
+    })
+  })
+
   describe('Discussion Tabs', () => {
     it('should render All tab', () => {
       const pr = createMockPullRequest()

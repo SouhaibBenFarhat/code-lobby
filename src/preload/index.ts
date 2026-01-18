@@ -175,6 +175,13 @@ export interface ElectronAPI {
     comments: Array<{ author: string; body: string }>
   }) => Promise<{ success: boolean; url?: string; message?: string }>
 
+  extractJiraTicket: (context: {
+    title: string
+    body: string | null
+    branchName: string
+    comments: Array<{ author: string; body: string }>
+  }) => Promise<{ success: boolean; ticketKey?: string; ticketUrl?: string; message?: string }>
+
   analyzePRStatus: (context: {
     prId: string
     number: number
@@ -484,6 +491,13 @@ const electronAPI: ElectronAPI = {
     body: string | null
     comments: Array<{ author: string; body: string }>
   }) => ipcRenderer.invoke('extract-preview-url', context),
+
+  extractJiraTicket: (context: {
+    title: string
+    body: string | null
+    branchName: string
+    comments: Array<{ author: string; body: string }>
+  }) => ipcRenderer.invoke('extract-jira-ticket', context),
 
   analyzePRStatus: (context: {
     prId: string

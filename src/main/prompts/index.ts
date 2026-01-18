@@ -7,12 +7,14 @@
  * 1. General Chat - Context about CodeLobby for general conversations
  * 2. PR Analysis - "Why Is This PR Still Open?" feature
  * 3. Preview URL - "Open Preview" feature (globe icon)
+ * 4. Jira Ticket - "Find Jira Ticket" feature (ticket icon)
  *
  * Note: PR Chat System Prompt is in src/renderer/lib/pr-system-prompt.ts
  * because it needs the PullRequest type from the renderer.
  */
 
 export { GENERAL_CHAT_SYSTEM_PROMPT } from './general-chat'
+export { buildJiraTicketPrompt, type JiraTicketContext } from './jira-ticket'
 export {
   buildCISummary,
   buildCommentsSummary,

@@ -5,6 +5,7 @@ import {
   analyzePRStatus,
   analyzePRStatusStreaming,
   ClaudeMessage,
+  extractJiraTicket,
   extractPreviewUrl,
   fetchModels as fetchClaudeModels,
   getDefaultModel,
@@ -963,6 +964,53 @@ function setupIPCHandlers(): void {
         // Open the URL in the default browser
         await shell.openExternal(result.url)
         logger.info(LogCategory.APP, 'Opened preview URL in browser', { url: result.url })
+      }
+
+      return result
+    }
+  )
+
+  // Extract Jira ticket from PR context using AI
+  ipcMain.handle(
+    'extract-jira-ticket',
+    async (
+      _,
+      context: {
+        title: string
+        body: string | null
+        branchName: string
+        comments: Array<{ author: string; body: string }>
+      }
+    ) => {
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, message: 'Claude API key not configured' }
+      }
+
+      logger.info(LogCategory.APP, 'Extracting Jira ticket from PR', {
+        title: context.title,
+        branchName: context.branchName
+      })
+
+      const result = await extractJiraTicket(apiKey, context)
+
+      if (result.success) {
+        // Construct the URL if only a key was found
+        let url = result.ticketUrl
+        if (!url && result.ticketKey) {
+          // Default to Atlassian cloud - user can configure their domain later
+          // For now, we'll just open a search that works for most setups
+          url = `https://jira.atlassian.com/browse/${result.ticketKey}`
+        }
+
+        if (url) {
+          // Open the URL in the default browser
+          await shell.openExternal(url)
+          logger.info(LogCategory.APP, 'Opened Jira ticket in browser', {
+            ticketKey: result.ticketKey,
+            url
+          })
+        }
       }
 
       return result

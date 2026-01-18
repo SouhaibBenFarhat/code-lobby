@@ -120,6 +120,29 @@ No more searching through bot comments for that Vercel link.
 
 ---
 
+### 🎫 Find Jira Ticket (AI-Powered)
+
+Every PR should link to a Jira ticket. But sometimes they don't — or the link is buried in a branch name.
+
+**One Click:**
+1. Click the ticket icon on any PR
+2. AI searches the PR title, branch name, description, and comments
+3. Jira ticket opens in your browser
+
+**Where It Looks:**
+- Branch name (e.g., `feature/PROJ-123-add-login`)
+- PR title (e.g., `[PROJ-123] Fix authentication`)
+- PR description
+- Comments (in case someone mentioned the ticket)
+
+**Supported Formats:**
+- Standard Jira keys: `PROJ-123`, `ABC-456`, `FEAT-99`
+- Full Jira URLs: `https://company.atlassian.net/browse/PROJ-123`
+
+No more manually searching for the related ticket.
+
+---
+
 ### ❓ "Why Is This PR Still Open?" (AI-Powered)
 
 Stale PRs happen. Understanding why requires clicking through CI, reviews, and comments.

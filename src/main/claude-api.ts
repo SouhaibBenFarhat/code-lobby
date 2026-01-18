@@ -5,7 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { LogCategory, logger } from './logger'
-import { buildPRAnalysisPrompt, buildPreviewURLPrompt } from './prompts'
+import { buildJiraTicketPrompt, buildPRAnalysisPrompt, buildPreviewURLPrompt } from './prompts'
 
 // Re-export types for use elsewhere
 export interface ClaudeMessage {
@@ -543,6 +543,122 @@ export async function extractPreviewUrl(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     logger.error(LogCategory.API, 'Error extracting preview URL', { error: errorMessage })
+
+    if (error instanceof Anthropic.AuthenticationError) {
+      return { success: false, message: 'Invalid Claude API key' }
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return { success: false, message: 'Rate limit exceeded. Please try again.' }
+    }
+
+    return { success: false, message: `Error: ${errorMessage}` }
+  }
+}
+
+/**
+ * Extract a Jira ticket reference from PR context using Claude
+ * This is a specialized function for the "Find Jira Ticket" feature
+ */
+export async function extractJiraTicket(
+  apiKey: string,
+  context: {
+    title: string
+    body: string | null
+    branchName: string
+    comments: Array<{ author: string; body: string }>
+  }
+): Promise<{ success: boolean; ticketKey?: string; ticketUrl?: string; message?: string }> {
+  logger.info(LogCategory.API, 'Extracting Jira ticket from PR context', {
+    title: context.title,
+    branchName: context.branchName,
+    commentsCount: context.comments.length
+  })
+
+  try {
+    const client = getClient(apiKey)
+
+    // Build prompt using centralized prompt builder
+    const prompt = buildJiraTicketPrompt(context)
+
+    const response = await client.messages.create({
+      model: DEFAULT_MODEL,
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+      stream: false
+    })
+
+    // Extract the response text
+    let responseText = ''
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        responseText = block.text.trim()
+        break
+      }
+    }
+
+    logger.info(LogCategory.API, 'Jira ticket extraction result', {
+      response: responseText
+    })
+
+    // Check if no ticket was found
+    if (responseText.includes('NO_JIRA_TICKET_FOUND') || !responseText) {
+      return {
+        success: false,
+        message: 'No Jira ticket found in this PR'
+      }
+    }
+
+    // Check if a full URL was found
+    if (responseText.startsWith('JIRA_URL:')) {
+      const url = responseText.replace('JIRA_URL:', '').trim()
+      // Validate it's a valid URL
+      const urlMatch = url.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)
+      if (urlMatch) {
+        return {
+          success: true,
+          ticketUrl: urlMatch[0]
+        }
+      }
+    }
+
+    // Check if a ticket key was found
+    if (responseText.startsWith('JIRA_KEY:')) {
+      const key = responseText.replace('JIRA_KEY:', '').trim()
+      // Validate it matches Jira key pattern
+      const keyMatch = key.match(/^[A-Z][A-Z0-9]*-\d+$/)
+      if (keyMatch) {
+        return {
+          success: true,
+          ticketKey: keyMatch[0]
+        }
+      }
+    }
+
+    // Try to extract Jira key from response as fallback
+    const jiraKeyMatch = responseText.match(/[A-Z][A-Z0-9]*-\d+/)
+    if (jiraKeyMatch) {
+      return {
+        success: true,
+        ticketKey: jiraKeyMatch[0]
+      }
+    }
+
+    // Try to extract Jira URL from response as fallback
+    const jiraUrlMatch = responseText.match(/https?:\/\/[^\s]*\/browse\/[A-Z][A-Z0-9]*-\d+/)
+    if (jiraUrlMatch) {
+      return {
+        success: true,
+        ticketUrl: jiraUrlMatch[0]
+      }
+    }
+
+    return {
+      success: false,
+      message: 'Could not extract a valid Jira ticket from the response'
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error extracting Jira ticket', { error: errorMessage })
 
     if (error instanceof Anthropic.AuthenticationError) {
       return { success: false, message: 'Invalid Claude API key' }

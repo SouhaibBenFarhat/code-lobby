@@ -35,6 +35,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Extended thinking | ✅ Complete |
 | | Conversation persistence | ✅ Complete |
 | | Open Preview (AI-powered) | ✅ Complete |
+| | Find Jira Ticket (AI-powered) | ✅ Complete |
 | | Why Open? Analysis (AI-powered) | ✅ Complete |
 | | PR-Specific Chat | ✅ Complete |
 | | System context awareness | ✅ Complete |
@@ -112,6 +113,58 @@ Click a button in the PR detail header, and AI analyzes comments and description
 - `src/preload/index.ts` - Exposed `extractPreviewUrl` to renderer
 - `src/renderer/components/PRDetail.tsx` - Added button, tooltip, and UI state
 - `tests/mocks/electron.ts` - Added mock for `extractPreviewUrl`
+- `tests/renderer/components/PRDetail.test.tsx` - Added 6 tests
+
+**Completed:** January 18, 2026
+
+---
+
+### 1.1.1 Find Jira Ticket (Agentic Button) ✅ Complete
+> AI-powered feature to find and open Jira tickets from PR context
+
+**Concept:**
+Click a button in the PR detail header, and AI analyzes the PR title, branch name, description, and comments to find a Jira ticket reference and open it in the browser.
+
+**Implementation Summary:**
+- Ticket icon button added to PR detail header
+- Gathers context: PR title, body, branch name, all comments (general, reviews, threads)
+- Sends context to Claude with a specialized prompt that knows Jira key patterns
+- Opens Jira URL in default browser via `shell.openExternal()`
+- Shows loading spinner during extraction
+- Displays success/error message (auto-clears after 2-3 seconds)
+
+**How It Finds Tickets:**
+1. Branch name (e.g., `feature/PROJ-123-add-login`)
+2. PR title (e.g., `[PROJ-123] Fix authentication`)
+3. PR description
+4. Comments (in case someone mentioned the ticket)
+
+**Supported Formats:**
+- Standard Jira keys: `PROJ-123`, `ABC-456`, `FEAT-99`
+- Full Jira URLs: `https://company.atlassian.net/browse/PROJ-123`
+
+**Technical Details:**
+- `extractJiraTicket()` function in `claude-api.ts` - specialized non-streaming Claude call
+- Prompt defined in `src/main/prompts/jira-ticket.ts`
+- IPC handler `extract-jira-ticket` in main process
+- Returns either `ticketKey` (e.g., `ABC-123`) or `ticketUrl` (full URL)
+- Regex validation for Jira key format: `[A-Z][A-Z0-9]*-\d+`
+
+**UI:**
+- Ticket icon button in PR detail header (after globe icon)
+- Loading spinner during AI analysis
+- Success message shows ticket key being opened
+- Error message if no ticket found (auto-clears after 3 seconds)
+- Rich tooltip: "AI finds the Jira ticket from PR context and opens it"
+
+**Files Changed:**
+- `src/main/prompts/jira-ticket.ts` - New prompt file for Jira extraction
+- `src/main/prompts/index.ts` - Export new prompt
+- `src/main/claude-api.ts` - Added `extractJiraTicket` function
+- `src/main/index.ts` - Added IPC handler
+- `src/preload/index.ts` - Exposed `extractJiraTicket` to renderer
+- `src/renderer/components/PRDetail.tsx` - Added button, tooltip, and UI state
+- `tests/mocks/electron.ts` - Added mock for `extractJiraTicket`
 - `tests/renderer/components/PRDetail.test.tsx` - Added 6 tests
 
 **Completed:** January 18, 2026

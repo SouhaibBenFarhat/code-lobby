@@ -24,6 +24,7 @@ import {
   PlayCircle,
   RefreshCw,
   Search,
+  Ticket,
   User,
   Users,
   X,
@@ -781,6 +782,8 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   // Preview URL extraction state
   const [isExtractingPreview, setIsExtractingPreview] = useState(false)
   const [previewMessage, setPreviewMessage] = useState<string | null>(null)
+  const [isExtractingJira, setIsExtractingJira] = useState(false)
+  const [jiraMessage, setJiraMessage] = useState<string | null>(null)
 
   // "Why Open?" analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -1220,6 +1223,80 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
     }
   }
 
+  // Handler to extract and open Jira ticket using AI
+  const handleOpenJira = async () => {
+    setIsExtractingJira(true)
+    setJiraMessage(null)
+
+    try {
+      // Gather comments from PR
+      const comments: Array<{ author: string; body: string }> = []
+
+      // Add general comments
+      if (pr.commentsList) {
+        for (const comment of pr.commentsList) {
+          if (comment.author?.login && comment.body) {
+            comments.push({
+              author: comment.author.login,
+              body: comment.body
+            })
+          }
+        }
+      }
+
+      // Add review comments
+      if (pr.reviews) {
+        for (const review of pr.reviews) {
+          if (review.author?.login && review.body) {
+            comments.push({
+              author: review.author.login,
+              body: review.body
+            })
+          }
+        }
+      }
+
+      // Add review thread comments
+      if (pr.reviewThreads) {
+        for (const thread of pr.reviewThreads) {
+          for (const comment of thread.comments) {
+            if (comment.author?.login && comment.body) {
+              comments.push({
+                author: comment.author.login,
+                body: comment.body
+              })
+            }
+          }
+        }
+      }
+
+      const result = await window.electron.extractJiraTicket({
+        title: pr.title,
+        body: pr.body,
+        branchName: pr.head.ref,
+        comments
+      })
+
+      if (!result.success) {
+        setJiraMessage(result.message || 'No Jira ticket found')
+        // Clear message after 3 seconds
+        setTimeout(() => setJiraMessage(null), 3000)
+      } else {
+        // Show success message with ticket key
+        if (result.ticketKey) {
+          setJiraMessage(`Opening ${result.ticketKey}...`)
+          setTimeout(() => setJiraMessage(null), 2000)
+        }
+      }
+      // If success, browser will open automatically from main process
+    } catch {
+      setJiraMessage('Failed to extract Jira ticket')
+      setTimeout(() => setJiraMessage(null), 3000)
+    } finally {
+      setIsExtractingJira(false)
+    }
+  }
+
   return (
     <div
       className="flex flex-col h-full w-full overflow-hidden bg-background"
@@ -1333,6 +1410,29 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  onClick={handleOpenJira}
+                  disabled={isExtractingJira}
+                >
+                  {isExtractingJira ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Ticket className="w-4 h-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                <p className="font-medium">Find Jira Ticket</p>
+                <p className="text-xs text-muted-foreground">
+                  AI finds the Jira ticket from PR context and opens it
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   onClick={() => window.open(pr.html_url, '_blank')}
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -1346,11 +1446,11 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
           </div>
         </div>
 
-        {/* Preview message */}
-        {previewMessage && (
+        {/* Status messages (Preview, Jira) */}
+        {(previewMessage || jiraMessage) && (
           <div className="mt-2 px-2 py-1.5 bg-muted/50 rounded text-xs text-muted-foreground flex items-center gap-1.5">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
-            {previewMessage}
+            {previewMessage || jiraMessage}
           </div>
         )}
 
