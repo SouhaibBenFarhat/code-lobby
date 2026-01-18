@@ -30,7 +30,7 @@ import {
   X,
   XCircle
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import { usePRChat } from '../App'
 import { DogIcon } from './DogIcon'
@@ -795,6 +795,18 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const [showAnalysis, setShowAnalysis] = useState(false)
   const [streamingThinking, setStreamingThinking] = useState<string>('')
   const [streamingAnalysis, setStreamingAnalysis] = useState<string>('')
+  const thinkingContainerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll thinking container to bottom when new content arrives
+  useLayoutEffect(() => {
+    if (thinkingContainerRef.current && streamingThinking) {
+      requestAnimationFrame(() => {
+        if (thinkingContainerRef.current) {
+          thinkingContainerRef.current.scrollTop = thinkingContainerRef.current.scrollHeight
+        }
+      })
+    }
+  }, [streamingThinking])
 
   // Create a unique PR ID for persistence
   const prId = `${pr.base.repo.full_name}#${pr.number}`
@@ -1499,7 +1511,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                       <Loader2 className="w-3 h-3 animate-spin text-primary" />
                       <span className="text-xs font-medium text-primary">Thinking...</span>
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono max-h-24 overflow-y-auto whitespace-pre-wrap">
+                    <div
+                      ref={thinkingContainerRef}
+                      className="text-xs text-muted-foreground font-mono max-h-24 overflow-y-auto whitespace-pre-wrap"
+                    >
                       {streamingThinking}
                     </div>
                   </div>
