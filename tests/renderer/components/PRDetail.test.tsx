@@ -648,4 +648,247 @@ describe('PRDetail', () => {
       }
     })
   })
+
+  describe('Why Open? Analysis', () => {
+    it('should render Why Open button (help-circle icon)', () => {
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      expect(whyOpenButton).toBeInTheDocument()
+    })
+
+    it('should show loading state when analyzing', async () => {
+      setupMockElectron({
+        analyzePRStatus: vi
+          .fn()
+          .mockImplementation(
+            () =>
+              new Promise((resolve) =>
+                setTimeout(() => resolve({ success: true, analysis: 'Test analysis' }), 100)
+              )
+          ),
+        getPRAnalysis: vi.fn().mockResolvedValue(null)
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        // Should show loading text
+        await waitFor(() => {
+          expect(screen.getByText('Analyzing PR status...')).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should display analysis when button clicked', async () => {
+      setupMockElectron({
+        analyzePRStatus: vi.fn().mockResolvedValue({
+          success: true,
+          analysis: 'This PR needs code review from maintainers.'
+        }),
+        getPRAnalysis: vi.fn().mockResolvedValue(null)
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        await waitFor(() => {
+          expect(screen.getByText(/This PR needs code review/)).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should load persisted analysis on mount', async () => {
+      setupMockElectron({
+        getPRAnalysis: vi.fn().mockResolvedValue({
+          prId: 'test/repo#1',
+          analysis: 'Previously saved analysis',
+          generatedAt: Date.now()
+        })
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Wait for the persisted analysis to load first
+      await waitFor(() => {
+        expect(window.electron.getPRAnalysis).toHaveBeenCalled()
+      })
+
+      // Click button to show analysis panel
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        await waitFor(() => {
+          expect(screen.getByText(/Previously saved analysis/)).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should show error message when analysis fails', async () => {
+      setupMockElectron({
+        analyzePRStatus: vi.fn().mockResolvedValue({
+          success: false,
+          message: 'No Claude API key configured'
+        }),
+        getPRAnalysis: vi.fn().mockResolvedValue(null)
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        await waitFor(() => {
+          expect(screen.getByText('No Claude API key configured')).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should have refresh button when analysis is displayed', async () => {
+      setupMockElectron({
+        analyzePRStatus: vi.fn().mockResolvedValue({
+          success: true,
+          analysis: 'Test analysis'
+        }),
+        getPRAnalysis: vi.fn().mockResolvedValue(null)
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        await waitFor(() => {
+          const refreshButton = document.querySelector('.lucide-refresh-cw')?.parentElement
+          expect(refreshButton).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should pass PR context to analyzePRStatus', async () => {
+      const mockAnalyze = vi.fn().mockResolvedValue({
+        success: true,
+        analysis: 'Analysis result'
+      })
+
+      setupMockElectron({
+        analyzePRStatus: mockAnalyze,
+        getPRAnalysis: vi.fn().mockResolvedValue(null)
+      })
+
+      const pr = createMockPullRequest({
+        number: 42,
+        title: 'Test PR',
+        body: 'Test description',
+        draft: false,
+        additions: 100,
+        deletions: 50,
+        changed_files: 5
+      })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        await waitFor(() => {
+          expect(mockAnalyze).toHaveBeenCalledWith(
+            expect.objectContaining({
+              number: 42,
+              title: 'Test PR',
+              body: 'Test description',
+              draft: false,
+              additions: 100,
+              deletions: 50,
+              changedFiles: 5
+            })
+          )
+        })
+      }
+    })
+
+    it('should include CI checks in analysis context', async () => {
+      const mockAnalyze = vi.fn().mockResolvedValue({
+        success: true,
+        analysis: 'Analysis result'
+      })
+
+      setupMockElectron({
+        analyzePRStatus: mockAnalyze,
+        getPRAnalysis: vi.fn().mockResolvedValue(null)
+      })
+
+      const pr = createMockPRWithChecks()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        await waitFor(() => {
+          expect(mockAnalyze).toHaveBeenCalledWith(
+            expect.objectContaining({
+              checks: expect.arrayContaining([
+                expect.objectContaining({
+                  name: expect.any(String),
+                  status: expect.any(String)
+                })
+              ])
+            })
+          )
+        })
+      }
+    })
+
+    it('should call deletePRAnalysis when refresh is clicked', async () => {
+      const mockDelete = vi.fn().mockResolvedValue({ success: true })
+
+      setupMockElectron({
+        analyzePRStatus: vi.fn().mockResolvedValue({
+          success: true,
+          analysis: 'Test analysis'
+        }),
+        getPRAnalysis: vi.fn().mockResolvedValue(null),
+        deletePRAnalysis: mockDelete
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        // Wait for analysis to complete
+        await waitFor(() => {
+          expect(screen.getByText(/Test analysis/)).toBeInTheDocument()
+        })
+
+        // Click refresh
+        const refreshButton = document.querySelector('.lucide-refresh-cw')?.parentElement
+        if (refreshButton) {
+          fireEvent.click(refreshButton)
+
+          await waitFor(() => {
+            expect(mockDelete).toHaveBeenCalled()
+          })
+        }
+      }
+    })
+  })
 })

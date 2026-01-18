@@ -35,6 +35,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Extended thinking | ✅ Complete |
 | | Conversation persistence | ✅ Complete |
 | | Open Preview (AI-powered) | ✅ Complete |
+| | Why Open? Analysis (AI-powered) | ✅ Complete |
 | **UI/UX** | Apple design system | ✅ Complete |
 | | Dark/light themes | ✅ Complete |
 | | Fullscreen adaptation | ✅ Complete |
@@ -147,6 +148,63 @@ Click a button in the PR detail header, and AI analyzes comments and description
 - `DataCache` interface in `store.ts` with `prData` and `allRepos`
 - `CACHE_TTL_PR_DATA` and `CACHE_TTL_ALL_REPOS` constants (30 min)
 - `isCacheValid(lastFetch, ttl)` helper function
+
+---
+
+### 1.1.3 "Why Open?" PR Analysis (Agentic Button) ✅ Complete
+> AI-powered analysis of why a PR is still open, with persistence
+
+**Concept:**
+Click a button in the PR detail header, and AI analyzes CI status, reviews, comments, and description to explain why the PR is still open and what action is needed to move it forward.
+
+**Implementation Summary:**
+- HelpCircle icon button in PR detail header
+- Gathers comprehensive PR context: CI checks, reviews, comments, review threads, PR metadata
+- AI analyzes blockers and provides actionable summary (2-4 sentences)
+- Analysis is persisted per PR and survives app restart
+- User can refresh analysis to get updated insights
+- Analysis panel is collapsible
+
+**Context Sent to AI:**
+- PR number, title, description, author
+- Branch information (head → base)
+- Draft status and creation date
+- File change stats (additions, deletions, changed files)
+- CI/CD checks with status and conclusions
+- Reviews with state (approved, changes_requested, commented) and bodies
+- Recent comments (last 10 with authors)
+- Review thread status (resolved/unresolved count)
+
+**Technical Details:**
+- `analyzePRStatus()` function in `claude-api.ts` - specialized non-streaming Claude call
+- IPC handlers: `analyze-pr-status`, `get-pr-analysis`, `delete-pr-analysis`
+- `PRAnalysis` interface in `store.ts` with `prId`, `analysis`, `generatedAt`
+- Persistence via `electron-store` with 100-entry limit (auto-prunes old analyses)
+- Abstract prompt: Claude determines blockers from provided context
+
+**UI:**
+- HelpCircle icon button in PR detail header
+- Button highlights when analysis is displayed
+- Collapsible analysis panel with:
+  - "Why is this PR still open?" header
+  - Refresh button to regenerate analysis
+  - Close button to hide panel
+  - Markdown-rendered analysis content
+  - "Generated X ago" timestamp
+- Loading state with spinner and "Analyzing PR status..." text
+- Error message display for failed analyses
+
+**Files Changed:**
+- `src/main/claude-api.ts` - Added `analyzePRStatus` function
+- `src/main/store.ts` - Added `PRAnalysis` interface and persistence functions
+- `src/main/index.ts` - Added 3 IPC handlers
+- `src/preload/index.ts` - Exposed analysis functions to renderer
+- `src/renderer/components/PRDetail.tsx` - Added button, panel, and UI state
+- `tests/mocks/electron.ts` - Added mocks for analysis functions
+- `tests/renderer/components/PRDetail.test.tsx` - Added 10 tests
+- `tests/main/store.test.ts` - Added 10 tests for analysis persistence
+
+**Completed:** January 18, 2026
 - `setPRDataCache(data, selectedRepos)` stores with repo key
 - Session cache supplements persistent cache for rapid re-fetches
 

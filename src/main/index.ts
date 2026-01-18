@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
 import {
+  analyzePRStatus,
   ClaudeMessage,
   extractPreviewUrl,
   fetchModels as fetchClaudeModels,
@@ -30,6 +31,7 @@ import {
   clearChatHistory,
   clearDataCache,
   clearToken,
+  deletePRAnalysis,
   getAIPanel,
   getAllReposCache,
   getCardLayouts,
@@ -38,6 +40,7 @@ import {
   getEnableThinking,
   getIDEViewSettings,
   getMyPRsRepos,
+  getPRAnalysis,
   getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
@@ -59,6 +62,7 @@ import {
   setEnableThinking,
   setIDEViewSettings,
   setMyPRsRepos,
+  setPRAnalysis,
   setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
@@ -906,6 +910,76 @@ function setupIPCHandlers(): void {
       return result
     }
   )
+
+  // Analyze PR status (Why is this PR still open?)
+  ipcMain.handle(
+    'analyze-pr-status',
+    async (
+      _,
+      context: {
+        prId: string
+        number: number
+        title: string
+        body: string | null
+        draft: boolean
+        createdAt: string
+        author: string
+        baseBranch: string
+        headBranch: string
+        additions: number
+        deletions: number
+        changedFiles: number
+        checks: Array<{
+          name: string
+          status: string
+          conclusion: string | null
+        }>
+        reviews: Array<{
+          author: string
+          state: string
+          body: string | null
+        }>
+        comments: Array<{ author: string; body: string }>
+        reviewThreads: Array<{
+          isResolved: boolean
+          path: string
+          commentsCount: number
+        }>
+      }
+    ) => {
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, message: 'No Claude API key configured' }
+      }
+
+      logger.info(LogCategory.API, 'Analyzing PR status', {
+        prId: context.prId,
+        title: context.title
+      })
+
+      const result = await analyzePRStatus(apiKey, context)
+
+      if (result.success && result.analysis) {
+        // Persist the analysis
+        setPRAnalysis(context.prId, result.analysis)
+        logger.info(LogCategory.APP, 'PR analysis saved', { prId: context.prId })
+      }
+
+      return result
+    }
+  )
+
+  // Get persisted PR analysis
+  ipcMain.handle('get-pr-analysis', async (_, prId: string) => {
+    const analysis = getPRAnalysis(prId)
+    return analysis
+  })
+
+  // Delete PR analysis (to force refresh)
+  ipcMain.handle('delete-pr-analysis', async (_, prId: string) => {
+    deletePRAnalysis(prId)
+    return { success: true }
+  })
 
   // Logging
   ipcMain.handle('get-logs', async () => {

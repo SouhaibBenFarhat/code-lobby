@@ -17,17 +17,19 @@ import {
   GitBranch,
   GitPullRequest,
   Globe,
+  HelpCircle,
   Layers,
   Loader2,
   MessageSquare,
   PlayCircle,
+  RefreshCw,
   Search,
   User,
   Users,
   X,
   XCircle
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import { MarkdownContent } from './MarkdownContent'
 import type { PullRequest, ReviewThread } from './types'
@@ -777,6 +779,137 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const [isExtractingPreview, setIsExtractingPreview] = useState(false)
   const [previewMessage, setPreviewMessage] = useState<string | null>(null)
 
+  // "Why Open?" analysis state
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [prAnalysis, setPrAnalysis] = useState<{
+    analysis: string
+    generatedAt: number
+  } | null>(null)
+  const [showAnalysis, setShowAnalysis] = useState(false)
+
+  // Create a unique PR ID for persistence
+  const prId = `${pr.base.repo.full_name}#${pr.number}`
+
+  // Load persisted analysis on mount or when PR changes
+  useEffect(() => {
+    const loadAnalysis = async () => {
+      const saved = await window.electron.getPRAnalysis(prId)
+      if (saved) {
+        setPrAnalysis({
+          analysis: saved.analysis,
+          generatedAt: saved.generatedAt
+        })
+      } else {
+        setPrAnalysis(null)
+      }
+    }
+    loadAnalysis()
+  }, [prId])
+
+  // Handler for "Why Open?" analysis
+  const handleAnalyzePR = useCallback(
+    async (forceRefresh = false) => {
+      if (forceRefresh) {
+        // Delete existing analysis to force refresh
+        await window.electron.deletePRAnalysis(prId)
+        setPrAnalysis(null)
+      }
+
+      setIsAnalyzing(true)
+      setAnalysisError(null)
+      setShowAnalysis(true)
+
+      try {
+        // Gather all comments
+        const comments: Array<{ author: string; body: string }> = []
+
+        // Add general comments
+        if (pr.commentsList) {
+          for (const comment of pr.commentsList) {
+            if (comment.author?.login && comment.body) {
+              comments.push({
+                author: comment.author.login,
+                body: comment.body
+              })
+            }
+          }
+        }
+
+        // Add review comments
+        if (pr.reviews) {
+          for (const review of pr.reviews) {
+            if (review.author?.login && review.body) {
+              comments.push({
+                author: review.author.login,
+                body: review.body
+              })
+            }
+          }
+        }
+
+        // Add review thread comments
+        if (pr.reviewThreads) {
+          for (const thread of pr.reviewThreads) {
+            for (const comment of thread.comments) {
+              if (comment.author?.login && comment.body) {
+                comments.push({
+                  author: comment.author.login,
+                  body: comment.body
+                })
+              }
+            }
+          }
+        }
+
+        const result = await window.electron.analyzePRStatus({
+          prId,
+          number: pr.number,
+          title: pr.title,
+          body: pr.body,
+          draft: pr.draft,
+          createdAt: pr.created_at,
+          author: pr.user.login,
+          baseBranch: pr.base.ref,
+          headBranch: pr.head.ref,
+          additions: pr.additions,
+          deletions: pr.deletions,
+          changedFiles: pr.changed_files,
+          checks: (pr.checks?.check_runs || []).map((c) => ({
+            name: c.name,
+            status: c.status,
+            conclusion: c.conclusion
+          })),
+          reviews: (pr.reviews || []).map((r) => ({
+            author: r.author?.login || 'unknown',
+            state: r.state,
+            body: r.body
+          })),
+          comments,
+          reviewThreads: (pr.reviewThreads || []).map((t) => ({
+            isResolved: t.isResolved,
+            path: t.path,
+            commentsCount: t.comments.length
+          }))
+        })
+
+        if (!result.success) {
+          setAnalysisError(result.message || 'Failed to analyze PR')
+        } else if (result.analysis) {
+          setPrAnalysis({
+            analysis: result.analysis,
+            generatedAt: Date.now()
+          })
+        }
+      } catch {
+        setAnalysisError('Failed to analyze PR status')
+      } finally {
+        setIsAnalyzing(false)
+      }
+    },
+    [prId, pr]
+  )
+
   // With GraphQL, all data is already included in the PR object!
   // No extra API calls needed 🎉
   const checks = pr.checks
@@ -1079,6 +1212,38 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className={cn(
+                    'h-7 w-7',
+                    showAnalysis && prAnalysis && 'bg-primary/10 text-primary'
+                  )}
+                  onClick={() => {
+                    if (prAnalysis) {
+                      setShowAnalysis(!showAnalysis)
+                    } else {
+                      handleAnalyzePR()
+                    }
+                  }}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <HelpCircle className="w-4 h-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                <p className="font-medium">Why is this PR open?</p>
+                <p className="text-xs text-muted-foreground">
+                  AI analyzes CI, reviews, and comments to explain blockers
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-7 w-7"
                   onClick={handleOpenPreview}
                   disabled={isExtractingPreview}
@@ -1121,6 +1286,69 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
           <div className="mt-2 px-2 py-1.5 bg-muted/50 rounded text-xs text-muted-foreground flex items-center gap-1.5">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             {previewMessage}
+          </div>
+        )}
+
+        {/* Why Open? Analysis Panel */}
+        {showAnalysis && (
+          <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Why is this PR still open?</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {prAnalysis && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleAnalyzePR(true)}
+                        disabled={isAnalyzing}
+                      >
+                        <RefreshCw className={cn('w-3 h-3', isAnalyzing && 'animate-spin')} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh analysis</TooltipContent>
+                  </Tooltip>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowAnalysis(false)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+
+            {isAnalyzing && !prAnalysis && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Analyzing PR status...</span>
+              </div>
+            )}
+
+            {analysisError && (
+              <div className="flex items-center gap-2 text-sm text-destructive py-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>{analysisError}</span>
+              </div>
+            )}
+
+            {prAnalysis && (
+              <div className="space-y-2">
+                <div className="text-sm text-foreground/90">
+                  <MarkdownContent content={prAnalysis.analysis} />
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Generated {formatRelativeTime(new Date(prAnalysis.generatedAt).toISOString())}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

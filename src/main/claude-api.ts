@@ -250,6 +250,181 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
 /**
  * Send a message to Claude API with streaming
  */
+
+/**
+ * Analyze why a PR is still open using Claude
+ * Provides insights based on CI status, comments, reviews, and description
+ */
+export async function analyzePRStatus(
+  apiKey: string,
+  context: {
+    number: number
+    title: string
+    body: string | null
+    draft: boolean
+    createdAt: string
+    author: string
+    baseBranch: string
+    headBranch: string
+    additions: number
+    deletions: number
+    changedFiles: number
+    checks: Array<{
+      name: string
+      status: string
+      conclusion: string | null
+    }>
+    reviews: Array<{
+      author: string
+      state: string
+      body: string | null
+    }>
+    comments: Array<{ author: string; body: string }>
+    reviewThreads: Array<{
+      isResolved: boolean
+      path: string
+      commentsCount: number
+    }>
+  }
+): Promise<{ success: boolean; analysis?: string; message?: string }> {
+  logger.info(LogCategory.API, 'Analyzing PR status', {
+    prNumber: context.number,
+    title: context.title,
+    checksCount: context.checks.length,
+    reviewsCount: context.reviews.length,
+    commentsCount: context.comments.length
+  })
+
+  try {
+    const client = getClient(apiKey)
+
+    // Build comprehensive CI summary
+    const ciSummary =
+      context.checks.length > 0
+        ? context.checks
+            .map((c) => {
+              const status = c.conclusion || c.status
+              const icon = status === 'success' ? '✅' : status === 'failure' ? '❌' : '⏳'
+              return `${icon} ${c.name}: ${status}`
+            })
+            .join('\n')
+        : 'No CI checks found'
+
+    // Build reviews summary
+    const reviewsSummary =
+      context.reviews.length > 0
+        ? context.reviews
+            .map((r) => {
+              const icon =
+                r.state === 'approved' ? '✅' : r.state === 'changes_requested' ? '🔄' : '💬'
+              const body = r.body
+                ? ` - "${r.body.slice(0, 100)}${r.body.length > 100 ? '...' : ''}"`
+                : ''
+              return `${icon} ${r.author}: ${r.state}${body}`
+            })
+            .join('\n')
+        : 'No reviews yet'
+
+    // Build unresolved threads summary
+    const unresolvedThreads = context.reviewThreads.filter((t) => !t.isResolved)
+    const threadsSummary =
+      unresolvedThreads.length > 0
+        ? `${unresolvedThreads.length} unresolved thread(s) in: ${unresolvedThreads.map((t) => t.path).join(', ')}`
+        : 'All review threads resolved'
+
+    // Build comments summary (last 10)
+    const recentComments = context.comments.slice(-10)
+    const commentsSummary =
+      recentComments.length > 0
+        ? recentComments
+            .map(
+              (c) => `**${c.author}**: ${c.body.slice(0, 150)}${c.body.length > 150 ? '...' : ''}`
+            )
+            .join('\n\n')
+        : 'No comments'
+
+    const prompt = `Analyze this Pull Request and explain why it's still open. Provide a concise, actionable summary.
+
+## PR #${context.number}: ${context.title}
+- **Author**: ${context.author}
+- **Branch**: ${context.headBranch} → ${context.baseBranch}
+- **Status**: ${context.draft ? 'Draft' : 'Ready for review'}
+- **Created**: ${context.createdAt}
+- **Changes**: ${context.changedFiles} files (+${context.additions} -${context.deletions})
+
+## Description
+${context.body || 'No description provided'}
+
+## CI/CD Status
+${ciSummary}
+
+## Code Reviews
+${reviewsSummary}
+
+## Review Threads
+${threadsSummary}
+
+## Recent Comments
+${commentsSummary}
+
+---
+
+Based on this information, provide a brief analysis (2-4 sentences) explaining:
+1. Why this PR is still open (e.g., failing CI, pending reviews, unresolved discussions, draft status)
+2. What action is needed to move it forward
+
+Be direct and specific. Use bullet points if there are multiple blockers.`
+
+    const response = await client.messages.create({
+      model: DEFAULT_MODEL,
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+      stream: false
+    })
+
+    // Extract the response text
+    let responseText = ''
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        responseText = block.text.trim()
+        break
+      }
+    }
+
+    logger.info(LogCategory.API, 'PR status analysis complete', {
+      prNumber: context.number,
+      responseLength: responseText.length
+    })
+
+    if (!responseText) {
+      return {
+        success: false,
+        message: 'Failed to generate analysis'
+      }
+    }
+
+    return {
+      success: true,
+      analysis: responseText
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error analyzing PR status', {
+      prNumber: context.number,
+      error: errorMessage
+    })
+
+    if (error instanceof Anthropic.AuthenticationError) {
+      return { success: false, message: 'Invalid Claude API key' }
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return { success: false, message: 'Rate limit exceeded. Please try again.' }
+    }
+
+    return { success: false, message: `Error: ${errorMessage}` }
+  }
+}
+
 /**
  * Extract a preview/demo URL from PR context using Claude
  * This is a specialized function for the "Open Preview" feature

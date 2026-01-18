@@ -26,7 +26,8 @@ vi.mock('electron-store', () => {
             repoColors: {},
             viewMode: 'canvas',
             ideViewSettings: { sidebarWidth: 280, expandedRepos: [] },
-            dataCache: { prData: null, allRepos: null }
+            dataCache: { prData: null, allRepos: null },
+            prAnalyses: []
           }
           return defaults[key]
         }
@@ -51,10 +52,14 @@ import {
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
   clearDataCache,
+  clearPRAnalyses,
   clearToken,
+  deletePRAnalysis,
   getAllReposCache,
   getCardLayouts,
   getIDEViewSettings,
+  getPRAnalyses,
+  getPRAnalysis,
   getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
@@ -68,6 +73,7 @@ import {
   setAllReposCache,
   setCardLayouts,
   setIDEViewSettings,
+  setPRAnalysis,
   setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
@@ -404,6 +410,109 @@ describe('Store', () => {
         const cache2 = getPRDataCache()
         expect(cache2?.selectedRepos).toEqual(['org/repo2', 'org/repo3'])
         expect(cache2?.data).toEqual({ set: 2 })
+      })
+    })
+  })
+
+  describe('PR Analysis Persistence', () => {
+    describe('getPRAnalyses', () => {
+      it('should return empty array by default', () => {
+        expect(getPRAnalyses()).toEqual([])
+      })
+    })
+
+    describe('setPRAnalysis', () => {
+      it('should save a new PR analysis', () => {
+        setPRAnalysis('org/repo#1', 'This PR is waiting for code review.')
+
+        const analysis = getPRAnalysis('org/repo#1')
+        expect(analysis).not.toBeNull()
+        expect(analysis?.analysis).toBe('This PR is waiting for code review.')
+        expect(analysis?.generatedAt).toBeGreaterThan(0)
+      })
+
+      it('should update existing PR analysis', () => {
+        setPRAnalysis('org/repo#1', 'Original analysis')
+        setPRAnalysis('org/repo#1', 'Updated analysis')
+
+        const analysis = getPRAnalysis('org/repo#1')
+        expect(analysis?.analysis).toBe('Updated analysis')
+      })
+
+      it('should store multiple analyses for different PRs', () => {
+        setPRAnalysis('org/repo#1', 'Analysis for PR 1')
+        setPRAnalysis('org/repo#2', 'Analysis for PR 2')
+        setPRAnalysis('other/repo#5', 'Analysis for PR 5')
+
+        expect(getPRAnalysis('org/repo#1')?.analysis).toBe('Analysis for PR 1')
+        expect(getPRAnalysis('org/repo#2')?.analysis).toBe('Analysis for PR 2')
+        expect(getPRAnalysis('other/repo#5')?.analysis).toBe('Analysis for PR 5')
+      })
+    })
+
+    describe('getPRAnalysis', () => {
+      it('should return null for non-existent analysis', () => {
+        expect(getPRAnalysis('nonexistent/repo#999')).toBeNull()
+      })
+
+      it('should return specific analysis by prId', () => {
+        setPRAnalysis('org/repo#1', 'First analysis')
+        setPRAnalysis('org/repo#2', 'Second analysis')
+
+        const analysis = getPRAnalysis('org/repo#2')
+        expect(analysis?.prId).toBe('org/repo#2')
+        expect(analysis?.analysis).toBe('Second analysis')
+      })
+    })
+
+    describe('deletePRAnalysis', () => {
+      it('should remove specific analysis', () => {
+        setPRAnalysis('org/repo#1', 'Analysis 1')
+        setPRAnalysis('org/repo#2', 'Analysis 2')
+
+        deletePRAnalysis('org/repo#1')
+
+        expect(getPRAnalysis('org/repo#1')).toBeNull()
+        expect(getPRAnalysis('org/repo#2')).not.toBeNull()
+      })
+
+      it('should not throw when deleting non-existent analysis', () => {
+        expect(() => deletePRAnalysis('nonexistent/repo#999')).not.toThrow()
+      })
+    })
+
+    describe('clearPRAnalyses', () => {
+      it('should remove all analyses', () => {
+        setPRAnalysis('org/repo#1', 'Analysis 1')
+        setPRAnalysis('org/repo#2', 'Analysis 2')
+        setPRAnalysis('org/repo#3', 'Analysis 3')
+
+        clearPRAnalyses()
+
+        expect(getPRAnalyses()).toEqual([])
+        expect(getPRAnalysis('org/repo#1')).toBeNull()
+        expect(getPRAnalysis('org/repo#2')).toBeNull()
+        expect(getPRAnalysis('org/repo#3')).toBeNull()
+      })
+    })
+
+    describe('Analysis Limit', () => {
+      it('should keep only the last 100 analyses', () => {
+        // Add 110 analyses
+        for (let i = 0; i < 110; i++) {
+          setPRAnalysis(`org/repo#${i}`, `Analysis ${i}`)
+        }
+
+        const analyses = getPRAnalyses()
+        expect(analyses.length).toBeLessThanOrEqual(100)
+
+        // Oldest analyses should be removed
+        expect(getPRAnalysis('org/repo#0')).toBeNull()
+        expect(getPRAnalysis('org/repo#9')).toBeNull()
+
+        // Newest analyses should be kept
+        expect(getPRAnalysis('org/repo#109')).not.toBeNull()
+        expect(getPRAnalysis('org/repo#100')).not.toBeNull()
       })
     })
   })

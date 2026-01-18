@@ -67,6 +67,13 @@ export interface DataCache {
   } | null
 }
 
+// PR Analysis (Why is this PR still open?)
+export interface PRAnalysis {
+  prId: string // Unique PR identifier (e.g., "owner/repo#123")
+  analysis: string // AI-generated analysis
+  generatedAt: number // Timestamp when analysis was generated
+}
+
 // Cache TTL constants (in milliseconds)
 export const CACHE_TTL_PR_DATA = 30 * 60 * 1000 // 30 minutes
 export const CACHE_TTL_ALL_REPOS = 30 * 60 * 1000 // 30 minutes
@@ -90,6 +97,7 @@ interface StoreSchema {
   aiChat: AIChatSettings // AI chat settings and history
   aiPanel: AIPanelSettings // AI panel open state and size
   dataCache: DataCache // Persistent cache for API data
+  prAnalyses: PRAnalysis[] // Persisted AI analyses of PRs
 }
 
 const store = new Store<StoreSchema>({
@@ -128,7 +136,8 @@ const store = new Store<StoreSchema>({
     dataCache: {
       prData: null,
       allRepos: null
-    }
+    },
+    prAnalyses: []
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -336,4 +345,44 @@ export function clearDataCache(): void {
 export function isCacheValid(lastFetch: number | undefined, ttl: number): boolean {
   if (!lastFetch) return false
   return Date.now() - lastFetch < ttl
+}
+
+// PR Analysis persistence
+export function getPRAnalyses(): PRAnalysis[] {
+  return store.get('prAnalyses') || []
+}
+
+export function getPRAnalysis(prId: string): PRAnalysis | null {
+  const analyses = getPRAnalyses()
+  return analyses.find((a) => a.prId === prId) || null
+}
+
+export function setPRAnalysis(prId: string, analysis: string): void {
+  const analyses = getPRAnalyses()
+  const existingIndex = analyses.findIndex((a) => a.prId === prId)
+  const newAnalysis: PRAnalysis = {
+    prId,
+    analysis,
+    generatedAt: Date.now()
+  }
+
+  if (existingIndex >= 0) {
+    analyses[existingIndex] = newAnalysis
+  } else {
+    analyses.push(newAnalysis)
+  }
+
+  // Keep only the last 100 analyses to prevent unbounded growth
+  const trimmed = analyses.slice(-100)
+  store.set('prAnalyses', trimmed)
+}
+
+export function deletePRAnalysis(prId: string): void {
+  const analyses = getPRAnalyses()
+  const filtered = analyses.filter((a) => a.prId !== prId)
+  store.set('prAnalyses', filtered)
+}
+
+export function clearPRAnalyses(): void {
+  store.set('prAnalyses', [])
 }

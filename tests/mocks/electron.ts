@@ -106,6 +106,9 @@ interface MockElectronAPI {
 
   // AI-powered actions
   extractPreviewUrl: ReturnType<typeof vi.fn>
+  analyzePRStatus: ReturnType<typeof vi.fn>
+  getPRAnalysis: ReturnType<typeof vi.fn>
+  deletePRAnalysis: ReturnType<typeof vi.fn>
 
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
@@ -235,6 +238,12 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
       success: false,
       message: 'No preview URL found in this PR'
     }),
+    analyzePRStatus: vi.fn().mockResolvedValue({
+      success: true,
+      analysis: 'This PR is waiting for code review.'
+    }),
+    getPRAnalysis: vi.fn().mockResolvedValue(null),
+    deletePRAnalysis: vi.fn().mockResolvedValue({ success: true }),
 
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),

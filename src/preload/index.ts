@@ -170,6 +170,45 @@ export interface ElectronAPI {
     comments: Array<{ author: string; body: string }>
   }) => Promise<{ success: boolean; url?: string; message?: string }>
 
+  analyzePRStatus: (context: {
+    prId: string
+    number: number
+    title: string
+    body: string | null
+    draft: boolean
+    createdAt: string
+    author: string
+    baseBranch: string
+    headBranch: string
+    additions: number
+    deletions: number
+    changedFiles: number
+    checks: Array<{
+      name: string
+      status: string
+      conclusion: string | null
+    }>
+    reviews: Array<{
+      author: string
+      state: string
+      body: string | null
+    }>
+    comments: Array<{ author: string; body: string }>
+    reviewThreads: Array<{
+      isResolved: boolean
+      path: string
+      commentsCount: number
+    }>
+  }) => Promise<{ success: boolean; analysis?: string; message?: string }>
+
+  getPRAnalysis: (prId: string) => Promise<{
+    prId: string
+    analysis: string
+    generatedAt: number
+  } | null>
+
+  deletePRAnalysis: (prId: string) => Promise<{ success: boolean }>
+
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
@@ -306,6 +345,40 @@ const electronAPI: ElectronAPI = {
     body: string | null
     comments: Array<{ author: string; body: string }>
   }) => ipcRenderer.invoke('extract-preview-url', context),
+
+  analyzePRStatus: (context: {
+    prId: string
+    number: number
+    title: string
+    body: string | null
+    draft: boolean
+    createdAt: string
+    author: string
+    baseBranch: string
+    headBranch: string
+    additions: number
+    deletions: number
+    changedFiles: number
+    checks: Array<{
+      name: string
+      status: string
+      conclusion: string | null
+    }>
+    reviews: Array<{
+      author: string
+      state: string
+      body: string | null
+    }>
+    comments: Array<{ author: string; body: string }>
+    reviewThreads: Array<{
+      isResolved: boolean
+      path: string
+      commentsCount: number
+    }>
+  }) => ipcRenderer.invoke('analyze-pr-status', context),
+
+  getPRAnalysis: (prId: string) => ipcRenderer.invoke('get-pr-analysis', prId),
+  deletePRAnalysis: (prId: string) => ipcRenderer.invoke('delete-pr-analysis', prId),
 
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),
