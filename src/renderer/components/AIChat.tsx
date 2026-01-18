@@ -1284,13 +1284,14 @@ export function AIChatPanel({
                     <div
                       key={chat.prId}
                       className={cn(
-                        'group w-full px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2',
+                        'group w-full px-3 py-2 hover:bg-muted/50 transition-colors flex items-start gap-2',
                         linkedPRChat?.prId === chat.prId && 'bg-primary/10'
                       )}
                     >
+                      <GitPullRequest className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                       <button
                         type="button"
-                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                        className="flex-1 text-left min-w-0"
                         onClick={() => {
                           if (onSwitchToPRChat) {
                             onSwitchToPRChat(chat.prId)
@@ -1298,29 +1299,28 @@ export function AIChatPanel({
                           setShowConversations(false)
                         }}
                       >
-                        <GitPullRequest className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate flex-1">
                             #{chat.prNumber} {chat.prTitle}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                            <span className="truncate">{chat.repoFullName}</span>
-                            <span>•</span>
-                            <span>{chat.messageCount} msgs</span>
-                            <span>•</span>
-                            <span>{formatRelativeTime(chat.updatedAt)}</span>
-                          </div>
-                        </div>
-                        {linkedPRChat?.prId === chat.prId && (
-                          <span className="text-[10px] text-primary font-medium flex-shrink-0">
-                            Active
                           </span>
-                        )}
+                          {linkedPRChat?.prId === chat.prId && (
+                            <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium flex-shrink-0">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          <span className="truncate">{chat.repoFullName}</span>
+                          <span className="mx-1">•</span>
+                          <span>{chat.messageCount} msgs</span>
+                          <span className="mx-1">•</span>
+                          <span>{formatRelativeTime(chat.updatedAt)}</span>
+                        </div>
                       </button>
                       {/* Delete button - shown on hover */}
                       <button
                         type="button"
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity flex-shrink-0"
                         onClick={async (e) => {
                           e.stopPropagation()
                           // If deleting the active chat, switch to general first
