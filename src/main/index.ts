@@ -78,6 +78,7 @@ import {
   setViewMode,
   ViewMode
 } from './store'
+import { CODELOBBY_SYSTEM_PROMPT } from './system-prompt'
 
 // In-memory cache for current session (supplements persistent cache)
 // Persistent cache is in electron-store with 30-min TTL
@@ -850,6 +851,9 @@ function setupIPCHandlers(): void {
       // Get the sender's webContents to send stream updates
       const webContents = event.sender
 
+      // Use PR context if provided, otherwise use base CodeLobby system prompt
+      const effectiveSystemPrompt = systemContext || CODELOBBY_SYSTEM_PROMPT
+
       // Start streaming
       sendClaudeMessageStreaming(
         apiKey,
@@ -877,7 +881,7 @@ function setupIPCHandlers(): void {
           }
         },
         selectedModel,
-        systemContext, // Pass PR context as system prompt
+        effectiveSystemPrompt, // Always pass system prompt (PR context or CodeLobby base)
         enableThinking
       )
 
