@@ -907,3 +907,153 @@ describe('Conversation Navigation', () => {
     }
   })
 })
+
+describe('System Context Handling', () => {
+  const mockOnClose = vi.fn()
+  const mockOnClosePRChat = vi.fn()
+  const mockLinkedPRChat = {
+    prId: 'owner/repo#123',
+    prNumber: 123,
+    prTitle: 'Test PR Title',
+    repoFullName: 'owner/repo'
+  }
+
+  beforeEach(() => {
+    setupMockElectron()
+    vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    resetMockElectron()
+    vi.useRealTimers()
+  })
+
+  it('should NOT pass systemContext for general chat (backend uses default)', async () => {
+    const mockElectron = setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getChatHistory: vi.fn().mockResolvedValue([]),
+      sendChatMessageStreaming: vi.fn().mockResolvedValue({ success: true, streamId: 'stream-1' })
+    })
+
+    render(<AIChatPanel onClose={mockOnClose} />)
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Type a message/)).toBeInTheDocument()
+    })
+
+    const input = screen.getByPlaceholderText(/Type a message/)
+    fireEvent.change(input, { target: { value: 'Hello AI!' } })
+
+    const actualSendButton = Array.from(document.querySelectorAll('button')).find((btn) =>
+      btn.querySelector('.lucide-send')
+    )
+    if (actualSendButton) {
+      fireEvent.click(actualSendButton)
+    }
+
+    await waitFor(() => {
+      expect(mockElectron.sendChatMessageStreaming).toHaveBeenCalled()
+      // For general chat, systemContext should be undefined (backend uses CODELOBBY_SYSTEM_PROMPT)
+      const call = mockElectron.sendChatMessageStreaming.mock.calls[0]
+      expect(call[0]).toBe('Hello AI!')
+      expect(call[1]).toBeUndefined() // No systemContext passed from frontend
+    })
+  })
+
+  it('should pass systemContext for PR chat when PR chat has systemContext', async () => {
+    const prSystemContext = '# PR #123 Context\nThis is a test PR about authentication.'
+    const mockPRChat = {
+      prId: 'owner/repo#123',
+      prNumber: 123,
+      prTitle: 'Test PR Title',
+      repoFullName: 'owner/repo',
+      messages: [],
+      systemContext: prSystemContext,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    const mockElectron = setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getPRChat: vi.fn().mockResolvedValue(mockPRChat),
+      sendChatMessageStreaming: vi.fn().mockResolvedValue({ success: true, streamId: 'stream-1' }),
+      addMessageToPRChat: vi.fn().mockResolvedValue({ success: true })
+    })
+
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        prChatOverrides: { linkedPRChat: mockLinkedPRChat }
+      }
+    )
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Type a message/)).toBeInTheDocument()
+    })
+
+    // Wait for PR chat to be loaded (systemContext to be set)
+    await waitFor(() => {
+      expect(mockElectron.getPRChat).toHaveBeenCalledWith('owner/repo#123')
+    })
+
+    const input = screen.getByPlaceholderText(/Type a message/)
+    fireEvent.change(input, { target: { value: 'What is this PR about?' } })
+
+    const actualSendButton = Array.from(document.querySelectorAll('button')).find((btn) =>
+      btn.querySelector('.lucide-send')
+    )
+    if (actualSendButton) {
+      fireEvent.click(actualSendButton)
+    }
+
+    await waitFor(() => {
+      expect(mockElectron.sendChatMessageStreaming).toHaveBeenCalled()
+      // For PR chat, systemContext should be passed from the fetched PR chat
+      const call = mockElectron.sendChatMessageStreaming.mock.calls[0]
+      expect(call[0]).toBe('What is this PR about?')
+      expect(call[1]).toBe(prSystemContext)
+    })
+  })
+
+  it('should load systemContext from PR chat data', async () => {
+    const prSystemContext = '# Full PR Context\nWith all the details...'
+    const mockPRChat = {
+      prId: 'owner/repo#123',
+      prNumber: 123,
+      prTitle: 'Test PR Title',
+      repoFullName: 'owner/repo',
+      messages: [],
+      systemContext: prSystemContext,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    const mockElectron = setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getPRChat: vi.fn().mockResolvedValue(mockPRChat)
+    })
+
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+      />,
+      {
+        prChatOverrides: { linkedPRChat: mockLinkedPRChat }
+      }
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('PR Chat')).toBeInTheDocument()
+    })
+
+    // Verify getPRChat was called to fetch the full chat data including systemContext
+    expect(mockElectron.getPRChat).toHaveBeenCalledWith('owner/repo#123')
+  })
+})
