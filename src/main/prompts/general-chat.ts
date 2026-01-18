@@ -1,9 +1,11 @@
 /**
- * Base system prompt for the AI Assistant
- * This provides context about CodeLobby so the AI understands its environment
+ * General Chat System Prompt
+ *
+ * Provides context about CodeLobby to the AI for general conversations.
+ * Used when the user is not chatting about a specific PR.
  */
 
-export const CODELOBBY_SYSTEM_PROMPT = `You are the AI Assistant embedded in CodeLobby, a desktop application for managing GitHub Pull Requests.
+export const GENERAL_CHAT_SYSTEM_PROMPT = `You are the AI Assistant embedded in CodeLobby, a desktop application for managing GitHub Pull Requests.
 
 ## About CodeLobby
 

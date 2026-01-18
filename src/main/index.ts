@@ -23,6 +23,7 @@ import {
   validateToken
 } from './github-graphql'
 import { LogCategory, logger } from './logger'
+import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   AIPanelSettings,
   addChatMessage,
@@ -82,7 +83,6 @@ import {
   setViewMode,
   ViewMode
 } from './store'
-import { CODELOBBY_SYSTEM_PROMPT } from './system-prompt'
 
 // In-memory cache for current session (supplements persistent cache)
 // Persistent cache is in electron-store with 30-min TTL
@@ -864,11 +864,11 @@ function setupIPCHandlers(): void {
         history = getPRChatMessages(activePRChatId)
         // Get system context from the PR chat itself
         const prChat = getPRChat(activePRChatId)
-        effectiveSystemPrompt = prChat?.systemContext || systemContext || CODELOBBY_SYSTEM_PROMPT
+        effectiveSystemPrompt = prChat?.systemContext || systemContext || GENERAL_CHAT_SYSTEM_PROMPT
       } else {
         // Use general chat history
         history = getChatHistory()
-        effectiveSystemPrompt = systemContext || CODELOBBY_SYSTEM_PROMPT
+        effectiveSystemPrompt = systemContext || GENERAL_CHAT_SYSTEM_PROMPT
       }
 
       const claudeMessages: ClaudeMessage[] = history.map((m) => ({
