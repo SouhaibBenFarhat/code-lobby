@@ -878,6 +878,91 @@ const [panelData, setPanelData] = useState(null)
 
 ---
 
+## 🧹 Biome Linting & Formatting
+
+CodeLobby uses **Biome** for fast linting and formatting.
+
+### Commands
+```bash
+npm run lint        # Check for issues
+npm run lint:fix    # Auto-fix issues  
+npm run format      # Format code
+```
+
+### Pre-commit Hook
+The `.husky/pre-commit` hook runs `npm run lint` and `npm test` before each commit. Both must pass.
+
+### Rules Configuration
+
+**Errors (blocking):**
+- All `recommended` rules by default
+- `useButtonType` - All `<button>` elements must have `type="button"` 
+- `noInvalidUseBeforeDeclaration` - Variables must be declared before use
+- `useIterableCallbackReturn` - `forEach` callbacks shouldn't return values
+- `noUnusedVariables` / `noUnusedImports` - Clean up dead code
+
+**Warnings (non-blocking):**
+| Rule | Why Warning |
+|------|-------------|
+| `noExplicitAny` | Off - sometimes needed for complex types |
+| `useImportType` | Off - import style preference |
+| `noNonNullAssertion` | Warn - `!` assertions sometimes needed in tests |
+| `noStaticElementInteractions` | Warn - requires adding `role` to clickable divs |
+| `useKeyWithClickEvents` | Warn - requires keyboard handlers on click elements |
+| `noSvgWithoutTitle` | Warn - SVG accessibility can be addressed incrementally |
+| `useExhaustiveDependencies` | Warn - sometimes intentional to skip deps |
+| `noArrayIndexKey` | Warn - sometimes index key is acceptable |
+
+### Common Patterns to Avoid Lint Errors
+
+**Always add `type="button"` to buttons:**
+```tsx
+// ❌ BAD - Biome error
+<button onClick={handleClick}>Click me</button>
+
+// ✅ GOOD
+<button type="button" onClick={handleClick}>Click me</button>
+```
+
+**Use block syntax in forEach to avoid implicit returns:**
+```tsx
+// ❌ BAD - cats.add() returns the Set, implicit return
+items.forEach((item) => cats.add(item.category))
+
+// ✅ GOOD - block syntax, no return
+items.forEach((item) => {
+  cats.add(item.category)
+})
+```
+
+**Declare functions before using in dependencies:**
+```tsx
+// ❌ BAD - loadData used before declaration
+useEffect(() => { loadData() }, [loadData])
+const loadData = useCallback(async () => { ... }, [])
+
+// ✅ GOOD - loadData declared first
+const loadData = useCallback(async () => { ... }, [])
+useEffect(() => { loadData() }, [loadData])
+```
+
+**Break circular useCallback dependencies with refs:**
+```tsx
+// ❌ BAD - circular dependency between A and B
+const funcA = useCallback(() => { funcB() }, [funcB])
+const funcB = useCallback(() => { funcA() }, [funcA])
+
+// ✅ GOOD - use ref to break cycle
+const funcARef = useRef<() => void>()
+
+const funcB = useCallback(() => { funcARef.current?.() }, [])
+const funcA = useCallback(() => { funcB() }, [funcB])
+
+useEffect(() => { funcARef.current = funcA }, [funcA])
+```
+
+---
+
 ## 🔮 Vision Context
 
 CodeLobby is evolving toward **intent-driven development** where:
