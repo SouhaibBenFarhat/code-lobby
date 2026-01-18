@@ -1,15 +1,24 @@
 /**
  * MarkdownContent Component Tests
- *
- * Note: These tests are skipped because react-markdown uses complex async rendering
- * that requires additional setup. The component itself is tested via integration tests.
  */
 
 import { describe, expect, it } from 'vitest'
+import { MarkdownContent } from '@/components/MarkdownContent'
+import { render, screen } from '../../utils/render'
 
-// Skip these tests for now - react-markdown requires complex async handling
-describe.skip('MarkdownContent', () => {
-  it('placeholder test', () => {
-    expect(true).toBe(true)
+describe('MarkdownContent', () => {
+  it('should render plain text content', () => {
+    render(<MarkdownContent content="Hello world" />)
+    expect(screen.getByText('Hello world')).toBeInTheDocument()
+  })
+
+  it('should render markdown with bold text', () => {
+    render(<MarkdownContent content="**bold text**" />)
+    expect(screen.getByText('bold text')).toBeInTheDocument()
+  })
+
+  it('should render inline code', () => {
+    render(<MarkdownContent content="`code`" />)
+    expect(screen.getByText('code')).toBeInTheDocument()
   })
 })

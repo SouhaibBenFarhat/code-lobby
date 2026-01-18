@@ -59,30 +59,39 @@ export interface MockPullRequest {
   additions: number
   deletions: number
   changed_files: number
-  comments: MockPRComment[]
-  reviews: MockPRReview[]
-  reviewThreads: MockReviewThread[]
+  // Match the actual PullRequest type
+  comments: number
+  review_comments: number
+  commentsList?: MockPRComment[]
+  reviews?: MockPRReview[]
+  reviewThreads?: MockReviewThread[]
   checks?: MockCheckStatus
 }
 
 export interface MockPRComment {
   id: string
   body: string
-  user: MockUser
+  author: {
+    login: string
+    avatar_url: string
+    isBot?: boolean
+  }
   created_at: string
   updated_at: string
   html_url: string
-  isBot: boolean
 }
 
 export interface MockPRReview {
   id: string
-  user: MockUser
+  author: {
+    login: string
+    avatar_url: string
+    isBot?: boolean
+  }
   body: string | null
-  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'PENDING' | 'DISMISSED'
-  submitted_at: string
+  state: 'approved' | 'changes_requested' | 'commented' | 'pending' | 'dismissed'
+  created_at: string
   html_url: string
-  isBot: boolean
 }
 
 export interface MockReviewThread {
@@ -90,15 +99,23 @@ export interface MockReviewThread {
   path: string
   line: number | null
   diffHunk: string
+  isResolved: boolean
   comments: MockReviewComment[]
 }
 
 export interface MockReviewComment {
   id: string
   body: string
-  user: MockUser
+  author: {
+    login: string
+    avatar_url: string
+    isBot?: boolean
+  }
   created_at: string
   html_url: string
+  path: string
+  line: number | null
+  diffHunk?: string
 }
 
 export interface MockCheckRun {
@@ -234,7 +251,9 @@ export function createMockPullRequest(overrides: Partial<MockPullRequest> = {}):
     additions: Math.floor(Math.random() * 500),
     deletions: Math.floor(Math.random() * 200),
     changed_files: Math.floor(Math.random() * 20) + 1,
-    comments: [],
+    comments: 0,
+    review_comments: 0,
+    commentsList: [],
     reviews: [],
     reviewThreads: [],
     ...overrides
@@ -251,16 +270,20 @@ export function createMockDraftPR(overrides: Partial<MockPullRequest> = {}): Moc
 
 export function createMockComment(overrides: Partial<MockPRComment> = {}): MockPRComment {
   const id = getNextId()
-  const user = overrides.user || createMockUser()
+  const user = createMockUser()
+  const author = overrides.author || {
+    login: user.login,
+    avatar_url: user.avatar_url,
+    isBot: user.isBot
+  }
 
   return {
     id: `IC_${id}`,
     body: `This is comment ${id}. LGTM! 👍`,
-    user,
+    author,
     created_at: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
     html_url: `https://github.com/test-org/repo/pull/1#issuecomment-${id}`,
-    isBot: user.type === 'Bot' || user.login.includes('[bot]'),
     ...overrides
   }
 }
@@ -268,9 +291,12 @@ export function createMockComment(overrides: Partial<MockPRComment> = {}): MockP
 export function createMockBotComment(overrides: Partial<MockPRComment> = {}): MockPRComment {
   const bot = createMockBot()
   return createMockComment({
-    user: bot,
+    author: {
+      login: bot.login,
+      avatar_url: bot.avatar_url,
+      isBot: true
+    },
     body: '## CI Report\n✅ All checks passed\n\n| Test | Status |\n|------|--------|\n| Unit | ✅ |',
-    isBot: true,
     ...overrides
   })
 }
@@ -281,27 +307,31 @@ export function createMockBotComment(overrides: Partial<MockPRComment> = {}): Mo
 
 export function createMockReview(overrides: Partial<MockPRReview> = {}): MockPRReview {
   const id = getNextId()
-  const user = overrides.user || createMockUser()
+  const user = createMockUser()
+  const author = overrides.author || {
+    login: user.login,
+    avatar_url: user.avatar_url,
+    isBot: user.isBot
+  }
 
   return {
     id: `PRR_${id}`,
-    user,
-    body: overrides.state === 'APPROVED' ? 'Looks good to me!' : 'Please address the comments.',
-    state: 'COMMENTED',
-    submitted_at: new Date(Date.now() - Math.random() * 2 * 24 * 60 * 60 * 1000).toISOString(),
+    author,
+    body: overrides.state === 'approved' ? 'Looks good to me!' : 'Please address the comments.',
+    state: 'commented',
+    created_at: new Date(Date.now() - Math.random() * 2 * 24 * 60 * 60 * 1000).toISOString(),
     html_url: `https://github.com/test-org/repo/pull/1#pullrequestreview-${id}`,
-    isBot: user.type === 'Bot' || user.login.includes('[bot]'),
     ...overrides
   }
 }
 
 export function createMockApproval(overrides: Partial<MockPRReview> = {}): MockPRReview {
-  return createMockReview({ state: 'APPROVED', ...overrides })
+  return createMockReview({ state: 'approved', body: 'Looks good to me!', ...overrides })
 }
 
 export function createMockChangesRequested(overrides: Partial<MockPRReview> = {}): MockPRReview {
   return createMockReview({
-    state: 'CHANGES_REQUESTED',
+    state: 'changes_requested',
     body: 'Please fix the following issues:\n- [ ] Fix linting errors\n- [ ] Add tests',
     ...overrides
   })
@@ -315,13 +345,17 @@ export function createMockReviewThread(
   overrides: Partial<MockReviewThread> = {}
 ): MockReviewThread {
   const id = getNextId()
+  const path = overrides.path || 'src/components/Button.tsx'
+  const line = overrides.line ?? Math.floor(Math.random() * 100) + 1
+  const diffHunk = `@@ -10,6 +10,8 @@ export function Button() {\n   return (\n-    <button>Click me</button>\n+    <button className="btn">Click me</button>\n   );\n }`
 
   return {
     id: `PRT_${id}`,
-    path: 'src/components/Button.tsx',
-    line: Math.floor(Math.random() * 100) + 1,
-    diffHunk: `@@ -10,6 +10,8 @@ export function Button() {\n   return (\n-    <button>Click me</button>\n+    <button className="btn">Click me</button>\n   );\n }`,
-    comments: [createMockReviewComment()],
+    path,
+    line,
+    diffHunk,
+    isResolved: false,
+    comments: overrides.comments || [createMockReviewComment({ path, line, diffHunk })],
     ...overrides
   }
 }
@@ -330,14 +364,22 @@ export function createMockReviewComment(
   overrides: Partial<MockReviewComment> = {}
 ): MockReviewComment {
   const id = getNextId()
-  const user = overrides.user || createMockUser()
+  const user = createMockUser()
+  const author = overrides.author || {
+    login: user.login,
+    avatar_url: user.avatar_url,
+    isBot: user.isBot
+  }
 
   return {
     id: `PRRC_${id}`,
     body: 'Consider using a more descriptive class name here.',
-    user,
+    author,
     created_at: new Date().toISOString(),
     html_url: `https://github.com/test-org/repo/pull/1#discussion_r${id}`,
+    path: overrides.path || 'src/components/Button.tsx',
+    line: overrides.line ?? 10,
+    diffHunk: overrides.diffHunk,
     ...overrides
   }
 }
@@ -425,7 +467,8 @@ export function createMockRateLimit(overrides: Partial<MockRateLimit> = {}): Moc
 
 export function createMockPRWithComments(commentCount = 3): MockPullRequest {
   const pr = createMockPullRequest()
-  pr.comments = Array.from({ length: commentCount }, () => createMockComment())
+  pr.commentsList = Array.from({ length: commentCount }, () => createMockComment())
+  pr.comments = commentCount
   return pr
 }
 
@@ -437,12 +480,13 @@ export function createMockPRWithReviews(reviewCount = 2): MockPullRequest {
 
 export function createMockPRWithMixedComments(): MockPullRequest {
   const pr = createMockPullRequest()
-  pr.comments = [
+  pr.commentsList = [
     createMockComment(),
     createMockComment(),
     createMockBotComment(),
     createMockBotComment()
   ]
+  pr.comments = 4
   return pr
 }
 

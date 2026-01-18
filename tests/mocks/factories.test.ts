@@ -113,7 +113,8 @@ describe('Mock Factories', () => {
     it('should have empty arrays for comments and reviews by default', () => {
       const pr = createMockPullRequest()
 
-      expect(pr.comments).toEqual([])
+      expect(pr.comments).toBe(0)
+      expect(pr.commentsList).toEqual([])
       expect(pr.reviews).toEqual([])
       expect(pr.reviewThreads).toEqual([])
     })
@@ -133,9 +134,10 @@ describe('Mock Factories', () => {
 
       expect(comment.id).toBeDefined()
       expect(comment.body).toBeDefined()
-      expect(comment.user).toBeDefined()
+      expect(comment.author).toBeDefined()
+      expect(comment.author.login).toBeDefined()
       expect(comment.created_at).toBeDefined()
-      expect(comment.isBot).toBe(false)
+      expect(comment.author.isBot).toBe(false)
     })
   })
 
@@ -143,8 +145,7 @@ describe('Mock Factories', () => {
     it('should create bot comment', () => {
       const comment = createMockBotComment()
 
-      expect(comment.isBot).toBe(true)
-      expect(comment.user.type).toBe('Bot')
+      expect(comment.author.isBot).toBe(true)
     })
   })
 
@@ -153,9 +154,10 @@ describe('Mock Factories', () => {
       const review = createMockReview()
 
       expect(review.id).toBeDefined()
-      expect(review.user).toBeDefined()
+      expect(review.author).toBeDefined()
+      expect(review.author.login).toBeDefined()
       expect(review.state).toBeDefined()
-      expect(review.submitted_at).toBeDefined()
+      expect(review.created_at).toBeDefined()
     })
   })
 
@@ -163,7 +165,7 @@ describe('Mock Factories', () => {
     it('should create approval review', () => {
       const review = createMockApproval()
 
-      expect(review.state).toBe('APPROVED')
+      expect(review.state).toBe('approved')
     })
   })
 
@@ -171,7 +173,7 @@ describe('Mock Factories', () => {
     it('should create changes requested review', () => {
       const review = createMockChangesRequested()
 
-      expect(review.state).toBe('CHANGES_REQUESTED')
+      expect(review.state).toBe('changes_requested')
     })
   })
 
@@ -227,7 +229,8 @@ describe('Mock Factories', () => {
       it('should create PR with specified number of comments', () => {
         const pr = createMockPRWithComments(5)
 
-        expect(pr.comments.length).toBe(5)
+        expect(pr.comments).toBe(5)
+        expect(pr.commentsList?.length).toBe(5)
       })
     })
 
@@ -235,7 +238,7 @@ describe('Mock Factories', () => {
       it('should create PR with specified number of reviews', () => {
         const pr = createMockPRWithReviews(3)
 
-        expect(pr.reviews.length).toBe(3)
+        expect(pr.reviews?.length).toBe(3)
       })
     })
 
@@ -243,8 +246,8 @@ describe('Mock Factories', () => {
       it('should create PR with both human and bot comments', () => {
         const pr = createMockPRWithMixedComments()
 
-        const humanComments = pr.comments.filter((c) => !c.isBot)
-        const botComments = pr.comments.filter((c) => c.isBot)
+        const humanComments = pr.commentsList?.filter((c) => !c.author.isBot) || []
+        const botComments = pr.commentsList?.filter((c) => c.author.isBot) || []
 
         expect(humanComments.length).toBeGreaterThan(0)
         expect(botComments.length).toBeGreaterThan(0)
