@@ -11,6 +11,7 @@ import type { PullRequest } from './components/types'
 import { Button } from './components/ui/button'
 import { Toaster } from './components/ui/toaster'
 import { TooltipProvider } from './components/ui/tooltip'
+import { buildPRSystemPrompt } from './lib/pr-system-prompt'
 
 const MIN_PANEL_WIDTH = 300
 const MAX_PANEL_WIDTH = 800
@@ -240,129 +241,8 @@ function App() {
     setIsAIPanelOpen((prev) => !prev)
   }, [])
 
-  // Build comprehensive PR context message for AI chat
-  const buildPRContextMessage = useCallback((pr: PullRequest): string => {
-    const lines: string[] = []
-
-    // Header
-    lines.push(`# PR #${pr.number}: ${pr.title}`)
-    lines.push('')
-
-    // Basic info
-    lines.push('## Overview')
-    lines.push(`- **Repository:** ${pr.base.repo.full_name}`)
-    lines.push(`- **Author:** ${pr.user.login}`)
-    lines.push(`- **Branch:** \`${pr.head.ref}\` → \`${pr.base.ref}\``)
-    lines.push(`- **Created:** ${new Date(pr.created_at).toLocaleDateString()}`)
-    lines.push(
-      `- **Status:** ${pr.draft ? '📝 Draft' : pr.state === 'open' ? '🟢 Open' : `🔴 ${pr.state}`}`
-    )
-    lines.push(
-      `- **Changes:** +${pr.additions} / -${pr.deletions} across ${pr.changed_files} file(s)`
-    )
-    lines.push('')
-
-    // Description
-    if (pr.body) {
-      lines.push('## Description')
-      lines.push(pr.body.length > 1000 ? `${pr.body.slice(0, 1000)}...` : pr.body)
-      lines.push('')
-    }
-
-    // Labels
-    if (pr.labels && pr.labels.length > 0) {
-      lines.push('## Labels')
-      lines.push(pr.labels.map((l) => `\`${l.name}\``).join(', '))
-      lines.push('')
-    }
-
-    // CI Status
-    if (pr.checks?.checkRuns && pr.checks.checkRuns.length > 0) {
-      lines.push('## CI/CD Status')
-      const passed = pr.checks.checkRuns.filter((c) => c.conclusion === 'success').length
-      const failed = pr.checks.checkRuns.filter((c) => c.conclusion === 'failure').length
-      const pending = pr.checks.checkRuns.filter(
-        (c) => !c.conclusion || c.status === 'in_progress'
-      ).length
-      lines.push(`- ✅ Passed: ${passed}`)
-      if (failed > 0) lines.push(`- ❌ Failed: ${failed}`)
-      if (pending > 0) lines.push(`- ⏳ Pending: ${pending}`)
-
-      // List failed checks
-      const failedChecks = pr.checks.checkRuns.filter((c) => c.conclusion === 'failure')
-      if (failedChecks.length > 0) {
-        lines.push('')
-        lines.push('**Failed checks:**')
-        for (const c of failedChecks) {
-          lines.push(`- ${c.name}`)
-        }
-      }
-      lines.push('')
-    }
-
-    // Reviews
-    if (pr.reviews && pr.reviews.length > 0) {
-      lines.push('## Reviews')
-      const approved = pr.reviews.filter((r) => r.state.toLowerCase() === 'approved')
-      const changesRequested = pr.reviews.filter(
-        (r) => r.state.toLowerCase() === 'changes_requested'
-      )
-      const commented = pr.reviews.filter((r) => r.state.toLowerCase() === 'commented')
-
-      if (approved.length > 0) {
-        lines.push(`- ✅ Approved by: ${approved.map((r) => r.author.login).join(', ')}`)
-      }
-      if (changesRequested.length > 0) {
-        lines.push(
-          `- 🔄 Changes requested by: ${changesRequested.map((r) => r.author.login).join(', ')}`
-        )
-      }
-      if (commented.length > 0) {
-        lines.push(`- 💬 Reviewed by: ${commented.map((r) => r.author.login).join(', ')}`)
-      }
-      lines.push('')
-    }
-
-    // Review Threads
-    if (pr.reviewThreads && pr.reviewThreads.length > 0) {
-      const unresolved = pr.reviewThreads.filter((t) => !t.isResolved)
-      const resolved = pr.reviewThreads.filter((t) => t.isResolved)
-      lines.push('## Review Threads')
-      lines.push(`- ✅ Resolved: ${resolved.length}`)
-      if (unresolved.length > 0) {
-        lines.push(`- ⚠️ Unresolved: ${unresolved.length}`)
-        lines.push('')
-        lines.push('**Unresolved threads:**')
-        unresolved.slice(0, 5).forEach((t) => {
-          lines.push(`- \`${t.path}\` (${t.comments?.length || 0} comments)`)
-        })
-        if (unresolved.length > 5) {
-          lines.push(`- ... and ${unresolved.length - 5} more`)
-        }
-      }
-      lines.push('')
-    }
-
-    // Recent Comments
-    if (pr.commentsList && pr.commentsList.length > 0) {
-      lines.push('## Recent Comments')
-      const recent = pr.commentsList.slice(-5)
-      for (const c of recent) {
-        const body = c.body.length > 150 ? `${c.body.slice(0, 150)}...` : c.body
-        lines.push(`- **${c.author.login}:** ${body}`)
-      }
-      if (pr.commentsList.length > 5) {
-        lines.push(`- ... and ${pr.commentsList.length - 5} more comments`)
-      }
-      lines.push('')
-    }
-
-    lines.push('---')
-    lines.push('')
-    lines.push('I have full context about this PR. How can I help you?')
-
-    return lines.join('\n')
-  }, [])
+  // PR context message builder is now in a separate file for easy editing
+  // See: src/renderer/lib/pr-system-prompt.ts
 
   // Open a PR in AI chat (creates chat if doesn't exist, opens existing if it does)
   const openPRInChat = useCallback(
@@ -373,7 +253,7 @@ function App() {
       let chat = await window.electron.getPRChat(prId)
       if (!chat) {
         // Build PR context and inject it as system context (invisible to user, but AI knows it)
-        const systemContext = buildPRContextMessage(pr)
+        const systemContext = buildPRSystemPrompt(pr)
         chat = await window.electron.createPRChat(
           prId,
           pr.number,
@@ -399,7 +279,7 @@ function App() {
         setIsAIPanelOpen(true)
       }
     },
-    [isAIPanelOpen, buildPRContextMessage]
+    [isAIPanelOpen]
   )
 
   // Close PR chat and return to general chat
