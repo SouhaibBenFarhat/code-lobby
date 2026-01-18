@@ -78,10 +78,15 @@ export interface ElectronAPI {
   setViewMode: (mode: 'canvas' | 'ide') => Promise<{ success: boolean }>
 
   // IDE view settings
-  getIDEViewSettings: () => Promise<{ sidebarWidth: number; expandedRepos: string[] }>
+  getIDEViewSettings: () => Promise<{
+    sidebarWidth: number
+    expandedRepos: string[]
+    myPRsRepos: string[]
+  }>
   setIDEViewSettings: (settings: {
     sidebarWidth?: number
     expandedRepos?: string[]
+    myPRsRepos?: string[]
   }) => Promise<{ success: boolean }>
 
   // Logging
@@ -231,8 +236,11 @@ const electronAPI: ElectronAPI = {
 
   // IDE view settings
   getIDEViewSettings: () => ipcRenderer.invoke('get-ide-view-settings'),
-  setIDEViewSettings: (settings: { sidebarWidth?: number; expandedRepos?: string[] }) =>
-    ipcRenderer.invoke('set-ide-view-settings', settings),
+  setIDEViewSettings: (settings: {
+    sidebarWidth?: number
+    expandedRepos?: string[]
+    myPRsRepos?: string[]
+  }) => ipcRenderer.invoke('set-ide-view-settings', settings),
 
   // Logging
   getLogs: () => ipcRenderer.invoke('get-logs'),

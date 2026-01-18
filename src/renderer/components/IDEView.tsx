@@ -230,6 +230,9 @@ export function IDEView({ currentUser }: IDEViewProps) {
         setSidebarWidth(settings.sidebarWidth || 280)
         const savedExpanded = settings.expandedRepos || []
         setExpandedRepos(new Set(savedExpanded))
+        // Load saved "My PRs" filter state per repo
+        const savedMyPRsRepos = settings.myPRsRepos || []
+        setMyPRsRepos(new Set(savedMyPRsRepos))
         // If we had saved expanded repos, mark auto-expand as done
         if (savedExpanded.length > 0) {
           hasAutoExpanded.current = true
@@ -247,9 +250,10 @@ export function IDEView({ currentUser }: IDEViewProps) {
     if (!settingsLoaded) return
     window.electron.setIDEViewSettings({
       sidebarWidth,
-      expandedRepos: Array.from(expandedRepos)
+      expandedRepos: Array.from(expandedRepos),
+      myPRsRepos: Array.from(myPRsRepos)
     })
-  }, [sidebarWidth, expandedRepos, settingsLoaded])
+  }, [sidebarWidth, expandedRepos, myPRsRepos, settingsLoaded])
 
   // Fetch selected repos filter
   const { data: selectedReposFilter } = useQuery({

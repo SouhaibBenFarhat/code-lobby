@@ -29,6 +29,7 @@ export type ViewMode = 'canvas' | 'ide'
 export interface IDEViewSettings {
   sidebarWidth: number
   expandedRepos: string[] // Which repos are expanded in tree
+  myPRsRepos: string[] // Which repos have "My PRs" filter enabled
 }
 
 // AI Chat message
@@ -93,7 +94,8 @@ const store = new Store<StoreSchema>({
     viewMode: 'canvas', // Default to canvas view
     ideViewSettings: {
       sidebarWidth: 280,
-      expandedRepos: []
+      expandedRepos: [],
+      myPRsRepos: []
     },
     aiChat: {
       claudeApiKey: null,

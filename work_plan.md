@@ -19,6 +19,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | **Views** | Canvas view (draggable windows) | ✅ Complete |
 | | IDE view (tree navigation) | ✅ Complete |
 | | View mode persistence | ✅ Complete |
+| | My PRs filter persistence (per repo) | ✅ Complete |
 | **PR Data** | GraphQL single-query fetch | ✅ Complete |
 | | CI/CD status display | ✅ Complete |
 | | Comments & reviews | ✅ Complete |
@@ -65,6 +66,25 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 - [x] "Empty description" placeholder if no body
 - [x] Copy description button
 - [x] Edit description button (opens GitHub in browser)
+
+**Completed:** January 18, 2026
+
+---
+
+### 1.1.1 My PRs Filter Persistence ✅ Complete
+> Persist the "My PRs" filter toggle state per repository
+
+**Implementation Summary:**
+- Added `myPRsRepos` array to `IDEViewSettings` in electron-store
+- Filter state saved when user toggles the "My PRs" button on any repo
+- State restored on app restart, remembering which repos have filter enabled
+- Each repository maintains independent filter state
+
+**Completed Features:**
+- [x] Store `myPRsRepos` in `IDEViewSettings`
+- [x] Load saved state on mount
+- [x] Save state when toggle changes
+- [x] Independent persistence per repo
 
 **Completed:** January 18, 2026
 

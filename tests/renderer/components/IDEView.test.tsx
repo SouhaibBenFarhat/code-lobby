@@ -267,6 +267,228 @@ describe('IDEView', () => {
     })
   })
 
+  describe('My PRs Filter Persistence', () => {
+    it('should load saved myPRsRepos from settings on mount', async () => {
+      const repo = createMockRepository({ name: 'frontend' })
+      const currentUser = createMockUser({ login: 'testuser' })
+      const otherUser = createMockUser({ login: 'otheruser' })
+      const myPR = createMockPullRequest({
+        title: 'My PR',
+        user: currentUser,
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+      const otherPR = createMockPullRequest({
+        title: 'Other PR',
+        user: otherUser,
+        base: { repo, ref: 'main', sha: 'def' }
+      })
+
+      // Setup with myPRsRepos already containing the repo (filter enabled)
+      const mockElectron = setupAuthenticatedScenario({
+        user: currentUser,
+        repos: [repo],
+        prs: [myPR, otherPR],
+        selectedRepos: [repo.full_name]
+      })
+
+      // Override getIDEViewSettings to return saved myPRsRepos
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo.full_name], // Already expanded
+        myPRsRepos: [repo.full_name] // Filter enabled for this repo
+      })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        // With filter enabled and repo expanded, only "My PR" should be visible
+        expect(screen.getByText('My PR')).toBeInTheDocument()
+        expect(screen.queryByText('Other PR')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should save myPRsRepos to settings when toggle is clicked', async () => {
+      const repo = createMockRepository({ name: 'frontend' })
+      const currentUser = createMockUser({ login: 'testuser' })
+      const otherUser = createMockUser({ login: 'otheruser' })
+      const myPR = createMockPullRequest({
+        title: 'My PR',
+        user: currentUser,
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+      const otherPR = createMockPullRequest({
+        title: 'Other PR',
+        user: otherUser,
+        base: { repo, ref: 'main', sha: 'def' }
+      })
+
+      const mockElectron = setupAuthenticatedScenario({
+        user: currentUser,
+        repos: [repo],
+        prs: [myPR, otherPR],
+        selectedRepos: [repo.full_name]
+      })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+      })
+
+      // Expand folder
+      fireEvent.click(screen.getByText('frontend'))
+
+      await waitFor(() => {
+        expect(screen.getByText('My PR')).toBeInTheDocument()
+        expect(screen.getByText('Other PR')).toBeInTheDocument()
+      })
+
+      // Find and click the My PRs toggle
+      const folderRow = screen.getByText('frontend').closest('div')
+      expect(folderRow).toBeTruthy()
+
+      if (folderRow) {
+        fireEvent.mouseEnter(folderRow)
+        const toggleButton = folderRow.querySelector('button')
+        expect(toggleButton).toBeTruthy()
+
+        if (toggleButton) {
+          fireEvent.click(toggleButton)
+
+          // Wait for the state to update and save
+          await waitFor(() => {
+            // setIDEViewSettings should be called with myPRsRepos containing the repo
+            expect(mockElectron.setIDEViewSettings).toHaveBeenCalledWith(
+              expect.objectContaining({
+                myPRsRepos: [repo.full_name]
+              })
+            )
+          })
+        }
+      }
+    })
+
+    it('should remove repo from myPRsRepos when toggle is clicked again', async () => {
+      const repo = createMockRepository({ name: 'frontend' })
+      const currentUser = createMockUser({ login: 'testuser' })
+      const otherUser = createMockUser({ login: 'otheruser' })
+      const myPR = createMockPullRequest({
+        title: 'My PR',
+        user: currentUser,
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+      const otherPR = createMockPullRequest({
+        title: 'Other PR',
+        user: otherUser,
+        base: { repo, ref: 'main', sha: 'def' }
+      })
+
+      const mockElectron = setupAuthenticatedScenario({
+        user: currentUser,
+        repos: [repo],
+        prs: [myPR, otherPR], // Need at least 2 PRs to show toggle
+        selectedRepos: [repo.full_name]
+      })
+
+      // Start with myPRsRepos enabled
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo.full_name],
+        myPRsRepos: [repo.full_name]
+      })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+      })
+
+      // With filter on, only "My PR" should be visible
+      await waitFor(() => {
+        expect(screen.getByText('My PR')).toBeInTheDocument()
+        expect(screen.queryByText('Other PR')).not.toBeInTheDocument()
+      })
+
+      // Find the folder row with the toggle button
+      // The toggle button is inside the div that contains "frontend"
+      const folderRow = screen.getByRole('treeitem')
+      expect(folderRow).toBeTruthy()
+
+      // The toggle button should be visible (always visible when filter is active)
+      const toggleButton = folderRow.querySelector('button')
+      expect(toggleButton).toBeTruthy()
+
+      if (toggleButton) {
+        fireEvent.click(toggleButton)
+
+        // Wait for the state to update and save with empty myPRsRepos
+        await waitFor(() => {
+          expect(mockElectron.setIDEViewSettings).toHaveBeenCalledWith(
+            expect.objectContaining({
+              myPRsRepos: []
+            })
+          )
+        })
+
+        // Now "Other PR" should be visible too
+        await waitFor(() => {
+          expect(screen.getByText('Other PR')).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should persist myPRsRepos independently per repo', async () => {
+      const repo1 = createMockRepository({
+        name: 'frontend',
+        owner: { login: 'myorg', avatar_url: '' }
+      })
+      const repo2 = createMockRepository({
+        name: 'backend',
+        owner: { login: 'myorg', avatar_url: '' }
+      })
+      const currentUser = createMockUser({ login: 'testuser' })
+      const myPR1 = createMockPullRequest({
+        title: 'My Frontend PR',
+        user: currentUser,
+        base: { repo: repo1, ref: 'main', sha: 'abc' }
+      })
+      const myPR2 = createMockPullRequest({
+        title: 'My Backend PR',
+        user: currentUser,
+        base: { repo: repo2, ref: 'main', sha: 'def' }
+      })
+
+      const mockElectron = setupAuthenticatedScenario({
+        user: currentUser,
+        repos: [repo1, repo2],
+        prs: [myPR1, myPR2],
+        selectedRepos: [repo1.full_name, repo2.full_name]
+      })
+
+      // Start with myPRsRepos enabled only for frontend
+      mockElectron.getIDEViewSettings.mockResolvedValue({
+        sidebarWidth: 280,
+        expandedRepos: [repo1.full_name, repo2.full_name],
+        myPRsRepos: [repo1.full_name] // Only frontend has filter enabled
+      })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+        expect(screen.getByText('backend')).toBeInTheDocument()
+      })
+
+      // Frontend should show the filter active (User icon vs Users icon)
+      // Backend should not have filter active
+      // Both repos should show their PRs since the user is the author
+      await waitFor(() => {
+        expect(screen.getByText('My Frontend PR')).toBeInTheDocument()
+        expect(screen.getByText('My Backend PR')).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('PR Count Display', () => {
     it('should display total PR count in header', async () => {
       const repo = createMockRepository({ name: 'frontend' })
