@@ -231,7 +231,7 @@ interface AIChatPanelProps {
   onClose: () => void
   user?: GitHubUser | null
   linkedPRChat?: LinkedPRChat | null
-  onClosePRChat?: () => void
+  onClosePRChat?: () => void | Promise<void>
   onSwitchToPRChat?: (prId: string) => void
   selectedPR?: SelectedPR | null
   onStartPRChat?: (pr: SelectedPR) => void
@@ -1323,9 +1323,9 @@ export function AIChatPanel({
                         className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity"
                         onClick={async (e) => {
                           e.stopPropagation()
-                          // If deleting the active chat, switch to general
+                          // If deleting the active chat, switch to general first
                           if (linkedPRChat?.prId === chat.prId && onClosePRChat) {
-                            onClosePRChat()
+                            await onClosePRChat()
                           }
                           await window.electron.deletePRChat(chat.prId)
                           loadAllPRChats()

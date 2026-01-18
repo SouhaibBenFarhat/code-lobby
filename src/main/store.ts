@@ -514,6 +514,12 @@ export function deletePRChat(prId: string): void {
   const chats = getPRChats()
   const filtered = chats.filter((c) => c.prId !== prId)
   store.set('prChats', filtered)
+
+  // Clear activePRChatId if we deleted the active chat
+  const activeChatId = getActivePRChatId()
+  if (activeChatId === prId) {
+    setActivePRChatId(null)
+  }
 }
 
 export function clearAllPRChats(): void {
