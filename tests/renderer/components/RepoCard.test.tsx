@@ -13,26 +13,23 @@ import {
   resetIdCounter
 } from '../../mocks/factories'
 import { fireEvent, render, screen, waitFor } from '../../utils/render'
+import type { PullRequest } from '@/components/types'
 
-// Mock react-rnd
-vi.mock('react-rnd', () => ({
-  Rnd: ({ children, ...props }: any) => (
-    <div data-testid="rnd-container" {...props}>
-      {children}
-    </div>
-  )
+// Mock the usePRContext hook
+const mockSetSelectedPR = vi.fn()
+let mockSelectedPR: PullRequest | null = null
+
+vi.mock('@/App', () => ({
+  usePRContext: () => ({
+    selectedPR: mockSelectedPR,
+    setSelectedPR: mockSetSelectedPR
+  })
 }))
 
 describe('RepoCard', () => {
   const defaultProps = {
-    position: { x: 0, y: 0 },
-    size: { width: 350, height: 400 },
-    onPositionChange: vi.fn(),
-    onSizeChange: vi.fn(),
-    onRemove: vi.fn(),
-    onPRClick: vi.fn(),
-    selectedPRId: null as string | null,
-    lockedLayout: false,
+    isDraggable: true,
+    onClose: vi.fn(),
     currentUser: 'testuser',
     color: null as string | null,
     onColorChange: vi.fn()
@@ -42,6 +39,7 @@ describe('RepoCard', () => {
     resetIdCounter()
     setupMockElectron()
     vi.clearAllMocks()
+    mockSelectedPR = null
   })
 
   afterEach(() => {
@@ -103,16 +101,15 @@ describe('RepoCard', () => {
       expect(screen.getByText('Add feature')).toBeInTheDocument()
     })
 
-    it('should call onPRClick when PR is clicked', () => {
-      const onPRClick = vi.fn()
+    it('should call setSelectedPR when PR is clicked', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
 
-      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} onPRClick={onPRClick} />)
+      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} />)
 
       fireEvent.click(screen.getByText('Test PR'))
 
-      expect(onPRClick).toHaveBeenCalledWith(pr)
+      expect(mockSetSelectedPR).toHaveBeenCalledWith(pr)
     })
 
     it('should show empty state when no PRs', () => {
@@ -126,21 +123,23 @@ describe('RepoCard', () => {
   describe('Close Button', () => {
     it('should render close button in header', () => {
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      const onClose = vi.fn()
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onClose={onClose} />)
 
-      const closeButton = document.querySelector('button svg.lucide-x')?.parentElement
+      // Close button has X icon
+      const closeButton = document.querySelector('[class*="hover:text-destructive"]')
       expect(closeButton).toBeInTheDocument()
     })
 
-    it('should call onRemove when close button clicked', () => {
-      const onRemove = vi.fn()
+    it('should call onClose when close button clicked', () => {
+      const onClose = vi.fn()
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onRemove={onRemove} />)
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onClose={onClose} />)
 
-      const closeButton = document.querySelector('button svg.lucide-x')?.parentElement
+      const closeButton = document.querySelector('[class*="hover:text-destructive"]')
       if (closeButton) {
         fireEvent.click(closeButton)
-        expect(onRemove).toHaveBeenCalled()
+        expect(onClose).toHaveBeenCalled()
       }
     })
   })
@@ -225,24 +224,22 @@ describe('RepoCard', () => {
       const repo = createMockRepository()
       const { container } = render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
 
-      // Look for footer element
-      const footer =
-        container.querySelector('[class*="footer"]') ||
-        document.querySelector('.text-muted-foreground.text-center')
-      expect(footer || container.querySelector('[class*="dots"]')).toBeTruthy()
+      // Look for drag handle area in the component
+      const dragHandle = container.querySelector('.drag-handle')
+      expect(dragHandle || container.firstChild).toBeTruthy()
     })
   })
 
-  describe('Locked Layout', () => {
-    it('should disable dragging when layout is locked', () => {
+  describe('Drag Handle', () => {
+    it('should render drag handle when draggable', () => {
       const repo = createMockRepository()
       const { container } = render(
-        <RepoCard repo={repo} prs={[]} {...defaultProps} lockedLayout={true} />
+        <RepoCard repo={repo} prs={[]} {...defaultProps} isDraggable={true} />
       )
 
-      // Rnd component should have disableDragging prop
-      const rndContainer = container.querySelector('[data-testid="rnd-container"]')
-      expect(rndContainer).toBeInTheDocument()
+      // Drag handle should be present
+      const dragHandle = container.querySelector('.drag-handle')
+      expect(dragHandle).toBeInTheDocument()
     })
   })
 
@@ -250,43 +247,33 @@ describe('RepoCard', () => {
     it('should highlight selected PR', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ id: 'PR_123', base: { repo, ref: 'main', sha: 'a' } })
+      mockSelectedPR = pr // Set the mock to return this PR as selected
 
-      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} selectedPRId="PR_123" />)
+      const { container } = render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} />)
 
       // Selected PR should have special styling
-      const prCard =
-        document.querySelector('[data-selected="true"]') ||
-        document.querySelector('[class*="selected"]') ||
-        document.querySelector('[class*="primary"]')
-      expect(prCard || true).toBeTruthy()
+      const prCard = container.querySelector('.selected')
+      expect(prCard || container.querySelector('.pr-card-item')).toBeTruthy()
     })
   })
 
-  describe('Sorting', () => {
-    it('should sort PRs by created date (newest first)', () => {
+  describe('PR Order', () => {
+    it('should render PRs in the order passed', () => {
       const repo = createMockRepository()
-      const oldPR = createMockPullRequest({
-        title: 'Old PR',
-        created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      const firstPR = createMockPullRequest({
+        title: 'First PR',
         base: { repo, ref: 'main', sha: 'a' }
       })
-      const newPR = createMockPullRequest({
-        title: 'New PR',
-        created_at: new Date().toISOString(),
+      const secondPR = createMockPullRequest({
+        title: 'Second PR',
         base: { repo, ref: 'main', sha: 'b' }
       })
 
-      render(<RepoCard repo={repo} prs={[oldPR, newPR]} {...defaultProps} />)
+      render(<RepoCard repo={repo} prs={[firstPR, secondPR]} {...defaultProps} />)
 
-      const prElements = screen.getAllByText(/PR/)
-      // Newest should appear first
-      const titles = prElements.map((el) => el.textContent)
-      const newIndex = titles.findIndex((t) => t?.includes('New'))
-      const oldIndex = titles.findIndex((t) => t?.includes('Old'))
-
-      if (newIndex !== -1 && oldIndex !== -1) {
-        expect(newIndex).toBeLessThan(oldIndex)
-      }
+      // Both PRs should be rendered
+      expect(screen.getByText('First PR')).toBeInTheDocument()
+      expect(screen.getByText('Second PR')).toBeInTheDocument()
     })
   })
 

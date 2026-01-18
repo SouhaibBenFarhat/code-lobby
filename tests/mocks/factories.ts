@@ -141,15 +141,18 @@ export { resetIdCounter }
 // User Factory
 // ============================================================================
 
-export function createMockUser(overrides: Partial<MockUser> = {}): MockUser {
+export function createMockUser(overrides: Partial<MockUser> = {}): MockUser & { isBot: boolean } {
   const id = getNextId()
+  const login = overrides.login || `user-${id}`
+  const type = overrides.type || 'User'
   return {
     id,
-    login: `user-${id}`,
+    login,
     avatar_url: `https://avatars.githubusercontent.com/u/${id}`,
-    html_url: `https://github.com/user-${id}`,
+    html_url: `https://github.com/${login}`,
     name: `Test User ${id}`,
-    type: 'User',
+    type,
+    isBot: type === 'Bot' || login.includes('[bot]'),
     ...overrides
   }
 }

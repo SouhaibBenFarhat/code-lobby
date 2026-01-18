@@ -55,13 +55,18 @@ describe('TokenInput', () => {
       expect(label).toHaveTextContent(/Personal Access Token/)
     })
 
-    it('should have link to create token on GitHub', () => {
+    it('should have button to open GitHub token settings', () => {
       render(<TokenInput onAuthenticated={mockOnAuthenticated} />)
 
-      // Find any link that goes to GitHub for token creation
-      const links = screen.getAllByRole('link')
-      const githubLink = links.find((link) => link.getAttribute('href')?.includes('github.com'))
-      expect(githubLink).toBeInTheDocument()
+      // The instructions section is collapsible - click to expand first
+      const expandButton = screen.getByRole('button', {
+        name: /How to get a Personal Access Token/i
+      })
+      fireEvent.click(expandButton)
+
+      // Find button that opens GitHub token settings
+      const githubButton = screen.getByRole('button', { name: /GitHub Settings/i })
+      expect(githubButton).toBeInTheDocument()
     })
   })
 

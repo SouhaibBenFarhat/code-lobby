@@ -88,8 +88,8 @@ describe('App', () => {
       render(<App />)
 
       await waitFor(() => {
-        // Canvas view should show PRGrid (main content area with p-2 class)
-        const mainContent = document.querySelector('main.overflow-auto.p-2')
+        // Canvas view should show main content area
+        const mainContent = document.querySelector('main.overflow-auto')
         expect(mainContent).toBeInTheDocument()
       })
     })
