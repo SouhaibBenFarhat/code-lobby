@@ -6,7 +6,7 @@
  * with comprehensive PR information.
  */
 
-import type { PullRequest } from '../../../src/main/github-graphql'
+import type { PullRequest } from '../components/types'
 
 /**
  * Build a comprehensive PR context message for AI chat
@@ -78,11 +78,11 @@ export function buildPRSystemPrompt(pr: PullRequest): string {
   // ===================
   // CI/CD STATUS
   // ===================
-  if (pr.checks?.checkRuns && pr.checks.checkRuns.length > 0) {
+  if (pr.checks?.check_runs && pr.checks.check_runs.length > 0) {
     lines.push('## CI/CD Status')
-    const passed = pr.checks.checkRuns.filter((c) => c.conclusion === 'success').length
-    const failed = pr.checks.checkRuns.filter((c) => c.conclusion === 'failure').length
-    const pending = pr.checks.checkRuns.filter(
+    const passed = pr.checks.check_runs.filter((c) => c.conclusion === 'success').length
+    const failed = pr.checks.check_runs.filter((c) => c.conclusion === 'failure').length
+    const pending = pr.checks.check_runs.filter(
       (c) => !c.conclusion || c.status === 'in_progress'
     ).length
 
@@ -91,7 +91,7 @@ export function buildPRSystemPrompt(pr: PullRequest): string {
     if (pending > 0) lines.push(`- ⏳ Pending: ${pending}`)
 
     // List failed checks with details
-    const failedChecks = pr.checks.checkRuns.filter((c) => c.conclusion === 'failure')
+    const failedChecks = pr.checks.check_runs.filter((c) => c.conclusion === 'failure')
     if (failedChecks.length > 0) {
       lines.push('')
       lines.push('**Failed checks:**')
