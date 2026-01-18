@@ -98,7 +98,7 @@ const store = new Store<StoreSchema>({
     aiChat: {
       claudeApiKey: null,
       selectedModel: null,
-      enableThinking: false,
+      enableThinking: true, // Show Claude's reasoning by default
       chatHistory: []
     },
     aiPanel: {
@@ -225,7 +225,7 @@ export function setSelectedModel(model: string | null): void {
 }
 
 export function getEnableThinking(): boolean {
-  return store.get('aiChat').enableThinking ?? false
+  return store.get('aiChat').enableThinking ?? true
 }
 
 export function setEnableThinking(enabled: boolean): void {

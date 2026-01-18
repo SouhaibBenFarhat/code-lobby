@@ -33,6 +33,8 @@ export interface ClaudeModel {
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 const MAX_TOKENS = 4096
+const MAX_TOKENS_WITH_THINKING = 16000  // Must be > thinking budget
+const THINKING_BUDGET = 8000
 
 // Cache client instances by API key
 const clientCache = new Map<string, Anthropic>()
@@ -138,9 +140,10 @@ export async function sendMessage(
     const client = getClient(apiKey)
     
     // Build request parameters
+    // When thinking is enabled, max_tokens must be > thinking.budget_tokens
     const requestParams: Parameters<typeof client.messages.create>[0] = {
       model: selectedModel,
-      max_tokens: MAX_TOKENS,
+      max_tokens: useThinking ? MAX_TOKENS_WITH_THINKING : MAX_TOKENS,
       system: systemPrompt,
       messages: messages.map(m => ({
         role: m.role,
@@ -152,7 +155,7 @@ export async function sendMessage(
     if (useThinking) {
       requestParams.thinking = {
         type: 'enabled',
-        budget_tokens: 5000 // Allow up to 5000 tokens for thinking
+        budget_tokens: THINKING_BUDGET
       }
     }
     
@@ -267,9 +270,10 @@ export async function sendMessageStreaming(
     const client = getClient(apiKey)
     
     // Build request parameters
+    // When thinking is enabled, max_tokens must be > thinking.budget_tokens
     const requestParams: Parameters<typeof client.messages.create>[0] = {
       model: selectedModel,
-      max_tokens: MAX_TOKENS,
+      max_tokens: useThinking ? MAX_TOKENS_WITH_THINKING : MAX_TOKENS,
       system: systemPrompt,
       messages: messages.map(m => ({
         role: m.role,
@@ -282,7 +286,7 @@ export async function sendMessageStreaming(
     if (useThinking) {
       requestParams.thinking = {
         type: 'enabled',
-        budget_tokens: 5000
+        budget_tokens: THINKING_BUDGET
       }
     }
     
@@ -303,18 +307,11 @@ export async function sendMessageStreaming(
       onChunk({ type: 'text', content: text })
     })
     
-    // Handle thinking blocks (if extended thinking is enabled)
-    stream.on('contentBlockStart', (block) => {
-      if (block.content_block.type === 'thinking') {
-        // Thinking block started
-      }
-    })
-    
-    stream.on('contentBlockDelta', (delta) => {
-      if (delta.delta.type === 'thinking_delta' && 'thinking' in delta.delta) {
-        fullThinking += delta.delta.thinking
-        onChunk({ type: 'thinking', thinking: delta.delta.thinking })
-      }
+    // Handle thinking events (if extended thinking is enabled)
+    // The SDK emits 'thinking' event with (delta, accumulated) args
+    stream.on('thinking', (thinkingDelta: string, _accumulated: string) => {
+      fullThinking += thinkingDelta
+      onChunk({ type: 'thinking', thinking: thinkingDelta })
     })
     
     // Wait for completion

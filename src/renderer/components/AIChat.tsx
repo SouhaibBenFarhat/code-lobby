@@ -251,10 +251,13 @@ const MessageBubble = React.memo(function MessageBubble({
         {message.role === 'assistant' ? (
           <div className="space-y-0">
             {message.thinking && (
-              <div className="border-b border-border/50">
+              <div className={cn(
+                "border-b transition-colors",
+                expandedThinking.has(message.id) ? "border-primary/20 bg-primary/5" : "border-border/50"
+              )}>
                 <button
                   onClick={() => toggleThinkingExpanded(message.id)}
-                  className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ChevronRight 
                     className={cn(
@@ -262,12 +265,13 @@ const MessageBubble = React.memo(function MessageBubble({
                       expandedThinking.has(message.id) && "rotate-90"
                     )} 
                   />
-                  <Brain className="w-3 h-3" />
-                  <span>Thinking...</span>
+                  <Brain className={cn("w-3.5 h-3.5", expandedThinking.has(message.id) && "text-primary")} />
+                  <span>Thinking</span>
+                  <span className="text-[10px] text-muted-foreground/60 ml-auto">Click to {expandedThinking.has(message.id) ? 'hide' : 'show'}</span>
                 </button>
                 {expandedThinking.has(message.id) && (
-                  <div className="px-3 pb-2 text-xs text-muted-foreground bg-muted/50 border-l-2 border-primary/30 ml-3 mr-3 mb-2 rounded">
-                    <pre className="whitespace-pre-wrap font-mono text-[10px] max-h-48 overflow-y-auto">
+                  <div className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded">
+                    <pre className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed">
                       {message.thinking}
                     </pre>
                   </div>
@@ -312,18 +316,19 @@ const StreamingBubble = React.memo(function StreamingBubble({
       </div>
       <div className="max-w-[85%] rounded-lg bg-muted min-h-[40px]">
         {streaming.thinking && (
-          <div className="border-b border-border/50">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
-              <Brain className="w-3 h-3 animate-pulse" />
-              <span>Thinking...</span>
+          <div className="border-b border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1.5 px-3 py-2 text-xs text-primary/80">
+              <Brain className="w-3.5 h-3.5 animate-pulse" />
+              <span className="font-medium">Thinking...</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">Extended reasoning</span>
             </div>
             <div 
-              className="px-3 pb-2 text-xs text-muted-foreground bg-muted/50 border-l-2 border-primary/30 ml-3 mr-3 mb-2 rounded"
+              className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded"
               style={{ contain: 'content' }}
             >
-              <pre className="whitespace-pre-wrap font-mono text-[10px] max-h-48 overflow-y-auto">
+              <pre className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed">
                 {streaming.thinking}
-                <span className="inline-block w-2 h-3 bg-primary/50 animate-pulse ml-0.5" />
+                <span className="inline-block w-2 h-3 bg-primary/60 animate-pulse ml-0.5 rounded-sm" />
               </pre>
             </div>
           </div>

@@ -92,8 +92,8 @@ function saveLogs(): void {
       logs: logs.slice(-MAX_LOGS_PER_SESSION) // Keep last N logs
     }
     fs.writeFileSync(getSessionFilePath(), JSON.stringify(session, null, 2))
-  } catch (e) {
-    console.error('Failed to save logs:', e)
+  } catch {
+    // Silently ignore save errors - file might be locked or disk full
   }
 }
 
@@ -127,6 +127,24 @@ function formatTimestamp(): string {
   return new Date().toISOString()
 }
 
+// Track if we should skip console output (during shutdown)
+let consoleDisabled = false
+
+function safeConsoleLog(method: 'log' | 'warn' | 'error' | 'debug', ...args: unknown[]): void {
+  if (consoleDisabled) return
+  
+  try {
+    console[method](...args)
+  } catch (e) {
+    // EPIPE or other stream errors - disable console logging
+    // This happens during app shutdown when stdout is closed
+    if ((e as NodeJS.ErrnoException).code === 'EPIPE') {
+      consoleDisabled = true
+    }
+    // Silently ignore - we still have disk logging
+  }
+}
+
 function addLog(level: LogLevel, category: string, message: string, details?: unknown): void {
   const entry: LogEntry = {
     id: generateId(),
@@ -147,20 +165,20 @@ function addLog(level: LogLevel, category: string, message: string, details?: un
   // Schedule save to disk
   scheduleSave()
   
-  // Also log to console for development
+  // Also log to console for development (with EPIPE protection)
   const consoleMsg = `[${entry.timestamp}] [${level.toUpperCase()}] [${category}] ${message}`
   switch (level) {
     case 'error':
-      console.error(consoleMsg, details || '')
+      safeConsoleLog('error', consoleMsg, details || '')
       break
     case 'warn':
-      console.warn(consoleMsg, details || '')
+      safeConsoleLog('warn', consoleMsg, details || '')
       break
     case 'debug':
-      console.debug(consoleMsg, details || '')
+      safeConsoleLog('debug', consoleMsg, details || '')
       break
     default:
-      console.log(consoleMsg, details || '')
+      safeConsoleLog('log', consoleMsg, details || '')
   }
 }
 
