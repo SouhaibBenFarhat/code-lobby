@@ -162,6 +162,32 @@ function App() {
     window.electron.setAIPanel({ isOpen: isAIPanelOpen, width: aiPanelWidth })
   }, [isAIPanelOpen, aiPanelWidth, aiPanelSettingsLoaded])
 
+  // Restore active AI conversation on mount
+  useEffect(() => {
+    const restoreActiveChat = async () => {
+      try {
+        const activePRChatId = await window.electron.getActivePRChatId()
+        if (activePRChatId) {
+          const chat = await window.electron.getPRChat(activePRChatId)
+          if (chat) {
+            setLinkedPRChat({
+              prId: chat.prId,
+              prNumber: chat.prNumber,
+              prTitle: chat.prTitle,
+              repoFullName: chat.repoFullName
+            })
+          } else {
+            // Chat no longer exists, clear the active ID
+            await window.electron.setActivePRChatId(null)
+          }
+        }
+      } catch (_e) {
+        // Use default (general chat)
+      }
+    }
+    restoreActiveChat()
+  }, [])
+
   // Load My PRs filter settings on mount
   useEffect(() => {
     const loadMyPRsFilter = async () => {
