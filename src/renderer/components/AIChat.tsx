@@ -1537,61 +1537,61 @@ export function AIChatPanel({
           </div>
         )}
 
-        {/* Empty state */}
-        {!isLoading && messages.length === 0 && !streaming.isStreaming ? (
+        {/* PR Empty state - shown when PR is selected but no chat exists for it */}
+        {!isLoading && showPREmptyState && selectedPR && (
           <div className="h-full flex items-center justify-center min-h-[200px]">
-            {showPREmptyState && selectedPR ? (
-              // Empty state for selected PR with no existing chat
-              <div className="text-center space-y-4 px-6">
-                <GitPullRequest className="w-12 h-12 mx-auto text-blue-500/40" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">
-                    #{selectedPR.number} {selectedPR.title.slice(0, 50)}
-                    {selectedPR.title.length > 50 ? '...' : ''}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{selectedPR.base.repo.full_name}</p>
-                </div>
-                <p className="text-sm text-muted-foreground">No conversation yet for this PR</p>
-                {onStartPRChat && apiKey && (
-                  <Button size="sm" onClick={() => onStartPRChat(selectedPR)} className="mt-2">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Start chatting about this PR
-                  </Button>
-                )}
-                {!apiKey && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Enter your API key below to start chatting
-                  </p>
-                )}
-              </div>
-            ) : (
-              // Default empty state
-              <div className="text-center space-y-2">
-                <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">
-                  {apiKey
-                    ? 'Start a conversation with Claude'
-                    : 'Enter your API key below to start'}
+            <div className="text-center space-y-4 px-6">
+              <GitPullRequest className="w-12 h-12 mx-auto text-blue-500/40" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  #{selectedPR.number} {selectedPR.title.slice(0, 50)}
+                  {selectedPR.title.length > 50 ? '...' : ''}
                 </p>
+                <p className="text-xs text-muted-foreground">{selectedPR.base.repo.full_name}</p>
               </div>
-            )}
+              <p className="text-sm text-muted-foreground">No conversation yet for this PR</p>
+              {onStartPRChat && apiKey && (
+                <Button size="sm" onClick={() => onStartPRChat(selectedPR)} className="mt-2">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Start chatting about this PR
+                </Button>
+              )}
+              {!apiKey && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Enter your API key below to start chatting
+                </p>
+              )}
+            </div>
           </div>
-        ) : (
-          !isLoading && (
-            <VirtualizedMessageList
-              messages={messages}
-              streaming={streaming}
-              throttledStreaming={throttledStreaming}
-              messageQueue={messageQueue}
-              expandedThinking={expandedThinking}
-              toggleThinkingExpanded={toggleThinkingExpanded}
-              setMessageQueue={setMessageQueue}
-              scrollContainerRef={scrollContainerRef}
-              onScroll={handleScroll}
-              onVirtualizerReady={handleVirtualizerReady}
-              user={user}
-            />
-          )
+        )}
+
+        {/* Default empty state - only when no PR selected and no messages */}
+        {!isLoading && !showPREmptyState && messages.length === 0 && !streaming.isStreaming && (
+          <div className="h-full flex items-center justify-center min-h-[200px]">
+            <div className="text-center space-y-2">
+              <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">
+                {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Message list - show only when not in PR empty state */}
+        {!isLoading && !showPREmptyState && (messages.length > 0 || streaming.isStreaming) && (
+          <VirtualizedMessageList
+            messages={messages}
+            streaming={streaming}
+            throttledStreaming={throttledStreaming}
+            messageQueue={messageQueue}
+            expandedThinking={expandedThinking}
+            toggleThinkingExpanded={toggleThinkingExpanded}
+            setMessageQueue={setMessageQueue}
+            scrollContainerRef={scrollContainerRef}
+            onScroll={handleScroll}
+            onVirtualizerReady={handleVirtualizerReady}
+            user={user}
+          />
         )}
 
         {/* Scroll to bottom button */}
