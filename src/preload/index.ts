@@ -81,13 +81,15 @@ export interface ElectronAPI {
   getIDEViewSettings: () => Promise<{
     sidebarWidth: number
     expandedRepos: string[]
-    myPRsRepos: string[]
   }>
   setIDEViewSettings: (settings: {
     sidebarWidth?: number
     expandedRepos?: string[]
-    myPRsRepos?: string[]
   }) => Promise<{ success: boolean }>
+
+  // My PRs filter (shared across all views)
+  getMyPRsRepos: () => Promise<string[]>
+  setMyPRsRepos: (repos: string[]) => Promise<{ success: boolean }>
 
   // Logging
   getLogs: () => Promise<
@@ -236,11 +238,12 @@ const electronAPI: ElectronAPI = {
 
   // IDE view settings
   getIDEViewSettings: () => ipcRenderer.invoke('get-ide-view-settings'),
-  setIDEViewSettings: (settings: {
-    sidebarWidth?: number
-    expandedRepos?: string[]
-    myPRsRepos?: string[]
-  }) => ipcRenderer.invoke('set-ide-view-settings', settings),
+  setIDEViewSettings: (settings: { sidebarWidth?: number; expandedRepos?: string[] }) =>
+    ipcRenderer.invoke('set-ide-view-settings', settings),
+
+  // My PRs filter (shared across all views)
+  getMyPRsRepos: () => ipcRenderer.invoke('get-my-prs-repos'),
+  setMyPRsRepos: (repos: string[]) => ipcRenderer.invoke('set-my-prs-repos', repos),
 
   // Logging
   getLogs: () => ipcRenderer.invoke('get-logs'),

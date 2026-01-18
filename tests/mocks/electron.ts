@@ -59,6 +59,10 @@ interface MockElectronAPI {
   getSelectedRepos: ReturnType<typeof vi.fn>
   setSelectedRepos: ReturnType<typeof vi.fn>
 
+  // My PRs filter (shared across views)
+  getMyPRsRepos: ReturnType<typeof vi.fn>
+  setMyPRsRepos: ReturnType<typeof vi.fn>
+
   // PR Detail panel
   getPRDetailPanel: ReturnType<typeof vi.fn>
   setPRDetailPanel: ReturnType<typeof vi.fn>
@@ -156,6 +160,10 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // Selected repos
     getSelectedRepos: vi.fn().mockResolvedValue([]),
     setSelectedRepos: vi.fn().mockResolvedValue({ success: true }),
+
+    // My PRs filter (shared across views)
+    getMyPRsRepos: vi.fn().mockResolvedValue([]),
+    setMyPRsRepos: vi.fn().mockResolvedValue({ success: true }),
 
     // PR Detail panel
     getPRDetailPanel: vi.fn().mockResolvedValue(defaultPanelSettings),

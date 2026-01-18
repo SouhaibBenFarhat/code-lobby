@@ -19,7 +19,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | **Views** | Canvas view (draggable windows) | ✅ Complete |
 | | IDE view (tree navigation) | ✅ Complete |
 | | View mode persistence | ✅ Complete |
-| | My PRs filter persistence (per repo) | ✅ Complete |
+| | My PRs filter (shared across views) | ✅ Complete |
 | **PR Data** | GraphQL single-query fetch | ✅ Complete |
 | | CI/CD status display | ✅ Complete |
 | | Comments & reviews | ✅ Complete |
@@ -72,19 +72,27 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 ---
 
 ### 1.1.1 My PRs Filter Persistence ✅ Complete
-> Persist the "My PRs" filter toggle state per repository
+> Persist the "My PRs" filter toggle state per repository, shared across all views
 
 **Implementation Summary:**
-- Added `myPRsRepos` array to `IDEViewSettings` in electron-store
-- Filter state saved when user toggles the "My PRs" button on any repo
+- Added `myPRsRepos` as app-level setting in electron-store (not view-specific)
+- Created `MyPRsFilterContext` in App.tsx shared by both Canvas and IDE views
+- Filter state synced across views - toggling in Canvas affects IDE and vice versa
 - State restored on app restart, remembering which repos have filter enabled
 - Each repository maintains independent filter state
 
 **Completed Features:**
-- [x] Store `myPRsRepos` in `IDEViewSettings`
-- [x] Load saved state on mount
-- [x] Save state when toggle changes
+- [x] Store `myPRsRepos` at app level (shared across views)
+- [x] Create `useMyPRsFilter` hook with context
+- [x] Load saved state on app mount
+- [x] Save state when toggle changes in any view
+- [x] Filter state shared between Canvas (RepoCard) and IDE views
 - [x] Independent persistence per repo
+
+**Technical Details:**
+- `myPRsRepos: string[]` in main store (not IDEViewSettings)
+- `MyPRsFilterContext` provides `{ myPRsRepos, toggleMyPRsFilter, isMyPRsFilterEnabled }`
+- Both `RepoCard` and `IDEView.TreeItem` consume the shared context
 
 **Completed:** January 18, 2026
 

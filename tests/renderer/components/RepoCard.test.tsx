@@ -13,16 +13,23 @@ import {
   createMockUser,
   resetIdCounter
 } from '../../mocks/factories'
-import { fireEvent, render, screen, waitFor } from '../../utils/render'
+import { fireEvent, render, screen } from '../../utils/render'
 
-// Mock the usePRContext hook
+// Mock the usePRContext and useMyPRsFilter hooks
 const mockSetSelectedPR = vi.fn()
 let mockSelectedPR: PullRequest | null = null
+const mockMyPRsRepos = new Set<string>()
+const mockToggleMyPRsFilter = vi.fn()
 
 vi.mock('@/App', () => ({
   usePRContext: () => ({
     selectedPR: mockSelectedPR,
     setSelectedPR: mockSetSelectedPR
+  }),
+  useMyPRsFilter: () => ({
+    myPRsRepos: mockMyPRsRepos,
+    toggleMyPRsFilter: mockToggleMyPRsFilter,
+    isMyPRsFilterEnabled: (repo: string) => mockMyPRsRepos.has(repo)
   })
 }))
 
@@ -38,6 +45,8 @@ describe('RepoCard', () => {
   beforeEach(() => {
     resetIdCounter()
     setupMockElectron()
+    mockMyPRsRepos.clear() // Reset filter state
+    mockToggleMyPRsFilter.mockClear()
     vi.clearAllMocks()
     mockSelectedPR = null
   })
@@ -157,7 +166,7 @@ describe('RepoCard', () => {
       expect(toggle).toBeInTheDocument()
     })
 
-    it('should filter PRs when My PRs toggle is clicked', async () => {
+    it('should call toggle function when My PRs toggle is clicked', async () => {
       const currentUser = createMockUser({ login: 'testuser' })
       const otherUser = createMockUser({ login: 'otheruser' })
       const repo = createMockRepository()
@@ -177,7 +186,7 @@ describe('RepoCard', () => {
         <RepoCard repo={repo} prs={[myPR, otherPR]} {...defaultProps} currentUser="testuser" />
       )
 
-      // Both should be visible initially
+      // Both should be visible initially (filter not enabled)
       expect(screen.getByText('My PR')).toBeInTheDocument()
       expect(screen.getByText('Other PR')).toBeInTheDocument()
 
@@ -186,11 +195,37 @@ describe('RepoCard', () => {
       if (toggle) {
         fireEvent.click(toggle)
 
-        await waitFor(() => {
-          expect(screen.getByText('My PR')).toBeInTheDocument()
-          expect(screen.queryByText('Other PR')).not.toBeInTheDocument()
-        })
+        // Verify toggle function was called with repo full_name
+        expect(mockToggleMyPRsFilter).toHaveBeenCalledWith(repo.full_name)
       }
+    })
+
+    it('should filter PRs when filter is enabled via context', () => {
+      const currentUser = createMockUser({ login: 'testuser' })
+      const otherUser = createMockUser({ login: 'otheruser' })
+      const repo = createMockRepository()
+
+      const myPR = createMockPullRequest({
+        title: 'My PR',
+        user: currentUser,
+        base: { repo, ref: 'main', sha: 'a' }
+      })
+      const otherPR = createMockPullRequest({
+        title: 'Other PR',
+        user: otherUser,
+        base: { repo, ref: 'main', sha: 'b' }
+      })
+
+      // Enable filter for this repo via mock
+      mockMyPRsRepos.add(repo.full_name)
+
+      render(
+        <RepoCard repo={repo} prs={[myPR, otherPR]} {...defaultProps} currentUser="testuser" />
+      )
+
+      // Only my PR should be visible
+      expect(screen.getByText('My PR')).toBeInTheDocument()
+      expect(screen.queryByText('Other PR')).not.toBeInTheDocument()
     })
   })
 

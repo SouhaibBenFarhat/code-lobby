@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn, formatRelativeTime } from '@/lib/utils'
-import { usePRContext } from '../App'
+import { useMyPRsFilter, usePRContext } from '../App'
 import { PRDetail } from './PRDetail'
 import type { PullRequest, Repository } from './types'
 import { ScrollArea } from './ui/scroll-area'
@@ -32,8 +32,6 @@ interface TreeItemProps {
   onToggle: () => void
   selectedPRId: string | null
   onSelectPR: (pr: PullRequest) => void
-  showOnlyMyPRs: boolean
-  onToggleMyPRs: () => void
   currentUser: string | null
 }
 
@@ -44,10 +42,11 @@ function TreeItem({
   onToggle,
   selectedPRId,
   onSelectPR,
-  showOnlyMyPRs,
-  onToggleMyPRs,
   currentUser
 }: TreeItemProps) {
+  const { isMyPRsFilterEnabled, toggleMyPRsFilter } = useMyPRsFilter()
+  const showOnlyMyPRs = isMyPRsFilterEnabled(repo.full_name)
+
   // Filter PRs based on "My PRs" toggle for this repo
   const filteredPRs = useMemo(() => {
     if (!showOnlyMyPRs || !currentUser) return prs
@@ -102,7 +101,7 @@ function TreeItem({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onToggleMyPRs()
+                  toggleMyPRsFilter(repo.full_name)
                 }}
                 className={cn(
                   'p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100',
@@ -216,7 +215,6 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
 export function IDEView({ currentUser }: IDEViewProps) {
   const { selectedPR, setSelectedPR } = usePRContext()
   const [expandedRepos, setExpandedRepos] = useState<Set<string>>(new Set())
-  const [myPRsRepos, setMyPRsRepos] = useState<Set<string>>(new Set()) // Track which repos show only my PRs
   const [sidebarWidth, setSidebarWidth] = useState(280)
   const [isResizing, setIsResizing] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
@@ -230,9 +228,6 @@ export function IDEView({ currentUser }: IDEViewProps) {
         setSidebarWidth(settings.sidebarWidth || 280)
         const savedExpanded = settings.expandedRepos || []
         setExpandedRepos(new Set(savedExpanded))
-        // Load saved "My PRs" filter state per repo
-        const savedMyPRsRepos = settings.myPRsRepos || []
-        setMyPRsRepos(new Set(savedMyPRsRepos))
         // If we had saved expanded repos, mark auto-expand as done
         if (savedExpanded.length > 0) {
           hasAutoExpanded.current = true
@@ -250,10 +245,9 @@ export function IDEView({ currentUser }: IDEViewProps) {
     if (!settingsLoaded) return
     window.electron.setIDEViewSettings({
       sidebarWidth,
-      expandedRepos: Array.from(expandedRepos),
-      myPRsRepos: Array.from(myPRsRepos)
+      expandedRepos: Array.from(expandedRepos)
     })
-  }, [sidebarWidth, expandedRepos, myPRsRepos, settingsLoaded])
+  }, [sidebarWidth, expandedRepos, settingsLoaded])
 
   // Fetch selected repos filter
   const { data: selectedReposFilter } = useQuery({
@@ -358,18 +352,6 @@ export function IDEView({ currentUser }: IDEViewProps) {
     })
   }, [])
 
-  const toggleMyPRsForRepo = useCallback((repoName: string) => {
-    setMyPRsRepos((prev) => {
-      const next = new Set(prev)
-      if (next.has(repoName)) {
-        next.delete(repoName)
-      } else {
-        next.add(repoName)
-      }
-      return next
-    })
-  }, [])
-
   // Handle resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -440,8 +422,6 @@ export function IDEView({ currentUser }: IDEViewProps) {
                 onToggle={() => toggleRepo(repo.full_name)}
                 selectedPRId={selectedPR?.id || null}
                 onSelectPR={setSelectedPR}
-                showOnlyMyPRs={myPRsRepos.has(repo.full_name)}
-                onToggleMyPRs={() => toggleMyPRsForRepo(repo.full_name)}
                 currentUser={fetchedCurrentUser}
               />
             ))}

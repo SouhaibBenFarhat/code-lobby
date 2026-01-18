@@ -41,6 +41,22 @@ const TestPRContext = createContext<PRContextType>({
 // Export for tests that need to mock usePRContext
 export const usePRContext = () => useContext(TestPRContext)
 
+// Mirror the MyPRsFilterContext from App.tsx for testing
+interface MyPRsFilterContextType {
+  myPRsRepos: Set<string>
+  toggleMyPRsFilter: (repoFullName: string) => void
+  isMyPRsFilterEnabled: (repoFullName: string) => boolean
+}
+
+const TestMyPRsFilterContext = createContext<MyPRsFilterContextType>({
+  myPRsRepos: new Set(),
+  toggleMyPRsFilter: () => {},
+  isMyPRsFilterEnabled: () => false
+})
+
+// Export for tests that need to mock useMyPRsFilter
+export const useMyPRsFilter = () => useContext(TestMyPRsFilterContext)
+
 interface WrapperProps {
   children: ReactNode
 }
@@ -49,6 +65,8 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   queryClient?: QueryClient
   initialSelectedPR?: PullRequest | null
   onSelectPR?: (pr: PullRequest | null) => void
+  initialMyPRsRepos?: string[]
+  onToggleMyPRsFilter?: (repoFullName: string) => void
 }
 
 /**
@@ -91,17 +109,63 @@ function PRContextProvider({
 }
 
 /**
+ * MyPRsFilter Provider for tests
+ */
+function MyPRsFilterProvider({
+  children,
+  initialMyPRsRepos = [],
+  onToggle
+}: {
+  children: ReactNode
+  initialMyPRsRepos?: string[]
+  onToggle?: (repoFullName: string) => void
+}): ReactElement {
+  const [myPRsRepos, setMyPRsRepos] = useState<Set<string>>(new Set(initialMyPRsRepos))
+
+  const toggleMyPRsFilter = (repoFullName: string) => {
+    setMyPRsRepos((prev) => {
+      const next = new Set(prev)
+      if (next.has(repoFullName)) {
+        next.delete(repoFullName)
+      } else {
+        next.add(repoFullName)
+      }
+      return next
+    })
+    onToggle?.(repoFullName)
+  }
+
+  const isMyPRsFilterEnabled = (repoFullName: string) => myPRsRepos.has(repoFullName)
+
+  return (
+    <TestMyPRsFilterContext.Provider
+      value={{ myPRsRepos, toggleMyPRsFilter, isMyPRsFilterEnabled }}
+    >
+      {children}
+    </TestMyPRsFilterContext.Provider>
+  )
+}
+
+/**
  * Custom render function that wraps component with all providers
  */
 function customRender(ui: ReactElement, options?: CustomRenderOptions): RenderResult {
   const queryClient = options?.queryClient || createTestQueryClient()
-  const { initialSelectedPR, onSelectPR, ...renderOptions } = options || {}
+  const {
+    initialSelectedPR,
+    onSelectPR,
+    initialMyPRsRepos,
+    onToggleMyPRsFilter,
+    ...renderOptions
+  } = options || {}
 
   const Wrapper = ({ children }: WrapperProps) => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <PRContextProvider initialSelectedPR={initialSelectedPR} onSelectPR={onSelectPR}>
-          {children}
+          <MyPRsFilterProvider initialMyPRsRepos={initialMyPRsRepos} onToggle={onToggleMyPRsFilter}>
+            {children}
+          </MyPRsFilterProvider>
         </PRContextProvider>
       </TooltipProvider>
     </QueryClientProvider>

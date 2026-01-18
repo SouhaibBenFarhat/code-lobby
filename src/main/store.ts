@@ -29,7 +29,6 @@ export type ViewMode = 'canvas' | 'ide'
 export interface IDEViewSettings {
   sidebarWidth: number
   expandedRepos: string[] // Which repos are expanded in tree
-  myPRsRepos: string[] // Which repos have "My PRs" filter enabled
 }
 
 // AI Chat message
@@ -66,6 +65,7 @@ interface StoreSchema {
   repoOrder: string[] // Array of repo full_names in user's preferred order
   cardLayouts: LayoutItem[] // Free-form card positions and sizes
   selectedRepos: string[] // Array of repo full_names to display (empty = show all)
+  myPRsRepos: string[] // Array of repo full_names with "My PRs" filter enabled (shared across views)
   prDetailPanel: PanelSettings // PR detail panel state
   repoColors: Record<string, string> // Map of repo full_name to color hex
   viewMode: ViewMode // Current view mode (canvas or ide)
@@ -86,6 +86,7 @@ const store = new Store<StoreSchema>({
     repoOrder: [],
     cardLayouts: [],
     selectedRepos: [], // Empty means show all
+    myPRsRepos: [], // Repos with "My PRs" filter enabled
     prDetailPanel: {
       isOpen: false,
       width: 400
@@ -94,8 +95,7 @@ const store = new Store<StoreSchema>({
     viewMode: 'canvas', // Default to canvas view
     ideViewSettings: {
       sidebarWidth: 280,
-      expandedRepos: [],
-      myPRsRepos: []
+      expandedRepos: []
     },
     aiChat: {
       claudeApiKey: null,
@@ -163,6 +163,15 @@ export function getSelectedRepos(): string[] {
 
 export function setSelectedRepos(repos: string[]): void {
   store.set('selectedRepos', repos)
+}
+
+// My PRs filter (shared across all views)
+export function getMyPRsRepos(): string[] {
+  return store.get('myPRsRepos')
+}
+
+export function setMyPRsRepos(repos: string[]): void {
+  store.set('myPRsRepos', repos)
 }
 
 export function getPRDetailPanel(): PanelSettings {

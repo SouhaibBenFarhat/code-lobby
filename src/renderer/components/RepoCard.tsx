@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { cn, formatRelativeTime } from '@/lib/utils'
+import { useMyPRsFilter } from '../App'
 import { PRCard } from './PRCard'
 import type { PullRequest, Repository } from './types'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
@@ -58,7 +59,8 @@ export function RepoCard({
   currentUser
 }: RepoCardProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
-  const [showOnlyMyPRs, setShowOnlyMyPRs] = useState(false)
+  const { isMyPRsFilterEnabled, toggleMyPRsFilter } = useMyPRsFilter()
+  const showOnlyMyPRs = isMyPRsFilterEnabled(repo.full_name)
 
   // Filter PRs based on toggle
   const filteredPRs = useMemo(() => {
@@ -220,7 +222,7 @@ export function RepoCard({
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      setShowOnlyMyPRs(!showOnlyMyPRs)
+                      toggleMyPRsFilter(repo.full_name)
                     }}
                   >
                     {showOnlyMyPRs ? (

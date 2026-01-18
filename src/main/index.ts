@@ -32,6 +32,7 @@ import {
   getClaudeApiKey,
   getEnableThinking,
   getIDEViewSettings,
+  getMyPRsRepos,
   getPRDetailPanel,
   getRepoColors,
   getRepoOrder,
@@ -49,6 +50,7 @@ import {
   setClaudeApiKey,
   setEnableThinking,
   setIDEViewSettings,
+  setMyPRsRepos,
   setPRDetailPanel,
   setRepoColor,
   setRepoOrder,
@@ -411,6 +413,16 @@ function setupIPCHandlers(): void {
 
   ipcMain.handle('set-selected-repos', async (_, repos: string[]) => {
     setSelectedRepos(repos)
+    return { success: true }
+  })
+
+  // My PRs filter (shared across all views)
+  ipcMain.handle('get-my-prs-repos', async () => {
+    return getMyPRsRepos()
+  })
+
+  ipcMain.handle('set-my-prs-repos', async (_, repos: string[]) => {
+    setMyPRsRepos(repos)
     return { success: true }
   })
 
