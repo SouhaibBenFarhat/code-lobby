@@ -791,8 +791,15 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   // Create a unique PR ID for persistence
   const prId = `${pr.base.repo.full_name}#${pr.number}`
 
-  // Load persisted analysis on mount or when PR changes
+  // Reset all analysis state and load persisted analysis when PR changes
   useEffect(() => {
+    // Reset UI state immediately when PR changes
+    setIsAnalyzing(false)
+    setAnalysisError(null)
+    setShowAnalysis(false)
+    setPrAnalysis(null)
+
+    // Load any persisted analysis for this PR
     const loadAnalysis = async () => {
       const saved = await window.electron.getPRAnalysis(prId)
       if (saved) {
@@ -800,8 +807,6 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
           analysis: saved.analysis,
           generatedAt: saved.generatedAt
         })
-      } else {
-        setPrAnalysis(null)
       }
     }
     loadAnalysis()
