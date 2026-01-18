@@ -1,6 +1,6 @@
 # CodeLobby Work Plan
 
-> **Last Updated**: January 17, 2026  
+> **Last Updated**: January 18, 2026  
 > **Status**: Active Development (v1.0.0)
 
 ---
@@ -296,6 +296,96 @@ interface Workspace {
 ---
 
 ## 📋 Phase 2: AI-Powered Features
+
+### 2.0 Context Load Indicator ✅ Complete
+> Show users how much of the AI context window is being used
+
+**Concept:**
+Display a percentage/progress indicator showing how much of Claude's context window is consumed by the current conversation. Helps users understand when to start a new chat.
+
+**UI Design:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [Type a message...]                                        │
+│                                                             │
+│                    Context: 12% ████░░░░░░░░░░░░  [Send]   │
+│                             ↑                               │
+│                    Shows token usage                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**States:**
+```
+Low usage (0-50%):     Context: 12% ████░░░░░░░░░░░░  (green)
+Medium usage (50-80%): Context: 65% ██████████░░░░░░  (yellow)
+High usage (80-95%):   Context: 87% █████████████░░░  (orange)
+Critical (95%+):       Context: 98% ███████████████░  (red)
+                       ⚠️ Near limit - consider new chat
+```
+
+**Implementation:**
+```typescript
+// Token estimation (rough calculation)
+function estimateTokens(messages: ChatMessage[]): number {
+  // ~4 characters per token (rough estimate)
+  const totalChars = messages.reduce((sum, m) => 
+    sum + m.content.length + (m.thinking?.length || 0), 0
+  )
+  return Math.ceil(totalChars / 4)
+}
+
+// Context window sizes by model
+const CONTEXT_WINDOWS = {
+  'claude-sonnet-4': 200000,
+  'claude-opus-4': 200000,
+  'claude-3-5-sonnet': 200000,
+  'claude-3-haiku': 200000,
+}
+
+function ContextIndicator({ messages, model }: Props) {
+  const tokens = estimateTokens(messages)
+  const maxTokens = CONTEXT_WINDOWS[model] || 200000
+  const percentage = Math.min((tokens / maxTokens) * 100, 100)
+  
+  const color = 
+    percentage < 50 ? 'text-green-500' :
+    percentage < 80 ? 'text-yellow-500' :
+    percentage < 95 ? 'text-orange-500' : 'text-red-500'
+  
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span>Context: {percentage.toFixed(0)}%</span>
+      <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div 
+          className={cn("h-full rounded-full", color)}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      {percentage >= 95 && (
+        <span className="text-red-500">⚠️ Near limit</span>
+      )}
+    </div>
+  )
+}
+```
+
+**Features:**
+- [x] Token estimation from message content (~4 chars/token)
+- [x] Linear progress bar with color coding
+- [x] Color states: green (<50%), yellow (50-80%), orange (80-95%), red (>95%)
+- [x] Tooltip on hover: `67.7% • 135.5K / 200K context used`
+- [x] Model-aware context limits (200K default)
+- [x] Updates in real-time as conversation grows
+- [x] Compact, non-intrusive UI next to Send button
+
+**Technical Notes:**
+- Token counting is approximate (4 chars ≈ 1 token)
+- Includes message content + thinking tokens
+- Anthropic API doesn't expose context limits dynamically (hardcoded 200K)
+
+**Completed:** January 18, 2026
+
+---
 
 ### 2.1 AI Tool Execution 🔴 Not Started
 > Enable Claude to execute actions on behalf of the user
@@ -875,7 +965,110 @@ interface AIChat {
 - [ ] **"Does this PR satisfy the ticket?"** - AI checks implementation vs requirements
 - [ ] **"What's left to do?"** - Compare ticket AC with PR changes
 
-**Bidirectional Actions** (Future)
+**Create Ticket from PR Comment**
+- [ ] **"Create Jira Ticket" button** - On each PR comment (hover to reveal)
+- [ ] **Pre-fill ticket form** - Auto-populate from comment content
+- [ ] **Project selector** - Choose which Jira project
+- [ ] **Issue type selector** - Bug, Task, Story, etc.
+- [ ] **Auto-link to PR** - Add PR link in ticket description
+- [ ] **Quote comment** - Include original comment in ticket
+- [ ] **Assign to commenter** - Option to assign ticket to comment author
+- [ ] **AI-assisted summary** - Use Claude to generate ticket title from comment
+
+**UI - Create Ticket from Comment:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  💬 Comment by @reviewer                      [🎫 Create]   │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ This function needs better error handling.              ││
+│  │ We should add try-catch blocks and proper               ││
+│  │ logging for debugging purposes.                         ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼ Click "Create"
+┌─────────────────────────────────────────────────────────────┐
+│  Create Jira Ticket                                    [×]  │
+├─────────────────────────────────────────────────────────────┤
+│  Project:    [PORTAL ▼]                                     │
+│  Type:       [Task ▼]                                       │
+│                                                             │
+│  Summary:    [Add error handling to function      ] [🤖]   │
+│              ↑ AI-suggested from comment           ↑ Regen  │
+│                                                             │
+│  Description:                                               │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ From PR #123 review comment by @reviewer:               ││
+│  │                                                         ││
+│  │ > This function needs better error handling.            ││
+│  │ > We should add try-catch blocks and proper             ││
+│  │ > logging for debugging purposes.                       ││
+│  │                                                         ││
+│  │ PR: https://github.com/org/repo/pull/123                ││
+│  │ File: src/utils/api.ts (line 45)                        ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  Priority:   [Medium ▼]                                     │
+│  Assignee:   [@reviewer ▼]                                  │
+│  Labels:     [code-review] [tech-debt]                      │
+│                                                             │
+│                              [Cancel] [Create Ticket]       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**After Creation:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  💬 Comment by @reviewer              [PORTAL-456] [🎫]     │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ This function needs better error handling...            ││
+│  └─────────────────────────────────────────────────────────┘│
+│  └── 🎫 Ticket created: PORTAL-456 "Add error handling..." │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+```typescript
+interface CreateTicketFromCommentParams {
+  comment: PRComment
+  pr: PullRequest
+}
+
+async function createTicketFromComment({ comment, pr }: CreateTicketFromCommentParams) {
+  // 1. Generate AI summary (optional)
+  const summary = await generateTicketSummary(comment.body)
+  
+  // 2. Build description with context
+  const description = `
+    From PR #${pr.number} review comment by @${comment.author}:
+    
+    > ${comment.body}
+    
+    PR: ${pr.url}
+    ${comment.path ? `File: ${comment.path} (line ${comment.line})` : ''}
+  `
+  
+  // 3. Create ticket via Jira API
+  const ticket = await jira.createIssue({
+    project: selectedProject,
+    issueType: selectedType,
+    summary,
+    description,
+    priority: selectedPriority,
+    assignee: comment.author,  // Optional
+    labels: ['code-review']
+  })
+  
+  // 4. Optionally reply to PR comment with ticket link
+  await github.addReplyToComment(comment.id, 
+    `Created Jira ticket: [${ticket.key}](${ticket.url})`
+  )
+  
+  return ticket
+}
+```
+
+**Bidirectional Actions**
 - [ ] **Update ticket status** - Move ticket when PR is merged
 - [ ] **Add PR link to ticket** - Automatically link PR in Jira
 - [ ] **Transition workflow** - Trigger Jira transitions from CodeLobby
@@ -1074,4 +1267,4 @@ interface JiraTicket {
 
 ---
 
-*Last reviewed: January 17, 2026*
+*Last reviewed: January 18, 2026*

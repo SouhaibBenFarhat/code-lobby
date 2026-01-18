@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Send, Trash2, Key, Loader2, User, AlertCircle, Settings, X, RefreshCw, Brain, ChevronRight, ArrowDown } from 'lucide-react'
+import { Send, Trash2, Key, Loader2, User, AlertCircle, Settings, X, RefreshCw, Brain, ChevronRight, ArrowDown, Info } from 'lucide-react'
 import { DogIcon } from './DogIcon'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 // Utility for throttling with requestAnimationFrame
 function useThrottledValue<T>(value: T, fps = 30): T {
@@ -47,6 +48,109 @@ interface ChatMessage {
   content: string
   thinking?: string
   timestamp: string
+}
+
+// Context window sizes by model (in tokens)
+// NOTE: Anthropic's API does not return context window size, so we must hardcode these.
+// All current Claude models use 200K context. This is standard practice (Cursor does the same).
+// We only find out the actual limit when we exceed it (error: model_context_window_exceeded).
+const CONTEXT_WINDOWS: Record<string, number> = {
+  'claude-sonnet-4-20250514': 200000,
+  'claude-opus-4-20250514': 200000,
+  'claude-3-7-sonnet-20250219': 200000,
+  'claude-3-5-sonnet-20241022': 200000,
+  'claude-3-5-haiku-20241022': 200000,
+  'claude-3-opus-20240229': 200000,
+  'claude-3-sonnet-20240229': 200000,
+  'claude-3-haiku-20240307': 200000,
+}
+const DEFAULT_CONTEXT_WINDOW = 200000
+
+// Estimate tokens from text (~4 characters per token for English)
+// This is a rough estimate. Actual tokenization varies by model.
+// For accurate counting, we track input_tokens from API responses.
+function estimateTokens(text: string): number {
+  if (!text) return 0
+  return Math.ceil(text.length / 4)
+}
+
+// Calculate total tokens from messages
+// Uses estimation - actual tokens are tracked separately via API responses
+function calculateTotalTokens(messages: ChatMessage[], streamingContent?: string, streamingThinking?: string): number {
+  let total = 0
+  
+  // Add tokens from all messages
+  for (const msg of messages) {
+    total += estimateTokens(msg.content)
+    if (msg.thinking) {
+      total += estimateTokens(msg.thinking)
+    }
+  }
+  
+  // Add streaming content if present
+  if (streamingContent) {
+    total += estimateTokens(streamingContent)
+  }
+  if (streamingThinking) {
+    total += estimateTokens(streamingThinking)
+  }
+  
+  // Add overhead for message formatting (~20 tokens per message)
+  total += messages.length * 20
+  
+  return total
+}
+
+// Context load indicator component
+interface ContextIndicatorProps {
+  messages: ChatMessage[]
+  streamingContent?: string
+  streamingThinking?: string
+  model: string
+  inputText?: string
+}
+
+function ContextIndicator({ messages, streamingContent, streamingThinking, model, inputText }: ContextIndicatorProps) {
+  const maxTokens = CONTEXT_WINDOWS[model] || DEFAULT_CONTEXT_WINDOW
+  const usedTokens = calculateTotalTokens(messages, streamingContent, streamingThinking) + estimateTokens(inputText || '')
+  const percentage = Math.min((usedTokens / maxTokens) * 100, 100)
+  
+  // Color based on usage
+  const getColor = () => {
+    if (percentage < 50) return 'bg-green-500'
+    if (percentage < 80) return 'bg-yellow-500'
+    if (percentage < 95) return 'bg-orange-500'
+    return 'bg-red-500'
+  }
+  
+  // Format numbers with K suffix
+  const formatTokens = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+    return n.toString()
+  }
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5 cursor-help">
+            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={cn("h-full rounded-full transition-all duration-300", getColor())}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+            {percentage >= 95 && (
+              <span className="text-[10px] text-red-500">⚠️</span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs px-2 py-1">
+          <span>{percentage.toFixed(1)}% • {formatTokens(usedTokens)} / {formatTokens(maxTokens)} context used</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 interface ClaudeModel {
@@ -1146,11 +1250,20 @@ export function AIChatPanel({ onClose }: AIChatPanelProps) {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">
-              {isSending 
-                ? "Enter to queue • Shift+Enter for new line" 
-                : "Enter to send • Shift+Enter for new line"}
-            </p>
+            <div className="flex items-center justify-between">
+              <ContextIndicator
+                messages={messages}
+                streamingContent={streaming.content}
+                streamingThinking={streaming.thinking}
+                model={selectedModel}
+                inputText={input}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                {isSending 
+                  ? "Enter to queue • Shift+Enter for new line" 
+                  : "Enter to send • Shift+Enter for new line"}
+              </p>
+            </div>
           </div>
         )}
       </div>
