@@ -98,6 +98,7 @@ interface StoreSchema {
   aiPanel: AIPanelSettings // AI panel open state and size
   dataCache: DataCache // Persistent cache for API data
   prAnalyses: PRAnalysis[] // Persisted AI analyses of PRs
+  prAnalysisPanelStates: Record<string, boolean> // Panel open/closed state per PR (prId -> isOpen)
 }
 
 const store = new Store<StoreSchema>({
@@ -137,7 +138,8 @@ const store = new Store<StoreSchema>({
       prData: null,
       allRepos: null
     },
-    prAnalyses: []
+    prAnalyses: [],
+    prAnalysisPanelStates: {}
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -385,4 +387,32 @@ export function deletePRAnalysis(prId: string): void {
 
 export function clearPRAnalyses(): void {
   store.set('prAnalyses', [])
+}
+
+// PR Analysis Panel State (open/closed per PR)
+export function getPRAnalysisPanelStates(): Record<string, boolean> {
+  return store.get('prAnalysisPanelStates') || {}
+}
+
+export function getPRAnalysisPanelOpen(prId: string): boolean {
+  const states = getPRAnalysisPanelStates()
+  return states[prId] ?? false // Default to closed
+}
+
+export function setPRAnalysisPanelOpen(prId: string, isOpen: boolean): void {
+  const states = getPRAnalysisPanelStates()
+  states[prId] = isOpen
+
+  // Keep only the last 200 entries to prevent unbounded growth
+  const entries = Object.entries(states)
+  if (entries.length > 200) {
+    const trimmed = Object.fromEntries(entries.slice(-200))
+    store.set('prAnalysisPanelStates', trimmed)
+  } else {
+    store.set('prAnalysisPanelStates', states)
+  }
+}
+
+export function clearPRAnalysisPanelStates(): void {
+  store.set('prAnalysisPanelStates', {})
 }

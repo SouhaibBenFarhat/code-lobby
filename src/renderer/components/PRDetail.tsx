@@ -791,26 +791,40 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   // Create a unique PR ID for persistence
   const prId = `${pr.base.repo.full_name}#${pr.number}`
 
-  // Reset all analysis state and load persisted analysis when PR changes
+  // Load persisted state when PR changes (analysis + panel open state)
   useEffect(() => {
-    // Reset UI state immediately when PR changes
+    // Reset transient UI state immediately when PR changes
     setIsAnalyzing(false)
     setAnalysisError(null)
-    setShowAnalysis(false)
-    setPrAnalysis(null)
 
-    // Load any persisted analysis for this PR
-    const loadAnalysis = async () => {
+    // Load persisted state for this PR
+    const loadPersistedState = async () => {
+      // Load panel open state (default to false if not set)
+      const panelOpen = await window.electron.getPRAnalysisPanelOpen(prId)
+      setShowAnalysis(panelOpen)
+
+      // Load any persisted analysis
       const saved = await window.electron.getPRAnalysis(prId)
       if (saved) {
         setPrAnalysis({
           analysis: saved.analysis,
           generatedAt: saved.generatedAt
         })
+      } else {
+        setPrAnalysis(null)
       }
     }
-    loadAnalysis()
+    loadPersistedState()
   }, [prId])
+
+  // Persist panel open/closed state when it changes
+  const handleTogglePanel = useCallback(
+    (newState: boolean) => {
+      setShowAnalysis(newState)
+      window.electron.setPRAnalysisPanelOpen(prId, newState)
+    },
+    [prId]
+  )
 
   // Handler for "Why Open?" analysis
   const handleAnalyzePR = useCallback(
@@ -823,7 +837,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
       setIsAnalyzing(true)
       setAnalysisError(null)
-      setShowAnalysis(true)
+      handleTogglePanel(true)
 
       try {
         // Gather all comments
@@ -912,7 +926,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
         setIsAnalyzing(false)
       }
     },
-    [prId, pr]
+    [prId, pr, handleTogglePanel]
   )
 
   // With GraphQL, all data is already included in the PR object!
@@ -1223,7 +1237,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                   )}
                   onClick={() => {
                     if (prAnalysis) {
-                      setShowAnalysis(!showAnalysis)
+                      handleTogglePanel(!showAnalysis)
                     } else {
                       handleAnalyzePR()
                     }
@@ -1323,7 +1337,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => setShowAnalysis(false)}
+                  onClick={() => handleTogglePanel(false)}
                 >
                   <X className="w-3 h-3" />
                 </Button>

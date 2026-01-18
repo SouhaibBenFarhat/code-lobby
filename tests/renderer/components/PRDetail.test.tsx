@@ -697,6 +697,11 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
+      // Wait for initial state to load
+      await waitFor(() => {
+        expect(window.electron.getPRAnalysisPanelOpen).toHaveBeenCalled()
+      })
+
       const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
       if (whyOpenButton) {
         fireEvent.click(whyOpenButton)
@@ -747,6 +752,11 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
+      // Wait for initial state to load
+      await waitFor(() => {
+        expect(window.electron.getPRAnalysisPanelOpen).toHaveBeenCalled()
+      })
+
       const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
       if (whyOpenButton) {
         fireEvent.click(whyOpenButton)
@@ -768,6 +778,11 @@ describe('PRDetail', () => {
 
       const pr = createMockPullRequest()
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Wait for initial state to load
+      await waitFor(() => {
+        expect(window.electron.getPRAnalysisPanelOpen).toHaveBeenCalled()
+      })
 
       const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
       if (whyOpenButton) {
@@ -870,6 +885,11 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
+      // Wait for initial state to load
+      await waitFor(() => {
+        expect(window.electron.getPRAnalysisPanelOpen).toHaveBeenCalled()
+      })
+
       const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
       if (whyOpenButton) {
         fireEvent.click(whyOpenButton)
@@ -888,6 +908,93 @@ describe('PRDetail', () => {
             expect(mockDelete).toHaveBeenCalled()
           })
         }
+      }
+    })
+
+    it('should persist panel open state when toggled', async () => {
+      const mockSetPanelOpen = vi.fn().mockResolvedValue({ success: true })
+
+      setupMockElectron({
+        analyzePRStatus: vi.fn().mockResolvedValue({
+          success: true,
+          analysis: 'Test analysis'
+        }),
+        getPRAnalysis: vi.fn().mockResolvedValue(null),
+        setPRAnalysisPanelOpen: mockSetPanelOpen
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Wait for initial state to load
+      await waitFor(() => {
+        expect(window.electron.getPRAnalysisPanelOpen).toHaveBeenCalled()
+      })
+
+      const whyOpenButton = document.querySelector('button svg.lucide-help-circle')?.parentElement
+      if (whyOpenButton) {
+        fireEvent.click(whyOpenButton)
+
+        // Wait for panel to open and state to be persisted
+        await waitFor(() => {
+          expect(mockSetPanelOpen).toHaveBeenCalledWith(expect.any(String), true)
+        })
+      }
+    })
+
+    it('should load panel open state when PR has persisted open panel', async () => {
+      setupMockElectron({
+        getPRAnalysis: vi.fn().mockResolvedValue({
+          prId: 'test/repo#1',
+          analysis: 'Existing analysis',
+          generatedAt: Date.now()
+        }),
+        getPRAnalysisPanelOpen: vi.fn().mockResolvedValue(true) // Panel was left open
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Panel should be open automatically because we persisted it as open
+      await waitFor(() => {
+        expect(screen.getByText(/Why is this PR still open/)).toBeInTheDocument()
+        expect(screen.getByText(/Existing analysis/)).toBeInTheDocument()
+      })
+    })
+
+    it('should persist panel closed state when close button clicked', async () => {
+      const mockSetPanelOpen = vi.fn().mockResolvedValue({ success: true })
+
+      setupMockElectron({
+        getPRAnalysis: vi.fn().mockResolvedValue({
+          prId: 'test/repo#1',
+          analysis: 'Existing analysis',
+          generatedAt: Date.now()
+        }),
+        getPRAnalysisPanelOpen: vi.fn().mockResolvedValue(true), // Start with panel open
+        setPRAnalysisPanelOpen: mockSetPanelOpen
+      })
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Wait for panel to show
+      await waitFor(() => {
+        expect(screen.getByText(/Why is this PR still open/)).toBeInTheDocument()
+      })
+
+      // Find the analysis panel and its close button (the X inside the panel header)
+      const analysisPanel = screen
+        .getByText(/Why is this PR still open/)
+        ?.closest('div.bg-primary\\/5')
+      const closeButton = analysisPanel?.querySelector('.lucide-x')?.parentElement
+
+      if (closeButton) {
+        fireEvent.click(closeButton)
+
+        await waitFor(() => {
+          expect(mockSetPanelOpen).toHaveBeenCalledWith(expect.any(String), false)
+        })
       }
     })
   })

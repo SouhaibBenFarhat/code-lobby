@@ -164,6 +164,7 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 - Analysis is persisted per PR and survives app restart
 - User can refresh analysis to get updated insights
 - Analysis panel is collapsible
+- **Panel open/closed state is persisted per PR** - if user leaves panel open on one PR and switches to another, the panel state is remembered when returning
 
 **Context Sent to AI:**
 - PR number, title, description, author
@@ -178,8 +179,10 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 **Technical Details:**
 - `analyzePRStatus()` function in `claude-api.ts` - specialized non-streaming Claude call
 - IPC handlers: `analyze-pr-status`, `get-pr-analysis`, `delete-pr-analysis`
+- IPC handlers for panel state: `get-pr-analysis-panel-open`, `set-pr-analysis-panel-open`
 - `PRAnalysis` interface in `store.ts` with `prId`, `analysis`, `generatedAt`
-- Persistence via `electron-store` with 100-entry limit (auto-prunes old analyses)
+- `prAnalysisPanelStates: Record<string, boolean>` for panel open/closed state per PR
+- Persistence via `electron-store` with 100-entry limit for analyses, 200-entry limit for panel states
 - Abstract prompt: Claude determines blockers from provided context
 
 **UI:**
@@ -196,13 +199,13 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 
 **Files Changed:**
 - `src/main/claude-api.ts` - Added `analyzePRStatus` function
-- `src/main/store.ts` - Added `PRAnalysis` interface and persistence functions
-- `src/main/index.ts` - Added 3 IPC handlers
-- `src/preload/index.ts` - Exposed analysis functions to renderer
-- `src/renderer/components/PRDetail.tsx` - Added button, panel, and UI state
-- `tests/mocks/electron.ts` - Added mocks for analysis functions
-- `tests/renderer/components/PRDetail.test.tsx` - Added 10 tests
-- `tests/main/store.test.ts` - Added 10 tests for analysis persistence
+- `src/main/store.ts` - Added `PRAnalysis` interface, persistence functions, and panel state persistence
+- `src/main/index.ts` - Added 5 IPC handlers (3 for analysis, 2 for panel state)
+- `src/preload/index.ts` - Exposed analysis and panel state functions to renderer
+- `src/renderer/components/PRDetail.tsx` - Added button, panel, UI state, and panel state persistence
+- `tests/mocks/electron.ts` - Added mocks for analysis and panel state functions
+- `tests/renderer/components/PRDetail.test.tsx` - Added 14 tests (10 for analysis, 4 for panel state)
+- `tests/main/store.test.ts` - Added 18 tests (10 for analysis, 8 for panel state)
 
 **Completed:** January 18, 2026
 - `setPRDataCache(data, selectedRepos)` stores with repo key

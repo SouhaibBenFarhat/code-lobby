@@ -109,6 +109,8 @@ interface MockElectronAPI {
   analyzePRStatus: ReturnType<typeof vi.fn>
   getPRAnalysis: ReturnType<typeof vi.fn>
   deletePRAnalysis: ReturnType<typeof vi.fn>
+  getPRAnalysisPanelOpen: ReturnType<typeof vi.fn>
+  setPRAnalysisPanelOpen: ReturnType<typeof vi.fn>
 
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
@@ -244,6 +246,8 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     }),
     getPRAnalysis: vi.fn().mockResolvedValue(null),
     deletePRAnalysis: vi.fn().mockResolvedValue({ success: true }),
+    getPRAnalysisPanelOpen: vi.fn().mockResolvedValue(false),
+    setPRAnalysisPanelOpen: vi.fn().mockResolvedValue({ success: true }),
 
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),

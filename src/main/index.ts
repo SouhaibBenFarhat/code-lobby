@@ -41,6 +41,7 @@ import {
   getIDEViewSettings,
   getMyPRsRepos,
   getPRAnalysis,
+  getPRAnalysisPanelOpen,
   getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
@@ -63,6 +64,7 @@ import {
   setIDEViewSettings,
   setMyPRsRepos,
   setPRAnalysis,
+  setPRAnalysisPanelOpen,
   setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
@@ -978,6 +980,16 @@ function setupIPCHandlers(): void {
   // Delete PR analysis (to force refresh)
   ipcMain.handle('delete-pr-analysis', async (_, prId: string) => {
     deletePRAnalysis(prId)
+    return { success: true }
+  })
+
+  // PR Analysis Panel State (open/closed per PR)
+  ipcMain.handle('get-pr-analysis-panel-open', async (_, prId: string) => {
+    return getPRAnalysisPanelOpen(prId)
+  })
+
+  ipcMain.handle('set-pr-analysis-panel-open', async (_, prId: string, isOpen: boolean) => {
+    setPRAnalysisPanelOpen(prId, isOpen)
     return { success: true }
   })
 

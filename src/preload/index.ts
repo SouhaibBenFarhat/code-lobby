@@ -209,6 +209,10 @@ export interface ElectronAPI {
 
   deletePRAnalysis: (prId: string) => Promise<{ success: boolean }>
 
+  // PR Analysis Panel State (per PR)
+  getPRAnalysisPanelOpen: (prId: string) => Promise<boolean>
+  setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) => Promise<{ success: boolean }>
+
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
@@ -379,6 +383,11 @@ const electronAPI: ElectronAPI = {
 
   getPRAnalysis: (prId: string) => ipcRenderer.invoke('get-pr-analysis', prId),
   deletePRAnalysis: (prId: string) => ipcRenderer.invoke('delete-pr-analysis', prId),
+
+  // PR Analysis Panel State (per PR)
+  getPRAnalysisPanelOpen: (prId: string) => ipcRenderer.invoke('get-pr-analysis-panel-open', prId),
+  setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) =>
+    ipcRenderer.invoke('set-pr-analysis-panel-open', prId, isOpen),
 
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),

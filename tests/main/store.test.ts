@@ -27,7 +27,8 @@ vi.mock('electron-store', () => {
             viewMode: 'canvas',
             ideViewSettings: { sidebarWidth: 280, expandedRepos: [] },
             dataCache: { prData: null, allRepos: null },
-            prAnalyses: []
+            prAnalyses: [],
+            prAnalysisPanelStates: {}
           }
           return defaults[key]
         }
@@ -53,6 +54,7 @@ import {
   CACHE_TTL_PR_DATA,
   clearDataCache,
   clearPRAnalyses,
+  clearPRAnalysisPanelStates,
   clearToken,
   deletePRAnalysis,
   getAllReposCache,
@@ -60,6 +62,8 @@ import {
   getIDEViewSettings,
   getPRAnalyses,
   getPRAnalysis,
+  getPRAnalysisPanelOpen,
+  getPRAnalysisPanelStates,
   getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
@@ -74,6 +78,7 @@ import {
   setCardLayouts,
   setIDEViewSettings,
   setPRAnalysis,
+  setPRAnalysisPanelOpen,
   setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
@@ -513,6 +518,84 @@ describe('Store', () => {
         // Newest analyses should be kept
         expect(getPRAnalysis('org/repo#109')).not.toBeNull()
         expect(getPRAnalysis('org/repo#100')).not.toBeNull()
+      })
+    })
+  })
+
+  describe('PR Analysis Panel State Persistence', () => {
+    describe('getPRAnalysisPanelStates', () => {
+      it('should return empty object by default', () => {
+        expect(getPRAnalysisPanelStates()).toEqual({})
+      })
+    })
+
+    describe('getPRAnalysisPanelOpen', () => {
+      it('should return false by default for unknown PR', () => {
+        expect(getPRAnalysisPanelOpen('unknown/repo#999')).toBe(false)
+      })
+
+      it('should return saved state for known PR', () => {
+        setPRAnalysisPanelOpen('org/repo#1', true)
+        expect(getPRAnalysisPanelOpen('org/repo#1')).toBe(true)
+
+        setPRAnalysisPanelOpen('org/repo#2', false)
+        expect(getPRAnalysisPanelOpen('org/repo#2')).toBe(false)
+      })
+    })
+
+    describe('setPRAnalysisPanelOpen', () => {
+      it('should save panel open state', () => {
+        setPRAnalysisPanelOpen('org/repo#1', true)
+        expect(getPRAnalysisPanelOpen('org/repo#1')).toBe(true)
+      })
+
+      it('should save panel closed state', () => {
+        setPRAnalysisPanelOpen('org/repo#1', true)
+        setPRAnalysisPanelOpen('org/repo#1', false)
+        expect(getPRAnalysisPanelOpen('org/repo#1')).toBe(false)
+      })
+
+      it('should maintain independent state per PR', () => {
+        setPRAnalysisPanelOpen('org/repo#1', true)
+        setPRAnalysisPanelOpen('org/repo#2', false)
+        setPRAnalysisPanelOpen('org/repo#3', true)
+
+        expect(getPRAnalysisPanelOpen('org/repo#1')).toBe(true)
+        expect(getPRAnalysisPanelOpen('org/repo#2')).toBe(false)
+        expect(getPRAnalysisPanelOpen('org/repo#3')).toBe(true)
+      })
+    })
+
+    describe('clearPRAnalysisPanelStates', () => {
+      it('should clear all panel states', () => {
+        setPRAnalysisPanelOpen('org/repo#1', true)
+        setPRAnalysisPanelOpen('org/repo#2', true)
+
+        clearPRAnalysisPanelStates()
+
+        expect(getPRAnalysisPanelStates()).toEqual({})
+        expect(getPRAnalysisPanelOpen('org/repo#1')).toBe(false)
+        expect(getPRAnalysisPanelOpen('org/repo#2')).toBe(false)
+      })
+    })
+
+    describe('Panel State Limit', () => {
+      it('should keep only the last 200 panel states', () => {
+        // Add 210 panel states
+        for (let i = 0; i < 210; i++) {
+          setPRAnalysisPanelOpen(`org/repo#${i}`, true)
+        }
+
+        const states = getPRAnalysisPanelStates()
+        expect(Object.keys(states).length).toBeLessThanOrEqual(200)
+
+        // Oldest states should be removed
+        expect(getPRAnalysisPanelOpen('org/repo#0')).toBe(false)
+        expect(getPRAnalysisPanelOpen('org/repo#9')).toBe(false)
+
+        // Newest states should be kept
+        expect(getPRAnalysisPanelOpen('org/repo#209')).toBe(true)
+        expect(getPRAnalysisPanelOpen('org/repo#200')).toBe(true)
       })
     })
   })
