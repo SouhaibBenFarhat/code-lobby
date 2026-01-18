@@ -1324,7 +1324,208 @@ interface ScoringSettings {
 
 ---
 
-### 2.8 Code Generation 🔴 Not Started (Future Vision)
+### 2.8 Daily Standup Generator (AI-Powered) 🔴 Not Started
+> Generate daily standup notes from your activity history
+
+**Concept:**
+One-click button to generate your daily standup speech based on PRs you've reviewed, comments you've made, branches you've worked on, and commits you've pushed. Perfect for morning standups when you can't remember what you did yesterday.
+
+**Why This Matters:**
+- **Memory Aid** — Never struggle to remember what you worked on
+- **Time Saver** — Generate standup notes in seconds, not minutes
+- **Comprehensive** — Captures all activity across repos automatically
+- **Professional** — Well-structured, clear communication
+
+**Activity Tracking:**
+The app tracks your interactions throughout the day:
+```
+📊 Activity Types Tracked:
+├── PRs you created or updated
+├── PRs you reviewed (approved, requested changes, commented)
+├── Comments you made on any PR
+├── Branches you switched to (via workspace feature)
+├── CI failures you investigated
+├── AI conversations about specific PRs
+└── Time spent on each PR (optional)
+```
+
+**UI Design - Generate Button:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Header                              [📋 Daily] [🐕] [⚙️]   │
+│                                          ↑                  │
+│                                   Generate standup          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**UI Design - Standup Notes Panel:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  📋 Daily Standup Notes                 [Copy] [Edit] [×]   │
+├─────────────────────────────────────────────────────────────┤
+│  Generated for: Friday, January 17, 2026                    │
+│                                                             │
+│  ─────────────────────────────────────────────────────────  │
+│                                                             │
+│  ## Yesterday I worked on:                                  │
+│                                                             │
+│  **Authentication Flow (PR #123)**                          │
+│  - Implemented OAuth 2.0 with Google provider               │
+│  - Added token refresh logic                                │
+│  - Addressed 3 review comments from @alice                  │
+│  - CI is now passing ✓                                      │
+│                                                             │
+│  **Bug Fix: Rate Limiter (PR #456)**                        │
+│  - Reviewed and approved @bob's fix                         │
+│  - Suggested adding retry logic in comments                 │
+│                                                             │
+│  **Investigated CI Failure**                                │
+│  - Flaky e2e test in product-api repo                       │
+│  - Root cause: timing issue in async test                   │
+│                                                             │
+│  ## Today I plan to:                                        │
+│  - [ ] Merge PR #123 after final review                     │
+│  - [ ] Start work on user profile feature                   │
+│  - [ ] Follow up on rate limiter deployment                 │
+│                                                             │
+│  ## Blockers:                                               │
+│  - Waiting for @alice's final approval on PR #123           │
+│                                                             │
+│  ─────────────────────────────────────────────────────────  │
+│                                                             │
+│  💡 AI-generated from your CodeLobby activity               │
+│                                                             │
+│               [🔄 Regenerate] [📤 Copy to Clipboard]        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- [ ] **Activity Tracking** — Log user interactions with PRs, reviews, comments
+- [ ] **Daily Summary Button** — One-click generation in header
+- [ ] **AI Generation** — Claude creates natural, professional standup notes
+- [ ] **Time Range Selection** — Yesterday, last 24h, this week
+- [ ] **Copy to Clipboard** — Quick copy for Slack/Teams
+- [ ] **Edit Before Copy** — Adjust generated notes manually
+- [ ] **"Today I plan to"** — AI suggests next steps based on PR states
+- [ ] **Blocker Detection** — Highlights waiting-on-review, CI failures
+- [ ] **History** — View past standup notes
+- [ ] **Templates** — Customize output format (bullet points, paragraphs, etc.)
+- [ ] **Slack/Teams Integration** — Post directly to channel (optional)
+
+**Data Model:**
+```typescript
+interface ActivityEntry {
+  id: string
+  type: 'pr_created' | 'pr_updated' | 'pr_reviewed' | 'comment_added' | 
+        'branch_switched' | 'ci_investigated' | 'ai_chat_pr'
+  timestamp: string
+  prId?: string
+  prNumber?: number
+  prTitle?: string
+  repoFullName?: string
+  details?: string           // e.g., "approved", "requested changes", etc.
+  metadata?: Record<string, unknown>
+}
+
+interface DailyStandup {
+  id: string
+  generatedAt: string
+  dateRange: {
+    from: string
+    to: string
+  }
+  activities: ActivityEntry[]
+  generatedNotes: string     // AI-generated markdown
+  editedNotes?: string       // User's edited version
+}
+
+interface StandupSettings {
+  enabled: boolean
+  trackingEnabled: boolean   // Whether to log activity
+  defaultTimeRange: '24h' | 'yesterday' | 'thisWeek'
+  template: 'default' | 'bullets' | 'detailed' | 'custom'
+  customTemplate?: string    // User's custom format prompt
+  includeBlockers: boolean
+  includePlanForToday: boolean
+}
+```
+
+**Activity Logging Points:**
+```typescript
+// In App.tsx or relevant components:
+
+// When user selects a PR
+onSelectPR(pr) {
+  logActivity({ type: 'pr_viewed', prId: pr.id, prNumber: pr.number, ... })
+}
+
+// When user starts AI chat about a PR
+openPRInChat(pr) {
+  logActivity({ type: 'ai_chat_pr', prId: pr.id, ... })
+}
+
+// When user clicks "Why Open?" 
+analyzePR(pr) {
+  logActivity({ type: 'ci_investigated', prId: pr.id, ... })
+}
+
+// Fetch from GitHub API:
+// - Recent commits by user
+// - Recent reviews by user
+// - Recent comments by user
+```
+
+**AI Prompt Structure:**
+```typescript
+const standupPrompt = `
+Generate a professional daily standup update based on this developer's activity.
+
+## Activity Log (${timeRange}):
+${activities.map(a => formatActivity(a)).join('\n')}
+
+## Current PR States:
+${openPRs.map(pr => `- #${pr.number}: ${pr.title} (${pr.status})`).join('\n')}
+
+## Output Format:
+1. "Yesterday I worked on:" - Summarize key accomplishments
+2. "Today I plan to:" - Suggest logical next steps
+3. "Blockers:" - List any waiting items or issues
+
+Keep it concise (2-4 bullet points per section). Use active voice.
+Group related activities together. Mention specific PR numbers.
+`
+```
+
+**Implementation Steps:**
+- [ ] Add `activityLog: ActivityEntry[]` to electron-store
+- [ ] Add `standupHistory: DailyStandup[]` to electron-store
+- [ ] Create `logActivity(entry)` function
+- [ ] Add activity logging to key user interactions
+- [ ] Create `StandupPanel` component
+- [ ] Add "Daily" button to header
+- [ ] Add `generateStandup(activities)` function in claude-api.ts
+- [ ] Create `StandupSettingsDialog` for customization
+- [ ] Add copy-to-clipboard functionality
+- [ ] Implement time range picker
+
+**Technical Notes:**
+- Store activity log with 7-day rolling window (auto-prune older entries)
+- Limit standup history to last 30 entries
+- Activity logging should be lightweight and non-blocking
+- Consider privacy: activity stays local, only sent to AI on generate
+- Fetch recent GitHub activity (commits, reviews) on demand
+
+**Stretch Goals:**
+- [ ] **Voice Input** — "What else did you do?" to add manual notes
+- [ ] **Auto-generate on Schedule** — Generate at 9 AM automatically
+- [ ] **Team View** — See teammates' standups (if shared)
+- [ ] **Trend Analysis** — "This week you spent most time on..."
+
+**Estimated Time:** ~6 hours
+
+---
+
+### 2.9 Code Generation 🔴 Not Started (Future Vision)
 > AI generates code fixes
 
 - [ ] **Generate fix for CI failure** - Analyze error, propose code change
@@ -1337,7 +1538,7 @@ interface ScoringSettings {
 - Need secure sandbox for code generation
 - Human review required before any automated commits
 
-### 2.9 AI Features Settings & Custom Context 🔴 Not Started
+### 2.10 AI Features Settings & Custom Context 🔴 Not Started
 > Allow users to see and customize AI-powered feature behavior
 
 **Concept:**
