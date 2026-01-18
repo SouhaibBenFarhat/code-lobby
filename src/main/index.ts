@@ -26,6 +26,7 @@ import { LogCategory, logger } from './logger'
 import {
   AIPanelSettings,
   addChatMessage,
+  addMessageToPRChat,
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
   ChatMessage,
@@ -33,6 +34,7 @@ import {
   clearDataCache,
   clearToken,
   deletePRAnalysis,
+  getActivePRChatId,
   getAIPanel,
   getAllReposCache,
   getCardLayouts,
@@ -43,6 +45,8 @@ import {
   getMyPRsRepos,
   getPRAnalysis,
   getPRAnalysisPanelOpen,
+  getPRChat,
+  getPRChatMessages,
   getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
@@ -823,10 +827,17 @@ function setupIPCHandlers(): void {
 
       const selectedModel = getSelectedModel() || getDefaultModel()
       const enableThinking = getEnableThinking()
+
+      // Check if there's an active PR chat
+      const activePRChatId = getActivePRChatId()
+      const isInPRChat = !!activePRChatId
+
       logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
         model: selectedModel,
         thinking: enableThinking,
-        hasSystemContext: !!systemContext
+        hasSystemContext: !!systemContext,
+        isInPRChat,
+        activePRChatId
       })
 
       // Create user message
@@ -836,10 +847,30 @@ function setupIPCHandlers(): void {
         content: userMessage,
         timestamp: new Date().toISOString()
       }
-      addChatMessage(userMsg)
 
-      // Get history and convert to Claude format
-      const history = getChatHistory()
+      // Save to the correct chat (PR-specific or general)
+      if (isInPRChat && activePRChatId) {
+        addMessageToPRChat(activePRChatId, userMsg)
+      } else {
+        addChatMessage(userMsg)
+      }
+
+      // Get history from the correct source (PR-specific or general)
+      let history: ChatMessage[]
+      let effectiveSystemPrompt: string
+
+      if (isInPRChat && activePRChatId) {
+        // Use PR chat history
+        history = getPRChatMessages(activePRChatId)
+        // Get system context from the PR chat itself
+        const prChat = getPRChat(activePRChatId)
+        effectiveSystemPrompt = prChat?.systemContext || systemContext || CODELOBBY_SYSTEM_PROMPT
+      } else {
+        // Use general chat history
+        history = getChatHistory()
+        effectiveSystemPrompt = systemContext || CODELOBBY_SYSTEM_PROMPT
+      }
+
       const claudeMessages: ClaudeMessage[] = history.map((m) => ({
         role: m.role,
         content: m.content
@@ -851,9 +882,6 @@ function setupIPCHandlers(): void {
       // Get the sender's webContents to send stream updates
       const webContents = event.sender
 
-      // Use PR context if provided, otherwise use base CodeLobby system prompt
-      const effectiveSystemPrompt = systemContext || CODELOBBY_SYSTEM_PROMPT
-
       // Start streaming
       sendClaudeMessageStreaming(
         apiKey,
@@ -862,7 +890,7 @@ function setupIPCHandlers(): void {
           // Send chunk to renderer
           webContents.send('chat-stream-chunk', { streamId, ...chunk })
 
-          // If done, save the assistant message
+          // If done, save the assistant message to the correct chat
           if (chunk.type === 'done' && chunk.fullResponse) {
             const assistantMsg: ChatMessage = {
               id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
@@ -871,17 +899,24 @@ function setupIPCHandlers(): void {
               thinking: chunk.fullResponse.thinking,
               timestamp: new Date().toISOString()
             }
-            addChatMessage(assistantMsg)
+
+            // Save to the correct chat (PR-specific or general)
+            if (isInPRChat && activePRChatId) {
+              addMessageToPRChat(activePRChatId, assistantMsg)
+            } else {
+              addChatMessage(assistantMsg)
+            }
 
             logger.info(LogCategory.API, 'Streaming chat message complete', {
               model: chunk.fullResponse.model,
               hasThinking: !!chunk.fullResponse.thinking,
-              usage: chunk.fullResponse.usage
+              usage: chunk.fullResponse.usage,
+              savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
             })
           }
         },
         selectedModel,
-        effectiveSystemPrompt, // Always pass system prompt (PR context or CodeLobby base)
+        effectiveSystemPrompt,
         enableThinking
       )
 

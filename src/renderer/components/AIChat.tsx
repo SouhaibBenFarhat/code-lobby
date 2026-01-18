@@ -1022,34 +1022,15 @@ export function AIChatPanel({
           } else if (chunk.type === 'thinking' && chunk.thinking) {
             setStreaming((prev) => ({ ...prev, thinking: prev.thinking + chunk.thinking }))
           } else if (chunk.type === 'done') {
-            // Stream complete - reload history to get the saved message
+            // Stream complete - reload history from the correct source
+            // Main process now handles saving to the correct chat (PR or general)
             setStreaming({ content: '', thinking: '', isStreaming: false })
 
-            // For PR chats, we need to save the messages to PR chat storage
-            // since the main process saves to general chat by default
+            // Reload messages from the appropriate source
             if (linkedPRChat) {
-              // Save the user and assistant messages to PR chat
-              setMessages((prev) => {
-                // Find the last user message and the new assistant message
-                const userMsg = prev.find((m) => m.id === tempMsgId)
-                if (userMsg) {
-                  window.electron.addMessageToPRChat(linkedPRChat.prId, userMsg)
-                }
-                return prev
-              })
-
-              // Get the final response from general chat and add to PR chat
-              window.electron.getChatHistory().then((history) => {
-                const lastMsg = history[history.length - 1]
-                if (lastMsg && lastMsg.role === 'assistant') {
-                  window.electron.addMessageToPRChat(linkedPRChat.prId, lastMsg)
-                  setMessages((prev) => {
-                    // Update the last message if it's from the assistant
-                    const withoutTemp = prev.filter(
-                      (m) => m.role !== 'assistant' || m.content !== ''
-                    )
-                    return [...withoutTemp, lastMsg]
-                  })
+              window.electron.getPRChat(linkedPRChat.prId).then((prChat) => {
+                if (prChat) {
+                  setMessages(prChat.messages)
                 }
               })
             } else {
