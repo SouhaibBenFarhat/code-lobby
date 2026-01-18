@@ -613,6 +613,8 @@ export function AIChatPanel({
   // All PR chats for the conversation navigator
   const [allPRChats, setAllPRChats] = useState<PRChatInfo[]>([])
   const [showConversations, setShowConversations] = useState(false)
+  // System context for PR chats (invisible to user, sent to AI)
+  const [prSystemContext, setPrSystemContext] = useState<string | undefined>(undefined)
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false)
   const [isConversationReady, setIsConversationReady] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -702,11 +704,18 @@ export function AIChatPanel({
 
       // Load appropriate chat history based on linkedPRChat
       if (linkedPRChat) {
-        const prMessages = await window.electron.getPRChatMessages(linkedPRChat.prId)
-        setMessages(prMessages)
+        const prChat = await window.electron.getPRChat(linkedPRChat.prId)
+        if (prChat) {
+          setMessages(prChat.messages)
+          setPrSystemContext(prChat.systemContext) // Load system context (invisible to user)
+        } else {
+          setMessages([])
+          setPrSystemContext(undefined)
+        }
       } else {
         const history = await window.electron.getChatHistory()
         setMessages(history)
+        setPrSystemContext(undefined) // Clear system context for general chat
       }
 
       // If we have an API key, fetch available models
@@ -1076,8 +1085,8 @@ export function AIChatPanel({
         })
         streamCleanupRef.current = cleanup
 
-        // Start streaming
-        const result = await window.electron.sendChatMessageStreaming(userMessage)
+        // Start streaming (pass system context for PR chats)
+        const result = await window.electron.sendChatMessageStreaming(userMessage, prSystemContext)
         if (!result.success) {
           setError(result.error || 'Failed to send message')
           setStreaming({ content: '', thinking: '', isStreaming: false })
@@ -1099,7 +1108,7 @@ export function AIChatPanel({
         processNextInQueue()
       }
     },
-    [processNextInQueue, linkedPRChat]
+    [processNextInQueue, linkedPRChat, prSystemContext]
   )
 
   // Keep ref updated with latest processMessage

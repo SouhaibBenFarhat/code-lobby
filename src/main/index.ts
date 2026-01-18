@@ -812,74 +812,78 @@ function setupIPCHandlers(): void {
   })
 
   // Streaming chat message
-  ipcMain.handle('send-chat-message-streaming', async (event, userMessage: string) => {
-    const apiKey = getClaudeApiKey()
-    if (!apiKey) {
-      return { success: false, error: 'No Claude API key configured' }
-    }
+  ipcMain.handle(
+    'send-chat-message-streaming',
+    async (event, userMessage: string, systemContext?: string) => {
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, error: 'No Claude API key configured' }
+      }
 
-    const selectedModel = getSelectedModel() || getDefaultModel()
-    const enableThinking = getEnableThinking()
-    logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
-      model: selectedModel,
-      thinking: enableThinking
-    })
+      const selectedModel = getSelectedModel() || getDefaultModel()
+      const enableThinking = getEnableThinking()
+      logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
+        model: selectedModel,
+        thinking: enableThinking,
+        hasSystemContext: !!systemContext
+      })
 
-    // Create user message
-    const userMsg: ChatMessage = {
-      id: `msg_${Date.now()}_user`,
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date().toISOString()
-    }
-    addChatMessage(userMsg)
+      // Create user message
+      const userMsg: ChatMessage = {
+        id: `msg_${Date.now()}_user`,
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date().toISOString()
+      }
+      addChatMessage(userMsg)
 
-    // Get history and convert to Claude format
-    const history = getChatHistory()
-    const claudeMessages: ClaudeMessage[] = history.map((m) => ({
-      role: m.role,
-      content: m.content
-    }))
+      // Get history and convert to Claude format
+      const history = getChatHistory()
+      const claudeMessages: ClaudeMessage[] = history.map((m) => ({
+        role: m.role,
+        content: m.content
+      }))
 
-    // Generate a unique stream ID for this conversation
-    const streamId = `stream_${Date.now()}`
+      // Generate a unique stream ID for this conversation
+      const streamId = `stream_${Date.now()}`
 
-    // Get the sender's webContents to send stream updates
-    const webContents = event.sender
+      // Get the sender's webContents to send stream updates
+      const webContents = event.sender
 
-    // Start streaming
-    sendClaudeMessageStreaming(
-      apiKey,
-      claudeMessages,
-      (chunk) => {
-        // Send chunk to renderer
-        webContents.send('chat-stream-chunk', { streamId, ...chunk })
+      // Start streaming
+      sendClaudeMessageStreaming(
+        apiKey,
+        claudeMessages,
+        (chunk) => {
+          // Send chunk to renderer
+          webContents.send('chat-stream-chunk', { streamId, ...chunk })
 
-        // If done, save the assistant message
-        if (chunk.type === 'done' && chunk.fullResponse) {
-          const assistantMsg: ChatMessage = {
-            id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
-            role: 'assistant',
-            content: chunk.fullResponse.content,
-            thinking: chunk.fullResponse.thinking,
-            timestamp: new Date().toISOString()
+          // If done, save the assistant message
+          if (chunk.type === 'done' && chunk.fullResponse) {
+            const assistantMsg: ChatMessage = {
+              id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
+              role: 'assistant',
+              content: chunk.fullResponse.content,
+              thinking: chunk.fullResponse.thinking,
+              timestamp: new Date().toISOString()
+            }
+            addChatMessage(assistantMsg)
+
+            logger.info(LogCategory.API, 'Streaming chat message complete', {
+              model: chunk.fullResponse.model,
+              hasThinking: !!chunk.fullResponse.thinking,
+              usage: chunk.fullResponse.usage
+            })
           }
-          addChatMessage(assistantMsg)
+        },
+        selectedModel,
+        systemContext, // Pass PR context as system prompt
+        enableThinking
+      )
 
-          logger.info(LogCategory.API, 'Streaming chat message complete', {
-            model: chunk.fullResponse.model,
-            hasThinking: !!chunk.fullResponse.thinking,
-            usage: chunk.fullResponse.usage
-          })
-        }
-      },
-      selectedModel,
-      undefined,
-      enableThinking
-    )
-
-    return { success: true, streamId }
-  })
+      return { success: true, streamId }
+    }
+  )
 
   // Extract preview URL from PR context using AI
   ipcMain.handle(
@@ -1078,9 +1082,16 @@ function setupIPCHandlers(): void {
 
   ipcMain.handle(
     'create-pr-chat',
-    async (_, prId: string, prNumber: number, prTitle: string, repoFullName: string) => {
+    async (
+      _,
+      prId: string,
+      prNumber: number,
+      prTitle: string,
+      repoFullName: string,
+      systemContext?: string
+    ) => {
       const { createPRChat } = await import('./store')
-      return createPRChat(prId, prNumber, prTitle, repoFullName)
+      return createPRChat(prId, prNumber, prTitle, repoFullName, systemContext)
     }
   )
 

@@ -81,6 +81,7 @@ export interface PRChat {
   prTitle: string
   repoFullName: string
   messages: ChatMessage[]
+  systemContext?: string // Pre-loaded PR context (invisible to user, sent to AI as system prompt)
   createdAt: string
   updatedAt: string
 }
@@ -448,7 +449,8 @@ export function createPRChat(
   prId: string,
   prNumber: number,
   prTitle: string,
-  repoFullName: string
+  repoFullName: string,
+  systemContext?: string
 ): PRChat {
   const chats = getPRChats()
 
@@ -464,6 +466,7 @@ export function createPRChat(
     prTitle,
     repoFullName,
     messages: [],
+    systemContext,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

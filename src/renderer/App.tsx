@@ -372,16 +372,15 @@ function App() {
       // Check if chat already exists, or create new one
       let chat = await window.electron.getPRChat(prId)
       if (!chat) {
-        chat = await window.electron.createPRChat(prId, pr.number, pr.title, pr.base.repo.full_name)
-
-        // Inject initial context message when creating a new chat
-        const contextMessage = buildPRContextMessage(pr)
-        await window.electron.addMessageToPRChat(prId, {
-          id: `ctx-${Date.now()}`,
-          role: 'assistant',
-          content: contextMessage,
-          timestamp: new Date().toISOString()
-        })
+        // Build PR context and inject it as system context (invisible to user, but AI knows it)
+        const systemContext = buildPRContextMessage(pr)
+        chat = await window.electron.createPRChat(
+          prId,
+          pr.number,
+          pr.title,
+          pr.base.repo.full_name,
+          systemContext
+        )
       }
 
       // Set as active PR chat

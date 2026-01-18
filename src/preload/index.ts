@@ -150,7 +150,8 @@ export interface ElectronAPI {
     error?: string
   }>
   sendChatMessageStreaming: (
-    message: string
+    message: string,
+    systemContext?: string
   ) => Promise<{ success: boolean; streamId?: string; error?: string }>
   onChatStreamChunk: (
     callback: (chunk: {
@@ -296,7 +297,8 @@ export interface ElectronAPI {
     prId: string,
     prNumber: number,
     prTitle: string,
-    repoFullName: string
+    repoFullName: string,
+    systemContext?: string
   ) => Promise<{
     prId: string
     prNumber: number
@@ -309,6 +311,7 @@ export interface ElectronAPI {
       thinking?: string
       timestamp: string
     }>
+    systemContext?: string
     createdAt: string
     updatedAt: string
   }>
@@ -441,8 +444,8 @@ const electronAPI: ElectronAPI = {
   setEnableThinking: (enabled: boolean) => ipcRenderer.invoke('set-enable-thinking', enabled),
   getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
   sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
-  sendChatMessageStreaming: (message: string) =>
-    ipcRenderer.invoke('send-chat-message-streaming', message),
+  sendChatMessageStreaming: (message: string, systemContext?: string) =>
+    ipcRenderer.invoke('send-chat-message-streaming', message, systemContext),
   onChatStreamChunk: (
     callback: (chunk: {
       streamId: string
@@ -582,8 +585,13 @@ const electronAPI: ElectronAPI = {
   // PR Chat (AI chat linked to specific PRs)
   getPRChats: () => ipcRenderer.invoke('get-pr-chats'),
   getPRChat: (prId: string) => ipcRenderer.invoke('get-pr-chat', prId),
-  createPRChat: (prId: string, prNumber: number, prTitle: string, repoFullName: string) =>
-    ipcRenderer.invoke('create-pr-chat', prId, prNumber, prTitle, repoFullName),
+  createPRChat: (
+    prId: string,
+    prNumber: number,
+    prTitle: string,
+    repoFullName: string,
+    systemContext?: string
+  ) => ipcRenderer.invoke('create-pr-chat', prId, prNumber, prTitle, repoFullName, systemContext),
   addMessageToPRChat: (
     prId: string,
     message: {

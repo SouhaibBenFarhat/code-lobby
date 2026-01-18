@@ -594,25 +594,34 @@ describe('PR-Linked Chat', () => {
     }
   })
 
-  it('should load PR chat messages when linkedPRChat is provided', async () => {
-    const mockPRMessages = [
-      {
-        id: 'msg-1',
-        role: 'user' as const,
-        content: 'Tell me about this PR',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'msg-2',
-        role: 'assistant' as const,
-        content: 'This PR adds authentication.',
-        timestamp: new Date().toISOString()
-      }
-    ]
+  it('should load PR chat when linkedPRChat is provided', async () => {
+    const mockPRChat = {
+      prId: 'owner/repo#123',
+      prNumber: 123,
+      prTitle: 'Test PR Title',
+      repoFullName: 'owner/repo',
+      messages: [
+        {
+          id: 'msg-1',
+          role: 'user' as const,
+          content: 'Tell me about this PR',
+          timestamp: new Date().toISOString()
+        },
+        {
+          id: 'msg-2',
+          role: 'assistant' as const,
+          content: 'This PR adds authentication.',
+          timestamp: new Date().toISOString()
+        }
+      ],
+      systemContext: '# PR Context',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
 
     const mockElectron = setupMockElectron({
       getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
-      getPRChatMessages: vi.fn().mockResolvedValue(mockPRMessages)
+      getPRChat: vi.fn().mockResolvedValue(mockPRChat)
     })
 
     render(
@@ -627,7 +636,7 @@ describe('PR-Linked Chat', () => {
     )
 
     await waitFor(() => {
-      expect(mockElectron.getPRChatMessages).toHaveBeenCalledWith('owner/repo#123')
+      expect(mockElectron.getPRChat).toHaveBeenCalledWith('owner/repo#123')
     })
   })
 
