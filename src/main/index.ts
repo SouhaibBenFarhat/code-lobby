@@ -43,6 +43,7 @@ import {
   getClaudeApiKey,
   getEnableThinking,
   getIDEViewSettings,
+  getMinimizedRepos,
   getMyPRsRepos,
   getPRAnalysis,
   getPRAnalysisPanelOpen,
@@ -74,6 +75,7 @@ import {
   setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
+  setRepoMinimized,
   setRepoOrder,
   setSelectedModel,
   setSelectedRepos,
@@ -625,6 +627,16 @@ function setupIPCHandlers(): void {
 
   ipcMain.handle('set-repo-color', async (_, repoFullName: string, color: string | null) => {
     setRepoColor(repoFullName, color)
+    return { success: true }
+  })
+
+  // Minimized repos
+  ipcMain.handle('get-minimized-repos', async () => {
+    return getMinimizedRepos()
+  })
+
+  ipcMain.handle('set-repo-minimized', async (_, repoFullName: string, isMinimized: boolean) => {
+    setRepoMinimized(repoFullName, isMinimized)
     return { success: true }
   })
 

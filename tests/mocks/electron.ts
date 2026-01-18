@@ -71,6 +71,10 @@ interface MockElectronAPI {
   getRepoColors: ReturnType<typeof vi.fn>
   setRepoColor: ReturnType<typeof vi.fn>
 
+  // Minimized repos
+  getMinimizedRepos: ReturnType<typeof vi.fn>
+  setRepoMinimized: ReturnType<typeof vi.fn>
+
   // View mode
   getViewMode: ReturnType<typeof vi.fn>
   setViewMode: ReturnType<typeof vi.fn>
@@ -193,6 +197,10 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // Repo colors
     getRepoColors: vi.fn().mockResolvedValue({}),
     setRepoColor: vi.fn().mockResolvedValue({ success: true }),
+
+    // Minimized repos
+    getMinimizedRepos: vi.fn().mockResolvedValue([]),
+    setRepoMinimized: vi.fn().mockResolvedValue({ success: true }),
 
     // View mode
     getViewMode: vi.fn().mockResolvedValue('canvas'),

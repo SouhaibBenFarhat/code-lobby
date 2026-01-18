@@ -66,6 +66,18 @@ export function PRGrid({ currentUser }: PRGridProps) {
     refetchOnWindowFocus: false
   })
 
+  // Fetch minimized repos
+  const { data: minimizedRepos } = useQuery({
+    queryKey: ['minimized-repos'],
+    queryFn: async () => {
+      const repos = await window.electron.getMinimizedRepos()
+      return new Set(repos || [])
+    },
+    staleTime: Infinity,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false
+  })
+
   // Fetch selected repos filter
   const { data: selectedReposFilter } = useQuery({
     queryKey: ['selected-repos'],
@@ -245,6 +257,36 @@ export function PRGrid({ currentUser }: PRGridProps) {
       queryClient.setQueryData(['repo-colors'], newColors)
     },
     [repoColors, queryClient]
+  )
+
+  // Handle minimize change
+  const handleMinimizeChange = useCallback(
+    async (repoFullName: string, isMinimized: boolean) => {
+      await window.electron.setRepoMinimized(repoFullName, isMinimized)
+      const currentSet = minimizedRepos || new Set()
+      const newSet = new Set(currentSet)
+      if (isMinimized) {
+        newSet.add(repoFullName)
+      } else {
+        newSet.delete(repoFullName)
+      }
+      queryClient.setQueryData(['minimized-repos'], newSet)
+
+      // Update layout height when minimizing/expanding
+      const MINIMIZED_HEIGHT = 85 // Height when minimized (just header)
+      const newLayouts = layouts.map((l) => {
+        if (l.i === repoFullName) {
+          return {
+            ...l,
+            h: isMinimized ? MINIMIZED_HEIGHT : DEFAULT_CARD_H
+          }
+        }
+        return l
+      })
+      setLayouts(newLayouts)
+      saveLayouts(newLayouts)
+    },
+    [minimizedRepos, queryClient, layouts, saveLayouts]
   )
 
   // Handle drag/resize end
@@ -510,6 +552,8 @@ export function PRGrid({ currentUser }: PRGridProps) {
           {layouts.map((layout) => {
             const repo = reposMap.get(layout.i)
             if (!repo) return null
+            const isMinimized = minimizedRepos?.has(repo.full_name) || false
+            const MINIMIZED_HEIGHT = 85
 
             return (
               <Rnd
@@ -517,10 +561,11 @@ export function PRGrid({ currentUser }: PRGridProps) {
                 position={{ x: layout.x, y: layout.y }}
                 size={{ width: layout.w, height: layout.h }}
                 minWidth={MIN_CARD_W}
-                minHeight={MIN_CARD_H}
+                minHeight={isMinimized ? MINIMIZED_HEIGHT : MIN_CARD_H}
+                maxHeight={isMinimized ? MINIMIZED_HEIGHT : undefined}
                 bounds="parent"
                 disableDragging={isLayoutLocked}
-                enableResizing={!isLayoutLocked}
+                enableResizing={!isLayoutLocked && !isMinimized}
                 onDragStop={(_, d) => handleDragStop(layout.i, d.x, d.y)}
                 onResizeStop={(_, __, ref, ___, pos) => {
                   handleResizeStop(
@@ -566,6 +611,10 @@ export function PRGrid({ currentUser }: PRGridProps) {
                   color={repoColors?.[repo.full_name] || null}
                   onColorChange={(color) => handleColorChange(repo.full_name, color)}
                   currentUser={currentUser || fetchedCurrentUser}
+                  isMinimized={minimizedRepos?.has(repo.full_name) || false}
+                  onMinimizeChange={(isMinimized) =>
+                    handleMinimizeChange(repo.full_name, isMinimized)
+                  }
                 />
               </Rnd>
             )

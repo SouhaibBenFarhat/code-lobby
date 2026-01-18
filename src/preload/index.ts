@@ -73,6 +73,10 @@ export interface ElectronAPI {
   getRepoColors: () => Promise<Record<string, string>>
   setRepoColor: (repoFullName: string, color: string | null) => Promise<{ success: boolean }>
 
+  // Minimized repos
+  getMinimizedRepos: () => Promise<string[]>
+  setRepoMinimized: (repoFullName: string, isMinimized: boolean) => Promise<{ success: boolean }>
+
   // View mode
   getViewMode: () => Promise<'canvas' | 'ide'>
   setViewMode: (mode: 'canvas' | 'ide') => Promise<{ success: boolean }>
@@ -407,6 +411,11 @@ const electronAPI: ElectronAPI = {
   getRepoColors: () => ipcRenderer.invoke('get-repo-colors'),
   setRepoColor: (repoFullName: string, color: string | null) =>
     ipcRenderer.invoke('set-repo-color', repoFullName, color),
+
+  // Minimized repos
+  getMinimizedRepos: () => ipcRenderer.invoke('get-minimized-repos'),
+  setRepoMinimized: (repoFullName: string, isMinimized: boolean) =>
+    ipcRenderer.invoke('set-repo-minimized', repoFullName, isMinimized),
 
   // View mode
   getViewMode: () => ipcRenderer.invoke('get-view-mode'),

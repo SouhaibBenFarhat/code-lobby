@@ -1,4 +1,6 @@
 import {
+  ChevronDown,
+  ChevronUp,
   Code,
   ExternalLink,
   GitFork,
@@ -45,6 +47,8 @@ interface RepoCardProps {
   color?: string | null
   onColorChange?: (color: string | null) => void
   currentUser?: string | null
+  isMinimized?: boolean
+  onMinimizeChange?: (isMinimized: boolean) => void
 }
 
 export function RepoCard({
@@ -56,7 +60,9 @@ export function RepoCard({
   onClose,
   color,
   onColorChange,
-  currentUser
+  currentUser,
+  isMinimized = false,
+  onMinimizeChange
 }: RepoCardProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
   const { isMyPRsFilterEnabled, toggleMyPRsFilter } = useMyPRsFilter()
@@ -153,6 +159,29 @@ export function RepoCard({
             </>
           )}
         </div>
+        {/* Minimize button */}
+        {onMinimizeChange && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onMinimizeChange(!isMinimized)
+                }}
+              >
+                {isMinimized ? (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{isMinimized ? 'Expand' : 'Minimize'}</TooltipContent>
+          </Tooltip>
+        )}
         {/* Close button */}
         {onClose && (
           <Tooltip>
@@ -261,45 +290,50 @@ export function RepoCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-1">
-        {hasPRs ? (
-          <div className="space-y-1.5 p-0.5">
-            {filteredPRs.map((pr) => (
-              <PRCard key={pr.id} pr={pr} />
-            ))}
-          </div>
-        ) : (
-          <div className="h-full flex items-center justify-center text-center py-4">
-            <div className="space-y-1">
-              <GitPullRequest className="w-6 h-6 text-muted-foreground/50 mx-auto" />
-              <p className="text-[10px] text-muted-foreground">
-                {showOnlyMyPRs && totalPRs > 0 ? 'No PRs by you' : 'No open PRs'}
-              </p>
+      {/* Content and Footer - hidden when minimized */}
+      {!isMinimized && (
+        <>
+          <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-1">
+            {hasPRs ? (
+              <div className="space-y-1.5 p-0.5">
+                {filteredPRs.map((pr) => (
+                  <PRCard key={pr.id} pr={pr} />
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-center py-4">
+                <div className="space-y-1">
+                  <GitPullRequest className="w-6 h-6 text-muted-foreground/50 mx-auto" />
+                  <p className="text-[10px] text-muted-foreground">
+                    {showOnlyMyPRs && totalPRs > 0 ? 'No PRs by you' : 'No open PRs'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+
+          {/* Footer - visual end marker */}
+          <div
+            className="flex-shrink-0 border-t border-border bg-muted/80 dark:bg-black/20 px-3 py-1.5 flex items-center justify-center gap-2"
+            style={color ? { borderTopColor: `${color}40`, backgroundColor: `${color}15` } : {}}
+          >
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-1 h-1 rounded-full bg-muted-foreground/40"
+                style={color ? { backgroundColor: `${color}60` } : {}}
+              />
+              <div
+                className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50"
+                style={color ? { backgroundColor: `${color}70` } : {}}
+              />
+              <div
+                className="w-1 h-1 rounded-full bg-muted-foreground/40"
+                style={color ? { backgroundColor: `${color}60` } : {}}
+              />
             </div>
           </div>
-        )}
-      </CardContent>
-
-      {/* Footer - visual end marker */}
-      <div
-        className="flex-shrink-0 border-t border-border bg-muted/80 dark:bg-black/20 px-3 py-1.5 flex items-center justify-center gap-2"
-        style={color ? { borderTopColor: `${color}40`, backgroundColor: `${color}15` } : {}}
-      >
-        <div className="flex items-center gap-1.5">
-          <div
-            className="w-1 h-1 rounded-full bg-muted-foreground/40"
-            style={color ? { backgroundColor: `${color}60` } : {}}
-          />
-          <div
-            className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50"
-            style={color ? { backgroundColor: `${color}70` } : {}}
-          />
-          <div
-            className="w-1 h-1 rounded-full bg-muted-foreground/40"
-            style={color ? { backgroundColor: `${color}60` } : {}}
-          />
-        </div>
-      </div>
+        </>
+      )}
     </Card>
   )
 }

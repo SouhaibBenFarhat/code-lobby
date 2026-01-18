@@ -104,6 +104,7 @@ interface StoreSchema {
   myPRsRepos: string[] // Array of repo full_names with "My PRs" filter enabled (shared across views)
   prDetailPanel: PanelSettings // PR detail panel state
   repoColors: Record<string, string> // Map of repo full_name to color hex
+  minimizedRepos: string[] // Array of repo full_names that are minimized in canvas view
   viewMode: ViewMode // Current view mode (canvas or ide)
   ideViewSettings: IDEViewSettings // IDE view specific settings
   aiChat: AIChatSettings // AI chat settings and history
@@ -133,6 +134,7 @@ const store = new Store<StoreSchema>({
       width: 400
     },
     repoColors: {}, // Empty = no custom colors
+    minimizedRepos: [], // Empty = no minimized repos
     viewMode: 'canvas', // Default to canvas view
     ideViewSettings: {
       sidebarWidth: 280,
@@ -244,6 +246,23 @@ export function setRepoColor(repoFullName: string, color: string | null): void {
     current[repoFullName] = color
   }
   store.set('repoColors', current)
+}
+
+// Minimized repos
+export function getMinimizedRepos(): string[] {
+  return store.get('minimizedRepos')
+}
+
+export function setRepoMinimized(repoFullName: string, isMinimized: boolean): void {
+  const current = getMinimizedRepos()
+  if (isMinimized && !current.includes(repoFullName)) {
+    store.set('minimizedRepos', [...current, repoFullName])
+  } else if (!isMinimized && current.includes(repoFullName)) {
+    store.set(
+      'minimizedRepos',
+      current.filter((r) => r !== repoFullName)
+    )
+  }
 }
 
 // View mode
