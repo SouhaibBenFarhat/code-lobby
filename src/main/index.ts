@@ -438,6 +438,38 @@ function setupIPCHandlers(): void {
     }
   })
 
+  // Refresh PRs for a single repository (bypasses cache)
+  ipcMain.handle('refresh-repo-prs', async (_, repoFullName: string) => {
+    const token = getToken()
+    if (!token) return { success: false, error: 'No token' }
+
+    try {
+      logger.info(LogCategory.API, '🔄 Refreshing PRs for single repo', { repo: repoFullName })
+
+      // Fetch fresh data for this specific repo (always bypass cache)
+      const data = await fetchAllPRsForRepos(token, [repoFullName])
+
+      logger.info(LogCategory.API, 'Single repo PRs refreshed', {
+        repo: repoFullName,
+        count: data.pullRequests.length,
+        rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
+      })
+
+      return {
+        success: true,
+        data: data.pullRequests,
+        currentUser: data.currentUser,
+        rateLimit: data.rateLimit
+      }
+    } catch (error) {
+      logger.error(LogCategory.API, 'Failed to refresh repo PRs', {
+        repo: repoFullName,
+        error: (error as Error).message
+      })
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
   ipcMain.handle('fetch-pr-events', async () => {
     const token = getToken()
     if (!token) return { success: false, error: 'No token' }

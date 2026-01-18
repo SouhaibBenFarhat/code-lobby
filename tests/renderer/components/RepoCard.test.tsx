@@ -13,7 +13,7 @@ import {
   createMockUser,
   resetIdCounter
 } from '../../mocks/factories'
-import { fireEvent, render, screen } from '../../utils/render'
+import { fireEvent, render, screen, waitFor } from '../../utils/render'
 
 // Mock the usePRContext and useMyPRsFilter hooks
 const mockSetSelectedPR = vi.fn()
@@ -422,6 +422,58 @@ describe('RepoCard', () => {
 
       // Repo name should still be visible in header
       expect(screen.getByText('test-repo')).toBeInTheDocument()
+    })
+  })
+
+  describe('Reload', () => {
+    it('should render reload button when onReload prop is provided', () => {
+      const repo = createMockRepository()
+      const onReload = vi.fn()
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onReload={onReload} />)
+
+      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
+      expect(reloadButton).toBeInTheDocument()
+    })
+
+    it('should not render reload button when onReload prop is not provided', () => {
+      const repo = createMockRepository()
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+
+      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')
+      expect(reloadButton).not.toBeInTheDocument()
+    })
+
+    it('should call onReload when reload button is clicked', async () => {
+      const repo = createMockRepository()
+      const onReload = vi.fn().mockResolvedValue(undefined)
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onReload={onReload} />)
+
+      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
+      if (reloadButton) {
+        fireEvent.click(reloadButton)
+        expect(onReload).toHaveBeenCalled()
+      }
+    })
+
+    it('should call onReload and complete successfully', async () => {
+      const repo = createMockRepository()
+      const onReload = vi.fn().mockResolvedValue(undefined)
+      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onReload={onReload} />)
+
+      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
+      if (reloadButton) {
+        fireEvent.click(reloadButton)
+
+        await waitFor(() => {
+          expect(onReload).toHaveBeenCalledTimes(1)
+        })
+
+        // After reload completes, button should be enabled again
+        await waitFor(() => {
+          const refreshIcon = document.querySelector('button svg.lucide-refresh-cw')
+          expect(refreshIcon).toBeInTheDocument()
+        })
+      }
     })
   })
 })

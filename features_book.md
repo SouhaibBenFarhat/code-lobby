@@ -247,6 +247,13 @@ Close the app Friday, open it Monday — everything is exactly where you left it
 - Triggers a fresh fetch from GitHub
 - Perfect when you know data has changed
 
+**Per-Repo Reload** — Refresh just one repository:
+- Each repo has its own reload button
+- Canvas view: In the repo card header
+- IDE view: Hover over a repo folder to reveal
+- Only refreshes that repo's PRs — others stay cached
+- Perfect when you know a specific PR was updated
+
 **Sign Out** — Clean slate:
 - Clears all user data and cache
 - Preserves your Claude API key and settings
@@ -341,6 +348,7 @@ We're actively building:
 | **Unified Dashboard** | All PRs in one place |
 | **Two View Modes** | Work the way you think |
 | **Minimize Cards** | Collapse repos to save space |
+| **Per-Repo Reload** | Refresh individual repos instantly |
 | **Smart Filtering** | Focus on what matters |
 | **AI Assistant** | Intelligent help on demand |
 | **Context-Aware AI** | AI knows about CodeLobby |

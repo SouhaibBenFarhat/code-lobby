@@ -339,8 +339,8 @@ describe('IDEView', () => {
       if (folderRow) {
         fireEvent.mouseEnter(folderRow)
 
-        // Find the toggle button
-        const toggleButton = folderRow.querySelector('button')
+        // Find the My PRs toggle button (has Users icon)
+        const toggleButton = folderRow.querySelector('button svg.lucide-users')?.parentElement
         if (toggleButton) {
           fireEvent.click(toggleButton)
 
@@ -469,7 +469,8 @@ describe('IDEView', () => {
       expect(folderRow).toBeTruthy()
       if (folderRow) {
         fireEvent.mouseEnter(folderRow)
-        const toggleButton = folderRow.querySelector('button')
+        // Find the My PRs toggle button (has Users icon)
+        const toggleButton = folderRow.querySelector('button svg.lucide-users')?.parentElement
         expect(toggleButton).toBeTruthy()
 
         if (toggleButton) {
@@ -609,6 +610,108 @@ describe('IDEView', () => {
       await waitFor(() => {
         expect(screen.getByText('1 PR')).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('Reload Repo PRs', () => {
+    it('should render reload button for each repo', async () => {
+      const repo = createMockRepository({ name: 'frontend' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+      })
+
+      // Hover over the repo row to reveal the reload button
+      const repoRow = screen.getByText('frontend').closest('[role="treeitem"]')
+      if (repoRow) {
+        fireEvent.mouseEnter(repoRow)
+        const reloadButton = repoRow.querySelector('button svg.lucide-refresh-cw')?.parentElement
+        expect(reloadButton).toBeInTheDocument()
+      }
+    })
+
+    it('should call refreshRepoPRs when reload button is clicked', async () => {
+      const repo = createMockRepository({ name: 'frontend', full_name: 'org/frontend' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+      mockElectron.refreshRepoPRs = vi.fn().mockResolvedValue({
+        success: true,
+        data: [],
+        currentUser: 'testuser'
+      })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+      })
+
+      // Find and click the reload button
+      const repoRow = screen.getByText('frontend').closest('[role="treeitem"]')
+      if (repoRow) {
+        const reloadButton = repoRow.querySelector('button svg.lucide-refresh-cw')?.parentElement
+        if (reloadButton) {
+          fireEvent.click(reloadButton)
+
+          await waitFor(() => {
+            expect(mockElectron.refreshRepoPRs).toHaveBeenCalledWith('org/frontend')
+          })
+        }
+      }
+    })
+
+    it('should complete reload successfully and restore refresh button', async () => {
+      const repo = createMockRepository({ name: 'frontend', full_name: 'org/frontend' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+      mockElectron.refreshRepoPRs = vi.fn().mockResolvedValue({
+        success: true,
+        data: [],
+        currentUser: 'testuser'
+      })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+        expect(screen.getByText('frontend')).toBeInTheDocument()
+      })
+
+      // Find and click the reload button
+      const repoRow = screen.getByText('frontend').closest('[role="treeitem"]')
+      if (repoRow) {
+        const reloadButton = repoRow.querySelector('button svg.lucide-refresh-cw')?.parentElement
+        if (reloadButton) {
+          fireEvent.click(reloadButton)
+
+          await waitFor(() => {
+            expect(mockElectron.refreshRepoPRs).toHaveBeenCalledWith('org/frontend')
+          })
+
+          // After reload completes, refresh button should be visible again
+          await waitFor(() => {
+            expect(repoRow.querySelector('svg.lucide-refresh-cw')).toBeInTheDocument()
+          })
+        }
+      }
     })
   })
 })

@@ -44,6 +44,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Fullscreen adaptation | ✅ Complete |
 | | Rate limit gauge | ✅ Complete |
 | | Minimize repo cards (Canvas) | ✅ Complete |
+| | Per-repo reload button | ✅ Complete |
 | **Infrastructure** | Centralized logging | ✅ Complete |
 | | Retry & timeout logic | ✅ Complete |
 | | Error handling | ✅ Complete |
@@ -337,6 +338,47 @@ Click a button on any repo card to minimize it to just the header, allowing more
 - `tests/mocks/electron.ts` - Added mocks
 - `tests/renderer/components/RepoCard.test.tsx` - Added 8 tests
 - `tests/main/store.test.ts` - Added 6 tests
+
+**Completed:** January 18, 2026
+
+---
+
+### 1.1.5 Per-Repo Reload Button ✅ Complete
+> Reload PRs for a single repository without refreshing all data
+
+**Concept:**
+Click a refresh button on any repository card to reload just that repo's PRs without affecting other repos. Useful when you know a specific repo has new PRs but don't want to wait for a full refresh.
+
+**Implementation Summary:**
+- Refresh icon button added to repo card header (Canvas view)
+- Refresh icon button on repo folder row (IDE view - appears on hover)
+- Calls dedicated `refresh-repo-prs` IPC handler that bypasses cache
+- Updates react-query cache locally with fresh data for that repo
+- Shows loading spinner while fetching
+- Does NOT affect other repos' data
+
+**Technical Details:**
+- New IPC handler `refresh-repo-prs` in main process
+- Uses `fetchAllPRsForRepos` with single repo (always fresh, no cache)
+- `handleReload(repoFullName)` in PRGrid and IDEView
+- Updates query cache with new PRs while preserving other repos' data
+- `isReloading` state in RepoCard and TreeItem components
+
+**UI:**
+- Canvas view: RefreshCw icon button in repo card header bar
+- IDE view: RefreshCw icon button on repo row (visible on hover)
+- Loading spinner replaces icon during reload
+- Button disabled while loading
+
+**Files Changed:**
+- `src/main/index.ts` - Added `refresh-repo-prs` IPC handler
+- `src/preload/index.ts` - Exposed `refreshRepoPRs` to renderer
+- `src/renderer/components/RepoCard.tsx` - Added `onReload` prop and reload button
+- `src/renderer/components/PRGrid.tsx` - Added `handleReload` function
+- `src/renderer/components/IDEView.tsx` - Added `handleReload` and reload button to TreeItem
+- `tests/mocks/electron.ts` - Added `refreshRepoPRs` mock
+- `tests/renderer/components/RepoCard.test.tsx` - Added 4 tests
+- `tests/renderer/components/IDEView.test.tsx` - Added 3 tests
 
 **Completed:** January 18, 2026
 

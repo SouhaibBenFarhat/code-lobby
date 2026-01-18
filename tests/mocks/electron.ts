@@ -34,6 +34,7 @@ interface MockElectronAPI {
   // GitHub API
   fetchPRs: ReturnType<typeof vi.fn>
   fetchAllPRsForRepos: ReturnType<typeof vi.fn>
+  refreshRepoPRs: ReturnType<typeof vi.fn>
   fetchPREvents: ReturnType<typeof vi.fn>
   fetchPRChecks: ReturnType<typeof vi.fn>
   fetchContributedRepos: ReturnType<typeof vi.fn>
@@ -158,6 +159,12 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // GitHub API
     fetchPRs: vi.fn().mockResolvedValue({ success: true, data: [] }),
     fetchAllPRsForRepos: vi.fn().mockResolvedValue({
+      success: true,
+      data: [],
+      currentUser: 'testuser',
+      rateLimit: defaultRateLimit
+    }),
+    refreshRepoPRs: vi.fn().mockResolvedValue({
       success: true,
       data: [],
       currentUser: 'testuser',

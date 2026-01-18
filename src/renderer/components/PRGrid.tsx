@@ -289,6 +289,27 @@ export function PRGrid({ currentUser }: PRGridProps) {
     [minimizedRepos, queryClient, layouts, saveLayouts]
   )
 
+  // Handle reload for single repo
+  const handleReload = useCallback(
+    async (repoFullName: string) => {
+      const result = await window.electron.refreshRepoPRs(repoFullName)
+      if (result.success && result.data) {
+        // Update the PR data for this repo in the query cache
+        const currentData = prsResult
+        if (currentData) {
+          // Remove old PRs for this repo and add new ones
+          const otherPRs = currentData.prs.filter((pr) => pr.base.repo.full_name !== repoFullName)
+          const newPRs = [...otherPRs, ...(result.data as PullRequest[])]
+          queryClient.setQueryData(['all-prs-for-repos', reposToFetch], {
+            ...currentData,
+            prs: newPRs
+          })
+        }
+      }
+    },
+    [prsResult, queryClient, reposToFetch]
+  )
+
   // Handle drag/resize end
   const handleDragStop = useCallback(
     (id: string, x: number, y: number) => {
@@ -615,6 +636,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
                   onMinimizeChange={(isMinimized) =>
                     handleMinimizeChange(repo.full_name, isMinimized)
                   }
+                  onReload={() => handleReload(repo.full_name)}
                 />
               </Rnd>
             )

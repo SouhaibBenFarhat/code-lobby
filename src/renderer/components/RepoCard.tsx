@@ -5,8 +5,10 @@ import {
   ExternalLink,
   GitFork,
   GitPullRequest,
+  Loader2,
   Move,
   Palette,
+  RefreshCw,
   User,
   Users,
   X
@@ -49,6 +51,7 @@ interface RepoCardProps {
   currentUser?: string | null
   isMinimized?: boolean
   onMinimizeChange?: (isMinimized: boolean) => void
+  onReload?: () => Promise<void>
 }
 
 export function RepoCard({
@@ -62,9 +65,11 @@ export function RepoCard({
   onColorChange,
   currentUser,
   isMinimized = false,
-  onMinimizeChange
+  onMinimizeChange,
+  onReload
 }: RepoCardProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
+  const [isReloading, setIsReloading] = useState(false)
   const { isMyPRsFilterEnabled, toggleMyPRsFilter } = useMyPRsFilter()
   const showOnlyMyPRs = isMyPRsFilterEnabled(repo.full_name)
 
@@ -159,6 +164,35 @@ export function RepoCard({
             </>
           )}
         </div>
+        {/* Reload button */}
+        {onReload && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+                disabled={isReloading}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setIsReloading(true)
+                  try {
+                    await onReload()
+                  } finally {
+                    setIsReloading(false)
+                  }
+                }}
+              >
+                {isReloading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Reload PRs for this repo</TooltipContent>
+          </Tooltip>
+        )}
         {/* Minimize button */}
         {onMinimizeChange && (
           <Tooltip>

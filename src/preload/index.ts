@@ -23,6 +23,19 @@ export interface ElectronAPI {
     }
     error?: string
   }>
+  refreshRepoPRs: (repoFullName: string) => Promise<{
+    success: boolean
+    data?: unknown[]
+    currentUser?: string
+    rateLimit?: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+    }
+    error?: string
+  }>
   fetchPREvents: () => Promise<{ success: boolean; data?: unknown[]; error?: string }>
   fetchPRChecks: (
     owner: string,
@@ -368,6 +381,7 @@ const electronAPI: ElectronAPI = {
   fetchPRs: () => ipcRenderer.invoke('fetch-prs'),
   fetchAllPRsForRepos: (repoFullNames: string[]) =>
     ipcRenderer.invoke('fetch-all-prs-for-repos', repoFullNames),
+  refreshRepoPRs: (repoFullName: string) => ipcRenderer.invoke('refresh-repo-prs', repoFullName),
   fetchPREvents: () => ipcRenderer.invoke('fetch-pr-events'),
   fetchPRChecks: (owner: string, repo: string, ref: string) =>
     ipcRenderer.invoke('fetch-pr-checks', owner, repo, ref),

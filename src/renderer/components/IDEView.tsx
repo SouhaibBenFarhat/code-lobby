@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle2,
   ChevronDown,
@@ -9,6 +9,7 @@ import {
   FolderOpen,
   GitPullRequest,
   Loader2,
+  RefreshCw,
   User,
   Users,
   XCircle
@@ -34,6 +35,7 @@ interface TreeItemProps {
   selectedPRId: string | null
   onSelectPR: (pr: PullRequest) => void
   currentUser: string | null
+  onReload?: () => Promise<void>
 }
 
 function TreeItem({
@@ -43,9 +45,11 @@ function TreeItem({
   onToggle,
   selectedPRId,
   onSelectPR,
-  currentUser
+  currentUser,
+  onReload
 }: TreeItemProps) {
   const { isMyPRsFilterEnabled, toggleMyPRsFilter } = useMyPRsFilter()
+  const [isReloading, setIsReloading] = useState(false)
   const showOnlyMyPRs = isMyPRsFilterEnabled(repo.full_name)
 
   // Filter PRs based on "My PRs" toggle for this repo
@@ -93,6 +97,38 @@ function TreeItem({
           <Folder className="w-4 h-4 text-yellow-500/70" />
         )}
         <span className="text-sm font-medium truncate flex-1">{repo.name}</span>
+
+        {/* Reload button */}
+        {onReload && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={isReloading}
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  setIsReloading(true)
+                  try {
+                    await onReload()
+                  } finally {
+                    setIsReloading(false)
+                  }
+                }}
+                className={cn(
+                  'p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100',
+                  'text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50'
+                )}
+              >
+                {isReloading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3 h-3" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Reload PRs</TooltipContent>
+          </Tooltip>
+        )}
 
         {/* My PRs toggle - only show if repo has PRs */}
         {hasPRs && (
@@ -362,6 +398,28 @@ export function IDEView({ currentUser }: IDEViewProps) {
     })
   }, [])
 
+  // Handle reload for single repo
+  const queryClient = useQueryClient()
+  const handleReload = useCallback(
+    async (repoFullName: string) => {
+      const result = await window.electron.refreshRepoPRs(repoFullName)
+      if (result.success && result.data) {
+        // Update the PR data for this repo in the query cache
+        const currentData = prsResult
+        if (currentData) {
+          // Remove old PRs for this repo and add new ones
+          const otherPRs = currentData.prs.filter((pr) => pr.base.repo.full_name !== repoFullName)
+          const newPRs = [...otherPRs, ...(result.data as PullRequest[])]
+          queryClient.setQueryData(['all-prs-for-repos', reposToFetch], {
+            ...currentData,
+            prs: newPRs
+          })
+        }
+      }
+    },
+    [prsResult, queryClient, reposToFetch]
+  )
+
   // Handle resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -445,6 +503,7 @@ export function IDEView({ currentUser }: IDEViewProps) {
                   selectedPRId={selectedPR?.id || null}
                   onSelectPR={setSelectedPR}
                   currentUser={fetchedCurrentUser}
+                  onReload={() => handleReload(repo.full_name)}
                 />
               ))
             )}
