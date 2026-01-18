@@ -43,6 +43,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Retry & timeout logic | ✅ Complete |
 | | Error handling | ✅ Complete |
 | | Test coverage (~80%) | ✅ Complete |
+| | Persistent data cache (30 min) | ✅ Complete |
 
 ---
 
@@ -108,6 +109,51 @@ Click a button in the PR detail header, and AI analyzes comments and description
 - `src/renderer/components/PRDetail.tsx` - Added button, tooltip, and UI state
 - `tests/mocks/electron.ts` - Added mock for `extractPreviewUrl`
 - `tests/renderer/components/PRDetail.test.tsx` - Added 6 tests
+
+**Completed:** January 18, 2026
+
+---
+
+### 1.1.2 Persistent Data Cache (30-Minute TTL) ✅ Complete
+> Cache API data to disk to survive app restarts and reduce GitHub API calls
+
+**Problem Solved:**
+- Previously, every app restart made fresh API calls to GitHub
+- During development, this quickly hit rate limits
+- Users had to wait for data to load on every app launch
+
+**Implementation Summary:**
+- Persistent cache stored in `electron-store` (survives app restart)
+- 30-minute TTL for both PR data and repository list
+- Cache validated by: timestamp + selected repos match
+- Two-layer caching: session cache (10s) + persistent cache (30min)
+- Clear logging shows cache hits/misses
+
+**How It Works:**
+```
+1. App starts
+2. Check session cache (in-memory, 10s TTL) → fast path
+3. Check persistent cache (disk, 30min TTL) → medium path
+4. If both miss → API call → update both caches
+```
+
+**Cache Invalidation:**
+- Automatic after 30 minutes
+- When selected repos change (different repo set = cache miss)
+- When user logs out (clears all caches)
+- Manual refresh button bypasses cache (not implemented yet)
+
+**Technical Details:**
+- `DataCache` interface in `store.ts` with `prData` and `allRepos`
+- `CACHE_TTL_PR_DATA` and `CACHE_TTL_ALL_REPOS` constants (30 min)
+- `isCacheValid(lastFetch, ttl)` helper function
+- `setPRDataCache(data, selectedRepos)` stores with repo key
+- Session cache supplements persistent cache for rapid re-fetches
+
+**Files Changed:**
+- `src/main/store.ts` - Added DataCache interface and cache functions
+- `src/main/index.ts` - Updated fetch handlers to use persistent cache
+- `tests/main/store.test.ts` - Added 15 tests for cache functionality
 
 **Completed:** January 18, 2026
 

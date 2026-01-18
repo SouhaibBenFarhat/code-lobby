@@ -54,6 +54,23 @@ export interface AIPanelSettings {
   width: number
 }
 
+// Persistent cache for API data (survives app restart)
+export interface DataCache {
+  prData: {
+    data: any // PR data from GraphQL
+    lastFetch: number // Timestamp of last fetch
+    selectedRepos: string[] // Which repos this cache is for
+  } | null
+  allRepos: {
+    data: any[] // All repositories
+    lastFetch: number
+  } | null
+}
+
+// Cache TTL constants (in milliseconds)
+export const CACHE_TTL_PR_DATA = 30 * 60 * 1000 // 30 minutes
+export const CACHE_TTL_ALL_REPOS = 30 * 60 * 1000 // 30 minutes
+
 interface StoreSchema {
   token: string | null
   user: GitHubUser | null // Cache user info to avoid re-validation
@@ -72,6 +89,7 @@ interface StoreSchema {
   ideViewSettings: IDEViewSettings // IDE view specific settings
   aiChat: AIChatSettings // AI chat settings and history
   aiPanel: AIPanelSettings // AI panel open state and size
+  dataCache: DataCache // Persistent cache for API data
 }
 
 const store = new Store<StoreSchema>({
@@ -106,6 +124,10 @@ const store = new Store<StoreSchema>({
     aiPanel: {
       isOpen: false,
       width: 400
+    },
+    dataCache: {
+      prData: null,
+      allRepos: null
     }
   },
   encryptionKey: 'codelobby-secure-key'
@@ -269,4 +291,49 @@ export function getAIPanel(): AIPanelSettings {
 export function setAIPanel(settings: Partial<AIPanelSettings>): void {
   const current = getAIPanel()
   store.set('aiPanel', { ...current, ...settings })
+}
+
+// Data Cache (persistent across app restarts)
+export function getDataCache(): DataCache {
+  return store.get('dataCache')
+}
+
+export function getPRDataCache(): DataCache['prData'] {
+  return store.get('dataCache').prData
+}
+
+export function setPRDataCache(data: any, selectedRepos: string[]): void {
+  const current = getDataCache()
+  store.set('dataCache', {
+    ...current,
+    prData: {
+      data,
+      lastFetch: Date.now(),
+      selectedRepos
+    }
+  })
+}
+
+export function getAllReposCache(): DataCache['allRepos'] {
+  return store.get('dataCache').allRepos
+}
+
+export function setAllReposCache(data: any[]): void {
+  const current = getDataCache()
+  store.set('dataCache', {
+    ...current,
+    allRepos: {
+      data,
+      lastFetch: Date.now()
+    }
+  })
+}
+
+export function clearDataCache(): void {
+  store.set('dataCache', { prData: null, allRepos: null })
+}
+
+export function isCacheValid(lastFetch: number | undefined, ttl: number): boolean {
+  if (!lastFetch) return false
+  return Date.now() - lastFetch < ttl
 }

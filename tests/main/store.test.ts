@@ -25,7 +25,8 @@ vi.mock('electron-store', () => {
             prDetailPanel: { isOpen: false, width: 400 },
             repoColors: {},
             viewMode: 'canvas',
-            ideViewSettings: { sidebarWidth: 280, expandedRepos: [] }
+            ideViewSettings: { sidebarWidth: 280, expandedRepos: [] },
+            dataCache: { prData: null, allRepos: null }
           }
           return defaults[key]
         }
@@ -47,9 +48,14 @@ vi.mock('electron-store', () => {
 
 // Import after mocking
 import {
+  CACHE_TTL_ALL_REPOS,
+  CACHE_TTL_PR_DATA,
+  clearDataCache,
   clearToken,
+  getAllReposCache,
   getCardLayouts,
   getIDEViewSettings,
+  getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
   getRepoOrder,
@@ -58,8 +64,11 @@ import {
   getToken,
   getUser,
   getViewMode,
+  isCacheValid,
+  setAllReposCache,
   setCardLayouts,
   setIDEViewSettings,
+  setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
   setRepoOrder,
@@ -260,6 +269,142 @@ describe('Store', () => {
       const settings = getIDEViewSettings()
       expect(settings.sidebarWidth).toBe(400)
       expect(settings.expandedRepos).toEqual(['org/repo1'])
+    })
+  })
+
+  describe('Data Cache (Persistent)', () => {
+    describe('Cache TTL Constants', () => {
+      it('should have 30 minute TTL for PR data', () => {
+        expect(CACHE_TTL_PR_DATA).toBe(30 * 60 * 1000) // 30 minutes in ms
+      })
+
+      it('should have 30 minute TTL for all repos', () => {
+        expect(CACHE_TTL_ALL_REPOS).toBe(30 * 60 * 1000) // 30 minutes in ms
+      })
+    })
+
+    describe('isCacheValid', () => {
+      it('should return false for undefined lastFetch', () => {
+        expect(isCacheValid(undefined, CACHE_TTL_PR_DATA)).toBe(false)
+      })
+
+      it('should return true for fresh cache', () => {
+        const recentTime = Date.now() - 5 * 60 * 1000 // 5 minutes ago
+        expect(isCacheValid(recentTime, CACHE_TTL_PR_DATA)).toBe(true)
+      })
+
+      it('should return false for expired cache', () => {
+        const oldTime = Date.now() - 35 * 60 * 1000 // 35 minutes ago
+        expect(isCacheValid(oldTime, CACHE_TTL_PR_DATA)).toBe(false)
+      })
+
+      it('should return true for cache at exactly 29 minutes', () => {
+        const time = Date.now() - 29 * 60 * 1000 // 29 minutes ago
+        expect(isCacheValid(time, CACHE_TTL_PR_DATA)).toBe(true)
+      })
+
+      it('should return false for cache at exactly 31 minutes', () => {
+        const time = Date.now() - 31 * 60 * 1000 // 31 minutes ago
+        expect(isCacheValid(time, CACHE_TTL_PR_DATA)).toBe(false)
+      })
+    })
+
+    describe('PR Data Cache', () => {
+      it('should return null for unset PR data cache', () => {
+        expect(getPRDataCache()).toBeNull()
+      })
+
+      it('should set and get PR data cache', () => {
+        const mockData = {
+          pullRequests: [{ id: 1, title: 'Test PR' }],
+          currentUser: 'testuser',
+          rateLimit: { limit: 5000, remaining: 4999 }
+        }
+        const repos = ['org/repo1', 'org/repo2']
+
+        setPRDataCache(mockData, repos)
+        const cache = getPRDataCache()
+
+        expect(cache).not.toBeNull()
+        expect(cache?.data).toEqual(mockData)
+        expect(cache?.selectedRepos).toEqual(repos)
+        expect(cache?.lastFetch).toBeGreaterThan(0)
+      })
+
+      it('should store lastFetch timestamp', () => {
+        const before = Date.now()
+        setPRDataCache({ test: true }, ['org/repo'])
+        const after = Date.now()
+
+        const cache = getPRDataCache()
+        expect(cache?.lastFetch).toBeGreaterThanOrEqual(before)
+        expect(cache?.lastFetch).toBeLessThanOrEqual(after)
+      })
+    })
+
+    describe('All Repos Cache', () => {
+      it('should return null for unset repos cache', () => {
+        expect(getAllReposCache()).toBeNull()
+      })
+
+      it('should set and get all repos cache', () => {
+        const mockRepos = [
+          { full_name: 'org/repo1', name: 'repo1' },
+          { full_name: 'org/repo2', name: 'repo2' }
+        ]
+
+        setAllReposCache(mockRepos)
+        const cache = getAllReposCache()
+
+        expect(cache).not.toBeNull()
+        expect(cache?.data).toEqual(mockRepos)
+        expect(cache?.lastFetch).toBeGreaterThan(0)
+      })
+    })
+
+    describe('clearDataCache', () => {
+      it('should clear all cached data', () => {
+        // Set some cache data
+        setPRDataCache({ test: true }, ['org/repo'])
+        setAllReposCache([{ name: 'test' }])
+
+        // Verify it's set
+        expect(getPRDataCache()).not.toBeNull()
+        expect(getAllReposCache()).not.toBeNull()
+
+        // Clear cache
+        clearDataCache()
+
+        // Verify it's cleared
+        expect(getPRDataCache()).toBeNull()
+        expect(getAllReposCache()).toBeNull()
+      })
+    })
+
+    describe('Cache Persistence Across Sessions', () => {
+      it('should persist PR data cache with selectedRepos for validation', () => {
+        const repos = ['org/frontend', 'org/backend']
+        const data = { prs: [1, 2, 3] }
+
+        setPRDataCache(data, repos)
+        const cache = getPRDataCache()
+
+        // Verify the cache includes selectedRepos for cache key validation
+        expect(cache?.selectedRepos).toEqual(repos)
+      })
+
+      it('should allow different cache entries for different repo selections', () => {
+        // First set of repos
+        setPRDataCache({ set: 1 }, ['org/repo1'])
+        const cache1 = getPRDataCache()
+        expect(cache1?.selectedRepos).toEqual(['org/repo1'])
+
+        // Different set of repos (would overwrite)
+        setPRDataCache({ set: 2 }, ['org/repo2', 'org/repo3'])
+        const cache2 = getPRDataCache()
+        expect(cache2?.selectedRepos).toEqual(['org/repo2', 'org/repo3'])
+        expect(cache2?.data).toEqual({ set: 2 })
+      })
     })
   })
 })

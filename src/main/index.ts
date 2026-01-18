@@ -24,16 +24,21 @@ import { LogCategory, logger } from './logger'
 import {
   AIPanelSettings,
   addChatMessage,
+  CACHE_TTL_ALL_REPOS,
+  CACHE_TTL_PR_DATA,
   ChatMessage,
   clearChatHistory,
+  clearDataCache,
   clearToken,
   getAIPanel,
+  getAllReposCache,
   getCardLayouts,
   getChatHistory,
   getClaudeApiKey,
   getEnableThinking,
   getIDEViewSettings,
   getMyPRsRepos,
+  getPRDataCache,
   getPRDetailPanel,
   getRepoColors,
   getRepoOrder,
@@ -44,14 +49,17 @@ import {
   getUser,
   getViewMode,
   IDEViewSettings,
+  isCacheValid,
   LayoutItem,
   PanelSettings,
   setAIPanel,
+  setAllReposCache,
   setCardLayouts,
   setClaudeApiKey,
   setEnableThinking,
   setIDEViewSettings,
   setMyPRsRepos,
+  setPRDataCache,
   setPRDetailPanel,
   setRepoColor,
   setRepoOrder,
@@ -64,21 +72,23 @@ import {
   ViewMode
 } from './store'
 
-// Cache for GraphQL data to avoid repeated queries
-let cachedPRData: {
+// In-memory cache for current session (supplements persistent cache)
+// Persistent cache is in electron-store with 30-min TTL
+let sessionPRData: {
   pullRequests: PullRequest[]
   repositories: any[]
   rateLimit: RateLimitInfo
   lastFetch: number
+  selectedRepos: string[]
 } | null = null
 
-// Separate cache for all repos (longer TTL since it changes less)
-let cachedAllRepos: {
+let sessionAllRepos: {
   repositories: Repository[]
   lastFetch: number
 } | null = null
-const ALL_REPOS_CACHE_TTL = 300000 // 5 minutes
-const CACHE_TTL = 10000 // 10 seconds
+
+// Short TTL for session cache (10 seconds) - prevents rapid re-fetches
+const SESSION_CACHE_TTL = 10000 // 10 seconds
 
 let mainWindow: BrowserWindow | null = null
 
@@ -171,9 +181,10 @@ function setupIPCHandlers(): void {
   ipcMain.handle('clear-token', async () => {
     logger.info(LogCategory.AUTH, 'Clearing token and caches')
     clearToken()
-    // Clear all caches
-    cachedAllRepos = null
-    cachedPRData = null
+    // Clear all caches (both session and persistent)
+    sessionAllRepos = null
+    sessionPRData = null
+    clearDataCache()
     return { success: true }
   })
 
@@ -215,16 +226,46 @@ function setupIPCHandlers(): void {
     const token = getToken()
     if (!token) throw new Error('No token')
 
-    // Return cached data if fresh
-    if (cachedPRData && Date.now() - cachedPRData.lastFetch < CACHE_TTL) {
-      logger.debug(LogCategory.CACHE, 'Using cached PR data', {
-        age: Date.now() - cachedPRData.lastFetch,
-        prs: cachedPRData.pullRequests.length
+    // 1. Check session cache first (very short TTL for rapid re-fetches)
+    if (sessionPRData && Date.now() - sessionPRData.lastFetch < SESSION_CACHE_TTL) {
+      logger.debug(LogCategory.CACHE, 'Using session PR cache', {
+        age: Date.now() - sessionPRData.lastFetch,
+        prs: sessionPRData.pullRequests.length
       })
-      return cachedPRData
+      return sessionPRData
     }
 
-    logger.info(LogCategory.GRAPHQL, 'Fetching all PR data via GraphQL')
+    // 2. Check persistent cache (30 min TTL, survives app restart)
+    const persistentCache = getPRDataCache()
+    if (persistentCache && isCacheValid(persistentCache.lastFetch, CACHE_TTL_PR_DATA)) {
+      const cacheAge = Math.round((Date.now() - persistentCache.lastFetch) / 1000 / 60)
+      logger.info(LogCategory.CACHE, 'Using persistent PR cache', {
+        ageMinutes: cacheAge,
+        prs: persistentCache.data.pullRequests?.length || 0,
+        expiresInMinutes: Math.round(
+          (CACHE_TTL_PR_DATA - (Date.now() - persistentCache.lastFetch)) / 1000 / 60
+        )
+      })
+
+      // Populate session cache from persistent cache
+      sessionPRData = {
+        pullRequests: persistentCache.data.pullRequests || [],
+        repositories: persistentCache.data.repositories || [],
+        rateLimit: persistentCache.data.rateLimit || {
+          limit: 5000,
+          remaining: 5000,
+          used: 0,
+          resetAt: '',
+          percentage: 0
+        },
+        lastFetch: persistentCache.lastFetch,
+        selectedRepos: persistentCache.selectedRepos
+      }
+      return sessionPRData
+    }
+
+    // 3. Cache miss - fetch fresh data
+    logger.info(LogCategory.GRAPHQL, 'Cache miss - fetching all PR data via GraphQL')
     const data = await fetchAllPRData(token)
     logger.info(LogCategory.GRAPHQL, 'PR data fetched successfully', {
       prs: data.pullRequests.length,
@@ -232,13 +273,19 @@ function setupIPCHandlers(): void {
       rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
     })
 
-    cachedPRData = {
+    // Update session cache
+    sessionPRData = {
       pullRequests: data.pullRequests,
       repositories: data.repositories,
       rateLimit: data.rateLimit,
-      lastFetch: Date.now()
+      lastFetch: Date.now(),
+      selectedRepos: []
     }
-    return cachedPRData
+
+    // Update persistent cache
+    setPRDataCache(data, [])
+
+    return sessionPRData
   }
 
   ipcMain.handle('fetch-prs', async () => {
@@ -259,11 +306,97 @@ function setupIPCHandlers(): void {
     const token = getToken()
     if (!token) return { success: false, error: 'No token' }
     try {
-      logger.info(LogCategory.API, 'Fetching all PRs for repos', { repos: repoFullNames })
-      const data = await fetchAllPRsForRepos(token, repoFullNames)
-      logger.debug(LogCategory.API, 'Returning all PRs for repos', {
-        count: data.pullRequests.length
+      const sortedRepos = [...repoFullNames].sort()
+      const reposKey = sortedRepos.join(',')
+
+      // 1. Check session cache first (very short TTL)
+      if (
+        sessionPRData &&
+        Date.now() - sessionPRData.lastFetch < SESSION_CACHE_TTL &&
+        [...sessionPRData.selectedRepos].sort().join(',') === reposKey
+      ) {
+        logger.debug(LogCategory.CACHE, 'Using session cache for repos', {
+          age: Date.now() - sessionPRData.lastFetch,
+          repos: repoFullNames.length
+        })
+        return {
+          success: true,
+          data: sessionPRData.pullRequests,
+          currentUser: sessionPRData.repositories[0]?.owner?.login,
+          rateLimit: sessionPRData.rateLimit
+        }
+      }
+
+      // 2. Check persistent cache (30 min TTL)
+      const persistentCache = getPRDataCache()
+      if (
+        persistentCache &&
+        isCacheValid(persistentCache.lastFetch, CACHE_TTL_PR_DATA) &&
+        [...persistentCache.selectedRepos].sort().join(',') === reposKey
+      ) {
+        const cacheAge = Math.round((Date.now() - persistentCache.lastFetch) / 1000 / 60)
+        const expiresIn = Math.round(
+          (CACHE_TTL_PR_DATA - (Date.now() - persistentCache.lastFetch)) / 1000 / 60
+        )
+        logger.info(LogCategory.CACHE, '✅ Using persistent cache (30 min TTL)', {
+          ageMinutes: cacheAge,
+          expiresInMinutes: expiresIn,
+          prs: persistentCache.data.pullRequests?.length || 0,
+          repos: repoFullNames.length
+        })
+
+        // Populate session cache
+        sessionPRData = {
+          pullRequests: persistentCache.data.pullRequests || [],
+          repositories: persistentCache.data.repositories || [],
+          rateLimit: persistentCache.data.rateLimit || {
+            limit: 5000,
+            remaining: 5000,
+            used: 0,
+            resetAt: '',
+            percentage: 0
+          },
+          lastFetch: persistentCache.lastFetch,
+          selectedRepos: persistentCache.selectedRepos
+        }
+
+        return {
+          success: true,
+          data: sessionPRData.pullRequests,
+          currentUser: persistentCache.data.currentUser,
+          rateLimit: sessionPRData.rateLimit
+        }
+      }
+
+      // 3. Cache miss - fetch fresh data from GitHub API
+      logger.info(LogCategory.API, '🔄 Cache miss - fetching from GitHub API', {
+        repos: repoFullNames
       })
+      const data = await fetchAllPRsForRepos(token, repoFullNames)
+      logger.info(LogCategory.API, 'PR data fetched successfully', {
+        count: data.pullRequests.length,
+        rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
+      })
+
+      // Update session cache
+      sessionPRData = {
+        pullRequests: data.pullRequests,
+        repositories: [],
+        rateLimit: data.rateLimit,
+        lastFetch: Date.now(),
+        selectedRepos: sortedRepos
+      }
+
+      // Update persistent cache (survives app restart)
+      setPRDataCache(
+        {
+          pullRequests: data.pullRequests,
+          currentUser: data.currentUser,
+          rateLimit: data.rateLimit
+        },
+        sortedRepos
+      )
+
       return {
         success: true,
         data: data.pullRequests,
@@ -319,24 +452,50 @@ function setupIPCHandlers(): void {
     const token = getToken()
     if (!token) return { success: false, error: 'No token' }
     try {
-      // Use cached all repos if fresh
-      if (cachedAllRepos && Date.now() - cachedAllRepos.lastFetch < ALL_REPOS_CACHE_TTL) {
-        logger.debug(LogCategory.CACHE, 'Using cached repos', {
-          count: cachedAllRepos.repositories.length,
-          age: Date.now() - cachedAllRepos.lastFetch
+      // 1. Check session cache first (very short TTL)
+      if (sessionAllRepos && Date.now() - sessionAllRepos.lastFetch < SESSION_CACHE_TTL) {
+        logger.debug(LogCategory.CACHE, 'Using session repos cache', {
+          count: sessionAllRepos.repositories.length,
+          age: Date.now() - sessionAllRepos.lastFetch
         })
-        return { success: true, data: cachedAllRepos.repositories }
+        return { success: true, data: sessionAllRepos.repositories }
       }
 
-      // Fetch ALL repos the user has access to
-      logger.info(LogCategory.GRAPHQL, 'Fetching all repositories')
+      // 2. Check persistent cache (30 min TTL)
+      const persistentCache = getAllReposCache()
+      if (persistentCache && isCacheValid(persistentCache.lastFetch, CACHE_TTL_ALL_REPOS)) {
+        const cacheAge = Math.round((Date.now() - persistentCache.lastFetch) / 1000 / 60)
+        const expiresIn = Math.round(
+          (CACHE_TTL_ALL_REPOS - (Date.now() - persistentCache.lastFetch)) / 1000 / 60
+        )
+        logger.info(LogCategory.CACHE, '✅ Using persistent repos cache (30 min TTL)', {
+          ageMinutes: cacheAge,
+          expiresInMinutes: expiresIn,
+          count: persistentCache.data?.length || 0
+        })
+
+        // Populate session cache
+        sessionAllRepos = {
+          repositories: persistentCache.data || [],
+          lastFetch: persistentCache.lastFetch
+        }
+        return { success: true, data: sessionAllRepos.repositories }
+      }
+
+      // 3. Cache miss - fetch from GitHub API
+      logger.info(LogCategory.GRAPHQL, '🔄 Cache miss - fetching all repositories')
       const allRepos = await fetchAllRepositories(token)
       logger.info(LogCategory.GRAPHQL, 'Repositories fetched', { count: allRepos.length })
 
-      cachedAllRepos = {
+      // Update session cache
+      sessionAllRepos = {
         repositories: allRepos,
         lastFetch: Date.now()
       }
+
+      // Update persistent cache
+      setAllReposCache(allRepos)
+
       return { success: true, data: allRepos }
     } catch (error) {
       logger.error(LogCategory.GRAPHQL, 'Failed to fetch repositories', {
