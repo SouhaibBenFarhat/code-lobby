@@ -28,6 +28,7 @@ interface MockElectronAPI {
   getToken: ReturnType<typeof vi.fn>
   setToken: ReturnType<typeof vi.fn>
   clearToken: ReturnType<typeof vi.fn>
+  clearAllData: ReturnType<typeof vi.fn>
   validateToken: ReturnType<typeof vi.fn>
 
   // GitHub API
@@ -151,6 +152,7 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     getToken: vi.fn().mockResolvedValue('ghp_mocktoken123'),
     setToken: vi.fn().mockResolvedValue({ success: true, user: defaultUser }),
     clearToken: vi.fn().mockResolvedValue({ success: true }),
+    clearAllData: vi.fn().mockResolvedValue({ success: true }),
     validateToken: vi.fn().mockResolvedValue({ valid: true, user: defaultUser }),
 
     // GitHub API

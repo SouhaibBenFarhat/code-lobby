@@ -239,6 +239,19 @@ Everything persists across sessions:
 
 Close the app Friday, open it Monday — everything is exactly where you left it.
 
+### Fresh Start When You Need It
+
+**Refresh Button** — Clear cache and reload all data:
+- Click the refresh icon in the header
+- Clears all cached PR and repository data
+- Triggers a fresh fetch from GitHub
+- Perfect when you know data has changed
+
+**Sign Out** — Clean slate:
+- Clears all user data and cache
+- Preserves your Claude API key and settings
+- Log back in to start fresh
+
 ---
 
 ## 🔒 Privacy & Security

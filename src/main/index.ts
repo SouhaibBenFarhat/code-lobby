@@ -32,6 +32,7 @@ import {
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
   ChatMessage,
+  clearAllUserData,
   clearChatHistory,
   clearDataCache,
   clearToken,
@@ -194,11 +195,22 @@ function setupIPCHandlers(): void {
   })
 
   ipcMain.handle('clear-token', async () => {
-    logger.info(LogCategory.AUTH, 'Clearing token and caches')
+    logger.info(LogCategory.AUTH, 'Clearing token and all user data (logout)')
     clearToken()
-    // Clear all caches (both session and persistent)
+    // Clear all caches (both session and persistent) and user data
     sessionAllRepos = null
     sessionPRData = null
+    clearAllUserData()
+    return { success: true }
+  })
+
+  // Clear all cached data and refresh (without logging out)
+  ipcMain.handle('clear-all-data', async () => {
+    logger.info(LogCategory.APP, 'Clearing all cached data for fresh reload')
+    // Clear session caches
+    sessionAllRepos = null
+    sessionPRData = null
+    // Clear persistent data cache only (not user preferences)
     clearDataCache()
     return { success: true }
   })

@@ -53,10 +53,12 @@ vi.mock('electron-store', () => {
 
 // Import after mocking
 import {
+  addChatMessage,
   addMessageToPRChat,
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
   clearAllPRChats,
+  clearAllUserData,
   clearDataCache,
   clearPRAnalyses,
   clearPRAnalysisPanelStates,
@@ -68,6 +70,8 @@ import {
   getActivePRChatId,
   getAllReposCache,
   getCardLayouts,
+  getChatHistory,
+  getClaudeApiKey,
   getIDEViewSettings,
   getMinimizedRepos,
   getPRAnalyses,
@@ -90,6 +94,7 @@ import {
   setActivePRChatId,
   setAllReposCache,
   setCardLayouts,
+  setClaudeApiKey,
   setIDEViewSettings,
   setPRAnalysis,
   setPRAnalysisPanelOpen,
@@ -837,6 +842,85 @@ describe('Store', () => {
         setActivePRChatId(null)
         expect(getActivePRChatId()).toBeNull()
       })
+    })
+  })
+
+  describe('clearAllUserData', () => {
+    it('should clear data cache', () => {
+      setAllReposCache([{ id: 1, name: 'test' }])
+      setPRDataCache(['pr1'], [{ id: 1, title: 'PR' }])
+
+      clearAllUserData()
+
+      expect(getAllReposCache()).toBeNull()
+      expect(getPRDataCache()).toBeNull()
+    })
+
+    it('should clear user info', () => {
+      setUser({ login: 'testuser', avatar_url: '', name: 'Test', html_url: '' })
+
+      clearAllUserData()
+
+      expect(getUser()).toBeNull()
+    })
+
+    it('should clear PR analyses', () => {
+      setPRAnalysis('org/repo#1', 'test analysis')
+
+      clearAllUserData()
+
+      expect(getPRAnalyses()).toEqual([])
+    })
+
+    it('should clear PR chats and active chat ID', () => {
+      createPRChat('org/repo#1', 1, 'PR 1', 'org/repo')
+      setActivePRChatId('org/repo#1')
+
+      clearAllUserData()
+
+      expect(getPRChats()).toEqual([])
+      expect(getActivePRChatId()).toBeNull()
+    })
+
+    it('should clear layout data', () => {
+      setCardLayouts([{ i: 'test', x: 0, y: 0, w: 100, h: 100 }])
+      setRepoColor('test/repo', '#ff0000')
+      setRepoMinimized('test/repo', true)
+      setSelectedRepos(['test/repo'])
+      setRepoOrder(['test/repo'])
+
+      clearAllUserData()
+
+      expect(getCardLayouts()).toEqual([])
+      expect(getRepoColors()).toEqual({})
+      expect(getMinimizedRepos()).toEqual([])
+      expect(getSelectedRepos()).toEqual([])
+      expect(getRepoOrder()).toEqual([])
+    })
+
+    it('should reset IDE view settings', () => {
+      setIDEViewSettings({ sidebarWidth: 350, expandedRepos: ['test/repo'] })
+
+      clearAllUserData()
+
+      const settings = getIDEViewSettings()
+      expect(settings.sidebarWidth).toBe(280)
+      expect(settings.expandedRepos).toEqual([])
+    })
+
+    it('should clear chat history but preserve Claude API key', () => {
+      setClaudeApiKey('test-api-key')
+      addChatMessage({
+        id: '1',
+        role: 'user',
+        content: 'Hello',
+        timestamp: new Date().toISOString()
+      })
+
+      clearAllUserData()
+
+      expect(getClaudeApiKey()).toBe('test-api-key') // API key preserved
+      expect(getChatHistory()).toEqual([]) // History cleared
     })
   })
 })

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { MousePointerClick, PanelRight, PanelRightClose } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { AIChatPanel } from './components/AIChat'
@@ -75,6 +75,7 @@ const PRChatContext = createContext<PRChatContextType>({
 export const usePRChat = () => useContext(PRChatContext)
 
 function App() {
+  const queryClient = useQueryClient()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [selectedPR, setSelectedPR] = useState<PullRequest | null>(null)
@@ -397,8 +398,14 @@ function App() {
 
   const handleLogout = async () => {
     await window.electron.clearToken()
+    // Clear all react-query cache (data is already cleared in main process)
+    queryClient.clear()
     setIsAuthenticated(false)
     setUser(null)
+    // Reset local state
+    setSelectedPR(null)
+    setLinkedPRChat(null)
+    setMyPRsRepos(new Set())
   }
 
   // Loading state - wait for token check and panel settings

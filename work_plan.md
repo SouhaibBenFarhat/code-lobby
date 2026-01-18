@@ -197,8 +197,8 @@ Click a button in the PR detail header, and AI analyzes the PR title, branch nam
 **Cache Invalidation:**
 - Automatic after 30 minutes
 - When selected repos change (different repo set = cache miss)
-- When user logs out (clears all caches)
-- Manual refresh button bypasses cache (not implemented yet)
+- When user logs out (clears all caches and user data)
+- Manual refresh button clears cache and triggers fresh fetch ✅
 
 **Technical Details:**
 - `DataCache` interface in `store.ts` with `prData` and `allRepos`

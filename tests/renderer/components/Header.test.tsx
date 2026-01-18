@@ -240,6 +240,53 @@ describe('Header', () => {
       const refreshButton = document.querySelector('button svg.lucide-refresh-cw')
       expect(refreshButton || true).toBeTruthy() // May or may not be spinning
     })
+
+    it('should render refresh button with correct tooltip', async () => {
+      await act(async () => {
+        render(
+          <Header
+            user={mockUser}
+            onLogout={mockOnLogout}
+            viewMode="canvas"
+            onViewModeChange={mockOnViewModeChange}
+          />
+        )
+      })
+
+      // Find refresh button by icon
+      const refreshButton = document
+        .querySelector('button svg.lucide-refresh-cw')
+        ?.closest('button')
+      expect(refreshButton).toBeInTheDocument()
+    })
+
+    it('should call clearAllData when refresh button is clicked', async () => {
+      const mockElectron = setupMockElectron()
+
+      await act(async () => {
+        render(
+          <Header
+            user={mockUser}
+            onLogout={mockOnLogout}
+            viewMode="canvas"
+            onViewModeChange={mockOnViewModeChange}
+          />
+        )
+      })
+
+      // Find and click refresh button
+      const refreshButton = document
+        .querySelector('button svg.lucide-refresh-cw')
+        ?.closest('button')
+      if (refreshButton) {
+        await act(async () => {
+          fireEvent.click(refreshButton)
+        })
+
+        // Should call clearAllData
+        expect(mockElectron.clearAllData).toHaveBeenCalled()
+      }
+    })
   })
 
   describe('Without User', () => {

@@ -379,6 +379,46 @@ export function clearDataCache(): void {
   store.set('dataCache', { prData: null, allRepos: null })
 }
 
+/**
+ * Clear all user data (used on logout or manual reset)
+ * Preserves: settings (theme, notifications), Claude API key
+ * Clears: all cached data, PR analyses, chat history, layouts, etc.
+ */
+export function clearAllUserData(): void {
+  // Clear cached data
+  store.set('dataCache', { prData: null, allRepos: null })
+
+  // Clear user info
+  store.set('user', null)
+
+  // Clear PR-related data
+  store.set('prAnalyses', [])
+  store.set('prAnalysisPanelStates', {})
+  store.set('prChats', [])
+  store.set('activePRChatId', null)
+
+  // Clear chat history (but keep API key and model selection)
+  const aiChat = store.get('aiChat')
+  store.set('aiChat', {
+    ...aiChat,
+    chatHistory: []
+  })
+
+  // Clear layout data
+  store.set('cardLayouts', [])
+  store.set('repoColors', {})
+  store.set('minimizedRepos', [])
+  store.set('selectedRepos', [])
+  store.set('myPRsRepos', [])
+  store.set('repoOrder', [])
+
+  // Reset IDE view
+  store.set('ideViewSettings', {
+    sidebarWidth: 280,
+    expandedRepos: []
+  })
+}
+
 export function isCacheValid(lastFetch: number | undefined, ttl: number): boolean {
   if (!lastFetch) return false
   return Date.now() - lastFetch < ttl

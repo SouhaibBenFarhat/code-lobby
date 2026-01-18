@@ -149,7 +149,14 @@ export function Header({
     localStorage.setItem('codelobby-theme', newIsDark ? 'dark' : 'light')
   }
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    // Clear server-side cache first
+    await window.electron.clearAllData()
+    // Invalidate all data queries to trigger fresh fetch
+    queryClient.invalidateQueries({ queryKey: ['repos'] })
+    queryClient.invalidateQueries({ queryKey: ['all-prs-for-repos'] })
+    queryClient.invalidateQueries({ queryKey: ['selected-repos'] })
+    queryClient.invalidateQueries({ queryKey: ['rate-limit'] })
     queryClient.invalidateQueries({ queryKey: ['prs'] })
     queryClient.invalidateQueries({ queryKey: ['pr-events'] })
   }
@@ -328,7 +335,7 @@ export function Header({
               <RefreshCw className={`w-4 h-4 ${isFetching > 0 ? 'animate-spin' : ''}`} />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Refresh data</TooltipContent>
+          <TooltipContent>Clear cache & refresh</TooltipContent>
         </Tooltip>
 
         <Tooltip>
