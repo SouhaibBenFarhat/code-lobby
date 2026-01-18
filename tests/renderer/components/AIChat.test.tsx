@@ -688,3 +688,213 @@ describe('PR-Linked Chat', () => {
     })
   })
 })
+
+describe('Conversation Navigation', () => {
+  const mockOnClose = vi.fn()
+  const mockOnClosePRChat = vi.fn()
+  const mockOnSwitchToPRChat = vi.fn()
+
+  const mockPRChats = [
+    {
+      prId: 'owner/repo#1',
+      prNumber: 1,
+      prTitle: 'First PR',
+      repoFullName: 'owner/repo',
+      messages: [
+        { id: 'msg-1', role: 'user', content: 'Test', timestamp: new Date().toISOString() }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      prId: 'owner/repo#2',
+      prNumber: 2,
+      prTitle: 'Second PR',
+      repoFullName: 'owner/repo',
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ]
+
+  beforeEach(() => {
+    setupMockElectron({
+      getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+      getChatHistory: vi.fn().mockResolvedValue([]),
+      getPRChats: vi.fn().mockResolvedValue(mockPRChats),
+      fetchClaudeModels: vi.fn().mockResolvedValue({ success: true, models: [] }),
+      getSelectedModel: vi.fn().mockResolvedValue('claude-sonnet-4'),
+      getEnableThinking: vi.fn().mockResolvedValue(false)
+    })
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    resetMockElectron()
+  })
+
+  it('should show conversation list button when PR chats exist', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        onClosePRChat={mockOnClosePRChat}
+        onSwitchToPRChat={mockOnSwitchToPRChat}
+      />
+    )
+
+    await waitFor(() => {
+      // Find the list button (conversation navigator)
+      const buttons = screen.getAllByRole('button')
+      const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+      expect(listButton).toBeInTheDocument()
+    })
+  })
+
+  it('should show badge with number of PR chats', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        onClosePRChat={mockOnClosePRChat}
+        onSwitchToPRChat={mockOnSwitchToPRChat}
+      />
+    )
+
+    await waitFor(() => {
+      // Find the badge showing "2" (number of PR chats)
+      expect(screen.getByText('2')).toBeInTheDocument()
+    })
+  })
+
+  it('should open conversation popover when list button is clicked', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        onClosePRChat={mockOnClosePRChat}
+        onSwitchToPRChat={mockOnSwitchToPRChat}
+      />
+    )
+
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button')
+      const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+      expect(listButton).toBeInTheDocument()
+    })
+
+    const buttons = screen.getAllByRole('button')
+    const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+    if (listButton) {
+      fireEvent.click(listButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Conversations')).toBeInTheDocument()
+        expect(screen.getByText('General Chat')).toBeInTheDocument()
+      })
+    }
+  })
+
+  it('should display PR chats in the conversation list', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        onClosePRChat={mockOnClosePRChat}
+        onSwitchToPRChat={mockOnSwitchToPRChat}
+      />
+    )
+
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button')
+      const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+      expect(listButton).toBeInTheDocument()
+    })
+
+    const buttons = screen.getAllByRole('button')
+    const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+    if (listButton) {
+      fireEvent.click(listButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('#1 First PR')).toBeInTheDocument()
+        expect(screen.getByText('#2 Second PR')).toBeInTheDocument()
+      })
+    }
+  })
+
+  it('should call onSwitchToPRChat when a PR chat is selected', async () => {
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        onClosePRChat={mockOnClosePRChat}
+        onSwitchToPRChat={mockOnSwitchToPRChat}
+      />
+    )
+
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button')
+      const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+      expect(listButton).toBeInTheDocument()
+    })
+
+    // Open the conversation popover
+    const buttons = screen.getAllByRole('button')
+    const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+    if (listButton) {
+      fireEvent.click(listButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('#1 First PR')).toBeInTheDocument()
+      })
+
+      // Click on the first PR chat
+      const firstPRButton = screen.getByText('#1 First PR').closest('button')
+      if (firstPRButton) {
+        fireEvent.click(firstPRButton)
+        expect(mockOnSwitchToPRChat).toHaveBeenCalledWith('owner/repo#1')
+      }
+    }
+  })
+
+  it('should call onClosePRChat when General Chat is selected', async () => {
+    const mockLinkedPRChat = {
+      prId: 'owner/repo#1',
+      prNumber: 1,
+      prTitle: 'First PR',
+      repoFullName: 'owner/repo'
+    }
+
+    render(
+      <AIChatPanel
+        onClose={mockOnClose}
+        linkedPRChat={mockLinkedPRChat}
+        onClosePRChat={mockOnClosePRChat}
+        onSwitchToPRChat={mockOnSwitchToPRChat}
+      />,
+      {
+        initialLinkedPRChat: mockLinkedPRChat
+      }
+    )
+
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button')
+      const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+      expect(listButton).toBeInTheDocument()
+    })
+
+    // Open the conversation popover
+    const buttons = screen.getAllByRole('button')
+    const listButton = buttons.find((btn) => btn.querySelector('.lucide-list'))
+    if (listButton) {
+      fireEvent.click(listButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('General Chat')).toBeInTheDocument()
+      })
+
+      // Click on General Chat
+      const generalChatButton = screen.getByText('General Chat').closest('button')
+      if (generalChatButton) {
+        fireEvent.click(generalChatButton)
+        expect(mockOnClosePRChat).toHaveBeenCalled()
+      }
+    }
+  })
+})

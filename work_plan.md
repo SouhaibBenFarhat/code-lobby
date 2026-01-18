@@ -711,11 +711,46 @@ interface ChatMessage {
 
 **Estimated Time:** ~3 hours
 
-### 2.3 Multi-Chat Sessions 🔴 Not Started
+### 2.3 Multi-Chat Sessions ✅ Complete
 > Support multiple named AI conversations with full history persistence
 
 **Concept:**
 Users can create multiple AI chat sessions, name them, and switch between them. Each chat maintains its own conversation history and context.
+
+**Implementation Summary:**
+- **Conversation Navigator**: A popover dropdown in the AI chat header showing all conversations
+- **General Chat**: Main AI conversation accessible from the navigator
+- **PR-Specific Chats**: Chats linked to specific PRs, created via "Start Chat" button on PRs
+- **Switch Between Chats**: Click on any conversation to switch to it instantly
+- **Delete Conversations**: Hover over a PR chat to reveal delete button
+- **Message Count & Time**: Each PR chat shows message count and last updated time
+- **Sorted by Recency**: Conversations sorted by most recently updated
+
+**UI:**
+```
+┌──────────────────────────────────────────────────────────────┐
+│  🐕 AI Assistant   [📋] [←] [⚙️] [🗑️] [×]                    │
+├──────────────────────────────────────────────────────────────┤
+│  Conversation Popover (on [📋] click):                       │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ Conversations                                          │  │
+│  │ ─────────────────────────────────────────────────────  │  │
+│  │ 💬 General Chat ────────────────────────── Active      │  │
+│  │    Main AI conversation                                │  │
+│  │ ─────────────────────────────────────────────────────  │  │
+│  │ PR Conversations (2)                                   │  │
+│  │ 🔀 #123 Fix auth bug ─────────── 2 msgs • 5m ago  [×]  │  │
+│  │    owner/repo                                          │  │
+│  │ 🔀 #456 Add feature ──────────── 0 msgs • 1h ago  [×]  │  │
+│  │    owner/repo                                          │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Files Changed:**
+- `src/renderer/components/AIChat.tsx` - Added PRChatInfo interface, allPRChats state, conversation navigator UI
+- `src/renderer/App.tsx` - Added switchToPRChat function, passed to AIChatPanel
+- `tests/renderer/components/AIChat.test.tsx` - Added 6 tests for conversation navigation
 
 **Data Model:**
 ```typescript

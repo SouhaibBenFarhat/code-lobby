@@ -153,6 +153,29 @@ Want to discuss a specific PR with the AI? Don't copy-paste context manually.
 - "Help me write a review comment"
 - "Explain what this file does"
 
+---
+
+### 📋 Conversation Navigator
+
+Managing multiple AI conversations? The conversation navigator makes switching instant.
+
+**Access:**
+1. Click the list icon (📋) in the AI chat header
+2. See all your conversations at a glance
+3. Click to switch instantly
+
+**Features:**
+- **General Chat** — Your main AI conversation, always at the top
+- **PR Conversations** — All your PR-specific chats, sorted by recency
+- **Badge Counter** — See how many PR chats you have open
+- **Delete Option** — Hover to reveal delete button on PR chats
+- **Context Preview** — See PR number, title, repo, message count, and last updated time
+
+**Organized by:**
+- Most recently updated conversations appear first
+- PR conversations grouped separately from general chat
+- Active conversation clearly marked
+
 Perfect for code reviews, understanding complex changes, or getting a second opinion.
 
 ---
@@ -272,6 +295,7 @@ We're actively building:
 | **Smart Filtering** | Focus on what matters |
 | **AI Assistant** | Intelligent help on demand |
 | **PR-Specific AI Chat** | Context-aware conversations |
+| **Conversation Navigator** | Switch between chats instantly |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
 | **Persistent State** | Pick up where you left off |

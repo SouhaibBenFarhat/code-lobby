@@ -276,6 +276,20 @@ function App() {
     setLinkedPRChat(null)
   }, [])
 
+  // Switch to a specific PR chat by ID
+  const switchToPRChat = useCallback(async (prId: string) => {
+    const chat = await window.electron.getPRChat(prId)
+    if (chat) {
+      await window.electron.setActivePRChatId(prId)
+      setLinkedPRChat({
+        prId: chat.prId,
+        prNumber: chat.prNumber,
+        prTitle: chat.prTitle,
+        repoFullName: chat.repoFullName
+      })
+    }
+  }, [])
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && resizeRef.current) {
@@ -526,6 +540,7 @@ function App() {
                         user={user}
                         linkedPRChat={linkedPRChat}
                         onClosePRChat={closePRChat}
+                        onSwitchToPRChat={switchToPRChat}
                       />
                     </div>
                   </aside>

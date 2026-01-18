@@ -7,7 +7,9 @@ import {
   ChevronRight,
   GitPullRequest,
   Key,
+  List,
   Loader2,
+  MessageSquare,
   RefreshCw,
   Send,
   Settings,
@@ -18,6 +20,7 @@ import {
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DogIcon } from './DogIcon'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 // Utility for throttling with requestAnimationFrame
@@ -53,7 +56,7 @@ function useThrottledValue<T>(value: T, fps = 30): T {
   return throttledValue
 }
 
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import { MarkdownContent } from './MarkdownContent'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -204,11 +207,22 @@ interface LinkedPRChat {
   repoFullName: string
 }
 
+// PR Chat from store
+interface PRChatInfo {
+  prId: string
+  prNumber: number
+  prTitle: string
+  repoFullName: string
+  updatedAt: string
+  messageCount: number
+}
+
 interface AIChatPanelProps {
   onClose: () => void
   user?: GitHubUser | null
   linkedPRChat?: LinkedPRChat | null
   onClosePRChat?: () => void
+  onSwitchToPRChat?: (prId: string) => void
 }
 
 // Streaming state for the current assistant message being generated
@@ -568,7 +582,13 @@ const QueuedMessageBubble = React.memo(function QueuedMessageBubble({
   )
 })
 
-export function AIChatPanel({ onClose, user, linkedPRChat, onClosePRChat }: AIChatPanelProps) {
+export function AIChatPanel({
+  onClose,
+  user,
+  linkedPRChat,
+  onClosePRChat,
+  onSwitchToPRChat
+}: AIChatPanelProps) {
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [isSettingKey, setIsSettingKey] = useState(false)
@@ -589,6 +609,10 @@ export function AIChatPanel({ onClose, user, linkedPRChat, onClosePRChat }: AICh
     isStreaming: false
   })
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
+
+  // All PR chats for the conversation navigator
+  const [allPRChats, setAllPRChats] = useState<PRChatInfo[]>([])
+  const [showConversations, setShowConversations] = useState(false)
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false)
   const [isConversationReady, setIsConversationReady] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -644,6 +668,26 @@ export function AIChatPanel({ onClose, user, linkedPRChat, onClosePRChat }: AICh
     }
   }, [])
 
+  // Load all PR chats for the conversation navigator
+  const loadAllPRChats = useCallback(async () => {
+    try {
+      const chats = await window.electron.getPRChats()
+      const chatInfos: PRChatInfo[] = chats.map((chat) => ({
+        prId: chat.prId,
+        prNumber: chat.prNumber,
+        prTitle: chat.prTitle,
+        repoFullName: chat.repoFullName,
+        updatedAt: chat.updatedAt,
+        messageCount: chat.messages.length
+      }))
+      // Sort by most recently updated
+      chatInfos.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      setAllPRChats(chatInfos)
+    } catch (e) {
+      console.error('Failed to load PR chats:', e)
+    }
+  }, [])
+
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -680,6 +724,15 @@ export function AIChatPanel({ onClose, user, linkedPRChat, onClosePRChat }: AICh
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Load all PR chats for conversation navigator
+  // Using linkedPRChat?.prId to trigger reload when switching chats
+  const linkedPRChatId = linkedPRChat?.prId
+  useEffect(() => {
+    // Reference linkedPRChatId to satisfy exhaustive deps and trigger reload on chat switch
+    void linkedPRChatId
+    loadAllPRChats()
+  }, [loadAllPRChats, linkedPRChatId])
 
   const handleModelChange = async (modelId: string) => {
     setSelectedModel(modelId)
@@ -1131,6 +1184,122 @@ export function AIChatPanel({ onClose, user, linkedPRChat, onClosePRChat }: AICh
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Conversation Navigator */}
+          {allPRChats.length > 0 && (
+            <Popover open={showConversations} onOpenChange={setShowConversations}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 relative"
+                  title="Switch conversation"
+                >
+                  <List className="w-4 h-4" />
+                  {allPRChats.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                      {allPRChats.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="end" side="bottom" sideOffset={5}>
+                <div className="p-2 border-b border-border">
+                  <h4 className="text-xs font-medium">Conversations</h4>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                  {/* General Chat Option */}
+                  <button
+                    type="button"
+                    className={cn(
+                      'w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2',
+                      !linkedPRChat && 'bg-primary/10'
+                    )}
+                    onClick={() => {
+                      if (onClosePRChat) {
+                        onClosePRChat()
+                      }
+                      setShowConversations(false)
+                    }}
+                  >
+                    <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">General Chat</div>
+                      <div className="text-[10px] text-muted-foreground">Main AI conversation</div>
+                    </div>
+                    {!linkedPRChat && (
+                      <span className="text-[10px] text-primary font-medium">Active</span>
+                    )}
+                  </button>
+
+                  {/* Separator */}
+                  {allPRChats.length > 0 && (
+                    <div className="px-3 py-1.5 text-[10px] text-muted-foreground font-medium bg-muted/30">
+                      PR Conversations ({allPRChats.length})
+                    </div>
+                  )}
+
+                  {/* PR Chats */}
+                  {allPRChats.map((chat) => (
+                    <div
+                      key={chat.prId}
+                      className={cn(
+                        'group w-full px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2',
+                        linkedPRChat?.prId === chat.prId && 'bg-primary/10'
+                      )}
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                        onClick={() => {
+                          if (onSwitchToPRChat) {
+                            onSwitchToPRChat(chat.prId)
+                          }
+                          setShowConversations(false)
+                        }}
+                      >
+                        <GitPullRequest className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            #{chat.prNumber} {chat.prTitle}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                            <span className="truncate">{chat.repoFullName}</span>
+                            <span>•</span>
+                            <span>{chat.messageCount} msgs</span>
+                            <span>•</span>
+                            <span>{formatRelativeTime(chat.updatedAt)}</span>
+                          </div>
+                        </div>
+                        {linkedPRChat?.prId === chat.prId && (
+                          <span className="text-[10px] text-primary font-medium flex-shrink-0">
+                            Active
+                          </span>
+                        )}
+                      </button>
+                      {/* Delete button - shown on hover */}
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity"
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          // If deleting the active chat, switch to general
+                          if (linkedPRChat?.prId === chat.prId && onClosePRChat) {
+                            onClosePRChat()
+                          }
+                          await window.electron.deletePRChat(chat.prId)
+                          loadAllPRChats()
+                        }}
+                        title="Delete conversation"
+                      >
+                        <X className="w-3 h-3 text-destructive" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
           {linkedPRChat && onClosePRChat && (
             <Button
               variant="ghost"
