@@ -503,6 +503,15 @@ const StreamingBubble = React.memo(function StreamingBubble({
 }: {
   streaming: StreamingState
 }) {
+  const thinkingRef = useRef<HTMLPreElement>(null)
+
+  // Auto-scroll thinking section to bottom as new content streams in
+  useEffect(() => {
+    if (thinkingRef.current && streaming.thinking) {
+      thinkingRef.current.scrollTop = thinkingRef.current.scrollHeight
+    }
+  }, [streaming.thinking])
+
   return (
     <div
       className="flex gap-2"
@@ -526,7 +535,10 @@ const StreamingBubble = React.memo(function StreamingBubble({
               className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded"
               style={{ contain: 'content' }}
             >
-              <pre className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed">
+              <pre
+                ref={thinkingRef}
+                className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed"
+              >
                 {streaming.thinking}
                 <span className="inline-block w-2 h-3 bg-primary/60 animate-pulse ml-0.5 rounded-sm" />
               </pre>
