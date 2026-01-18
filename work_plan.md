@@ -177,9 +177,11 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 - Review thread status (resolved/unresolved count)
 
 **Technical Details:**
-- `analyzePRStatus()` function in `claude-api.ts` - specialized non-streaming Claude call
-- IPC handlers: `analyze-pr-status`, `get-pr-analysis`, `delete-pr-analysis`
+- `analyzePRStatusStreaming()` function in `claude-api.ts` - streaming with extended thinking
+- Extended thinking enabled with 8K token budget for deeper reasoning
+- IPC handlers: `analyze-pr-status`, `analyze-pr-status-streaming`, `get-pr-analysis`, `delete-pr-analysis`
 - IPC handlers for panel state: `get-pr-analysis-panel-open`, `set-pr-analysis-panel-open`
+- Stream chunks: `thinking` → `text` → `done`/`error`
 - `PRAnalysis` interface in `store.ts` with `prId`, `analysis`, `generatedAt`
 - `prAnalysisPanelStates: Record<string, boolean>` for panel open/closed state per PR
 - Persistence via `electron-store` with 100-entry limit for analyses, 200-entry limit for panel states
@@ -194,16 +196,19 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
   - Close button to hide panel
   - Markdown-rendered analysis content
   - "Generated X ago" timestamp
-- Loading state with spinner and "Analyzing PR status..." text
+- **Streaming loading state:**
+  - "Starting analysis..." initially
+  - "Thinking..." panel showing Claude's reasoning process in real-time
+  - Streaming analysis text as it arrives
 - Error message display for failed analyses
 
 **Files Changed:**
-- `src/main/claude-api.ts` - Added `analyzePRStatus` function
+- `src/main/claude-api.ts` - Added `analyzePRStatus` and `analyzePRStatusStreaming` functions with extended thinking
 - `src/main/store.ts` - Added `PRAnalysis` interface, persistence functions, and panel state persistence
-- `src/main/index.ts` - Added 5 IPC handlers (3 for analysis, 2 for panel state)
-- `src/preload/index.ts` - Exposed analysis and panel state functions to renderer
-- `src/renderer/components/PRDetail.tsx` - Added button, panel, UI state, and panel state persistence
-- `tests/mocks/electron.ts` - Added mocks for analysis and panel state functions
+- `src/main/index.ts` - Added 6 IPC handlers (4 for analysis including streaming, 2 for panel state)
+- `src/preload/index.ts` - Exposed analysis, streaming, and panel state functions to renderer
+- `src/renderer/components/PRDetail.tsx` - Added button, panel, UI state, streaming display, and panel state persistence
+- `tests/mocks/electron.ts` - Added mocks for analysis, streaming, and panel state functions
 - `tests/renderer/components/PRDetail.test.tsx` - Added 14 tests (10 for analysis, 4 for panel state)
 - `tests/main/store.test.ts` - Added 18 tests (10 for analysis, 8 for panel state)
 
