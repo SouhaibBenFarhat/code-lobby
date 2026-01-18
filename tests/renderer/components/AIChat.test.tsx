@@ -1244,5 +1244,92 @@ describe('System Context Handling', () => {
       // Button should not be present when handler is not provided
       expect(screen.queryByText(/Start chatting about this PR/i)).not.toBeInTheDocument()
     })
+
+    it('should show PR empty state even when general chat has messages', async () => {
+      // This test prevents regression of bug where PR empty state wasn't shown
+      // when switching to a PR without a chat while general chat had messages
+      const generalChatMessages = [
+        {
+          id: '1',
+          role: 'user',
+          content: 'Hello from general chat',
+          timestamp: new Date().toISOString()
+        },
+        { id: '2', role: 'assistant', content: 'Hi there!', timestamp: new Date().toISOString() }
+      ]
+
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue(null), // No chat for selected PR
+        getChatHistory: vi.fn().mockResolvedValue(generalChatMessages) // General chat has messages
+      })
+
+      render(
+        <AIChatPanel
+          onClose={mockOnClose}
+          selectedPR={mockSelectedPR}
+          onStartPRChat={vi.fn()}
+          // Note: linkedPRChat is NOT provided (we're in general chat mode but selected a PR)
+        />
+      )
+
+      // Should show PR empty state, NOT the general chat messages
+      await waitFor(() => {
+        expect(screen.getByText(/No conversation yet for this PR/i)).toBeInTheDocument()
+      })
+
+      // PR info should be visible
+      expect(screen.getByText(/#456/)).toBeInTheDocument()
+      expect(screen.getByText(/owner\/new-repo/)).toBeInTheDocument()
+
+      // CTA button should be visible
+      expect(screen.getByText(/Start chatting about this PR/i)).toBeInTheDocument()
+
+      // General chat messages should NOT be visible
+      expect(screen.queryByText('Hello from general chat')).not.toBeInTheDocument()
+      expect(screen.queryByText('Hi there!')).not.toBeInTheDocument()
+    })
+
+    it('should NOT show empty state when linkedPRChat matches selectedPR', async () => {
+      // This ensures we show the PR chat content (not empty state) when viewing correct PR chat
+      const matchingLinkedPRChat = {
+        prId: 'owner/new-repo#456',
+        prNumber: 456,
+        prTitle: 'New Feature Implementation',
+        repoFullName: 'owner/new-repo'
+      }
+
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getPRChat: vi.fn().mockResolvedValue({
+          ...matchingLinkedPRChat,
+          messages: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(
+        <AIChatPanel
+          onClose={mockOnClose}
+          selectedPR={mockSelectedPR}
+          linkedPRChat={matchingLinkedPRChat}
+          onStartPRChat={vi.fn()}
+        />,
+        {
+          prChatOverrides: { linkedPRChat: matchingLinkedPRChat }
+        }
+      )
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByText('PR Chat')).toBeInTheDocument()
+      })
+
+      // Should NOT show PR empty state because linkedPRChat matches selectedPR
+      // (even if chat has no messages, we should show the default empty state, not PR empty state)
+      expect(screen.queryByText(/No conversation yet for this PR/i)).not.toBeInTheDocument()
+    })
   })
 })
