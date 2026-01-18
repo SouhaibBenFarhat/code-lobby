@@ -271,9 +271,7 @@ export async function extractPreviewUrl(
     const client = getClient(apiKey)
 
     // Build a focused prompt for URL extraction
-    const prompt = `You are helping a developer find the preview/demo URL for a Pull Request.
-
-Analyze the following PR information and find any preview, staging, or demo URL that was deployed for this PR.
+    const prompt = `Find the preview/demo environment URL for this Pull Request.
 
 ## PR Title
 ${context.title}
@@ -281,21 +279,14 @@ ${context.title}
 ## PR Description
 ${context.body || 'No description provided'}
 
-## Comments (${context.comments.length} total)
+## Comments
 ${context.comments.map((c) => `**${c.author}**: ${c.body}`).join('\n\n')}
 
 ---
 
-INSTRUCTIONS:
-1. Look for URLs that appear to be preview/staging deployments (e.g., Vercel preview, Netlify deploy, custom staging URLs)
-2. Common patterns include:
-   - vercel.app preview URLs
-   - netlify.app deploy previews  
-   - *-preview.*, *-staging.*, *-pr-*.* patterns
-   - Bot comments from Vercel, Netlify, Railway, Render, etc.
-3. Return ONLY the URL if found, nothing else
-4. If no preview URL is found, respond with: NO_PREVIEW_URL_FOUND
-5. If multiple preview URLs exist, return the most recent/relevant one`
+Look through the PR description and comments to find a URL to a preview, staging, or demo deployment of this PR's changes. This could be posted by a bot or a human.
+
+Respond with ONLY the URL if found. If no preview URL exists, respond with: NO_PREVIEW_URL_FOUND`
 
     const response = await client.messages.create({
       model: DEFAULT_MODEL,

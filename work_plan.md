@@ -83,8 +83,7 @@ Click a button in the PR detail header, and AI analyzes comments and description
 **Implementation Summary:**
 - Globe icon button added to PR detail header
 - Gathers context: PR title, body, all comments (general, reviews, threads)
-- Sends context to Claude with a focused extraction prompt
-- Looks for common preview URL patterns (Vercel, Netlify, custom staging)
+- Sends context to Claude with an abstract prompt - Claude figures out where the preview URL is
 - Opens URL in default browser via `shell.openExternal()`
 - Shows loading spinner during extraction
 - Displays error message if no URL found (auto-clears after 3 seconds)
@@ -93,13 +92,14 @@ Click a button in the PR detail header, and AI analyzes comments and description
 - `extractPreviewUrl()` function in `claude-api.ts` - specialized non-streaming Claude call
 - IPC handler `extract-preview-url` in main process
 - Uses simple prompt engineering (no tools needed - AI just extracts, app executes)
+- Abstract prompt: Claude analyzes PR context without being told specific tools to look for
 - Regex URL extraction from Claude response for robustness
 
 **UI:**
 - Globe icon button in PR detail header (next to external link and close buttons)
 - Loading spinner during AI analysis
 - Error message display (auto-clears after 3 seconds)
-- Rich tooltip on hover explaining: "Open Preview - AI scans comments for Vercel, Netlify, or staging URLs and opens in browser"
+- Rich tooltip on hover: "AI finds the preview environment URL from this PR and opens it"
 - Also added tooltip to "Open in GitHub" button for consistency
 
 **Files Changed:**

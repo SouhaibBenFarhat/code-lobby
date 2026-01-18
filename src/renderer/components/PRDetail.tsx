@@ -1093,7 +1093,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
               <TooltipContent side="bottom" className="max-w-[240px] text-center">
                 <p className="font-medium">Open Preview</p>
                 <p className="text-xs text-muted-foreground">
-                  AI scans comments for Vercel, Netlify, or staging URLs and opens in browser
+                  AI finds the preview environment URL from this PR and opens it
                 </p>
               </TooltipContent>
             </Tooltip>
