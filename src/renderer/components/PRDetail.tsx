@@ -16,6 +16,7 @@ import {
   FileText,
   GitBranch,
   GitPullRequest,
+  Globe,
   Layers,
   Loader2,
   MessageSquare,
@@ -771,6 +772,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set(['running', 'success', 'other'])
   )
+  // Preview URL extraction state
+  const [isExtractingPreview, setIsExtractingPreview] = useState(false)
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null)
 
   // With GraphQL, all data is already included in the PR object!
   // No extra API calls needed 🎉
@@ -968,6 +972,73 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
     checks?.check_runs.filter((c) => c.status === 'in_progress' || c.status === 'queued').length ||
     0
 
+  // Handler to extract and open preview URL using AI
+  const handleOpenPreview = async () => {
+    setIsExtractingPreview(true)
+    setPreviewMessage(null)
+
+    try {
+      // Gather comments from PR
+      const comments: Array<{ author: string; body: string }> = []
+
+      // Add general comments
+      if (pr.commentsList) {
+        for (const comment of pr.commentsList) {
+          if (comment.author?.login && comment.body) {
+            comments.push({
+              author: comment.author.login,
+              body: comment.body
+            })
+          }
+        }
+      }
+
+      // Add review comments
+      if (pr.reviews) {
+        for (const review of pr.reviews) {
+          if (review.author?.login && review.body) {
+            comments.push({
+              author: review.author.login,
+              body: review.body
+            })
+          }
+        }
+      }
+
+      // Add review thread comments
+      if (pr.reviewThreads) {
+        for (const thread of pr.reviewThreads) {
+          for (const comment of thread.comments) {
+            if (comment.author?.login && comment.body) {
+              comments.push({
+                author: comment.author.login,
+                body: comment.body
+              })
+            }
+          }
+        }
+      }
+
+      const result = await window.electron.extractPreviewUrl({
+        title: pr.title,
+        body: pr.body,
+        comments
+      })
+
+      if (!result.success) {
+        setPreviewMessage(result.message || 'No preview URL found')
+        // Clear message after 3 seconds
+        setTimeout(() => setPreviewMessage(null), 3000)
+      }
+      // If success, browser will open automatically from main process
+    } catch {
+      setPreviewMessage('Failed to extract preview URL')
+      setTimeout(() => setPreviewMessage(null), 3000)
+    } finally {
+      setIsExtractingPreview(false)
+    }
+  }
+
   return (
     <div
       className="flex flex-col h-full w-full overflow-hidden bg-background"
@@ -1006,6 +1077,20 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
               variant="ghost"
               size="icon"
               className="h-7 w-7"
+              onClick={handleOpenPreview}
+              disabled={isExtractingPreview}
+              title="Find and open preview URL"
+            >
+              {isExtractingPreview ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Globe className="w-4 h-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
               onClick={() => window.open(pr.html_url, '_blank')}
             >
               <ExternalLink className="w-4 h-4" />
@@ -1015,6 +1100,14 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
             </Button>
           </div>
         </div>
+
+        {/* Preview message */}
+        {previewMessage && (
+          <div className="mt-2 px-2 py-1.5 bg-muted/50 rounded text-xs text-muted-foreground flex items-center gap-1.5">
+            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+            {previewMessage}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="flex items-center gap-3 mt-3 text-xs flex-wrap">

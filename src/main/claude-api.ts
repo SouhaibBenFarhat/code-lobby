@@ -250,6 +250,112 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
 /**
  * Send a message to Claude API with streaming
  */
+/**
+ * Extract a preview/demo URL from PR context using Claude
+ * This is a specialized function for the "Open Preview" feature
+ */
+export async function extractPreviewUrl(
+  apiKey: string,
+  context: {
+    title: string
+    body: string | null
+    comments: Array<{ author: string; body: string }>
+  }
+): Promise<{ success: boolean; url?: string; message?: string }> {
+  logger.info(LogCategory.API, 'Extracting preview URL from PR context', {
+    title: context.title,
+    commentsCount: context.comments.length
+  })
+
+  try {
+    const client = getClient(apiKey)
+
+    // Build a focused prompt for URL extraction
+    const prompt = `You are helping a developer find the preview/demo URL for a Pull Request.
+
+Analyze the following PR information and find any preview, staging, or demo URL that was deployed for this PR.
+
+## PR Title
+${context.title}
+
+## PR Description
+${context.body || 'No description provided'}
+
+## Comments (${context.comments.length} total)
+${context.comments.map((c) => `**${c.author}**: ${c.body}`).join('\n\n')}
+
+---
+
+INSTRUCTIONS:
+1. Look for URLs that appear to be preview/staging deployments (e.g., Vercel preview, Netlify deploy, custom staging URLs)
+2. Common patterns include:
+   - vercel.app preview URLs
+   - netlify.app deploy previews  
+   - *-preview.*, *-staging.*, *-pr-*.* patterns
+   - Bot comments from Vercel, Netlify, Railway, Render, etc.
+3. Return ONLY the URL if found, nothing else
+4. If no preview URL is found, respond with: NO_PREVIEW_URL_FOUND
+5. If multiple preview URLs exist, return the most recent/relevant one`
+
+    const response = await client.messages.create({
+      model: DEFAULT_MODEL,
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+      stream: false
+    })
+
+    // Extract the response text
+    let responseText = ''
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        responseText = block.text.trim()
+        break
+      }
+    }
+
+    logger.info(LogCategory.API, 'Preview URL extraction result', {
+      response: responseText
+    })
+
+    // Check if no URL was found
+    if (responseText.includes('NO_PREVIEW_URL_FOUND') || !responseText) {
+      return {
+        success: false,
+        message: 'No preview URL found in this PR'
+      }
+    }
+
+    // Extract URL from response (handle cases where AI might add extra text)
+    const urlMatch = responseText.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)
+    if (urlMatch) {
+      return {
+        success: true,
+        url: urlMatch[0]
+      }
+    }
+
+    return {
+      success: false,
+      message: 'Could not extract a valid URL from the response'
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error extracting preview URL', { error: errorMessage })
+
+    if (error instanceof Anthropic.AuthenticationError) {
+      return { success: false, message: 'Invalid Claude API key' }
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return { success: false, message: 'Rate limit exceeded. Please try again.' }
+    }
+
+    return { success: false, message: `Error: ${errorMessage}` }
+  }
+}
+
+/**
+ * Send a message to Claude API with streaming
+ */
 export async function sendMessageStreaming(
   apiKey: string,
   messages: ClaudeMessage[],

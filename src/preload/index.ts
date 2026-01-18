@@ -163,6 +163,13 @@ export interface ElectronAPI {
   ) => () => void
   clearChatHistory: () => Promise<{ success: boolean }>
 
+  // AI-powered actions
+  extractPreviewUrl: (context: {
+    title: string
+    body: string | null
+    comments: Array<{ author: string; body: string }>
+  }) => Promise<{ success: boolean; url?: string; message?: string }>
+
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
@@ -292,6 +299,13 @@ const electronAPI: ElectronAPI = {
     }
   },
   clearChatHistory: () => ipcRenderer.invoke('clear-chat-history'),
+
+  // AI-powered actions
+  extractPreviewUrl: (context: {
+    title: string
+    body: string | null
+    comments: Array<{ author: string; body: string }>
+  }) => ipcRenderer.invoke('extract-preview-url', context),
 
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),

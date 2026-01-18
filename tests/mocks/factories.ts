@@ -604,7 +604,6 @@ export function createMockPanelSettings(
 export interface MockIDEViewSettings {
   sidebarWidth: number
   expandedRepos: string[]
-  myPRsRepos: string[]
 }
 
 export function createMockIDEViewSettings(
@@ -613,7 +612,6 @@ export function createMockIDEViewSettings(
   return {
     sidebarWidth: 280,
     expandedRepos: [],
-    myPRsRepos: [],
     ...overrides
   }
 }

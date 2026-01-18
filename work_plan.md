@@ -1,6 +1,7 @@
 # CodeLobby Work Plan
 
 > **Last Updated**: January 18, 2026  
+> **Last Reviewed**: January 18, 2026  
 > **Status**: Active Development (v1.0.0)
 
 ---
@@ -33,6 +34,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Model selection | ✅ Complete |
 | | Extended thinking | ✅ Complete |
 | | Conversation persistence | ✅ Complete |
+| | Open Preview (AI-powered) | ✅ Complete |
 | **UI/UX** | Apple design system | ✅ Complete |
 | | Dark/light themes | ✅ Complete |
 | | Fullscreen adaptation | ✅ Complete |
@@ -66,6 +68,39 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 - [x] "Empty description" placeholder if no body
 - [x] Copy description button
 - [x] Edit description button (opens GitHub in browser)
+
+**Completed:** January 18, 2026
+
+---
+
+### 1.1.0 Open Preview (Agentic Button) ✅ Complete
+> AI-powered feature to find and open preview/staging URLs from PR context
+
+**Concept:**
+Click a button in the PR detail header, and AI analyzes comments and description to find and open a preview/staging URL in the browser.
+
+**Implementation Summary:**
+- Globe icon button added to PR detail header
+- Gathers context: PR title, body, all comments (general, reviews, threads)
+- Sends context to Claude with a focused extraction prompt
+- Looks for common preview URL patterns (Vercel, Netlify, custom staging)
+- Opens URL in default browser via `shell.openExternal()`
+- Shows loading spinner during extraction
+- Displays error message if no URL found (auto-clears after 3 seconds)
+
+**Technical Details:**
+- `extractPreviewUrl()` function in `claude-api.ts` - specialized non-streaming Claude call
+- IPC handler `extract-preview-url` in main process
+- Uses simple prompt engineering (no tools needed - AI just extracts, app executes)
+- Regex URL extraction from Claude response for robustness
+
+**Files Changed:**
+- `src/main/claude-api.ts` - Added `extractPreviewUrl` function
+- `src/main/index.ts` - Added IPC handler
+- `src/preload/index.ts` - Exposed `extractPreviewUrl` to renderer
+- `src/renderer/components/PRDetail.tsx` - Added button and UI state
+- `tests/mocks/electron.ts` - Added mock for `extractPreviewUrl`
+- `tests/renderer/components/PRDetail.test.tsx` - Added 5 tests
 
 **Completed:** January 18, 2026
 

@@ -83,6 +83,132 @@ describe('PRDetail', () => {
 
       expect(screen.getByText('johndoe')).toBeInTheDocument()
     })
+
+    it('should render Open Preview button (globe icon)', () => {
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const previewButton = document.querySelector('button svg.lucide-globe')?.parentElement
+      expect(previewButton).toBeInTheDocument()
+      expect(previewButton).toHaveAttribute('title', 'Find and open preview URL')
+    })
+
+    it('should call extractPreviewUrl when Open Preview button clicked', async () => {
+      const mockExtractPreviewUrl = vi.fn().mockResolvedValue({
+        success: true,
+        url: 'https://preview.example.com'
+      })
+      window.electron.extractPreviewUrl = mockExtractPreviewUrl
+
+      const pr = createMockPullRequest({
+        title: 'Test PR',
+        body: 'Some description',
+        commentsList: []
+      })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const previewButton = document.querySelector('button svg.lucide-globe')?.parentElement
+      expect(previewButton).toBeInTheDocument()
+
+      if (previewButton) {
+        fireEvent.click(previewButton)
+        await waitFor(() => {
+          expect(mockExtractPreviewUrl).toHaveBeenCalledWith({
+            title: 'Test PR',
+            body: 'Some description',
+            comments: []
+          })
+        })
+      }
+    })
+
+    it('should show loading state when extracting preview URL', async () => {
+      // Create a promise that we can control
+      let resolveExtract: (value: { success: boolean; url?: string }) => void
+      const extractPromise = new Promise<{ success: boolean; url?: string }>((resolve) => {
+        resolveExtract = resolve
+      })
+      const mockExtractPreviewUrl = vi.fn().mockReturnValue(extractPromise)
+      window.electron.extractPreviewUrl = mockExtractPreviewUrl
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const previewButton = document.querySelector('button svg.lucide-globe')?.parentElement
+      if (previewButton) {
+        fireEvent.click(previewButton)
+
+        // Button should be disabled during loading
+        await waitFor(() => {
+          expect(previewButton).toBeDisabled()
+        })
+
+        // Resolve the promise
+        if (resolveExtract) {
+          resolveExtract({ success: true, url: 'https://preview.example.com' })
+        }
+
+        // Button should be enabled again
+        await waitFor(() => {
+          expect(previewButton).not.toBeDisabled()
+        })
+      }
+    })
+
+    it('should display error message when no preview URL found', async () => {
+      const mockExtractPreviewUrl = vi.fn().mockResolvedValue({
+        success: false,
+        message: 'No preview URL found in this PR'
+      })
+      window.electron.extractPreviewUrl = mockExtractPreviewUrl
+
+      const pr = createMockPullRequest()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const previewButton = document.querySelector('button svg.lucide-globe')?.parentElement
+      if (previewButton) {
+        fireEvent.click(previewButton)
+
+        await waitFor(() => {
+          expect(screen.getByText('No preview URL found in this PR')).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should include comments in preview URL extraction context', async () => {
+      const mockExtractPreviewUrl = vi.fn().mockResolvedValue({
+        success: true,
+        url: 'https://preview.example.com'
+      })
+      window.electron.extractPreviewUrl = mockExtractPreviewUrl
+
+      const pr = createMockPullRequest()
+      pr.commentsList = [
+        createMockComment({
+          author: createMockUser({ login: 'vercel' }),
+          body: 'Preview: https://my-app-pr-123.vercel.app'
+        })
+      ]
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const previewButton = document.querySelector('button svg.lucide-globe')?.parentElement
+      if (previewButton) {
+        fireEvent.click(previewButton)
+
+        await waitFor(() => {
+          expect(mockExtractPreviewUrl).toHaveBeenCalledWith(
+            expect.objectContaining({
+              comments: expect.arrayContaining([
+                expect.objectContaining({
+                  author: 'vercel',
+                  body: 'Preview: https://my-app-pr-123.vercel.app'
+                })
+              ])
+            })
+          )
+        })
+      }
+    })
   })
 
   describe('Discussion Tabs', () => {

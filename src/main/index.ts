@@ -3,6 +3,7 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
 import {
   ClaudeMessage,
+  extractPreviewUrl,
   fetchModels as fetchClaudeModels,
   getDefaultModel,
   sendMessage as sendClaudeMessage,
@@ -713,6 +714,39 @@ function setupIPCHandlers(): void {
 
     return { success: true, streamId }
   })
+
+  // Extract preview URL from PR context using AI
+  ipcMain.handle(
+    'extract-preview-url',
+    async (
+      _,
+      context: {
+        title: string
+        body: string | null
+        comments: Array<{ author: string; body: string }>
+      }
+    ) => {
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, message: 'No Claude API key configured' }
+      }
+
+      logger.info(LogCategory.API, 'Extracting preview URL from PR', {
+        title: context.title,
+        commentsCount: context.comments.length
+      })
+
+      const result = await extractPreviewUrl(apiKey, context)
+
+      if (result.success && result.url) {
+        // Open the URL in the default browser
+        await shell.openExternal(result.url)
+        logger.info(LogCategory.APP, 'Opened preview URL in browser', { url: result.url })
+      }
+
+      return result
+    }
+  )
 
   // Logging
   ipcMain.handle('get-logs', async () => {

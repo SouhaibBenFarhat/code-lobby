@@ -104,6 +104,9 @@ interface MockElectronAPI {
   getAIPanel: ReturnType<typeof vi.fn>
   setAIPanel: ReturnType<typeof vi.fn>
 
+  // AI-powered actions
+  extractPreviewUrl: ReturnType<typeof vi.fn>
+
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
@@ -226,6 +229,12 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // AI Panel
     getAIPanel: vi.fn().mockResolvedValue({ isOpen: false, width: 380 }),
     setAIPanel: vi.fn().mockResolvedValue({ success: true }),
+
+    // AI-powered actions
+    extractPreviewUrl: vi.fn().mockResolvedValue({
+      success: false,
+      message: 'No preview URL found in this PR'
+    }),
 
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),
