@@ -55,7 +55,7 @@ export function buildCISummary(checks: PRAnalysisContext['checks']): string {
 }
 
 /**
- * Build the reviews summary section
+ * Build the reviews summary section with full review content
  */
 export function buildReviewsSummary(reviews: PRAnalysisContext['reviews']): string {
   if (reviews.length === 0) {
@@ -65,10 +65,10 @@ export function buildReviewsSummary(reviews: PRAnalysisContext['reviews']): stri
   return reviews
     .map((r) => {
       const icon = r.state === 'approved' ? '✅' : r.state === 'changes_requested' ? '🔄' : '💬'
-      const body = r.body ? ` - "${r.body.slice(0, 100)}${r.body.length > 100 ? '...' : ''}"` : ''
-      return `${icon} ${r.author}: ${r.state}${body}`
+      const body = r.body ? `\n${r.body}` : ''
+      return `${icon} **${r.author}**: ${r.state}${body}`
     })
-    .join('\n')
+    .join('\n\n')
 }
 
 /**
@@ -85,18 +85,14 @@ export function buildThreadsSummary(reviewThreads: PRAnalysisContext['reviewThre
 }
 
 /**
- * Build the comments summary section
+ * Build the comments section with all comments and full content
  */
 export function buildCommentsSummary(comments: PRAnalysisContext['comments']): string {
-  const recentComments = comments.slice(-10)
-
-  if (recentComments.length === 0) {
+  if (comments.length === 0) {
     return 'No comments'
   }
 
-  return recentComments
-    .map((c) => `**${c.author}**: ${c.body.slice(0, 150)}${c.body.length > 150 ? '...' : ''}`)
-    .join('\n\n')
+  return comments.map((c) => `**${c.author}**:\n${c.body}`).join('\n\n---\n\n')
 }
 
 /**
@@ -129,7 +125,7 @@ ${reviewsSummary}
 ## Review Threads
 ${threadsSummary}
 
-## Recent Comments
+## Comments (${context.comments.length} total)
 ${commentsSummary}
 
 ---
