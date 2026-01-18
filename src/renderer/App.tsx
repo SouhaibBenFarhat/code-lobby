@@ -579,6 +579,8 @@ function App() {
                         linkedPRChat={linkedPRChat}
                         onClosePRChat={closePRChat}
                         onSwitchToPRChat={switchToPRChat}
+                        selectedPR={selectedPR}
+                        onStartPRChat={openPRInChat}
                       />
                     </div>
                   </aside>

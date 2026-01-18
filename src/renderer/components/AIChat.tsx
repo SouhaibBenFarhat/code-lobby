@@ -217,12 +217,24 @@ interface PRChatInfo {
   messageCount: number
 }
 
+interface SelectedPR {
+  number: number
+  title: string
+  base: {
+    repo: {
+      full_name: string
+    }
+  }
+}
+
 interface AIChatPanelProps {
   onClose: () => void
   user?: GitHubUser | null
   linkedPRChat?: LinkedPRChat | null
   onClosePRChat?: () => void
   onSwitchToPRChat?: (prId: string) => void
+  selectedPR?: SelectedPR | null
+  onStartPRChat?: (pr: SelectedPR) => void
 }
 
 // Streaming state for the current assistant message being generated
@@ -587,7 +599,9 @@ export function AIChatPanel({
   user,
   linkedPRChat,
   onClosePRChat,
-  onSwitchToPRChat
+  onSwitchToPRChat,
+  selectedPR,
+  onStartPRChat
 }: AIChatPanelProps) {
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
@@ -742,6 +756,31 @@ export function AIChatPanel({
     void linkedPRChatId
     loadAllPRChats()
   }, [loadAllPRChats, linkedPRChatId])
+
+  // Auto-switch to PR chat when selectedPR changes
+  useEffect(() => {
+    if (!selectedPR) return
+
+    const selectedPRId = `${selectedPR.base.repo.full_name}#${selectedPR.number}`
+
+    // If already showing this PR's chat, do nothing
+    if (linkedPRChat?.prId === selectedPRId) return
+
+    // Check if a chat exists for this PR
+    const checkAndSwitch = async () => {
+      const existingChat = await window.electron.getPRChat(selectedPRId)
+      if (existingChat && onSwitchToPRChat) {
+        // Chat exists, switch to it
+        onSwitchToPRChat(selectedPRId)
+      }
+      // If no chat exists, do nothing - the empty state will show
+    }
+    checkAndSwitch()
+  }, [selectedPR, linkedPRChat?.prId, onSwitchToPRChat])
+
+  // Compute if we should show empty state for selected PR with no chat
+  const selectedPRId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
+  const showPREmptyState = selectedPR && (!linkedPRChat || linkedPRChat.prId !== selectedPRId)
 
   const handleModelChange = async (modelId: string) => {
     setSelectedModel(modelId)
@@ -1501,12 +1540,41 @@ export function AIChatPanel({
         {/* Empty state */}
         {!isLoading && messages.length === 0 && !streaming.isStreaming ? (
           <div className="h-full flex items-center justify-center min-h-[200px]">
-            <div className="text-center space-y-2">
-              <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
-              </p>
-            </div>
+            {showPREmptyState && selectedPR ? (
+              // Empty state for selected PR with no existing chat
+              <div className="text-center space-y-4 px-6">
+                <GitPullRequest className="w-12 h-12 mx-auto text-blue-500/40" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    #{selectedPR.number} {selectedPR.title.slice(0, 50)}
+                    {selectedPR.title.length > 50 ? '...' : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{selectedPR.base.repo.full_name}</p>
+                </div>
+                <p className="text-sm text-muted-foreground">No conversation yet for this PR</p>
+                {onStartPRChat && apiKey && (
+                  <Button size="sm" onClick={() => onStartPRChat(selectedPR)} className="mt-2">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Start chatting about this PR
+                  </Button>
+                )}
+                {!apiKey && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Enter your API key below to start chatting
+                  </p>
+                )}
+              </div>
+            ) : (
+              // Default empty state
+              <div className="text-center space-y-2">
+                <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">
+                  {apiKey
+                    ? 'Start a conversation with Claude'
+                    : 'Enter your API key below to start'}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           !isLoading && (
