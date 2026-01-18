@@ -278,7 +278,7 @@ Never wonder why data isn't loading.
 
 ### Power User Features
 
-1. **Extended Thinking** — Watch AI reasoning in real-time
+1. **Extended Thinking** — Watch AI reasoning in real-time (auto-scrolls to show latest)
 2. **Comment Filtering** — Hide bot noise with one click
 3. **Panel Resizing** — Drag edges to customize layouts
 4. **Theme Switching** — Cmd/Ctrl + Shift + T

@@ -201,6 +201,7 @@ Click a button in the PR detail header, and AI analyzes CI status, reviews, comm
 - **Streaming loading state:**
   - "Starting analysis..." initially
   - "Thinking..." panel showing Claude's reasoning process in real-time
+  - **Auto-scroll** — Thinking section scrolls to bottom as new content streams
   - Streaming analysis text as it arrives
 - Error message display for failed analyses
 
