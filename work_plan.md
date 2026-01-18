@@ -847,6 +847,7 @@ Click a button on any PR to open a new AI chat session with the PR's full contex
 - Back button to return to general chat
 - Chat history persists across app restarts
 - **Selected conversation persists** — App remembers which chat (general or PR-specific) was active and restores it on restart
+- **Auto-switch on PR selection** — Switching PRs automatically shows that PR's chat (or empty state with CTA if no chat exists)
 
 **Technical Details:**
 - `PRChat` interface in `store.ts` - stores per-PR chat sessions

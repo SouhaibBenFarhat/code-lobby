@@ -153,7 +153,8 @@ Want to discuss a specific PR with the AI? Don't copy-paste context manually.
 **How It Works:**
 - Each PR gets its own conversation history
 - The AI knows which PR you're discussing
-- Switch between PRs without losing context
+- **Auto-switch** — Clicking a different PR automatically shows its chat
+- If no chat exists, you'll see an empty state with "Start chatting about this PR"
 - Conversations persist across sessions
 
 **Use Cases:**
