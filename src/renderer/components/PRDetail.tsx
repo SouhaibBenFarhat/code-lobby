@@ -23,7 +23,9 @@ import {
   Copy,
   Check,
   FileCode,
-  CheckCheck
+  CheckCheck,
+  FileText,
+  Edit
 } from 'lucide-react'
 import { ScrollArea } from './ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
@@ -430,6 +432,94 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
   )
 }
 
+// Component for displaying the PR description (body)
+function PRDescription({ 
+  body, 
+  prUrl 
+}: { 
+  body: string | null
+  prUrl: string 
+}) {
+  const [isExpanded, setIsExpanded] = useState(true)
+  const [copied, setCopied] = useState(false)
+  
+  const handleCopy = async () => {
+    if (body) {
+      await navigator.clipboard.writeText(body)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+  
+  const handleEdit = () => {
+    // Open the PR edit page in GitHub
+    window.open(prUrl, '_blank')
+  }
+  
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors bg-muted/40 dark:bg-muted/50"
+      >
+        {isExpanded ? (
+          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        )}
+        <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+        <span className="text-sm font-medium">Description</span>
+        <div className="ml-auto flex items-center gap-1">
+          {body && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleCopy()
+              }}
+              title="Copy description"
+            >
+              {copied ? (
+                <Check className="w-3 h-3 text-success" />
+              ) : (
+                <Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+              )}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleEdit()
+            }}
+            title="Edit on GitHub"
+          >
+            <Edit className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+          </Button>
+        </div>
+      </button>
+      
+      {isExpanded && (
+        <div className="border-t border-border p-3">
+          {body ? (
+            <div className="text-sm text-foreground/80 dark:text-foreground/70">
+              <MarkdownContent content={body} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              No description provided
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Component for displaying a code review thread (inline comments on code)
 function ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: string }) {
   const [isExpanded, setIsExpanded] = useState(!thread.isResolved)
@@ -805,6 +895,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6 w-full max-w-full overflow-x-hidden pr-detail-content">
+          {/* PR Description Section */}
+          <PRDescription body={pr.body} prUrl={pr.html_url} />
+
           {/* CI Checks Section */}
           <div>
             <div className="flex items-center justify-between mb-3">

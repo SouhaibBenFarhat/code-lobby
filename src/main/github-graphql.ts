@@ -218,6 +218,7 @@ const GET_ALL_DATA = `
           id
           number
           title
+          body
           url
           state
           createdAt
@@ -392,6 +393,7 @@ const GET_ALL_PRS_FOR_REPOS = `
           id
           number
           title
+          body
           url
           state
           createdAt
@@ -792,6 +794,7 @@ export async function fetchAllPRData(token: string): Promise<{
       id: pr.id,
       number: pr.number,
       title: pr.title,
+      body: pr.body || null,
       html_url: pr.url,
       state: pr.state.toLowerCase(),
       created_at: pr.createdAt,
@@ -1148,6 +1151,7 @@ export async function fetchAllPRsForRepos(token: string, repoFullNames: string[]
         id: pr.id,
         number: pr.number,
         title: pr.title,
+        body: pr.body || null,
         html_url: pr.url,
         state: pr.state.toLowerCase(),
         created_at: pr.createdAt,

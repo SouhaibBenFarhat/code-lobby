@@ -423,4 +423,87 @@ describe('PRDetail', () => {
       expect(screen.getByText(/main/)).toBeInTheDocument()
     })
   })
+
+  describe('PR Description', () => {
+    it('should display description section', () => {
+      const pr = createMockPullRequest({ body: 'This is the PR description' })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      expect(screen.getByText('Description')).toBeInTheDocument()
+    })
+
+    it('should render PR body as markdown', () => {
+      const pr = createMockPullRequest({ 
+        body: '## Summary\nThis PR adds new features\n\n- Feature 1\n- Feature 2' 
+      })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      // Description section should be expanded by default
+      expect(screen.getByText(/Summary/)).toBeInTheDocument()
+      expect(screen.getByText(/Feature 1/)).toBeInTheDocument()
+    })
+
+    it('should show placeholder when no description provided', () => {
+      const pr = createMockPullRequest({ body: null })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      expect(screen.getByText('No description provided')).toBeInTheDocument()
+    })
+
+    it('should show placeholder for empty description', () => {
+      const pr = createMockPullRequest({ body: '' })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      expect(screen.getByText('No description provided')).toBeInTheDocument()
+    })
+
+    it('should be collapsible', () => {
+      const pr = createMockPullRequest({ body: 'Test body content' })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      // Initially expanded (body visible)
+      expect(screen.getByText(/Test body content/)).toBeInTheDocument()
+      
+      // Click to collapse
+      const descriptionHeader = screen.getByText('Description')
+      fireEvent.click(descriptionHeader)
+      
+      // Body should be hidden after collapse
+      expect(screen.queryByText(/Test body content/)).not.toBeInTheDocument()
+    })
+
+    it('should have copy button', () => {
+      const pr = createMockPullRequest({ body: 'Copyable content' })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      const copyButton = document.querySelector('button[title="Copy description"]')
+      expect(copyButton).toBeInTheDocument()
+    })
+
+    it('should have edit button that opens GitHub', () => {
+      const pr = createMockPullRequest({ body: 'Some content' })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      const editButton = document.querySelector('button[title="Edit on GitHub"]')
+      expect(editButton).toBeInTheDocument()
+    })
+
+    it('should copy description to clipboard when copy button clicked', async () => {
+      const mockClipboard = {
+        writeText: vi.fn().mockResolvedValue(undefined)
+      }
+      Object.assign(navigator, { clipboard: mockClipboard })
+      
+      const pr = createMockPullRequest({ body: 'Content to copy' })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      
+      const copyButton = document.querySelector('button[title="Copy description"]')
+      if (copyButton) {
+        fireEvent.click(copyButton)
+        await waitFor(() => {
+          expect(mockClipboard.writeText).toHaveBeenCalledWith('Content to copy')
+        })
+      }
+    })
+  })
 })
