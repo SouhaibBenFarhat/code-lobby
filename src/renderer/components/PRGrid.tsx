@@ -173,20 +173,36 @@ export function PRGrid({ currentUser }: PRGridProps) {
   const prsData = prsResult?.prs
   const fetchedCurrentUser = prsResult?.currentUser
 
-  // Track container size
+  // Track container size using ResizeObserver
+  // This correctly detects size changes from panel open/close, not just window resize
   useEffect(() => {
+    if (!containerRef.current) return
+
     const updateSize = () => {
       if (containerRef.current) {
-        setContainerSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight
+        const { offsetWidth, offsetHeight } = containerRef.current
+        // Only update if size actually changed (avoid unnecessary re-renders)
+        setContainerSize((prev) => {
+          if (prev.width === offsetWidth && prev.height === offsetHeight) {
+            return prev
+          }
+          return { width: offsetWidth, height: offsetHeight }
         })
       }
     }
 
+    // Initial size
     updateSize()
-    window.addEventListener('resize', updateSize)
-    return () => window.removeEventListener('resize', updateSize)
+
+    // Use ResizeObserver to detect container size changes (not just window resize)
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize()
+    })
+    resizeObserver.observe(containerRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [])
 
   // Generate default layout for repos (scattered nicely)
