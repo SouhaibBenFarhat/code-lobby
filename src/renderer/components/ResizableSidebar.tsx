@@ -24,25 +24,52 @@ export function ResizableSidebar({
   const [isResizing, setIsResizing] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
 
-  const startResizing = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
+  // Track width during drag without React re-renders
+  const currentWidthRef = useRef(defaultWidth)
+  const rafRef = useRef<number | null>(null)
+
+  const startResizing = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsResizing(true)
+      currentWidthRef.current = width
+    },
+    [width]
+  )
 
   const stopResizing = useCallback(() => {
     setIsResizing(false)
+    // Sync final width to React state
+    setWidth(currentWidthRef.current)
+    // Cancel any pending animation frame
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
   }, [])
 
   const resize = useCallback(
     (e: MouseEvent) => {
-      if (isResizing && sidebarRef.current) {
+      if (!isResizing || !sidebarRef.current) return
+
+      // Cancel previous frame if still pending
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+
+      // Use requestAnimationFrame to batch DOM updates
+      rafRef.current = requestAnimationFrame(() => {
+        if (!sidebarRef.current) return
+
         const sidebarRect = sidebarRef.current.getBoundingClientRect()
         const newWidth = sidebarRect.right - e.clientX
 
         if (newWidth >= minWidth && newWidth <= maxWidth) {
-          setWidth(newWidth)
+          // Update DOM directly - no React re-render!
+          sidebarRef.current.style.width = `${newWidth}px`
+          currentWidthRef.current = newWidth
         }
-      }
+      })
     },
     [isResizing, minWidth, maxWidth]
   )
@@ -58,6 +85,15 @@ export function ResizableSidebar({
       window.removeEventListener('mouseup', stopResizing)
     }
   }, [isResizing, resize, stopResizing])
+
+  // Cleanup RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="relative flex">
@@ -88,7 +124,10 @@ export function ResizableSidebar({
             'relative flex flex-col border-l border-border overflow-hidden bg-card/30',
             isResizing && 'select-none'
           )}
-          style={{ width: `${width}px` }}
+          style={{
+            width: `${width}px`,
+            willChange: isResizing ? 'width' : 'auto'
+          }}
         >
           {/* Resize handle */}
           <div
@@ -100,8 +139,8 @@ export function ResizableSidebar({
             aria-valuenow={width}
             tabIndex={0}
             className={cn(
-              'absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10',
-              isResizing && 'bg-primary'
+              'absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10',
+              isResizing ? 'bg-primary' : 'hover:bg-primary/50'
             )}
             onMouseDown={startResizing}
             onKeyDown={(e) => {
