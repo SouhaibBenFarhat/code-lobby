@@ -1,6 +1,13 @@
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
+
+// Set app name immediately at module load (before app.whenReady)
+// This is required for macOS dock tooltip to show correct name
+if (process.platform === 'darwin') {
+  app.setName('CodeLobby')
+}
+
 import {
   analyzePRStatus,
   analyzePRStatusStreaming,
@@ -1322,9 +1329,6 @@ function setupIPCHandlers(): void {
 }
 
 app.whenReady().then(() => {
-  // Set app name for dock tooltip (dev mode uses package.json name by default)
-  app.setName('CodeLobby')
-
   // Initialize logger (creates logs directory, cleans old sessions)
   logger.init()
 
