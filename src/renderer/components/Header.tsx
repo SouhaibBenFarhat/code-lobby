@@ -15,8 +15,8 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AboutDialog } from './AboutDialog'
+import { ClaudeIcon } from './ClaudeIcon'
 import { CodeLobbyLogo } from './CodeLobbyLogo'
-import { DogIcon } from './DogIcon'
 import { EventStream } from './EventStream'
 import { LogsViewer } from './LogsViewer'
 import { RepoSelector } from './RepoSelector'
@@ -355,7 +355,7 @@ export function Header({
               className="h-8 w-8"
               onClick={onToggleAIPanel}
             >
-              <DogIcon className="w-4 h-4" />
+              <ClaudeIcon className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>

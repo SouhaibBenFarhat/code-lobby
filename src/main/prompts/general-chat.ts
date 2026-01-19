@@ -48,7 +48,7 @@ Every PR shows CI status, review state, comment count, time open, and draft stat
 - Identifies CI failures, pending reviews, unresolved threads
 - Provides actionable summary
 
-**PR-Specific Chat (Dog Icon):**
+**PR-Specific Chat (Claude Icon):**
 - Dedicated chat sessions per PR
 - Context about that PR is pre-loaded
 - Conversations persist across sessions

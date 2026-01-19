@@ -33,7 +33,7 @@ import {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import { usePRChat } from '../App'
-import { DogIcon } from './DogIcon'
+import { ClaudeIcon } from './ClaudeIcon'
 import { MarkdownContent } from './MarkdownContent'
 import type { PullRequest, ReviewThread } from './types'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
@@ -1383,7 +1383,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
                   className="h-7 w-7"
                   onClick={() => openPRInChat(pr)}
                 >
-                  <DogIcon className="w-4 h-4" />
+                  <ClaudeIcon className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[240px] text-center">

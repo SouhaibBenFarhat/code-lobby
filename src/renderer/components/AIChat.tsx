@@ -18,7 +18,7 @@ import {
   X
 } from 'lucide-react'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { DogIcon } from './DogIcon'
+import { ClaudeIcon } from './ClaudeIcon'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
@@ -421,7 +421,7 @@ const MessageBubble = React.memo(function MessageBubble({
     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
       {message.role === 'assistant' && (
         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <DogIcon className="w-3.5 h-3.5 text-primary" />
+          <ClaudeIcon className="w-3.5 h-3.5 text-primary" />
         </div>
       )}
 
@@ -521,7 +521,7 @@ const StreamingBubble = React.memo(function StreamingBubble({
       }}
     >
       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <DogIcon className="w-3.5 h-3.5 text-primary" />
+        <ClaudeIcon className="w-3.5 h-3.5 text-primary" />
       </div>
       <div className="max-w-[85%] rounded-lg bg-muted min-h-[40px]">
         {streaming.thinking && (
@@ -1210,7 +1210,7 @@ export function AIChatPanel({
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2 min-w-0">
-          <DogIcon className="w-5 h-5 text-primary flex-shrink-0" />
+          <ClaudeIcon className="w-5 h-5 text-primary flex-shrink-0" />
           <h2 className="font-semibold text-sm flex-shrink-0">
             {linkedPRChat ? 'PR Chat' : 'AI Assistant'}
           </h2>
@@ -1585,7 +1585,7 @@ export function AIChatPanel({
         {!isLoading && !showPREmptyState && messages.length === 0 && !streaming.isStreaming && (
           <div className="h-full flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-4">
-              <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
+              <ClaudeIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
                 {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
               </p>

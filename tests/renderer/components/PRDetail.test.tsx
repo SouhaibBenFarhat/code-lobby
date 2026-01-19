@@ -1184,20 +1184,20 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
-      // The button should have the dog icon (DogIcon has aria-label="AI Assistant")
-      const dogIcon = screen.getByLabelText('AI Assistant')
-      expect(dogIcon).toBeInTheDocument()
+      // The button should have the Claude icon (ClaudeIcon has aria-label="Claude AI")
+      const claudeIcon = screen.getByLabelText('Claude AI')
+      expect(claudeIcon).toBeInTheDocument()
     })
 
     it('should have tooltip content available', () => {
       const pr = createMockPullRequest()
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
-      // Find the dog icon - it exists in a tooltip trigger, which confirms the tooltip is set up
-      const dogIcon = screen.getByLabelText('AI Assistant')
-      const dogButton = dogIcon.closest('button')
+      // Find the Claude icon - it exists in a tooltip trigger, which confirms the tooltip is set up
+      const claudeIcon = screen.getByLabelText('Claude AI')
+      const claudeButton = claudeIcon.closest('button')
 
-      expect(dogButton).toBeTruthy()
+      expect(claudeButton).toBeTruthy()
       // Verify the button is inside a tooltip structure
       // (Radix tooltips are complex to test with hover, so we just verify the button exists)
     })
@@ -1207,13 +1207,13 @@ describe('PRDetail', () => {
 
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
-      // Find and click the dog icon's parent button
-      const dogIcon = screen.getByLabelText('AI Assistant')
-      const dogButton = dogIcon.closest('button')
+      // Find and click the Claude icon's parent button
+      const claudeIcon = screen.getByLabelText('Claude AI')
+      const claudeButton = claudeIcon.closest('button')
 
-      expect(dogButton).toBeTruthy()
-      if (dogButton) {
-        fireEvent.click(dogButton)
+      expect(claudeButton).toBeTruthy()
+      if (claudeButton) {
+        fireEvent.click(claudeButton)
       }
 
       // Verify the handler was called with the PR (uses mocked usePRChat)
