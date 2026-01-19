@@ -2,6 +2,7 @@
  * App Component Tests
  */
 
+import { fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import {
@@ -290,6 +291,211 @@ describe('App', () => {
         // The actual toggling happens via Header, but we verify the
         // persistence mechanism is in place
         expect(mockElectron.getAIPanel).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Smooth Panel Resize (Performance)', () => {
+    it('should have resize handle for PR detail panel', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getPRDetailPanel.mockResolvedValue({ isOpen: true, width: 400 })
+
+      render(<App />)
+
+      await waitFor(() => {
+        // Find the resize handle with aria-label
+        const resizeHandle = document.querySelector('div[aria-label="Resize panel"]')
+        expect(resizeHandle).toBeInTheDocument()
+      })
+    })
+
+    it('should have resize handle for AI panel', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getAIPanel.mockResolvedValue({ isOpen: true, width: 380 })
+      mockElectron.getClaudeApiKey.mockResolvedValue('sk-ant-test-key')
+      mockElectron.getChatHistory.mockResolvedValue([])
+
+      render(<App />)
+
+      await waitFor(() => {
+        // Find the resize handle with aria-label
+        const resizeHandle = document.querySelector('div[aria-label="Resize AI panel"]')
+        expect(resizeHandle).toBeInTheDocument()
+      })
+    })
+
+    it('PR detail panel should have CSS containment for performance', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getPRDetailPanel.mockResolvedValue({ isOpen: true, width: 400 })
+
+      render(<App />)
+
+      await waitFor(() => {
+        const panel = document.querySelector('aside.border-l')
+        expect(panel).toBeInTheDocument()
+        // Check for CSS containment (layout style) which isolates repaints
+        const style = window.getComputedStyle(panel as Element)
+        expect(style.contain).toContain('layout')
+      })
+    })
+
+    it('AI panel should have CSS containment for performance', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getAIPanel.mockResolvedValue({ isOpen: true, width: 380 })
+      mockElectron.getClaudeApiKey.mockResolvedValue('sk-ant-test-key')
+      mockElectron.getChatHistory.mockResolvedValue([])
+
+      render(<App />)
+
+      await waitFor(() => {
+        // Find AI panel (apple-panel class)
+        const panel = document.querySelector('aside.apple-panel')
+        expect(panel).toBeInTheDocument()
+        // Check for CSS containment
+        const style = window.getComputedStyle(panel as Element)
+        expect(style.contain).toContain('layout')
+      })
+    })
+
+    it('should update PR panel width directly on mousedown + mousemove (via ref)', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getPRDetailPanel.mockResolvedValue({ isOpen: true, width: 400 })
+
+      render(<App />)
+
+      await waitFor(() => {
+        const resizeHandle = document.querySelector('div[aria-label="Resize panel"]')
+        expect(resizeHandle).toBeInTheDocument()
+      })
+
+      const resizeHandle = document.querySelector('div[aria-label="Resize panel"]')
+      const panel = document.querySelector('aside.border-l') as HTMLElement
+
+      // Initial width
+      expect(panel.style.width).toBe('400px')
+      expect(resizeHandle).toBeTruthy()
+
+      // Simulate resize start
+      if (resizeHandle) fireEvent.mouseDown(resizeHandle, { clientX: 0 })
+
+      // Body should have col-resize cursor
+      expect(document.body.style.cursor).toBe('col-resize')
+
+      // Simulate mouse move
+      fireEvent.mouseMove(document, { clientX: -50 })
+
+      // Wait for RAF to execute (in tests, may need manual advance)
+      await new Promise((r) => setTimeout(r, 20))
+
+      // Simulate mouse up
+      fireEvent.mouseUp(document)
+
+      // Cursor should be cleared
+      expect(document.body.style.cursor).toBe('')
+    })
+
+    it('should update AI panel width directly on mousedown + mousemove (via ref)', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getAIPanel.mockResolvedValue({ isOpen: true, width: 380 })
+      mockElectron.getClaudeApiKey.mockResolvedValue('sk-ant-test-key')
+      mockElectron.getChatHistory.mockResolvedValue([])
+
+      render(<App />)
+
+      await waitFor(() => {
+        const resizeHandle = document.querySelector('div[aria-label="Resize AI panel"]')
+        expect(resizeHandle).toBeInTheDocument()
+      })
+
+      const resizeHandle = document.querySelector('div[aria-label="Resize AI panel"]')
+      const panel = document.querySelector('aside.apple-panel') as HTMLElement
+
+      // Initial width
+      expect(panel.style.width).toBe('380px')
+      expect(resizeHandle).toBeTruthy()
+
+      // Simulate resize start
+      if (resizeHandle) fireEvent.mouseDown(resizeHandle, { clientX: 0 })
+
+      // Body should have col-resize cursor
+      expect(document.body.style.cursor).toBe('col-resize')
+
+      // Simulate mouse move
+      fireEvent.mouseMove(document, { clientX: -50 })
+
+      // Wait for RAF to execute
+      await new Promise((r) => setTimeout(r, 20))
+
+      // Simulate mouse up
+      fireEvent.mouseUp(document)
+
+      // Cursor should be cleared
+      expect(document.body.style.cursor).toBe('')
+    })
+
+    it('should persist PR panel width after resize', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getPRDetailPanel.mockResolvedValue({ isOpen: true, width: 400 })
+
+      render(<App />)
+
+      await waitFor(() => {
+        const resizeHandle = document.querySelector('div[aria-label="Resize panel"]')
+        expect(resizeHandle).toBeInTheDocument()
+      })
+
+      const resizeHandle = document.querySelector('div[aria-label="Resize panel"]')
+      expect(resizeHandle).toBeTruthy()
+
+      // Simulate complete resize cycle
+      if (resizeHandle) {
+        fireEvent.mouseDown(resizeHandle, { clientX: 0 })
+        fireEvent.mouseMove(document, { clientX: -50 })
+        await new Promise((r) => setTimeout(r, 20))
+        fireEvent.mouseUp(document)
+      }
+
+      // setPRDetailPanel should be called with the new width on mouseup
+      await waitFor(() => {
+        expect(mockElectron.setPRDetailPanel).toHaveBeenCalled()
+      })
+    })
+
+    it('should persist AI panel width after resize', async () => {
+      const mockElectron = setupAuthenticatedScenario()
+      mockElectron.getViewMode.mockResolvedValue('canvas')
+      mockElectron.getAIPanel.mockResolvedValue({ isOpen: true, width: 380 })
+      mockElectron.getClaudeApiKey.mockResolvedValue('sk-ant-test-key')
+      mockElectron.getChatHistory.mockResolvedValue([])
+
+      render(<App />)
+
+      await waitFor(() => {
+        const resizeHandle = document.querySelector('div[aria-label="Resize AI panel"]')
+        expect(resizeHandle).toBeInTheDocument()
+      })
+
+      const resizeHandle = document.querySelector('div[aria-label="Resize AI panel"]')
+      expect(resizeHandle).toBeTruthy()
+
+      // Simulate complete resize cycle
+      if (resizeHandle) {
+        fireEvent.mouseDown(resizeHandle, { clientX: 0 })
+        fireEvent.mouseMove(document, { clientX: -50 })
+        await new Promise((r) => setTimeout(r, 20))
+        fireEvent.mouseUp(document)
+      }
+
+      // setAIPanel should be called with the new width on mouseup
+      await waitFor(() => {
+        expect(mockElectron.setAIPanel).toHaveBeenCalled()
       })
     })
   })

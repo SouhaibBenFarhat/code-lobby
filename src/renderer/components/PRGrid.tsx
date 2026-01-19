@@ -626,6 +626,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
                   transition-shadow duration-200
                   ${!isLayoutLocked ? 'hover:shadow-xl hover:z-10' : ''}
                 `}
+                style={{ contain: 'layout style' }}
               >
                 <RepoCard
                   repo={repo}

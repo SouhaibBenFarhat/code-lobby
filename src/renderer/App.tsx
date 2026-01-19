@@ -86,6 +86,10 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('canvas')
   const [viewModeLoaded, setViewModeLoaded] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  // Refs for smooth PR panel resize (avoid React re-renders during drag)
+  const panelRef = useRef<HTMLElement>(null)
+  const currentWidthRef = useRef(DEFAULT_PANEL_WIDTH)
+  const rafRef = useRef<number | null>(null)
 
   // AI Panel state
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false)
@@ -247,6 +251,7 @@ function App() {
         startX: e.clientX,
         startWidth: panelWidth
       }
+      currentWidthRef.current = panelWidth
     },
     [panelWidth]
   )
@@ -336,14 +341,30 @@ function App() {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      // PR Detail Panel resize (smooth)
       if (isResizing && resizeRef.current) {
-        const delta = resizeRef.current.startX - e.clientX
-        const newWidth = Math.min(
-          MAX_PANEL_WIDTH,
-          Math.max(MIN_PANEL_WIDTH, resizeRef.current.startWidth + delta)
-        )
-        setPanelWidth(newWidth)
+        // Cancel previous animation frame
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current)
+        }
+        // Use requestAnimationFrame for smooth 60fps updates
+        rafRef.current = requestAnimationFrame(() => {
+          if (!resizeRef.current) return
+          const delta = resizeRef.current.startX - e.clientX
+          const newWidth = Math.min(
+            MAX_PANEL_WIDTH,
+            Math.max(MIN_PANEL_WIDTH, resizeRef.current.startWidth + delta)
+          )
+          // Update DOM directly - NO React re-render!
+          if (panelRef.current) {
+            panelRef.current.style.width = `${newWidth}px`
+            panelRef.current.style.minWidth = `${newWidth}px`
+            panelRef.current.style.maxWidth = `${newWidth}px`
+          }
+          currentWidthRef.current = newWidth
+        })
       }
+      // AI Panel resize (smooth)
       if (isAIResizing && aiResizeRef.current) {
         // Cancel previous animation frame
         if (aiRafRef.current) {
@@ -369,12 +390,19 @@ function App() {
     }
 
     const handleMouseUp = () => {
-      // Cancel any pending animation frame
+      // Cancel any pending animation frames
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
       if (aiRafRef.current) {
         cancelAnimationFrame(aiRafRef.current)
         aiRafRef.current = null
       }
-      // Sync final width to React state (only ONE re-render)
+      // Sync final widths to React state (only ONE re-render per panel)
+      if (isResizing) {
+        setPanelWidth(currentWidthRef.current)
+      }
       if (isAIResizing) {
         setAIPanelWidth(aiCurrentWidthRef.current)
       }
@@ -506,8 +534,15 @@ function App() {
 
                     {isPanelOpen && (
                       <aside
+                        ref={panelRef}
                         className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
-                        style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
+                        style={{
+                          width: panelWidth,
+                          minWidth: panelWidth,
+                          maxWidth: panelWidth,
+                          willChange: isResizing ? 'width' : 'auto',
+                          contain: 'layout style'
+                        }}
                       >
                         {/* Resize handle */}
                         <div
