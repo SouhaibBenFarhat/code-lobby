@@ -1,127 +1,55 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background with rounded corners - dark GitHub-style -->
-  <rect width="512" height="512" rx="108" fill="#0d1117"/>
+  <!-- Background - Parcellab-inspired dark blue -->
+  <rect width="512" height="512" rx="0" fill="#1a1f6c"/>
   
-  <!-- Subtle radial gradient for depth -->
-  <rect width="512" height="512" rx="108" fill="url(#radialGlow)"/>
-  
-  <!-- Outer glow ring -->
-  <circle cx="256" cy="256" r="180" stroke="url(#ringGradient)" stroke-width="2" opacity="0.3"/>
-  
-  <!-- Left bracket < with glow -->
-  <g filter="url(#glow)">
-    <path
-      d="M165 150L75 256L165 362"
-      stroke="#58a6ff"
-      stroke-width="32"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </g>
-  
-  <!-- Right bracket > with glow -->
-  <g filter="url(#glow)">
-    <path
-      d="M347 150L437 256L347 362"
-      stroke="#58a6ff"
-      stroke-width="32"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </g>
-  
-  <!-- Central PR/Merge symbol - stylized door/portal -->
-  <g filter="url(#glowStrong)">
-    <!-- Main door frame -->
-    <rect
-      x="212"
-      y="158"
-      width="88"
-      height="196"
-      rx="12"
-      fill="none"
-      stroke="#3fb950"
-      stroke-width="8"
-    />
-    
-    <!-- Door panel -->
-    <rect
-      x="224"
-      y="170"
-      width="64"
-      height="172"
-      rx="6"
-      fill="#3fb950"
-      opacity="0.9"
-    />
-    
-    <!-- Git merge symbol on door -->
-    <circle cx="256" cy="220" r="12" fill="#0d1117"/>
-    <circle cx="256" cy="280" r="12" fill="#0d1117"/>
-    <path
-      d="M256 232L256 268"
-      stroke="#0d1117"
-      stroke-width="6"
-      stroke-linecap="round"
-    />
-    <!-- Branch lines -->
-    <path
-      d="M244 250L256 262L268 250"
-      stroke="#0d1117"
-      stroke-width="6"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </g>
-  
-  <!-- Welcome mat / base platform -->
-  <rect
-    x="196"
-    y="370"
-    width="120"
-    height="12"
-    rx="6"
-    fill="#3fb950"
-    opacity="0.5"
+  <!-- Hexagon outer frame (code container) -->
+  <path
+    d="M256 56
+       L424 152
+       L424 360
+       L256 456
+       L88 360
+       L88 152
+       Z"
+    fill="none"
+    stroke="white"
+    stroke-width="28"
+    stroke-linejoin="round"
   />
   
-  <!-- Subtle sparkles/stars for polish -->
-  <circle cx="120" cy="180" r="4" fill="#58a6ff" opacity="0.6"/>
-  <circle cx="392" cy="340" r="3" fill="#58a6ff" opacity="0.5"/>
-  <circle cx="380" cy="160" r="5" fill="#3fb950" opacity="0.4"/>
-  <circle cx="132" cy="330" r="3" fill="#3fb950" opacity="0.5"/>
+  <!-- Left bracket < integrated into hexagon -->
+  <path
+    d="M200 180
+       L120 256
+       L200 332"
+    stroke="white"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
   
-  <defs>
-    <!-- Radial glow from center -->
-    <radialGradient id="radialGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#3fb950" stop-opacity="0.08"/>
-      <stop offset="50%" stop-color="#58a6ff" stop-opacity="0.04"/>
-      <stop offset="100%" stop-color="#0d1117" stop-opacity="0"/>
-    </radialGradient>
-    
-    <!-- Ring gradient -->
-    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#58a6ff"/>
-      <stop offset="50%" stop-color="#3fb950"/>
-      <stop offset="100%" stop-color="#58a6ff"/>
-    </linearGradient>
-    
-    <!-- Glow filter -->
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="4" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    
-    <!-- Stronger glow for center -->
-    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
+  <!-- Right bracket > integrated into hexagon -->
+  <path
+    d="M312 180
+       L392 256
+       L312 332"
+    stroke="white"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Central "L" for Lobby - stylized vertical bar with base -->
+  <path
+    d="M256 160
+       L256 320
+       L320 320"
+    stroke="white"
+    stroke-width="32"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Subtle inner glow/accent -->
+  <circle cx="256" cy="256" r="60" fill="white" opacity="0.1"/>
 </svg>
