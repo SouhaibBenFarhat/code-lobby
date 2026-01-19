@@ -963,6 +963,126 @@ useEffect(() => { funcARef.current = funcA }, [funcA])
 
 ---
 
+## 🧈 Smooth Resize Pattern (Cursor-Level Performance)
+
+When implementing resizable panels, **never update React state during drag**. This causes full re-renders and creates "clunky" resize behavior.
+
+### The Problem
+
+```typescript
+// ❌ BAD - Re-renders entire tree 60+ times per second!
+const handleMouseMove = (e: MouseEvent) => {
+  if (isResizing) {
+    const newWidth = calculateWidth(e)
+    setWidth(newWidth) // Triggers re-render EVERY mouse move
+  }
+}
+```
+
+### The Solution
+
+Use refs + `requestAnimationFrame` + direct DOM manipulation:
+
+```typescript
+// ✅ GOOD - Zero re-renders during drag, 1 on release
+const panelRef = useRef<HTMLElement>(null)
+const currentWidthRef = useRef(defaultWidth)  // Track width without state
+const rafRef = useRef<number | null>(null)    // Animation frame ID
+
+const handleResizeStart = useCallback((e: React.MouseEvent) => {
+  e.preventDefault()
+  setIsResizing(true)
+  currentWidthRef.current = width // Store starting width
+  resizeRef.current = { startX: e.clientX, startWidth: width }
+}, [width])
+
+// In effect for mousemove:
+const handleMouseMove = (e: MouseEvent) => {
+  if (!isResizing || !resizeRef.current) return
+  
+  // Cancel previous frame
+  if (rafRef.current) {
+    cancelAnimationFrame(rafRef.current)
+  }
+  
+  // Batch update to next frame (60fps max)
+  rafRef.current = requestAnimationFrame(() => {
+    if (!resizeRef.current) return
+    
+    const delta = resizeRef.current.startX - e.clientX
+    const newWidth = Math.min(MAX, Math.max(MIN, resizeRef.current.startWidth + delta))
+    
+    // Direct DOM update - NO React involved!
+    if (panelRef.current) {
+      panelRef.current.style.width = `${newWidth}px`
+      panelRef.current.style.minWidth = `${newWidth}px`
+      panelRef.current.style.maxWidth = `${newWidth}px`
+    }
+    currentWidthRef.current = newWidth
+  })
+}
+
+const handleMouseUp = () => {
+  // Cancel pending animation
+  if (rafRef.current) {
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+  }
+  
+  // Sync final width to state - ONLY re-render!
+  if (isResizing) {
+    setWidth(currentWidthRef.current)
+  }
+  
+  setIsResizing(false)
+  resizeRef.current = null
+}
+```
+
+### CSS Optimizations
+
+```tsx
+<aside
+  ref={panelRef}
+  style={{
+    width: panelWidth,
+    minWidth: panelWidth,
+    maxWidth: panelWidth,
+    willChange: isResizing ? 'width' : 'auto',  // GPU hint during drag
+    contain: 'layout style'                      // Isolate repaints
+  }}
+>
+  {children}
+</aside>
+```
+
+### Key Principles
+
+| Technique | Why |
+|-----------|-----|
+| `useRef` for width during drag | Avoid React state updates |
+| `requestAnimationFrame` | Cap at 60fps, batch paints |
+| Direct `style.width = ...` | Skip React reconciliation |
+| `will-change: width` | Tell GPU to optimize |
+| `contain: layout style` | Isolate layout thrashing |
+| State sync only on `mouseup` | ONE re-render when done |
+
+### Before vs After
+
+```
+BEFORE (clunky):
+mousemove → setState → React re-render → entire component tree
+           ↑ 60+ times per second = lag
+
+AFTER (smooth):
+mousemove → RAF → DOM update only → panel resizes instantly
+           ↑ React not involved!
+
+mouseup → setState → ONE re-render to persist final width
+```
+
+---
+
 ## 🔮 Vision Context
 
 CodeLobby is evolving toward **intent-driven development** where:
