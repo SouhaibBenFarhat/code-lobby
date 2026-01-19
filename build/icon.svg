@@ -2,44 +2,34 @@
   <!-- Background - Parcellab dark blue -->
   <rect width="512" height="512" fill="#1a1f6c"/>
   
-  <!-- Clean code brackets with door/entry concept -->
-  <!-- Left bracket < -->
+  <!-- 
+    CL Monogram Design:
+    - The C wraps around and shares the vertical line with L
+    - The L's vertical stroke completes the C
+    - Creates a unified, clever mark
+  -->
+  
+  <!-- C shape - opens to the right, the L completes it -->
   <path
-    d="M180 128 L80 256 L180 384"
+    d="M280 96
+       C140 96, 80 180, 80 256
+       C80 332, 140 416, 280 416"
     stroke="white"
-    stroke-width="48"
+    stroke-width="56"
     stroke-linecap="round"
-    stroke-linejoin="round"
     fill="none"
   />
   
-  <!-- Right bracket > -->
+  <!-- L shape - vertical line + horizontal base -->
+  <!-- The vertical line also serves as the missing edge of C -->
   <path
-    d="M332 128 L432 256 L332 384"
+    d="M280 96
+       L280 416
+       L432 416"
     stroke="white"
-    stroke-width="48"
+    stroke-width="56"
     stroke-linecap="round"
     stroke-linejoin="round"
     fill="none"
-  />
-  
-  <!-- Center door/lobby element - simple rectangle -->
-  <rect
-    x="224"
-    y="176"
-    width="64"
-    height="160"
-    rx="8"
-    fill="white"
-  />
-  
-  <!-- Door opening (negative space) -->
-  <rect
-    x="240"
-    y="240"
-    width="32"
-    height="96"
-    rx="4"
-    fill="#1a1f6c"
   />
 </svg>

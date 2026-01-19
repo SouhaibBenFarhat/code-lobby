@@ -20,29 +20,25 @@ export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps) {
       {/* Background */}
       <rect width="64" height="64" rx="8" fill="#1a1f6c" />
 
-      {/* Left bracket < */}
+      {/* CL Monogram - C wraps around, L completes it */}
+      {/* C shape */}
       <path
-        d="M22 16 L10 32 L22 48"
+        d="M35 12 C17.5 12 10 22.5 10 32 C10 41.5 17.5 52 35 52"
         stroke="white"
-        strokeWidth="6"
+        strokeWidth="7"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* L shape - shares vertical with C */}
+      <path
+        d="M35 12 L35 52 L54 52"
+        stroke="white"
+        strokeWidth="7"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
-
-      {/* Right bracket > */}
-      <path
-        d="M42 16 L54 32 L42 48"
-        stroke="white"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-
-      {/* Door/lobby */}
-      <rect x="28" y="22" width="8" height="20" rx="1" fill="white" />
-      <rect x="30" y="30" width="4" height="12" rx="0.5" fill="#1a1f6c" />
     </svg>
   )
 }
@@ -61,21 +57,23 @@ export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps) {
       aria-label="CodeLobby Icon"
     >
       <rect width="24" height="24" rx="4" fill="#1a1f6c" />
+      {/* C */}
       <path
-        d="M8 6 L3 12 L8 18"
+        d="M13 5 C6.5 5 4 8.5 4 12 C4 15.5 6.5 19 13 19"
         stroke="white"
-        strokeWidth="2"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* L */}
+      <path
+        d="M13 5 L13 19 L20 19"
+        stroke="white"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
-      <path
-        d="M16 6 L21 12 L16 18"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <rect x="10.5" y="8" width="3" height="8" rx="0.5" fill="white" />
     </svg>
   )
 }
@@ -95,24 +93,22 @@ export function CodeLobbyLogoAnimated({ className, size = 32 }: CodeLobbyLogoPro
     >
       <rect width="64" height="64" rx="8" className="fill-muted" />
       <path
-        d="M22 16 L10 32 L22 48"
+        d="M35 12 C17.5 12 10 22.5 10 32 C10 41.5 17.5 52 35 52"
         stroke="currentColor"
-        strokeWidth="6"
+        strokeWidth="7"
         strokeLinecap="round"
-        strokeLinejoin="round"
         fill="none"
         className="text-primary/50"
       />
       <path
-        d="M42 16 L54 32 L42 48"
+        d="M35 12 L35 52 L54 52"
         stroke="currentColor"
-        strokeWidth="6"
+        strokeWidth="7"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
         className="text-primary/50"
       />
-      <rect x="28" y="22" width="8" height="20" rx="1" className="fill-primary/50" />
     </svg>
   )
 }
