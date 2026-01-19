@@ -1783,12 +1783,15 @@ When Claude drafts a response, suggestion, or review comment in the AI chat, use
    User: [📤 Post as Reply] → Reply added to thread
 ```
 
-**UI Design - Message Actions:**
+**UI Design - Message Bubble Action Menu:**
+
+Every Claude message bubble has a hover menu (appears on mouse enter) with contextual actions:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  🤖 Claude:                                                  │
-│                                                             │
-│  Based on my analysis, here are the issues I found:         │
+│  🤖 Claude:                                          [⋮]    │
+│                                                      ↑      │
+│  Based on my analysis, here are the issues I found:  Menu   │
 │                                                             │
 │  1. **SQL Injection Risk** (line 45)                        │
 │     The query uses string concatenation instead of          │
@@ -1797,16 +1800,35 @@ When Claude drafts a response, suggestion, or review comment in the AI chat, use
 │  2. **Missing Input Validation** (line 67)                  │
 │     User input is not sanitized before processing.          │
 │                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│  [📋 Copy] [📤 Post to PR ▼] [🔄 Regenerate]                │
-│             │                                               │
-│             └─► ┌────────────────────┐                      │
-│                 │ 💬 General Comment │                      │
-│                 │ 📝 Review Comment  │                      │
-│                 │ ↩️ Reply to Thread │                      │
-│                 └────────────────────┘                      │
 └─────────────────────────────────────────────────────────────┘
+
+Hover/Click [⋮] reveals dropdown menu:
+┌────────────────────────────┐
+│ 📋 Copy to Clipboard       │
+│ ─────────────────────────  │
+│ 📤 Post to PR...       ▸   │ ─► ┌─────────────────────┐
+│ ─────────────────────────  │    │ 💬 General Comment  │
+│ 🔄 Regenerate              │    │ 📝 Review Comment   │
+│ ✏️ Edit                     │    │ ↩️ Reply to Thread  │
+│ 🗑️ Delete                   │    └─────────────────────┘
+└────────────────────────────┘
 ```
+
+**Menu Actions:**
+| Action | Description | When Available |
+|--------|-------------|----------------|
+| 📋 Copy | Copy message content to clipboard | Always |
+| 📤 Post to PR | Post as comment to linked PR | Only in PR Chat |
+| 🔄 Regenerate | Re-send previous message to get new response | Always |
+| ✏️ Edit | Edit the message (for user messages) | User messages only |
+| 🗑️ Delete | Remove message from history | Always |
+
+**Post to PR Submenu:**
+| Option | GitHub API | Description |
+|--------|------------|-------------|
+| 💬 General Comment | Issue comment | Simple comment on PR |
+| 📝 Review Comment | PR review | Submit as part of a review |
+| ↩️ Reply to Thread | Comment reply | Reply to a specific thread |
 
 **UI Design - Confirmation Dialog:**
 ```
