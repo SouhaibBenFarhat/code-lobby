@@ -17,49 +17,37 @@ export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps) {
       role="img"
       aria-label="CodeLobby Logo"
     >
-      {/* Background - Parcellab-inspired dark blue */}
+      {/* Background */}
       <rect width="64" height="64" rx="8" fill="#1a1f6c" />
-
-      {/* Hexagon outer frame */}
-      <path
-        d="M32 8 L52 20 L52 44 L32 56 L12 44 L12 20 Z"
-        fill="none"
-        stroke="white"
-        strokeWidth="3"
-        strokeLinejoin="round"
-      />
 
       {/* Left bracket < */}
       <path
-        d="M25 24 L16 32 L25 40"
+        d="M22 16 L10 32 L22 48"
         stroke="white"
-        strokeWidth="4"
+        strokeWidth="6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
 
       {/* Right bracket > */}
       <path
-        d="M39 24 L48 32 L39 40"
+        d="M42 16 L54 32 L42 48"
         stroke="white"
-        strokeWidth="4"
+        strokeWidth="6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
 
-      {/* Central "L" for Lobby */}
-      <path
-        d="M32 22 L32 40 L40 40"
-        stroke="white"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* Door/lobby */}
+      <rect x="28" y="22" width="8" height="20" rx="1" fill="white" />
+      <rect x="30" y="30" width="4" height="12" rx="0.5" fill="#1a1f6c" />
     </svg>
   )
 }
 
-// Simplified icon version for smaller sizes (header, favicon)
+// Simplified icon for smaller sizes
 export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps) {
   return (
     <svg
@@ -72,40 +60,27 @@ export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps) {
       role="img"
       aria-label="CodeLobby Icon"
     >
-      {/* Background */}
       <rect width="24" height="24" rx="4" fill="#1a1f6c" />
-
-      {/* Left bracket */}
       <path
-        d="M8 8 L4 12 L8 16"
+        d="M8 6 L3 12 L8 18"
         stroke="white"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-
-      {/* Right bracket */}
       <path
-        d="M16 8 L20 12 L16 16"
+        d="M16 6 L21 12 L16 18"
         stroke="white"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-
-      {/* Central L */}
-      <path
-        d="M12 8 L12 16 L15 16"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <rect x="10.5" y="8" width="3" height="8" rx="0.5" fill="white" />
     </svg>
   )
 }
 
-// Animated version for loading states
+// Animated version for loading
 export function CodeLobbyLogoAnimated({ className, size = 32 }: CodeLobbyLogoProps) {
   return (
     <svg
@@ -118,44 +93,26 @@ export function CodeLobbyLogoAnimated({ className, size = 32 }: CodeLobbyLogoPro
       role="img"
       aria-label="CodeLobby Logo Loading"
     >
-      {/* Background */}
       <rect width="64" height="64" rx="8" className="fill-muted" />
-
-      {/* Hexagon */}
       <path
-        d="M32 8 L52 20 L52 44 L32 56 L12 44 L12 20 Z"
+        d="M22 16 L10 32 L22 48"
+        stroke="currentColor"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinejoin="round"
-        className="text-primary/50"
-      />
-
-      {/* Brackets and L */}
-      <path
-        d="M25 24 L16 32 L25 40"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
         className="text-primary/50"
       />
       <path
-        d="M39 24 L48 32 L39 40"
+        d="M42 16 L54 32 L42 48"
         stroke="currentColor"
-        strokeWidth="4"
+        strokeWidth="6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
         className="text-primary/50"
       />
-      <path
-        d="M32 22 L32 40 L40 40"
-        stroke="currentColor"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-primary/50"
-      />
+      <rect x="28" y="22" width="8" height="20" rx="1" className="fill-primary/50" />
     </svg>
   )
 }

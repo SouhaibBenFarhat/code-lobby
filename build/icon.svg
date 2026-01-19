@@ -1,55 +1,45 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background - Parcellab-inspired dark blue -->
-  <rect width="512" height="512" rx="0" fill="#1a1f6c"/>
+  <!-- Background - Parcellab dark blue -->
+  <rect width="512" height="512" fill="#1a1f6c"/>
   
-  <!-- Hexagon outer frame (code container) -->
+  <!-- Clean code brackets with door/entry concept -->
+  <!-- Left bracket < -->
   <path
-    d="M256 56
-       L424 152
-       L424 360
-       L256 456
-       L88 360
-       L88 152
-       Z"
+    d="M180 128 L80 256 L180 384"
+    stroke="white"
+    stroke-width="48"
+    stroke-linecap="round"
+    stroke-linejoin="round"
     fill="none"
-    stroke="white"
-    stroke-width="28"
-    stroke-linejoin="round"
   />
   
-  <!-- Left bracket < integrated into hexagon -->
+  <!-- Right bracket > -->
   <path
-    d="M200 180
-       L120 256
-       L200 332"
+    d="M332 128 L432 256 L332 384"
     stroke="white"
-    stroke-width="36"
+    stroke-width="48"
     stroke-linecap="round"
     stroke-linejoin="round"
+    fill="none"
   />
   
-  <!-- Right bracket > integrated into hexagon -->
-  <path
-    d="M312 180
-       L392 256
-       L312 332"
-    stroke="white"
-    stroke-width="36"
-    stroke-linecap="round"
-    stroke-linejoin="round"
+  <!-- Center door/lobby element - simple rectangle -->
+  <rect
+    x="224"
+    y="176"
+    width="64"
+    height="160"
+    rx="8"
+    fill="white"
   />
   
-  <!-- Central "L" for Lobby - stylized vertical bar with base -->
-  <path
-    d="M256 160
-       L256 320
-       L320 320"
-    stroke="white"
-    stroke-width="32"
-    stroke-linecap="round"
-    stroke-linejoin="round"
+  <!-- Door opening (negative space) -->
+  <rect
+    x="240"
+    y="240"
+    width="32"
+    height="96"
+    rx="4"
+    fill="#1a1f6c"
   />
-  
-  <!-- Subtle inner glow/accent -->
-  <circle cx="256" cy="256" r="60" fill="white" opacity="0.1"/>
 </svg>
