@@ -93,6 +93,10 @@ function App() {
   const [isAIResizing, setIsAIResizing] = useState(false)
   const [aiPanelSettingsLoaded, setAIPanelSettingsLoaded] = useState(false)
   const aiResizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  // Refs for smooth resize (avoid React re-renders during drag)
+  const aiPanelRef = useRef<HTMLElement>(null)
+  const aiCurrentWidthRef = useRef(DEFAULT_AI_PANEL_WIDTH)
+  const aiRafRef = useRef<number | null>(null)
 
   // My PRs filter state (shared across all views)
   const [myPRsRepos, setMyPRsRepos] = useState<Set<string>>(new Set())
@@ -260,6 +264,7 @@ function App() {
         startX: e.clientX,
         startWidth: aiPanelWidth
       }
+      aiCurrentWidthRef.current = aiPanelWidth
     },
     [aiPanelWidth]
   )
@@ -340,16 +345,39 @@ function App() {
         setPanelWidth(newWidth)
       }
       if (isAIResizing && aiResizeRef.current) {
-        const delta = aiResizeRef.current.startX - e.clientX
-        const newWidth = Math.min(
-          MAX_PANEL_WIDTH,
-          Math.max(MIN_PANEL_WIDTH, aiResizeRef.current.startWidth + delta)
-        )
-        setAIPanelWidth(newWidth)
+        // Cancel previous animation frame
+        if (aiRafRef.current) {
+          cancelAnimationFrame(aiRafRef.current)
+        }
+        // Use requestAnimationFrame for smooth 60fps updates
+        aiRafRef.current = requestAnimationFrame(() => {
+          if (!aiResizeRef.current) return
+          const delta = aiResizeRef.current.startX - e.clientX
+          const newWidth = Math.min(
+            MAX_PANEL_WIDTH,
+            Math.max(MIN_PANEL_WIDTH, aiResizeRef.current.startWidth + delta)
+          )
+          // Update DOM directly - NO React re-render!
+          if (aiPanelRef.current) {
+            aiPanelRef.current.style.width = `${newWidth}px`
+            aiPanelRef.current.style.minWidth = `${newWidth}px`
+            aiPanelRef.current.style.maxWidth = `${newWidth}px`
+          }
+          aiCurrentWidthRef.current = newWidth
+        })
       }
     }
 
     const handleMouseUp = () => {
+      // Cancel any pending animation frame
+      if (aiRafRef.current) {
+        cancelAnimationFrame(aiRafRef.current)
+        aiRafRef.current = null
+      }
+      // Sync final width to React state (only ONE re-render)
+      if (isAIResizing) {
+        setAIPanelWidth(aiCurrentWidthRef.current)
+      }
       setIsResizing(false)
       setIsAIResizing(false)
       resizeRef.current = null
@@ -554,8 +582,15 @@ function App() {
                 {/* AI Panel - rendered OUTSIDE view conditionals to persist across view switches */}
                 {isAIPanelOpen && (
                   <aside
+                    ref={aiPanelRef}
                     className="apple-panel overflow-hidden flex relative flex-shrink-0"
-                    style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
+                    style={{
+                      width: aiPanelWidth,
+                      minWidth: aiPanelWidth,
+                      maxWidth: aiPanelWidth,
+                      willChange: isAIResizing ? 'width' : 'auto',
+                      contain: 'layout style'
+                    }}
                   >
                     {/* Resize handle */}
                     <div
