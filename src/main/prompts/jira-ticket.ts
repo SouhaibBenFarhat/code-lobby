@@ -45,6 +45,7 @@ Your task is to find a Jira ticket reference in this PR's context. Jira tickets 
    - PROJECT is typically 2-10 uppercase letters
    - NUMBER is a positive integer
    - Examples: DEV-1234, FEAT-99, BUG-5678, CORE-12
+   - Ensure what comes after the prefix <predix>-<number> is an actual number that make sense.
 
 2. **Common locations to check** (in order of priority):
    - Branch name (e.g., "feature/ABC-123-add-login" or "ABC-123/add-feature")
