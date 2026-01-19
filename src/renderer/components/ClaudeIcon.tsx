@@ -4,7 +4,7 @@ interface ClaudeIconProps extends SVGProps<SVGSVGElement> {
   className?: string
 }
 
-// Claude's mascot - clean blocky head
+// Claude-inspired AI sparkle icon in signature coral color
 export function ClaudeIcon({ className, ...props }: ClaudeIconProps) {
   return (
     <svg
@@ -15,28 +15,16 @@ export function ClaudeIcon({ className, ...props }: ClaudeIconProps) {
       aria-label="Claude AI"
       {...props}
     >
-      {/* Main head/body */}
-      <rect x="4" y="6" width="16" height="14" rx="2" fill="#D4896A" />
-
-      {/* Left ear */}
-      <rect x="6" y="2" width="4" height="6" rx="1" fill="#D4896A" />
-
-      {/* Right ear */}
-      <rect x="14" y="2" width="4" height="6" rx="1" fill="#D4896A" />
-
-      {/* Left eye */}
-      <rect x="7" y="10" width="3" height="4" rx="0.5" fill="#2D2D2D" />
-
-      {/* Right eye */}
-      <rect x="14" y="10" width="3" height="4" rx="0.5" fill="#2D2D2D" />
-
-      {/* Smile */}
-      <rect x="8" y="16" width="8" height="2" rx="1" fill="#2D2D2D" />
+      {/* Main sparkle/star - Claude's AI aesthetic */}
+      <path
+        d="M12 2L13.5 8.5L20 7L15 12L20 17L13.5 15.5L12 22L10.5 15.5L4 17L9 12L4 7L10.5 8.5L12 2Z"
+        fill="#D97757"
+      />
     </svg>
   )
 }
 
-// Simpler variant for very small sizes
+// Alternative: Anthropic 'A' inspired mark
 export function ClaudeLogoIcon({ className, ...props }: ClaudeIconProps) {
   return (
     <svg
@@ -47,19 +35,8 @@ export function ClaudeLogoIcon({ className, ...props }: ClaudeIconProps) {
       aria-label="Claude AI"
       {...props}
     >
-      {/* Compact version */}
-      <rect x="4" y="6" width="16" height="14" rx="3" fill="#D4896A" />
-      <rect x="6" y="2" width="4" height="5" rx="1" fill="#D4896A" />
-      <rect x="14" y="2" width="4" height="5" rx="1" fill="#D4896A" />
-      <circle cx="9" cy="12" r="2" fill="#2D2D2D" />
-      <circle cx="15" cy="12" r="2" fill="#2D2D2D" />
-      <path
-        d="M9 17 Q12 19 15 17"
-        stroke="#2D2D2D"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-      />
+      {/* Stylized A mark like Anthropic */}
+      <path d="M12 3L4 21H8L9.5 17H14.5L16 21H20L12 3ZM10.5 14L12 9L13.5 14H10.5Z" fill="#D97757" />
     </svg>
   )
 }
