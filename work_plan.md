@@ -1994,8 +1994,63 @@ const deepReviewTools = {
   // Git Context
   get_diff: async () => GitDiff,
   get_blame: async (filePath: string) => BlameInfo[],
-  get_commit_history: async (filePath: string) => Commit[]
+  get_commit_history: async (filePath: string) => Commit[],
+  
+  // 🆕 Branch Comparison Tools
+  compare_branches: async (base: string, head: string) => BranchDiff,
+  read_file_at_branch: async (path: string, branch: string) => string,
+  get_changed_files: async (base: string, head: string) => ChangedFile[],
+  diff_file: async (path: string, base: string, head: string) => FileDiff
 }
+```
+
+**Branch Comparison Capabilities:**
+
+| Tool | What It Does | Use Case |
+|------|-------------|----------|
+| `compare_branches` | Full diff between `main` and PR branch | "What changed overall?" |
+| `read_file_at_branch` | Read file as it was in `main` | "What did this look like before?" |
+| `get_changed_files` | List all modified/added/deleted files | "What files were touched?" |
+| `diff_file` | Line-by-line diff for specific file | "Show me exactly what changed here" |
+
+**Example Branch Comparison Insights:**
+```markdown
+## 📊 Branch Comparison: `main` → `feature/auth`
+
+### Files Changed: 12 files (+847 lines, -234 lines)
+
+### 🔍 Key Insights:
+
+#### 1. **Pattern Deviation Detected**
+In `main`, authentication uses middleware pattern:
+```ts
+// main branch - src/middleware/auth.ts
+export const requireAuth = (req, res, next) => { ... }
+```
+But your new code uses inline checks:
+```ts
+// feature/auth - src/api/users.ts (new)
+if (!req.user) return res.status(401).json({ error: 'Unauthorized' })
+```
+**Suggestion:** Follow existing pattern, use `requireAuth` middleware.
+
+#### 2. **Regression Risk**
+The function `hashPassword()` in `main` uses `bcrypt` with 12 rounds:
+```ts
+// main branch
+const hash = await bcrypt.hash(password, 12)
+```
+Your branch reduces to 10 rounds:
+```ts
+// feature/auth
+const hash = await bcrypt.hash(password, 10)
+```
+**Impact:** Slightly weaker security. Intentional?
+
+#### 3. **New File Doesn't Follow Conventions**
+Existing test files in `main` use pattern: `*.spec.ts`
+Your new test file: `auth.test.ts`
+**Suggestion:** Rename to `auth.spec.ts` for consistency.
 ```
 
 **Deep Review Flow:**

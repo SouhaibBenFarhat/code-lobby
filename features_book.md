@@ -189,9 +189,18 @@ Current AI features only see the PR diff and comments. But real code reviews nee
 | **Security issues** | "Password hashing in `hash.ts` uses deprecated algorithm" |
 | **Dead code** | "This removed function is still imported in 3 places" |
 | **Architectural issues** | "Consider extracting this into a shared middleware" |
+| **Pattern deviations** | "Your code doesn't follow the middleware pattern used in `main`" |
+| **Regressions** | "This changes bcrypt rounds from 12 to 10 — weaker security" |
+
+**Branch Comparison — See What Changed vs Main:**
+- Compare any file between `main` and your branch
+- Detect pattern deviations from existing codebase
+- Spot regressions (things that got worse)
+- Ensure new code follows existing conventions
 
 **How It Works:**
-- AI uses tools: `read_file`, `search_codebase`, `find_usages`
+- AI uses tools: `read_file`, `search_codebase`, `find_usages`, `compare_branches`
+- Can read files as they exist in `main` for comparison
 - Reviews scope can be: changed files, related imports, or entire codebase
 - Findings can be posted directly to the PR
 
