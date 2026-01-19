@@ -107,13 +107,32 @@ describe('AIChatPanel', () => {
   })
 
   describe('Chat Interface (With API Key)', () => {
-    it('should show message textarea when API key is configured', async () => {
+    it('should show Start Chat button when API key is configured and no messages', async () => {
       setupMockElectron({
         getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
         getChatHistory: vi.fn().mockResolvedValue([])
       })
 
       render(<AIChatPanel onClose={mockOnClose} />)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+    })
+
+    it('should show message textarea after clicking Start Chat', async () => {
+      setupMockElectron({
+        getClaudeApiKey: vi.fn().mockResolvedValue('sk-ant-test-key'),
+        getChatHistory: vi.fn().mockResolvedValue([])
+      })
+
+      render(<AIChatPanel onClose={mockOnClose} />)
+
+      // Wait for Start Chat button and click it
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
@@ -133,7 +152,7 @@ describe('AIChatPanel', () => {
       })
     })
 
-    it('should display chat history', async () => {
+    it('should display chat history and show input when messages exist', async () => {
       const chatHistory = createMockChatHistory(4)
 
       const mockElectron = setupMockElectron({
@@ -143,13 +162,14 @@ describe('AIChatPanel', () => {
 
       render(<AIChatPanel onClose={mockOnClose} />)
 
-      // Verify chat history was fetched
+      // Verify chat history was fetched and input is visible (because messages exist)
       await waitFor(() => {
         expect(mockElectron.getChatHistory).toHaveBeenCalled()
       })
 
-      // With virtual scrolling, not all messages may be visible
-      // So we just verify the chat history was loaded
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
+      })
     })
 
     it('should support multi-line input', async () => {
@@ -159,6 +179,12 @@ describe('AIChatPanel', () => {
       })
 
       render(<AIChatPanel onClose={mockOnClose} />)
+
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
 
       await waitFor(() => {
         const textarea = screen.getByPlaceholderText(/Type a message/i)
@@ -174,6 +200,12 @@ describe('AIChatPanel', () => {
 
       render(<AIChatPanel onClose={mockOnClose} />)
 
+      // Click Start Chat first to reveal the input
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
+
       await waitFor(() => {
         expect(screen.getByText(/Shift\+Enter/i)).toBeInTheDocument()
       })
@@ -188,6 +220,12 @@ describe('AIChatPanel', () => {
       })
 
       render(<AIChatPanel onClose={mockOnClose} />)
+
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
@@ -210,6 +248,12 @@ describe('AIChatPanel', () => {
 
       render(<AIChatPanel onClose={mockOnClose} />)
 
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
+
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
       })
@@ -229,6 +273,12 @@ describe('AIChatPanel', () => {
       })
 
       render(<AIChatPanel onClose={mockOnClose} />)
+
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
@@ -405,6 +455,12 @@ describe('AIChatPanel', () => {
 
       render(<AIChatPanel onClose={mockOnClose} />)
 
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
+
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
       })
@@ -426,6 +482,12 @@ describe('AIChatPanel', () => {
 
       render(<AIChatPanel onClose={mockOnClose} />)
 
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
+
       await waitFor(() => {
         const textarea = screen.getByPlaceholderText(/Type a message/i) as HTMLTextAreaElement
         expect(textarea.style.height).toBe('72px')
@@ -439,6 +501,12 @@ describe('AIChatPanel', () => {
       })
 
       render(<AIChatPanel onClose={mockOnClose} />)
+
+      // Click Start Chat first
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
 
       await waitFor(() => {
         const textarea = screen.getByPlaceholderText(/Type a message/i)
@@ -937,6 +1005,12 @@ describe('System Context Handling', () => {
     })
 
     render(<AIChatPanel onClose={mockOnClose} />)
+
+    // Click Start Chat first
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Start Chat/i })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Start Chat/i }))
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/Type a message/)).toBeInTheDocument()

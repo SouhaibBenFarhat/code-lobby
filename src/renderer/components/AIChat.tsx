@@ -623,6 +623,7 @@ export function AIChatPanel({
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [chatStarted, setChatStarted] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [models, setModels] = useState<ClaudeModel[]>([])
   const [selectedModel, setSelectedModel] = useState<string>('')
@@ -734,14 +735,17 @@ export function AIChatPanel({
         if (prChat) {
           setMessages(prChat.messages)
           setPrSystemContext(prChat.systemContext) // Load system context (invisible to user)
+          setChatStarted(prChat.messages.length > 0)
         } else {
           setMessages([])
           setPrSystemContext(undefined)
+          setChatStarted(false)
         }
       } else {
         const history = await window.electron.getChatHistory()
         setMessages(history)
         setPrSystemContext(undefined) // Clear system context for general chat
+        setChatStarted(history.length > 0)
       }
 
       // If we have an API key, fetch available models
@@ -1580,11 +1584,24 @@ export function AIChatPanel({
         {/* Default empty state - only when no PR selected and no messages */}
         {!isLoading && !showPREmptyState && messages.length === 0 && !streaming.isStreaming && (
           <div className="h-full flex items-center justify-center min-h-[200px]">
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-4">
               <DogIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
                 {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
               </p>
+              {apiKey && !chatStarted && (
+                <Button
+                  onClick={() => {
+                    setChatStarted(true)
+                    // Focus the input after a small delay to let it render
+                    setTimeout(() => textareaRef.current?.focus(), 50)
+                  }}
+                  className="gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Start Chat
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -1669,8 +1686,8 @@ export function AIChatPanel({
               </a>
             </p>
           </div>
-        ) : (
-          // Message input
+        ) : chatStarted || messages.length > 0 || streaming.isStreaming || linkedPRChat ? (
+          // Message input - only show when chat has started, has messages, or is a PR chat
           <div className="space-y-1">
             <div className="flex gap-2 items-end">
               <textarea
@@ -1717,7 +1734,7 @@ export function AIChatPanel({
               </p>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
