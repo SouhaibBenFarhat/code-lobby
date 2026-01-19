@@ -262,6 +262,10 @@ export function IDEView({ currentUser }: IDEViewProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
   const hasAutoExpanded = useRef(false)
+  // Refs for smooth resize (avoid React re-renders during drag)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const currentWidthRef = useRef(280)
+  const rafRef = useRef<number | null>(null)
 
   // Load IDE settings on mount
   useEffect(() => {
@@ -424,20 +428,44 @@ export function IDEView({ currentUser }: IDEViewProps) {
     [prsResult, queryClient, reposToFetch]
   )
 
-  // Handle resize
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
+  // Handle resize (smooth - no React re-renders during drag)
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsResizing(true)
+      currentWidthRef.current = sidebarWidth
+    },
+    [sidebarWidth]
+  )
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return
-      const newWidth = Math.min(500, Math.max(200, e.clientX))
-      setSidebarWidth(newWidth)
+      // Cancel previous animation frame
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+      // Use requestAnimationFrame for smooth 60fps updates
+      rafRef.current = requestAnimationFrame(() => {
+        const newWidth = Math.min(500, Math.max(200, e.clientX))
+        // Update DOM directly - NO React re-render!
+        if (sidebarRef.current) {
+          sidebarRef.current.style.width = `${newWidth}px`
+        }
+        currentWidthRef.current = newWidth
+      })
     }
 
     const handleMouseUp = () => {
+      // Cancel any pending animation frame
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+      // Sync final width to React state (only ONE re-render)
+      if (isResizing) {
+        setSidebarWidth(currentWidthRef.current)
+      }
       setIsResizing(false)
     }
 
@@ -473,7 +501,15 @@ export function IDEView({ currentUser }: IDEViewProps) {
   return (
     <div className="flex h-full">
       {/* Sidebar - File tree */}
-      <div className="flex-shrink-0 apple-sidebar flex flex-col" style={{ width: sidebarWidth }}>
+      <div
+        ref={sidebarRef}
+        className="flex-shrink-0 apple-sidebar flex flex-col"
+        style={{
+          width: sidebarWidth,
+          willChange: isResizing ? 'width' : 'auto',
+          contain: 'layout style'
+        }}
+      >
         <div className="p-2 border-b border-border bg-muted/20">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5" />

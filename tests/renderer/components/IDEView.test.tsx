@@ -714,4 +714,109 @@ describe('IDEView', () => {
       }
     })
   })
+
+  describe('Smooth Resize (Performance)', () => {
+    it('should have a resize handle', async () => {
+      const repo = createMockRepository({ full_name: 'org/repo' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+      })
+
+      // Find the resize handle
+      const resizeHandle = document.querySelector('[aria-label="Resize sidebar"]')
+      expect(resizeHandle).toBeInTheDocument()
+    })
+
+    it('should have CSS containment for performance', async () => {
+      const repo = createMockRepository({ full_name: 'org/repo' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+      })
+
+      // Find the sidebar
+      const sidebar = document.querySelector('.apple-sidebar')
+      expect(sidebar).toBeInTheDocument()
+      const style = window.getComputedStyle(sidebar as Element)
+      expect(style.contain).toContain('layout')
+    })
+
+    it('should update cursor during resize', async () => {
+      const repo = createMockRepository({ full_name: 'org/repo' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+      })
+
+      const resizeHandle = document.querySelector('[aria-label="Resize sidebar"]')
+      expect(resizeHandle).toBeTruthy()
+
+      // Simulate resize start
+      if (resizeHandle) {
+        fireEvent.mouseDown(resizeHandle, { clientX: 280 })
+        expect(document.body.style.cursor).toBe('col-resize')
+
+        // Simulate mouse up
+        fireEvent.mouseUp(document)
+        expect(document.body.style.cursor).toBe('')
+      }
+    })
+
+    it('should persist sidebar width after resize', async () => {
+      const repo = createMockRepository({ full_name: 'org/repo' })
+      const mockElectron = setupAuthenticatedScenario({
+        repos: [repo],
+        prs: [],
+        selectedRepos: [repo.full_name]
+      })
+      mockElectron.getIDEViewSettings.mockResolvedValue({ sidebarWidth: 280, expandedRepos: [] })
+
+      render(<IDEView currentUser="testuser" />)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading repositories...')).not.toBeInTheDocument()
+      })
+
+      const resizeHandle = document.querySelector('[aria-label="Resize sidebar"]')
+      expect(resizeHandle).toBeTruthy()
+
+      // Simulate complete resize cycle
+      if (resizeHandle) {
+        fireEvent.mouseDown(resizeHandle, { clientX: 280 })
+        fireEvent.mouseMove(document, { clientX: 350 })
+        await new Promise((r) => setTimeout(r, 20))
+        fireEvent.mouseUp(document)
+      }
+
+      // Settings should be saved
+      await waitFor(() => {
+        expect(mockElectron.setIDEViewSettings).toHaveBeenCalled()
+      })
+    })
+  })
 })
