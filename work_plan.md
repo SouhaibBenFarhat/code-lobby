@@ -1753,6 +1753,156 @@ interface AIFeatureSettings {
 
 ---
 
+### 2.11 Post Comment to PR from AI Chat 🔴 Not Started
+> Allow users to post AI-drafted comments directly to PRs from the conversation
+
+**Concept:**
+When Claude drafts a response, suggestion, or review comment in the AI chat, users can post it directly to the PR as a comment without leaving the app. This bridges AI assistance with real GitHub actions.
+
+**Why This Matters:**
+- **Seamless Workflow** — No copy-paste between AI chat and GitHub
+- **AI-Assisted Reviews** — Claude drafts, user approves and posts
+- **Follow-up Automation** — Generate polite follow-ups and post them instantly
+- **Time Savings** — One-click to post review feedback
+
+**Use Cases:**
+```
+1. AI Review → Post as Review Comment
+   User: "Review this PR for security issues"
+   Claude: "Found 3 potential issues: [detailed feedback]"
+   User: [📤 Post to PR] → Comment added to PR
+
+2. Follow-up Draft → Post as Comment
+   User: "Write a polite follow-up asking for review"
+   Claude: "Hey @reviewer, friendly reminder..."
+   User: [📤 Post to PR] → Comment added to PR
+
+3. Answer Question → Post as Reply
+   User: "How should I respond to this review comment?"
+   Claude: "You could say: [suggested response]"
+   User: [📤 Post as Reply] → Reply added to thread
+```
+
+**UI Design - Message Actions:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🤖 Claude:                                                  │
+│                                                             │
+│  Based on my analysis, here are the issues I found:         │
+│                                                             │
+│  1. **SQL Injection Risk** (line 45)                        │
+│     The query uses string concatenation instead of          │
+│     parameterized queries.                                  │
+│                                                             │
+│  2. **Missing Input Validation** (line 67)                  │
+│     User input is not sanitized before processing.          │
+│                                                             │
+│  ─────────────────────────────────────────────────────────  │
+│  [📋 Copy] [📤 Post to PR ▼] [🔄 Regenerate]                │
+│             │                                               │
+│             └─► ┌────────────────────┐                      │
+│                 │ 💬 General Comment │                      │
+│                 │ 📝 Review Comment  │                      │
+│                 │ ↩️ Reply to Thread │                      │
+│                 └────────────────────┘                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**UI Design - Confirmation Dialog:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Post Comment to PR #123                               [×]  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Comment Type: [General Comment ▼]                          │
+│                                                             │
+│  Preview:                                                   │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ Based on my analysis, here are the issues I found:      ││
+│  │                                                         ││
+│  │ 1. **SQL Injection Risk** (line 45)                     ││
+│  │    The query uses string concatenation instead of...    ││
+│  │                                                         ││
+│  │ [Edit before posting]                                   ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  ⚠️ This will be posted publicly to the PR                  │
+│                                                             │
+│                              [Cancel] [📤 Post Comment]     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- [ ] **"Post to PR" button** — Appears on Claude messages when in PR chat
+- [ ] **Comment type selector** — General comment, review comment, or reply
+- [ ] **Edit before posting** — Modify AI response before posting
+- [ ] **Preview mode** — See how it will look on GitHub
+- [ ] **Confirmation dialog** — Prevent accidental posts
+- [ ] **Success feedback** — Show link to posted comment
+- [ ] **Post history** — Track which messages were posted
+- [ ] **Markdown preservation** — Keep formatting in posted comment
+- [ ] **Attribution option** — Optionally note it was AI-assisted
+
+**Comment Types:**
+| Type | GitHub API | Use Case |
+|------|------------|----------|
+| General Comment | `POST /repos/{owner}/{repo}/issues/{issue_number}/comments` | General feedback, questions |
+| Review Comment | `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` | Code review with body |
+| Thread Reply | `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies` | Reply to specific thread |
+
+**Data Model:**
+```typescript
+interface PostedComment {
+  id: string
+  messageId: string           // AI chat message that was posted
+  prId: string
+  prNumber: number
+  repoFullName: string
+  commentType: 'general' | 'review' | 'reply'
+  githubCommentId: number     // ID returned from GitHub
+  githubCommentUrl: string    // Direct link to comment
+  postedAt: string
+  content: string             // What was actually posted
+}
+
+interface PostCommentParams {
+  prNumber: number
+  repoFullName: string
+  content: string
+  commentType: 'general' | 'review' | 'reply'
+  replyToCommentId?: number   // For reply type
+}
+```
+
+**Implementation Steps:**
+- [ ] Add `postPRComment()` function in `github.ts` using REST API
+- [ ] Add IPC handler `post-pr-comment` in main process
+- [ ] Expose `postPRComment` to renderer via preload
+- [ ] Add "Post to PR" button to AI message component
+- [ ] Create `PostCommentDialog` component
+- [ ] Add comment type selector (general, review, reply)
+- [ ] Implement edit-before-post textarea
+- [ ] Add confirmation step with preview
+- [ ] Store posted comments history (optional tracking)
+- [ ] Add success toast with link to comment
+
+**Technical Notes:**
+- Requires `repo` scope in GitHub PAT (already have)
+- Use GitHub REST API for comments (simpler than GraphQL mutations)
+- Handle rate limits (comments count toward limit)
+- Sanitize content to remove any sensitive info
+- Consider "AI-generated" footer (optional, user choice)
+
+**Security Considerations:**
+- Always show confirmation before posting
+- Allow editing to remove any hallucinated content
+- Log all posted comments locally for accountability
+- Rate limit posting from app (max 10/hour?)
+
+**Estimated Time:** ~4 hours
+
+---
+
 ## 📋 Phase 3: Advanced Features
 
 ### 3.1 Code Review Interface 🔴 Not Started
