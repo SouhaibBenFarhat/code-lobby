@@ -109,6 +109,12 @@ const SESSION_CACHE_TTL = 10000 // 10 seconds
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
+  // Set dock icon on macOS
+  if (process.platform === 'darwin') {
+    const iconPath = join(__dirname, '../../build/icon.png')
+    app.dock.setIcon(iconPath)
+  }
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -119,6 +125,7 @@ function createWindow(): void {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 12, y: 18 }, // Position traffic lights vertically centered in header
     backgroundColor: '#0d1117',
+    icon: join(__dirname, '../../build/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
