@@ -1911,6 +1911,222 @@ interface PostCommentParams {
 
 **Estimated Time:** ~4 hours
 
+### 2.12 Deep AI Code Review with Local Branch Access 🔴 Not Started
+> Pull branch locally and give AI full codebase access for extensive analysis
+
+**Concept:**
+One-click to clone/checkout a PR's branch locally, then AI can read ANY file in the codebase—not just the diff. This enables deep code reviews that understand context, find bugs in untouched code, and suggest cross-file refactoring.
+
+**Why This Matters:**
+- **Current Limitation** — AI only sees PR diff and comments
+- **Missing Context** — Can't see related files, utilities, types, or tests
+- **Shallow Reviews** — Without full codebase, AI misses architectural issues
+
+**The Difference:**
+
+| Feature | Current AI Review | Deep AI Review |
+|---------|-------------------|----------------|
+| **Sees** | Diff + comments | Entire codebase |
+| **Can find** | Issues in changed lines | Bugs in related files |
+| **Context** | PR metadata only | Full project structure |
+| **Suggestions** | Surface-level | Cross-file refactoring |
+| **Security** | Obvious issues | Deep dependency analysis |
+
+**UI Design - PR Detail Header:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PR #123: Add user authentication                          │
+│  feature/auth → main                                        │
+├─────────────────────────────────────────────────────────────┤
+│  [🔗] [🎫] [❓] [🔍 Deep Review ▼]                           │
+│                         │                                   │
+│                         ├── 📥 Pull Branch Locally          │
+│                         ├── 🤖 AI Deep Code Review          │
+│                         ├── 🔒 Security Audit               │
+│                         ├── 🧪 Test Coverage Analysis       │
+│                         └── 📁 Open in IDE                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**UI Design - Deep Review Panel:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🤖 Deep AI Code Review                               [×]   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  📥 Branch Status: ✅ Cloned locally                        │
+│  📁 Path: ~/.codelobby/workspaces/org/repo/feature-auth    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ 🔍 Review Scope                                         ││
+│  │ ○ Changed files only (12 files)                         ││
+│  │ ● Changed files + related imports (47 files)            ││
+│  │ ○ Entire codebase (2,341 files)                         ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ 🎯 Review Focus                                         ││
+│  │ ☑ Code quality & best practices                         ││
+│  │ ☑ Security vulnerabilities                              ││
+│  │ ☑ Performance issues                                    ││
+│  │ ☐ Test coverage gaps                                    ││
+│  │ ☐ Documentation completeness                            ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│                              [Cancel] [🚀 Start Deep Review] │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**AI Tools for Deep Review:**
+```typescript
+// AI gets access to these tools when reviewing a cloned branch
+const deepReviewTools = {
+  // File Operations
+  read_file: async (path: string) => string,
+  list_directory: async (path: string) => string[],
+  search_codebase: async (query: string) => SearchResult[],
+  
+  // Analysis Tools
+  find_usages: async (symbol: string) => Usage[],
+  get_type_definition: async (name: string) => string,
+  find_tests_for_file: async (filePath: string) => TestFile[],
+  
+  // Git Context
+  get_diff: async () => GitDiff,
+  get_blame: async (filePath: string) => BlameInfo[],
+  get_commit_history: async (filePath: string) => Commit[]
+}
+```
+
+**Deep Review Flow:**
+```
+┌──────────────────────────────────────────────────────────────┐
+│ 1. User clicks "Deep Review" on PR                           │
+├──────────────────────────────────────────────────────────────┤
+│ 2. Check if branch already cloned                            │
+│    └── If not: git clone + git checkout feature-branch       │
+│    └── If yes: git pull origin feature-branch                │
+├──────────────────────────────────────────────────────────────┤
+│ 3. AI starts with PR context (title, description, diff)      │
+├──────────────────────────────────────────────────────────────┤
+│ 4. AI uses tools to explore codebase:                        │
+│    └── read_file("src/auth/login.ts")                        │
+│    └── find_usages("authenticateUser")                       │
+│    └── search_codebase("password hash")                      │
+│    └── get_type_definition("UserSession")                    │
+├──────────────────────────────────────────────────────────────┤
+│ 5. AI produces comprehensive review:                         │
+│    └── Issues found in changed files                         │
+│    └── Issues found in RELATED files                         │
+│    └── Suggested refactoring across files                    │
+│    └── Security concerns with full context                   │
+├──────────────────────────────────────────────────────────────┤
+│ 6. User can:                                                 │
+│    └── Post findings as PR comment                           │
+│    └── Open specific files in IDE                            │
+│    └── Ask follow-up questions with full context             │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Example Deep Review Output:**
+```markdown
+## 🤖 Deep AI Code Review for PR #123
+
+### 🔴 Critical Issues
+
+#### 1. SQL Injection in `src/auth/login.ts`
+```ts
+// Line 45 - VULNERABLE
+const user = await db.query(`SELECT * FROM users WHERE email = '${email}'`)
+```
+**Found by:** Tracing `authenticateUser()` → `findUserByEmail()` → raw SQL query
+
+**Fix:** Use parameterized queries
+```ts
+const user = await db.query('SELECT * FROM users WHERE email = $1', [email])
+```
+
+#### 2. Unused dependency still referenced
+The removed `bcrypt` import is still used in `src/utils/hash.ts` (not in this PR's diff).
+This will cause a runtime error after merge.
+
+### 🟡 Recommendations
+
+#### 3. Consider extracting auth middleware
+Found 4 files with duplicated auth checks:
+- `src/api/users.ts` (line 23)
+- `src/api/orders.ts` (line 31)
+- `src/api/products.ts` (line 28)
+- `src/api/payments.ts` (line 19)
+
+Suggest creating `src/middleware/requireAuth.ts`
+
+### 🟢 Test Coverage
+- `authenticateUser()` has tests ✅
+- `validateToken()` has NO tests ⚠️
+- `refreshSession()` has NO tests ⚠️
+```
+
+**Data Model:**
+```typescript
+interface DeepReview {
+  id: string
+  prId: string
+  repoFullName: string
+  branchName: string
+  localPath: string
+  status: 'cloning' | 'analyzing' | 'complete' | 'failed'
+  scope: 'changed' | 'related' | 'full'
+  focus: ReviewFocus[]
+  findings: ReviewFinding[]
+  filesAnalyzed: number
+  createdAt: string
+  completedAt?: string
+}
+
+interface ReviewFinding {
+  severity: 'critical' | 'warning' | 'info'
+  title: string
+  description: string
+  filePath: string
+  lineNumber?: number
+  codeSnippet?: string
+  suggestedFix?: string
+  foundVia: string // How AI discovered this
+}
+
+type ReviewFocus = 
+  | 'quality' 
+  | 'security' 
+  | 'performance' 
+  | 'tests' 
+  | 'documentation'
+```
+
+**Implementation Steps:**
+- [ ] Create `src/main/workspace-manager.ts` - Clone/checkout operations
+- [ ] Create `src/main/deep-review-tools.ts` - AI tool implementations
+- [ ] Add IPC handlers for git operations (clone, checkout, pull)
+- [ ] Add IPC handlers for file system operations (read, list, search)
+- [ ] Create `DeepReviewDialog` component for scope/focus selection
+- [ ] Create `DeepReviewPanel` component to display findings
+- [ ] Add streaming support for long-running reviews
+- [ ] Implement "Post to PR" for review findings
+- [ ] Add "Open in IDE" functionality
+- [ ] Store reviews in electron-store for persistence
+
+**Dependencies:**
+- `simple-git` - Already in project for git operations
+- Builds on **1.6 Multi-Worktree Workspaces** infrastructure
+
+**Security Considerations:**
+- AI can only read files, never modify
+- Workspace sandboxed to specific directory
+- No network access from sandboxed operations
+- Rate limit AI tool calls to prevent runaway analysis
+
+**Estimated Time:** ~15-20 hours
+
 ---
 
 ## 📋 Phase 3: Advanced Features

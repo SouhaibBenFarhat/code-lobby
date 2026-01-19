@@ -165,6 +165,40 @@ The analysis is saved per PR, so you don't re-analyze unnecessarily.
 
 ---
 
+### 🔬 Deep AI Code Review (Coming Soon)
+
+Current AI features only see the PR diff and comments. But real code reviews need **full context**.
+
+**The Problem:**
+- AI can't see related files, utilities, or types
+- Misses bugs in code that wasn't changed but is affected
+- Can't suggest cross-file refactoring
+- Security analysis is limited to visible code
+
+**The Solution — Deep Review:**
+1. Click "Deep Review" on any PR
+2. Branch is cloned locally (one-time)
+3. AI can now read **any file** in the codebase
+4. Get comprehensive reviews that find hidden issues
+
+**What Deep Review Can Find:**
+| Issue Type | Example |
+|------------|---------|
+| **Cross-file bugs** | "This change breaks `utils/auth.ts` which imports this" |
+| **Missing tests** | "The new `validateToken()` function has no tests" |
+| **Security issues** | "Password hashing in `hash.ts` uses deprecated algorithm" |
+| **Dead code** | "This removed function is still imported in 3 places" |
+| **Architectural issues** | "Consider extracting this into a shared middleware" |
+
+**How It Works:**
+- AI uses tools: `read_file`, `search_codebase`, `find_usages`
+- Reviews scope can be: changed files, related imports, or entire codebase
+- Findings can be posted directly to the PR
+
+This is code review as it should be — with **full context**.
+
+---
+
 ### 💬 Start AI Chat on Any PR
 
 Want to discuss a specific PR with the AI? Don't copy-paste context manually.
@@ -356,6 +390,7 @@ We're actively building:
 | **Conversation Navigator** | Switch between chats instantly |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
+| **Deep AI Review** | Full codebase AI analysis (coming soon) |
 | **Persistent State** | Pick up where you left off |
 | **Dark Mode** | Easy on the eyes |
 | **Local & Private** | Your data stays yours |
