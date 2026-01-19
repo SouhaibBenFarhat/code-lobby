@@ -1805,12 +1805,8 @@ Every Claude message bubble has a hover menu (appears on mouse enter) with conte
 Hover/Click [⋮] reveals dropdown menu:
 ┌────────────────────────────┐
 │ 📋 Copy to Clipboard       │
-│ ─────────────────────────  │
-│ 📤 Post to PR...       ▸   │ ─► ┌─────────────────────┐
-│ ─────────────────────────  │    │ 💬 General Comment  │
-│ 🔄 Regenerate              │    │ 📝 Review Comment   │
-│ ✏️ Edit                     │    │ ↩️ Reply to Thread  │
-│ 🗑️ Delete                   │    └─────────────────────┘
+│ 📤 Post to PR              │  ← Posts as general comment
+│ 🔄 Regenerate              │
 └────────────────────────────┘
 ```
 
@@ -1818,25 +1814,14 @@ Hover/Click [⋮] reveals dropdown menu:
 | Action | Description | When Available |
 |--------|-------------|----------------|
 | 📋 Copy | Copy message content to clipboard | Always |
-| 📤 Post to PR | Post as comment to linked PR | Only in PR Chat |
+| 📤 Post to PR | Post as general comment to linked PR | Only in PR Chat |
 | 🔄 Regenerate | Re-send previous message to get new response | Always |
-| ✏️ Edit | Edit the message (for user messages) | User messages only |
-| 🗑️ Delete | Remove message from history | Always |
-
-**Post to PR Submenu:**
-| Option | GitHub API | Description |
-|--------|------------|-------------|
-| 💬 General Comment | Issue comment | Simple comment on PR |
-| 📝 Review Comment | PR review | Submit as part of a review |
-| ↩️ Reply to Thread | Comment reply | Reply to a specific thread |
 
 **UI Design - Confirmation Dialog:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Post Comment to PR #123                               [×]  │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Comment Type: [General Comment ▼]                          │
 │                                                             │
 │  Preview:                                                   │
 │  ┌─────────────────────────────────────────────────────────┐│
@@ -1855,44 +1840,18 @@ Hover/Click [⋮] reveals dropdown menu:
 ```
 
 **Features:**
-- [ ] **"Post to PR" button** — Appears on Claude messages when in PR chat
-- [ ] **Comment type selector** — General comment, review comment, or reply
+- [ ] **"Post to PR" menu item** — In message bubble menu when in PR chat
 - [ ] **Edit before posting** — Modify AI response before posting
-- [ ] **Preview mode** — See how it will look on GitHub
 - [ ] **Confirmation dialog** — Prevent accidental posts
 - [ ] **Success feedback** — Show link to posted comment
-- [ ] **Post history** — Track which messages were posted
 - [ ] **Markdown preservation** — Keep formatting in posted comment
-- [ ] **Attribution option** — Optionally note it was AI-assisted
-
-**Comment Types:**
-| Type | GitHub API | Use Case |
-|------|------------|----------|
-| General Comment | `POST /repos/{owner}/{repo}/issues/{issue_number}/comments` | General feedback, questions |
-| Review Comment | `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` | Code review with body |
-| Thread Reply | `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies` | Reply to specific thread |
 
 **Data Model:**
 ```typescript
-interface PostedComment {
-  id: string
-  messageId: string           // AI chat message that was posted
-  prId: string
-  prNumber: number
-  repoFullName: string
-  commentType: 'general' | 'review' | 'reply'
-  githubCommentId: number     // ID returned from GitHub
-  githubCommentUrl: string    // Direct link to comment
-  postedAt: string
-  content: string             // What was actually posted
-}
-
 interface PostCommentParams {
   prNumber: number
   repoFullName: string
   content: string
-  commentType: 'general' | 'review' | 'reply'
-  replyToCommentId?: number   // For reply type
 }
 ```
 
@@ -1900,26 +1859,19 @@ interface PostCommentParams {
 - [ ] Add `postPRComment()` function in `github.ts` using REST API
 - [ ] Add IPC handler `post-pr-comment` in main process
 - [ ] Expose `postPRComment` to renderer via preload
-- [ ] Add "Post to PR" button to AI message component
-- [ ] Create `PostCommentDialog` component
-- [ ] Add comment type selector (general, review, reply)
-- [ ] Implement edit-before-post textarea
+- [ ] Add "Post to PR" item to message bubble menu
+- [ ] Create `PostCommentDialog` component with edit textarea
 - [ ] Add confirmation step with preview
-- [ ] Store posted comments history (optional tracking)
 - [ ] Add success toast with link to comment
 
 **Technical Notes:**
+- Uses GitHub REST API: `POST /repos/{owner}/{repo}/issues/{issue_number}/comments`
 - Requires `repo` scope in GitHub PAT (already have)
-- Use GitHub REST API for comments (simpler than GraphQL mutations)
 - Handle rate limits (comments count toward limit)
-- Sanitize content to remove any sensitive info
-- Consider "AI-generated" footer (optional, user choice)
 
 **Security Considerations:**
 - Always show confirmation before posting
 - Allow editing to remove any hallucinated content
-- Log all posted comments locally for accountability
-- Rate limit posting from app (max 10/hour?)
 
 **Estimated Time:** ~4 hours
 
