@@ -1845,6 +1845,21 @@ Hover/Click [⋮] reveals dropdown menu:
 - [ ] **Confirmation dialog** — Prevent accidental posts
 - [ ] **Success feedback** — Show link to posted comment
 - [ ] **Markdown preservation** — Keep formatting in posted comment
+- [ ] **App attribution footer** — Appends "Posted from CodeLobby" at the end
+
+**Posted Comment Format:**
+```markdown
+Based on my analysis, here are the issues I found:
+
+1. **SQL Injection Risk** (line 45)
+   The query uses string concatenation instead of parameterized queries.
+
+2. **Missing Input Validation** (line 67)
+   User input is not sanitized before processing.
+
+---
+<sub>Posted from [CodeLobby](https://github.com/codelobby/app)</sub>
+```
 
 **Data Model:**
 ```typescript
