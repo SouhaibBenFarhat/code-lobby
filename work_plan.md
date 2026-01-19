@@ -1879,16 +1879,26 @@ interface PostCommentParams {
 - [ ] Create `PostCommentDialog` component with edit textarea
 - [ ] Add confirmation step with preview
 - [ ] Add success toast with link to comment
-- [ ] Optimistic update: Add comment to react-query cache immediately after posting
+- [ ] Cache update on success: Add comment to react-query cache after API confirms
 
-**Optimistic Update Flow:**
+**Instant Update Flow (Safe):**
 ```
-1. User posts comment via API
-2. API returns success with comment data (id, created_at, etc.)
-3. Update react-query cache for PR comments:
-   queryClient.setQueryData(['pr-comments', prId], (old) => [...old, newComment])
-4. Comment appears instantly in PR detail view - no reload needed!
+1. User clicks "Post Comment"
+2. Show loading spinner on button
+3. API call to GitHub (~200-500ms)
+4. GitHub returns success with comment data (id, created_at, html_url, etc.)
+5. Update react-query cache:
+   queryClient.setQueryData(['all-prs-for-repos'], (old) => {
+     // Add new comment to the PR's comments array
+   })
+6. Comment appears in PR detail view - no manual reload needed!
+7. Show success toast with link to comment
 ```
+
+**Why not true optimistic update?**
+- If API fails, user would see comment then it disappears (confusing)
+- GitHub API is fast enough (~200-500ms) that waiting is fine
+- We get real data (comment ID, timestamp) from the response
 
 **Technical Notes:**
 - Uses GitHub REST API: `POST /repos/{owner}/{repo}/issues/{issue_number}/comments`
