@@ -1,35 +1,46 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background - Parcellab dark blue -->
-  <rect width="512" height="512" fill="#1a1f6c"/>
+  <!-- Background - Parcellab navy -->
+  <rect width="512" height="512" fill="#141B4D"/>
   
   <!-- 
-    CL Monogram Design:
-    - The C wraps around and shares the vertical line with L
-    - The L's vertical stroke completes the C
-    - Creates a unified, clever mark
+    v4: Clean code brackets only
+    Like Parcellab - simple, bold, iconic
   -->
   
-  <!-- C shape - opens to the right, the L completes it -->
+  <!-- Solid hexagon -->
   <path
-    d="M280 96
-       C140 96, 80 180, 80 256
-       C80 332, 140 416, 280 416"
-    stroke="white"
-    stroke-width="56"
-    stroke-linecap="round"
-    fill="none"
+    d="M256 56
+       L440 152
+       L440 360
+       L256 456
+       L72 360
+       L72 152
+       Z"
+    fill="white"
   />
   
-  <!-- L shape - vertical line + horizontal base -->
-  <!-- The vertical line also serves as the missing edge of C -->
+  <!-- Code brackets < > cut out as negative space -->
+  <!-- Left bracket < -->
   <path
-    d="M280 96
-       L280 416
-       L432 416"
-    stroke="white"
-    stroke-width="56"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    fill="none"
+    d="M220 152
+       L120 256
+       L220 360
+       L220 300
+       L168 256
+       L220 212
+       Z"
+    fill="#141B4D"
+  />
+  
+  <!-- Right bracket > -->
+  <path
+    d="M292 152
+       L392 256
+       L292 360
+       L292 300
+       L344 256
+       L292 212
+       Z"
+    fill="#141B4D"
   />
 </svg>
