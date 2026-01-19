@@ -1846,6 +1846,7 @@ Hover/Click [⋮] reveals dropdown menu:
 - [ ] **Success feedback** — Show link to posted comment
 - [ ] **Markdown preservation** — Keep formatting in posted comment
 - [ ] **App attribution footer** — Appends "Posted from CodeLobby" at the end
+- [ ] **Instant UI update** — Comment appears in PR detail immediately (optimistic update)
 
 **Posted Comment Format:**
 ```markdown
@@ -1878,6 +1879,16 @@ interface PostCommentParams {
 - [ ] Create `PostCommentDialog` component with edit textarea
 - [ ] Add confirmation step with preview
 - [ ] Add success toast with link to comment
+- [ ] Optimistic update: Add comment to react-query cache immediately after posting
+
+**Optimistic Update Flow:**
+```
+1. User posts comment via API
+2. API returns success with comment data (id, created_at, etc.)
+3. Update react-query cache for PR comments:
+   queryClient.setQueryData(['pr-comments', prId], (old) => [...old, newComment])
+4. Comment appears instantly in PR detail view - no reload needed!
+```
 
 **Technical Notes:**
 - Uses GitHub REST API: `POST /repos/{owner}/{repo}/issues/{issue_number}/comments`
