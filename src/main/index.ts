@@ -1322,6 +1322,9 @@ function setupIPCHandlers(): void {
 }
 
 app.whenReady().then(() => {
+  // Set app name for dock tooltip (dev mode uses package.json name by default)
+  app.setName('CodeLobby')
+
   // Initialize logger (creates logs directory, cleans old sessions)
   logger.init()
 
