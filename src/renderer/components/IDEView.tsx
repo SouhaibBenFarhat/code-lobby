@@ -415,6 +415,10 @@ export function IDEView({ currentUser }: IDEViewProps) {
             prs: newPRs
           })
         }
+        // Update rate limit display with fresh data
+        if (result.rateLimit) {
+          queryClient.setQueryData(['rate-limit'], result.rateLimit)
+        }
       }
     },
     [prsResult, queryClient, reposToFetch]
