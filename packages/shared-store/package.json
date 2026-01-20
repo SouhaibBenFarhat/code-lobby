@@ -12,7 +12,11 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
   "devDependencies": {
+    "@types/react": "^18.2.46",
     "typescript": "^5.3.3"
   }
 }

@@ -8,8 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@codelobby/slot-system": "workspace:*",
-    "@codelobby/shared-store": "workspace:*"
+    "@codelobby/slot-system": "*",
+    "@codelobby/shared-store": "*"
   },
   "peerDependencies": {
     "react": "^18.2.0"

@@ -1,23 +1,35 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+/**
+ * Modular App Entry Point
+ *
+ * This is the new entry point using the modular architecture.
+ * It imports bootstrap to register all modules, then renders the App shell.
+ *
+ * To use this:
+ * 1. Rename main.tsx to main-legacy.tsx
+ * 2. Rename this file to main.tsx
+ * OR
+ * Update index.html to point to this file
+ */
+
+import { TooltipProvider } from '@radix-ui/react-tooltip'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
+
+// Import styles
 import './styles/globals.css'
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60000, // Data is fresh for 1 minute
-      refetchOnWindowFocus: true, // Refresh when window gains focus
-      retry: 1
-    }
-  }
-})
+// Bootstrap - imports all modules and initializes data module
+// This MUST be imported before the App
+import '@codelobby/app/bootstrap'
 
+// Import the App shell (contains only slots, no direct module imports)
+import { App } from '@codelobby/app'
+
+// Render the modular app
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
       <App />
-    </QueryClientProvider>
+    </TooltipProvider>
   </React.StrictMode>
 )

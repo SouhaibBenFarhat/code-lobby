@@ -4,18 +4,22 @@
   "description": "CodeLobby App Shell - composes all modules",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bootstrap": "./src/bootstrap.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@codelobby/slot-system": "workspace:*",
-    "@codelobby/shared-store": "workspace:*",
-    "@codelobby/data-module": "workspace:*",
-    "@codelobby/header-module": "workspace:*",
-    "@codelobby/explorer-module": "workspace:*",
-    "@codelobby/canvas-module": "workspace:*",
-    "@codelobby/pr-detail-module": "workspace:*",
-    "@codelobby/ai-chat-module": "workspace:*"
+    "@codelobby/slot-system": "*",
+    "@codelobby/shared-store": "*",
+    "@codelobby/data-module": "*",
+    "@codelobby/header-module": "*",
+    "@codelobby/explorer-module": "*",
+    "@codelobby/canvas-module": "*",
+    "@codelobby/pr-detail-module": "*",
+    "@codelobby/ai-chat-module": "*"
   },
   "peerDependencies": {
     "react": "^18.2.0",

@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@codelobby/shared-store": "workspace:*"
+    "@codelobby/shared-store": "*"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

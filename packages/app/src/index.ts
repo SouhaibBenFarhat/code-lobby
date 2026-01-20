@@ -7,7 +7,7 @@
  *
  * @example
  * ```tsx
- * import './bootstrap'  // Must be first!
+ * import '@codelobby/app/bootstrap'  // Must be first!
  * import { App } from '@codelobby/app'
  *
  * createRoot(document.getElementById('root')!).render(<App />)
@@ -16,6 +16,3 @@
 
 // Export the App shell
 export { App } from './App'
-
-// Re-export bootstrap for convenience (importing it runs the registrations)
-export { } from './bootstrap'

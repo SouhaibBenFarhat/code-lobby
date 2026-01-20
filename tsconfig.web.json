@@ -14,10 +14,21 @@
     "useDefineForClassFields": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/renderer/*"]
+      "@/*": ["src/renderer/*"],
+      "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
+      "@codelobby/shared-store": ["packages/shared-store/src/index.ts"],
+      "@codelobby/shared-store/*": ["packages/shared-store/src/*"],
+      "@codelobby/data-module": ["packages/data-module/src/index.ts"],
+      "@codelobby/header-module": ["packages/header-module/src/index.ts"],
+      "@codelobby/explorer-module": ["packages/explorer-module/src/index.ts"],
+      "@codelobby/canvas-module": ["packages/canvas-module/src/index.ts"],
+      "@codelobby/pr-detail-module": ["packages/pr-detail-module/src/index.ts"],
+      "@codelobby/ai-chat-module": ["packages/ai-chat-module/src/index.ts"],
+      "@codelobby/app": ["packages/app/src/index.ts"],
+      "@codelobby/app/bootstrap": ["packages/app/src/bootstrap.ts"]
     },
     "types": ["node"],
     "outDir": "./out/renderer"
   },
-  "include": ["src/renderer/**/*", "src/preload/index.d.ts"]
+  "include": ["src/renderer/**/*", "src/preload/index.d.ts", "packages/**/*"]
 }
