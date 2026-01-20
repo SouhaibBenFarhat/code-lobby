@@ -195,7 +195,7 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     setCardLayouts: vi.fn().mockResolvedValue({ success: true }),
 
     // Selected repos
-    getSelectedRepos: vi.fn().mockResolvedValue([]),
+    getSelectedRepos: vi.fn().mockResolvedValue(null), // null = show all (default)
     setSelectedRepos: vi.fn().mockResolvedValue({ success: true }),
 
     // My PRs filter (shared across views)

@@ -100,7 +100,7 @@ interface StoreSchema {
   }
   repoOrder: string[] // Array of repo full_names in user's preferred order
   cardLayouts: LayoutItem[] // Free-form card positions and sizes
-  selectedRepos: string[] // Array of repo full_names to display (empty = show all)
+  selectedRepos: string[] | null // null = show all (default), [] = show none, array = show those
   myPRsRepos: string[] // Array of repo full_names with "My PRs" filter enabled (shared across views)
   prDetailPanel: PanelSettings // PR detail panel state
   repoColors: Record<string, string> // Map of repo full_name to color hex
@@ -127,7 +127,7 @@ const store = new Store<StoreSchema>({
     },
     repoOrder: [],
     cardLayouts: [],
-    selectedRepos: [], // Empty means show all
+    selectedRepos: null, // null = show all (default)
     myPRsRepos: [], // Repos with "My PRs" filter enabled
     prDetailPanel: {
       isOpen: false,
@@ -208,7 +208,7 @@ export function setCardLayouts(layouts: LayoutItem[]): void {
   store.set('cardLayouts', layouts)
 }
 
-export function getSelectedRepos(): string[] {
+export function getSelectedRepos(): string[] | null {
   return store.get('selectedRepos')
 }
 
@@ -408,7 +408,7 @@ export function clearAllUserData(): void {
   store.set('cardLayouts', [])
   store.set('repoColors', {})
   store.set('minimizedRepos', [])
-  store.set('selectedRepos', [])
+  store.set('selectedRepos', null) // null = show all (default)
   store.set('myPRsRepos', [])
   store.set('repoOrder', [])
 

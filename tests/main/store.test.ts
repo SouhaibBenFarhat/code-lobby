@@ -4,7 +4,7 @@
  * Tests for electron-store persistence layer
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock electron-store before importing the module
 vi.mock('electron-store', () => {
@@ -21,7 +21,7 @@ vi.mock('electron-store', () => {
             settings: { notifications: true, pollInterval: 30000, theme: 'dark' },
             repoOrder: [],
             cardLayouts: [],
-            selectedRepos: [],
+            selectedRepos: null, // null = show all (default)
             myPRsRepos: [],
             prDetailPanel: { isOpen: false, width: 400 },
             repoColors: {},
@@ -122,8 +122,20 @@ import {
   setUser,
   setViewMode
 } from '@main/store'
+import ElectronStore from 'electron-store'
 
 describe('Store', () => {
+  // Reset mock store before each test to ensure clean state
+  beforeEach(() => {
+    // Access the mock store and clear it
+    const mockStoreInstance = new ElectronStore()
+    // The mock exposes _mockStore for testing purposes
+    const store = mockStoreInstance as unknown as { _mockStore: Map<string, unknown> }
+    if (store._mockStore) {
+      store._mockStore.clear()
+    }
+  })
+
   describe('Token Management', () => {
     it('should return null for unset token', () => {
       expect(getToken()).toBeNull()
@@ -211,9 +223,10 @@ describe('Store', () => {
     })
   })
 
-  describe('Selected Repos', () => {
-    it('should return empty array by default', () => {
-      expect(getSelectedRepos()).toEqual([])
+  describe('Selected Repos (basic)', () => {
+    it('should return null by default (show all repos)', () => {
+      // null means no explicit selection, should show all repos
+      expect(getSelectedRepos()).toBeNull()
     })
 
     it('should set and get selected repos', () => {
@@ -271,6 +284,55 @@ describe('Store', () => {
       const colors = getRepoColors()
       expect(colors['org/repo1']).toBe('#ff0000')
       expect(colors['org/repo2']).toBe('#00ff00')
+    })
+  })
+
+  describe('Selected Repos (visibility filter)', () => {
+    it('should return null by default (meaning show all repos)', () => {
+      // null means no explicit selection, should show all repos
+      expect(getSelectedRepos()).toBeNull()
+    })
+
+    it('should save empty array when user selects "None" (meaning show no repos)', () => {
+      setSelectedRepos([])
+      expect(getSelectedRepos()).toEqual([])
+      // Empty array explicitly means "user selected none"
+      expect(getSelectedRepos()).not.toBeNull()
+    })
+
+    it('should save specific repos when user selects individual repos', () => {
+      setSelectedRepos(['org/repo1', 'org/repo2'])
+      expect(getSelectedRepos()).toEqual(['org/repo1', 'org/repo2'])
+    })
+
+    it('should allow switching between null, empty array, and specific repos', () => {
+      // Start with null (default)
+      expect(getSelectedRepos()).toBeNull()
+
+      // User selects specific repos
+      setSelectedRepos(['org/repo1'])
+      expect(getSelectedRepos()).toEqual(['org/repo1'])
+
+      // User clicks "None" - saves empty array
+      setSelectedRepos([])
+      expect(getSelectedRepos()).toEqual([])
+
+      // User clicks "All" - could save all repos explicitly or reset to null
+      // In current implementation, "All" saves all repo names
+      setSelectedRepos(['org/repo1', 'org/repo2', 'org/repo3'])
+      expect(getSelectedRepos()).toEqual(['org/repo1', 'org/repo2', 'org/repo3'])
+    })
+
+    it('should preserve empty array vs null distinction', () => {
+      // Set to empty array (user explicitly clicked "None")
+      setSelectedRepos([])
+      const afterNone = getSelectedRepos()
+      expect(afterNone).toEqual([])
+      expect(afterNone).not.toBeNull()
+
+      // Important: empty array and null are different!
+      // null = "no preference, show all"
+      // [] = "user wants to see nothing"
     })
   })
 
@@ -907,7 +969,7 @@ describe('Store', () => {
       expect(getCardLayouts()).toEqual([])
       expect(getRepoColors()).toEqual({})
       expect(getMinimizedRepos()).toEqual([])
-      expect(getSelectedRepos()).toEqual([])
+      expect(getSelectedRepos()).toBeNull() // null = show all (default)
       expect(getRepoOrder()).toEqual([])
     })
 
@@ -1016,7 +1078,7 @@ describe('Store', () => {
       expect(getCardLayouts()).toEqual([])
       expect(getRepoColors()).toEqual({})
       expect(getMinimizedRepos()).toEqual([])
-      expect(getSelectedRepos()).toEqual([])
+      expect(getSelectedRepos()).toBeNull() // null = show all (default)
       expect(getRepoOrder()).toEqual([])
     })
 
@@ -1093,7 +1155,7 @@ describe('Store', () => {
       expect(getCardLayouts()).toEqual([])
       expect(getRepoColors()).toEqual({})
       expect(getMinimizedRepos()).toEqual([])
-      expect(getSelectedRepos()).toEqual([])
+      expect(getSelectedRepos()).toBeNull() // null = show all (default)
       expect(getRepoOrder()).toEqual([])
       expect(getViewMode()).toBe('canvas')
       expect(getIDEViewSettings()).toEqual({ sidebarWidth: 280, expandedRepos: [] })

@@ -25,23 +25,27 @@ export function RepoSelector() {
     }
   })
 
-  // Load saved selection
+  // Load saved selection (null = no explicit selection = show all)
   const { data: savedSelection } = useQuery({
     queryKey: ['selected-repos'],
     queryFn: async () => {
       const repos = await window.electron.getSelectedRepos()
-      return repos || []
+      return repos // Keep null as null, don't convert to []
     },
     staleTime: Infinity
   })
 
   // Apply saved selection on load
+  // - null: No explicit selection → show all repos as visually checked
+  // - []: User explicitly selected "None" → show all repos as unchecked
+  // - [...]: User selected specific repos → check those
   useEffect(() => {
-    if (savedSelection && savedSelection.length > 0) {
-      setSelectedRepos(new Set(savedSelection))
-    } else if (allRepos && savedSelection && savedSelection.length === 0) {
-      // If no saved selection, default to all repos selected
+    if (savedSelection === null && allRepos) {
+      // No explicit selection - visually check all (but don't save to store)
       setSelectedRepos(new Set(allRepos.map((r) => r.full_name)))
+    } else if (savedSelection !== undefined) {
+      // Use saved selection (could be empty array or specific repos)
+      setSelectedRepos(new Set(savedSelection))
     }
   }, [savedSelection, allRepos])
 

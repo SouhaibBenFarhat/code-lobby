@@ -296,12 +296,12 @@ export function IDEView({ currentUser }: IDEViewProps) {
     })
   }, [sidebarWidth, expandedRepos, settingsLoaded])
 
-  // Fetch selected repos filter
+  // Fetch selected repos filter (null = no explicit selection = show all)
   const { data: selectedReposFilter } = useQuery({
     queryKey: ['selected-repos'],
     queryFn: async () => {
       const repos = await window.electron.getSelectedRepos()
-      return repos || []
+      return repos // Keep null as null (means "show all")
     },
     staleTime: Infinity,
     refetchOnMount: true,
@@ -321,9 +321,21 @@ export function IDEView({ currentUser }: IDEViewProps) {
   })
 
   // Filter repos based on selection
+  // Filter repos based on selection
+  // - null/undefined: Show all repos (first time use, default behavior)
+  // - empty array []: Show NO repos (user explicitly clicked "None")
+  // - array with items: Show only those repos
   const filteredRepos = useMemo(() => {
     if (!reposData) return []
-    if (!selectedReposFilter || selectedReposFilter.length === 0) return reposData
+    // null/undefined means "no explicit selection" → show all (default)
+    if (selectedReposFilter === null || selectedReposFilter === undefined) {
+      return reposData
+    }
+    // Empty array means user explicitly selected "None" → show nothing
+    if (selectedReposFilter.length === 0) {
+      return []
+    }
+    // Filter to only selected repos
     const selectedSet = new Set(selectedReposFilter)
     return reposData.filter((repo) => selectedSet.has(repo.full_name))
   }, [reposData, selectedReposFilter])

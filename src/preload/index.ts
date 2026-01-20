@@ -70,7 +70,7 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean }>
 
   // Selected repos (which repos to display)
-  getSelectedRepos: () => Promise<string[]>
+  getSelectedRepos: () => Promise<string[] | null>
   setSelectedRepos: (repos: string[]) => Promise<{ success: boolean }>
 
   // PR Detail panel settings
