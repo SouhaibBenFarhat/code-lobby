@@ -10,7 +10,12 @@
   "dependencies": {
     "@codelobby/slot-system": "workspace:*",
     "@codelobby/shared-store": "workspace:*",
-    "@codelobby/data-module": "workspace:*"
+    "@codelobby/data-module": "workspace:*",
+    "@codelobby/header-module": "workspace:*",
+    "@codelobby/explorer-module": "workspace:*",
+    "@codelobby/canvas-module": "workspace:*",
+    "@codelobby/pr-detail-module": "workspace:*",
+    "@codelobby/ai-chat-module": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.2.0",

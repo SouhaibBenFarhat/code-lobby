@@ -21,11 +21,16 @@ initDataModule()
 // Header module → registers to 'header' slot
 import '@codelobby/header-module'
 
-// Future modules (uncomment as they're created):
-// import '@codelobby/explorer-module'    // → 'left-panel' slot
-// import '@codelobby/canvas-module'      // → 'main' slot
-// import '@codelobby/ide-view-module'    // → 'main' slot
-// import '@codelobby/pr-detail-module'   // → 'right-panel' slot
-// import '@codelobby/ai-chat-module'     // → 'right-panel' slot
+// Explorer module → registers to 'left-panel' slot (visible in IDE mode)
+import '@codelobby/explorer-module'
+
+// Canvas module → registers to 'main' slot (visible in Canvas mode)
+import '@codelobby/canvas-module'
+
+// PR Detail module → registers to 'right-panel' slot (visible when PR selected)
+import '@codelobby/pr-detail-module'
+
+// AI Chat module → registers to 'right-panel' slot (visible when AI panel open)
+import '@codelobby/ai-chat-module'
 
 console.log('[bootstrap] All modules registered')
