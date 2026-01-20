@@ -302,6 +302,20 @@ Close the app Friday, open it Monday — everything is exactly where you left it
 - Preserves your Claude API key and settings
 - Log back in to start fresh
 
+**Factory Reset** — Complete wipe:
+- Erases **ALL** data (including API keys and settings)
+- Returns app to fresh install state
+- Found in About dialog → "Factory Reset" button
+- Two-step confirmation prevents accidents
+- Use when troubleshooting or before uninstalling
+
+| What Gets Cleared | Sign Out | Factory Reset |
+|-------------------|----------|---------------|
+| GitHub Token | ✅ | ✅ |
+| Cache & History | ✅ | ✅ |
+| Claude API Key | ❌ | ✅ |
+| Settings | ❌ | ✅ |
+
 ---
 
 ## 🔒 Privacy & Security
@@ -392,6 +406,7 @@ We're actively building:
 | **Two View Modes** | Work the way you think |
 | **Minimize Cards** | Collapse repos to save space |
 | **Per-Repo Reload** | Refresh individual repos instantly |
+| **Factory Reset** | Complete wipe for fresh start |
 | **Smart Filtering** | Focus on what matters |
 | **AI Assistant** | Intelligent help on demand |
 | **Context-Aware AI** | AI knows about CodeLobby |

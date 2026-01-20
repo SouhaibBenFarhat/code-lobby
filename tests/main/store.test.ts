@@ -22,11 +22,19 @@ vi.mock('electron-store', () => {
             repoOrder: [],
             cardLayouts: [],
             selectedRepos: [],
+            myPRsRepos: [],
             prDetailPanel: { isOpen: false, width: 400 },
             repoColors: {},
             minimizedRepos: [],
             viewMode: 'canvas',
             ideViewSettings: { sidebarWidth: 280, expandedRepos: [] },
+            aiChat: {
+              claudeApiKey: null,
+              selectedModel: null,
+              enableThinking: true,
+              chatHistory: []
+            },
+            aiPanel: { isOpen: false, width: 400 },
             dataCache: { prData: null, allRepos: null },
             prAnalyses: [],
             prAnalysisPanelStates: {},
@@ -67,13 +75,16 @@ import {
   createPRChat,
   deletePRAnalysis,
   deletePRChat,
+  factoryReset,
   getActivePRChatId,
+  getAIPanel,
   getAllReposCache,
   getCardLayouts,
   getChatHistory,
   getClaudeApiKey,
   getIDEViewSettings,
   getMinimizedRepos,
+  getMyPRsRepos,
   getPRAnalyses,
   getPRAnalysis,
   getPRAnalysisPanelOpen,
@@ -92,10 +103,12 @@ import {
   getViewMode,
   isCacheValid,
   setActivePRChatId,
+  setAIPanel,
   setAllReposCache,
   setCardLayouts,
   setClaudeApiKey,
   setIDEViewSettings,
+  setMyPRsRepos,
   setPRAnalysis,
   setPRAnalysisPanelOpen,
   setPRDataCache,
@@ -921,6 +934,177 @@ describe('Store', () => {
 
       expect(getClaudeApiKey()).toBe('test-api-key') // API key preserved
       expect(getChatHistory()).toEqual([]) // History cleared
+    })
+  })
+
+  describe('factoryReset', () => {
+    it('should clear all data including token', () => {
+      setToken('test-token')
+      setUser({ login: 'testuser', avatar_url: '', name: 'Test', html_url: '' })
+
+      factoryReset()
+
+      expect(getToken()).toBeNull()
+      expect(getUser()).toBeNull()
+    })
+
+    it('should clear all data including Claude API key', () => {
+      setClaudeApiKey('test-api-key')
+      addChatMessage({
+        id: '1',
+        role: 'user',
+        content: 'Hello',
+        timestamp: new Date().toISOString()
+      })
+
+      factoryReset()
+
+      expect(getClaudeApiKey()).toBeNull() // Unlike clearAllUserData, API key is also cleared
+      expect(getChatHistory()).toEqual([])
+    })
+
+    it('should clear all settings', () => {
+      setSettings({ theme: 'light', notifications: false, pollInterval: 60000 })
+
+      factoryReset()
+
+      const settings = getSettings()
+      expect(settings.theme).toBe('dark') // Back to default
+      expect(settings.notifications).toBe(true) // Back to default
+      expect(settings.pollInterval).toBe(30000) // Back to default
+    })
+
+    it('should clear all cached data', () => {
+      setAllReposCache([{ id: 1, name: 'test' }])
+      setPRDataCache(['pr1'], [{ id: 1, title: 'PR' }])
+
+      factoryReset()
+
+      expect(getAllReposCache()).toBeNull()
+      expect(getPRDataCache()).toBeNull()
+    })
+
+    it('should clear all PR analyses and panel states', () => {
+      setPRAnalysis('org/repo#1', 'test analysis')
+      setPRAnalysisPanelOpen('org/repo#1', true)
+
+      factoryReset()
+
+      expect(getPRAnalyses()).toEqual([])
+      expect(getPRAnalysisPanelStates()).toEqual({})
+    })
+
+    it('should clear all PR chats', () => {
+      createPRChat('org/repo#1', 1, 'PR 1', 'org/repo')
+      setActivePRChatId('org/repo#1')
+
+      factoryReset()
+
+      expect(getPRChats()).toEqual([])
+      expect(getActivePRChatId()).toBeNull()
+    })
+
+    it('should reset all layout data to defaults', () => {
+      setCardLayouts([{ i: 'test', x: 0, y: 0, w: 100, h: 100 }])
+      setRepoColor('test/repo', '#ff0000')
+      setRepoMinimized('test/repo', true)
+      setSelectedRepos(['test/repo'])
+      setRepoOrder(['test/repo'])
+
+      factoryReset()
+
+      expect(getCardLayouts()).toEqual([])
+      expect(getRepoColors()).toEqual({})
+      expect(getMinimizedRepos()).toEqual([])
+      expect(getSelectedRepos()).toEqual([])
+      expect(getRepoOrder()).toEqual([])
+    })
+
+    it('should reset view mode and IDE settings to defaults', () => {
+      setViewMode('ide')
+      setIDEViewSettings({ sidebarWidth: 400, expandedRepos: ['test/repo'] })
+
+      factoryReset()
+
+      expect(getViewMode()).toBe('canvas') // Default
+      const ideSettings = getIDEViewSettings()
+      expect(ideSettings.sidebarWidth).toBe(280) // Default
+      expect(ideSettings.expandedRepos).toEqual([]) // Default
+    })
+
+    it('should reset panel settings to defaults', () => {
+      setPRDetailPanel({ isOpen: true, width: 600 })
+      setAIPanel({ isOpen: true, width: 500 })
+
+      factoryReset()
+
+      const prPanel = getPRDetailPanel()
+      expect(prPanel.isOpen).toBe(false)
+      expect(prPanel.width).toBe(400)
+
+      const aiPanel = getAIPanel()
+      expect(aiPanel.isOpen).toBe(false)
+      expect(aiPanel.width).toBe(400)
+    })
+
+    it('should be a complete reset - app should be like fresh install', () => {
+      // Set up a bunch of data
+      setToken('test-token')
+      setUser({ login: 'testuser', avatar_url: '', name: 'Test', html_url: '' })
+      setClaudeApiKey('test-api-key')
+      setSettings({ theme: 'light', notifications: false, pollInterval: 60000 })
+      setAllReposCache([{ id: 1, name: 'test' }])
+      setPRDataCache(['pr1'], [{ id: 1, title: 'PR' }])
+      setCardLayouts([{ i: 'test', x: 0, y: 0, w: 100, h: 100 }])
+      setRepoColor('test/repo', '#ff0000')
+      setRepoMinimized('test/repo', true)
+      setSelectedRepos(['test/repo'])
+      setRepoOrder(['test/repo'])
+      setViewMode('ide')
+      setIDEViewSettings({ sidebarWidth: 400, expandedRepos: ['test/repo'] })
+      setPRDetailPanel({ isOpen: true, width: 600 })
+      setAIPanel({ isOpen: true, width: 500 })
+      setPRAnalysis('org/repo#1', 'test analysis')
+      setPRAnalysisPanelOpen('org/repo#1', true)
+      createPRChat('org/repo#1', 1, 'PR 1', 'org/repo')
+      setActivePRChatId('org/repo#1')
+      addChatMessage({
+        id: '1',
+        role: 'user',
+        content: 'Hello',
+        timestamp: new Date().toISOString()
+      })
+      setMyPRsRepos(['test/repo'])
+
+      // Factory reset
+      factoryReset()
+
+      // Everything should be back to defaults
+      expect(getToken()).toBeNull()
+      expect(getUser()).toBeNull()
+      expect(getClaudeApiKey()).toBeNull()
+      expect(getSettings()).toEqual({
+        theme: 'dark',
+        notifications: true,
+        pollInterval: 30000
+      })
+      expect(getAllReposCache()).toBeNull()
+      expect(getPRDataCache()).toBeNull()
+      expect(getCardLayouts()).toEqual([])
+      expect(getRepoColors()).toEqual({})
+      expect(getMinimizedRepos()).toEqual([])
+      expect(getSelectedRepos()).toEqual([])
+      expect(getRepoOrder()).toEqual([])
+      expect(getViewMode()).toBe('canvas')
+      expect(getIDEViewSettings()).toEqual({ sidebarWidth: 280, expandedRepos: [] })
+      expect(getPRDetailPanel()).toEqual({ isOpen: false, width: 400 })
+      expect(getAIPanel()).toEqual({ isOpen: false, width: 400 })
+      expect(getPRAnalyses()).toEqual([])
+      expect(getPRAnalysisPanelStates()).toEqual({})
+      expect(getPRChats()).toEqual([])
+      expect(getActivePRChatId()).toBeNull()
+      expect(getChatHistory()).toEqual([])
+      expect(getMyPRsRepos()).toEqual([])
     })
   })
 })

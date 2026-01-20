@@ -1,5 +1,5 @@
-import { Book, X } from 'lucide-react'
-import { useState } from 'react'
+import { AlertTriangle, Book, RotateCcw, X } from 'lucide-react'
+import { useCallback, useState } from 'react'
 import { MarkdownContent } from './MarkdownContent'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
@@ -276,10 +276,32 @@ Welcome to a better way to manage Pull Requests.
 
 interface AboutDialogProps {
   trigger?: React.ReactNode
+  onFactoryReset?: () => void
 }
 
-export function AboutDialog({ trigger }: AboutDialogProps) {
+export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps) {
   const [open, setOpen] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+
+  const handleFactoryReset = useCallback(async () => {
+    setIsResetting(true)
+    try {
+      await window.electron.factoryReset()
+      setOpen(false)
+      setShowResetConfirm(false)
+      // Reload the app to apply the reset
+      if (onFactoryReset) {
+        onFactoryReset()
+      } else {
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Factory reset failed:', error)
+    } finally {
+      setIsResetting(false)
+    }
+  }, [onFactoryReset])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -314,9 +336,57 @@ export function AboutDialog({ trigger }: AboutDialogProps) {
           </div>
         </ScrollArea>
         <div className="px-6 py-3 border-t border-border flex-shrink-0 bg-muted/30">
-          <p className="text-xs text-muted-foreground text-center">
-            Version 1.0.0 • Built with ❤️ for developers
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Version 1.0.0 • Built with ❤️ for developers
+            </p>
+            {!showResetConfirm ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => setShowResetConfirm(true)}
+                type="button"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Factory Reset
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                <span className="flex items-center gap-1 text-xs text-destructive">
+                  <AlertTriangle className="w-3 h-3" />
+                  This will erase ALL data!
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setShowResetConfirm(false)}
+                  disabled={isResetting}
+                  type="button"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={handleFactoryReset}
+                  disabled={isResetting}
+                  type="button"
+                >
+                  {isResetting ? (
+                    <>
+                      <RotateCcw className="w-3 h-3 mr-1 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    'Yes, Erase Everything'
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

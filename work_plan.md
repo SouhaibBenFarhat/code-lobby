@@ -45,6 +45,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Rate limit gauge | ✅ Complete |
 | | Minimize repo cards (Canvas) | ✅ Complete |
 | | Per-repo reload button | ✅ Complete |
+| | Factory reset | ✅ Complete |
 | **Infrastructure** | Centralized logging | ✅ Complete |
 | | Retry & timeout logic | ✅ Complete |
 | | Error handling | ✅ Complete |
@@ -381,6 +382,62 @@ Click a refresh button on any repository card to reload just that repo's PRs wit
 - `tests/renderer/components/IDEView.test.tsx` - Added 3 tests
 
 **Completed:** January 18, 2026
+
+---
+
+### 1.1.6 Factory Reset ✅ Complete
+> Completely wipe all app data and return to fresh install state
+
+**Concept:**
+A "nuclear option" that erases absolutely everything—like reinstalling the app. Unlike "Clear All Data" (which preserves Claude API key and settings), Factory Reset wipes **everything**.
+
+**Why This Matters:**
+- **Troubleshooting** — Start fresh when something goes wrong
+- **Testing** — Reset to clean state during development
+- **Privacy** — Complete data removal before uninstalling
+- **New User** — Let someone else use the app fresh
+
+**What Gets Cleared:**
+| Data Type | Clear All Data | Factory Reset |
+|-----------|---------------|---------------|
+| GitHub Token | ✅ | ✅ |
+| User Info | ✅ | ✅ |
+| PR Cache | ✅ | ✅ |
+| Chat History | ✅ | ✅ |
+| PR Analyses | ✅ | ✅ |
+| Layouts | ✅ | ✅ |
+| **Claude API Key** | ❌ Preserved | ✅ Cleared |
+| **Settings (theme, etc.)** | ❌ Preserved | ✅ Reset to defaults |
+| **Model Selection** | ❌ Preserved | ✅ Reset to default |
+
+**Implementation Summary:**
+- "Factory Reset" button in About dialog footer
+- Two-step confirmation to prevent accidents
+- Calls `store.clear()` to wipe electron-store completely
+- Reloads the app after reset
+
+**Technical Details:**
+- `factoryReset()` function in `store.ts` - calls `store.clear()`
+- IPC handler `factory-reset` in main process
+- UI button in `AboutDialog.tsx` with confirmation flow
+- 10 tests for factory reset functionality
+
+**UI Flow:**
+```
+[Factory Reset] → "This will erase ALL data!" → [Cancel] [Yes, Erase Everything]
+                                                         ↓
+                                                 App reloads to login screen
+```
+
+**Files Changed:**
+- `src/main/store.ts` - Added `factoryReset` function
+- `src/main/index.ts` - Added IPC handler
+- `src/preload/index.ts` - Exposed to renderer
+- `src/renderer/components/AboutDialog.tsx` - Added button with confirmation
+- `tests/mocks/electron.ts` - Added mock
+- `tests/main/store.test.ts` - Added 10 tests
+
+**Completed:** January 20, 2026
 
 ---
 

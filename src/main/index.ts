@@ -44,6 +44,7 @@ import {
   clearDataCache,
   clearToken,
   deletePRAnalysis,
+  factoryReset,
   getActivePRChatId,
   getAIPanel,
   getAllReposCache,
@@ -226,6 +227,18 @@ function setupIPCHandlers(): void {
     sessionPRData = null
     // Clear persistent data cache only (not user preferences)
     clearDataCache()
+    return { success: true }
+  })
+
+  // Factory reset - completely wipes ALL data (like a fresh install)
+  ipcMain.handle('factory-reset', async () => {
+    logger.info(LogCategory.APP, 'Factory reset initiated - wiping ALL data')
+    // Clear session caches
+    sessionAllRepos = null
+    sessionPRData = null
+    // Wipe everything from electron-store
+    factoryReset()
+    logger.info(LogCategory.APP, 'Factory reset complete - app is now in fresh install state')
     return { success: true }
   })
 

@@ -6,6 +6,7 @@ export interface ElectronAPI {
   setToken: (token: string) => Promise<{ success: boolean; user?: unknown; error?: string }>
   clearToken: () => Promise<{ success: boolean }>
   clearAllData: () => Promise<{ success: boolean }>
+  factoryReset: () => Promise<{ success: boolean }>
   validateToken: () => Promise<{ valid: boolean; user?: unknown }>
 
   // GitHub API (GraphQL - one query gets everything!)
@@ -375,6 +376,7 @@ const electronAPI: ElectronAPI = {
   setToken: (token: string) => ipcRenderer.invoke('set-token', token),
   clearToken: () => ipcRenderer.invoke('clear-token'),
   clearAllData: () => ipcRenderer.invoke('clear-all-data'),
+  factoryReset: () => ipcRenderer.invoke('factory-reset'),
   validateToken: () => ipcRenderer.invoke('validate-token'),
 
   // GitHub API (GraphQL - one query gets everything!)

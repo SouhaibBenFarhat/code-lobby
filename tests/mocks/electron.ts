@@ -29,6 +29,7 @@ interface MockElectronAPI {
   setToken: ReturnType<typeof vi.fn>
   clearToken: ReturnType<typeof vi.fn>
   clearAllData: ReturnType<typeof vi.fn>
+  factoryReset: ReturnType<typeof vi.fn>
   validateToken: ReturnType<typeof vi.fn>
 
   // GitHub API
@@ -154,6 +155,7 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     setToken: vi.fn().mockResolvedValue({ success: true, user: defaultUser }),
     clearToken: vi.fn().mockResolvedValue({ success: true }),
     clearAllData: vi.fn().mockResolvedValue({ success: true }),
+    factoryReset: vi.fn().mockResolvedValue({ success: true }),
     validateToken: vi.fn().mockResolvedValue({ valid: true, user: defaultUser }),
 
     // GitHub API

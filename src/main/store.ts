@@ -592,3 +592,12 @@ export function getActivePRChatId(): string | null {
 export function setActivePRChatId(prId: string | null): void {
   store.set('activePRChatId', prId)
 }
+
+/**
+ * Factory reset - completely wipes ALL data
+ * This is equivalent to a fresh install of the app
+ * Clears: EVERYTHING (token, settings, API keys, cache, history, layouts, etc.)
+ */
+export function factoryReset(): void {
+  store.clear()
+}
