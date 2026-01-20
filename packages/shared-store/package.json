@@ -1,0 +1,18 @@
+{
+  "name": "@codelobby/shared-store",
+  "version": "1.0.0",
+  "description": "Global reactive state store for CodeLobby (The Buffet Table)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./actions": "./src/actions.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
