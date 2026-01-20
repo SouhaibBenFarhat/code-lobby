@@ -173,6 +173,13 @@ export interface PRChat {
   systemContext?: string
 }
 
+export interface LinkedPRChat {
+  prId: string
+  prNumber: number
+  prTitle: string
+  repoFullName: string
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // LAYOUT TYPES
 // ═══════════════════════════════════════════════════════════════════════════

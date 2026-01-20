@@ -1,20 +1,24 @@
 /**
  * @codelobby/header-module
  *
- * Self-registering Header module for CodeLobby.
- * Registers to the 'header' slot on import.
+ * Header module for CodeLobby.
+ * Currently re-exports the existing Header component.
+ *
+ * The slot registration is disabled for now because the existing App.tsx
+ * renders the Header directly. When we fully migrate to the modular
+ * architecture, we can enable the slot registration.
  */
 
-import { registerToSlot } from '@codelobby/slot-system'
-import { Header } from './Header'
+// Re-export the existing component for direct use
+export { Header } from '@/components/Header'
 
-// Self-register to the 'header' slot
-registerToSlot({
-  id: 'header',
-  slot: 'header',
-  component: Header,
-  order: 0
-})
-
-// Export for direct use in tests
-export { Header }
+// Slot registration (disabled - App.tsx renders directly for now)
+// import { registerToSlot } from '@codelobby/slot-system'
+// import { HeaderWrapper } from './HeaderWrapper'
+// 
+// registerToSlot({
+//   id: 'header',
+//   slot: 'header',
+//   component: HeaderWrapper,
+//   order: 0
+// })

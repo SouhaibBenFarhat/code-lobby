@@ -1,24 +1,25 @@
 /**
  * @codelobby/canvas-module
  *
- * Self-registering Canvas view module for CodeLobby.
- * Registers to the 'main' slot on import.
- * Only visible in Canvas view mode.
+ * Canvas module for CodeLobby.
+ * Currently re-exports the existing PRGrid component.
+ *
+ * The slot registration is disabled for now because the existing App.tsx
+ * renders the PRGrid directly. When we fully migrate to the modular
+ * architecture, we can enable the slot registration.
  */
 
-import { registerToSlot } from '@codelobby/slot-system'
-import { Store } from '@codelobby/shared-store'
-import { Canvas } from './Canvas'
+// Re-export the existing component for direct use
+export { PRGrid } from '@/components/PRGrid'
 
-// Self-register to the 'main' slot
-// Only visible when viewMode is 'canvas'
-registerToSlot({
-  id: 'canvas',
-  slot: 'main',
-  component: Canvas,
-  order: 0,
-  visible: () => Store.viewMode.value === 'canvas'
-})
-
-// Export for direct use in tests
-export { Canvas }
+// Slot registration (disabled - App.tsx renders directly for now)
+// import { registerToSlot } from '@codelobby/slot-system'
+// import { Store } from '@codelobby/shared-store'
+// 
+// registerToSlot({
+//   id: 'canvas',
+//   slot: 'main',
+//   component: PRGridWrapper,
+//   order: 0,
+//   visible: () => Store.viewMode.value === 'canvas'
+// })

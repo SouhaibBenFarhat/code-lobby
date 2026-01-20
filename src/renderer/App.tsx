@@ -12,6 +12,7 @@ import { Button } from './components/ui/button'
 import { Toaster } from './components/ui/toaster'
 import { TooltipProvider } from './components/ui/tooltip'
 import { buildPRSystemPrompt } from './lib/pr-system-prompt'
+import { StoreSync } from './StoreSync'
 
 const MIN_PANEL_WIDTH = 300
 const MAX_PANEL_WIDTH = 800
@@ -495,181 +496,193 @@ function App() {
 
   // Authenticated - show dashboard
   return (
-    <TooltipProvider>
-      <PRContext.Provider value={{ selectedPR, setSelectedPR }}>
-        <MyPRsFilterContext.Provider
-          value={{ myPRsRepos, toggleMyPRsFilter, isMyPRsFilterEnabled }}
-        >
-          <PRChatContext.Provider value={{ linkedPRChat, openPRInChat, closePRChat }}>
-            <div className="h-screen bg-background flex flex-col overflow-hidden">
-              <Header
-                user={user}
-                onLogout={handleLogout}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                isAIPanelOpen={isAIPanelOpen}
-                onToggleAIPanel={toggleAIPanel}
-              />
+    <StoreSync
+      user={user}
+      isAuthenticated={true}
+      viewMode={viewMode}
+      selectedPR={selectedPR}
+      isPanelOpen={isPanelOpen}
+      panelWidth={panelWidth}
+      isAIPanelOpen={isAIPanelOpen}
+      aiPanelWidth={aiPanelWidth}
+      linkedPRChat={linkedPRChat}
+    >
+      <TooltipProvider>
+        <PRContext.Provider value={{ selectedPR, setSelectedPR }}>
+          <MyPRsFilterContext.Provider
+            value={{ myPRsRepos, toggleMyPRsFilter, isMyPRsFilterEnabled }}
+          >
+            <PRChatContext.Provider value={{ linkedPRChat, openPRInChat, closePRChat }}>
+              <div className="h-screen bg-background flex flex-col overflow-hidden">
+                <Header
+                  user={user}
+                  onLogout={handleLogout}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  isAIPanelOpen={isAIPanelOpen}
+                  onToggleAIPanel={toggleAIPanel}
+                />
 
-              {/* Main content area with views */}
-              <div className="flex-1 flex overflow-hidden">
-                {/* Canvas View */}
-                {viewMode === 'canvas' && (
-                  <div className="flex-1 flex overflow-hidden">
-                    <main className="flex-1 overflow-auto bg-muted/20">
-                      <PRGrid currentUser={user?.login || null} />
-                    </main>
+                {/* Main content area with views */}
+                <div className="flex-1 flex overflow-hidden">
+                  {/* Canvas View */}
+                  {viewMode === 'canvas' && (
+                    <div className="flex-1 flex overflow-hidden">
+                      <main className="flex-1 overflow-auto bg-muted/20">
+                        <PRGrid currentUser={user?.login || null} />
+                      </main>
 
-                    {/* Panel toggle button when collapsed */}
-                    {!isPanelOpen && (
-                      <button
-                        type="button"
-                        onClick={togglePanel}
-                        className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-                        title="Open PR details panel"
-                      >
-                        <PanelRight className="w-5 h-5" />
-                      </button>
-                    )}
+                      {/* Panel toggle button when collapsed */}
+                      {!isPanelOpen && (
+                        <button
+                          type="button"
+                          onClick={togglePanel}
+                          className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+                          title="Open PR details panel"
+                        >
+                          <PanelRight className="w-5 h-5" />
+                        </button>
+                      )}
 
-                    {isPanelOpen && (
-                      <aside
-                        ref={panelRef}
-                        className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
-                        style={{
-                          width: panelWidth,
-                          minWidth: panelWidth,
-                          maxWidth: panelWidth,
-                          willChange: isResizing ? 'width' : 'auto',
-                          contain: 'layout style'
-                        }}
-                      >
-                        {/* Resize handle */}
-                        <div
-                          role="slider"
-                          aria-orientation="horizontal"
-                          aria-label="Resize panel"
-                          aria-valuemin={MIN_PANEL_WIDTH}
-                          aria-valuemax={MAX_PANEL_WIDTH}
-                          aria-valuenow={panelWidth}
-                          tabIndex={0}
-                          className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                            isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                          }`}
-                          onMouseDown={handleResizeStart}
-                          onKeyDown={(e) => {
-                            if (e.key === 'ArrowLeft') {
-                              setPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - 20))
-                            }
-                            if (e.key === 'ArrowRight') {
-                              setPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + 20))
-                            }
+                      {isPanelOpen && (
+                        <aside
+                          ref={panelRef}
+                          className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
+                          style={{
+                            width: panelWidth,
+                            minWidth: panelWidth,
+                            maxWidth: panelWidth,
+                            willChange: isResizing ? 'width' : 'auto',
+                            contain: 'layout style'
                           }}
-                        />
-                        <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                          {selectedPR ? (
-                            <PRDetail pr={selectedPR} onClose={() => setSelectedPR(null)} />
-                          ) : (
-                            /* Placeholder when no PR selected */
-                            <div className="flex flex-col h-full">
-                              <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
-                                <h3 className="font-semibold text-sm">PR Details</h3>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={togglePanel}
-                                >
-                                  <PanelRightClose className="w-4 h-4" />
-                                </Button>
-                              </div>
-                              <div className="flex-1 flex items-center justify-center p-6">
-                                <div className="text-center space-y-4">
-                                  <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
-                                    <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                      No PR selected
-                                    </p>
-                                    <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                                      Click on a pull request card to view its details, CI status,
-                                      and comments
-                                    </p>
+                        >
+                          {/* Resize handle */}
+                          <div
+                            role="slider"
+                            aria-orientation="horizontal"
+                            aria-label="Resize panel"
+                            aria-valuemin={MIN_PANEL_WIDTH}
+                            aria-valuemax={MAX_PANEL_WIDTH}
+                            aria-valuenow={panelWidth}
+                            tabIndex={0}
+                            className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                              isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                            }`}
+                            onMouseDown={handleResizeStart}
+                            onKeyDown={(e) => {
+                              if (e.key === 'ArrowLeft') {
+                                setPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - 20))
+                              }
+                              if (e.key === 'ArrowRight') {
+                                setPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + 20))
+                              }
+                            }}
+                          />
+                          <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                            {selectedPR ? (
+                              <PRDetail pr={selectedPR} onClose={() => setSelectedPR(null)} />
+                            ) : (
+                              /* Placeholder when no PR selected */
+                              <div className="flex flex-col h-full">
+                                <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
+                                  <h3 className="font-semibold text-sm">PR Details</h3>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={togglePanel}
+                                  >
+                                    <PanelRightClose className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                <div className="flex-1 flex items-center justify-center p-6">
+                                  <div className="text-center space-y-4">
+                                    <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
+                                      <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <p className="text-sm font-medium text-muted-foreground">
+                                        No PR selected
+                                      </p>
+                                      <p className="text-xs text-muted-foreground/70 max-w-[200px]">
+                                        Click on a pull request card to view its details, CI status,
+                                        and comments
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </aside>
-                    )}
-                  </div>
-                )}
-
-                {/* IDE View */}
-                {viewMode === 'ide' && (
-                  <div className="flex-1 overflow-hidden">
-                    <IDEView currentUser={user?.login || null} />
-                  </div>
-                )}
-
-                {/* AI Panel - rendered OUTSIDE view conditionals to persist across view switches */}
-                {isAIPanelOpen && (
-                  <aside
-                    ref={aiPanelRef}
-                    className="apple-panel overflow-hidden flex relative flex-shrink-0"
-                    style={{
-                      width: aiPanelWidth,
-                      minWidth: aiPanelWidth,
-                      maxWidth: aiPanelWidth,
-                      willChange: isAIResizing ? 'width' : 'auto',
-                      contain: 'layout style'
-                    }}
-                  >
-                    {/* Resize handle */}
-                    <div
-                      role="slider"
-                      aria-orientation="horizontal"
-                      aria-label="Resize AI panel"
-                      aria-valuemin={MIN_PANEL_WIDTH}
-                      aria-valuemax={MAX_PANEL_WIDTH}
-                      aria-valuenow={aiPanelWidth}
-                      tabIndex={0}
-                      className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                        isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                      }`}
-                      onMouseDown={handleAIResizeStart}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowLeft') {
-                          setAIPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - 20))
-                        }
-                        if (e.key === 'ArrowRight') {
-                          setAIPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + 20))
-                        }
-                      }}
-                    />
-                    <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                      <AIChatPanel
-                        onClose={toggleAIPanel}
-                        user={user}
-                        linkedPRChat={linkedPRChat}
-                        onClosePRChat={closePRChat}
-                        onSwitchToPRChat={switchToPRChat}
-                        selectedPR={selectedPR}
-                        onStartPRChat={openPRInChat}
-                      />
+                            )}
+                          </div>
+                        </aside>
+                      )}
                     </div>
-                  </aside>
-                )}
-              </div>
+                  )}
 
-              <Toaster />
-            </div>
-          </PRChatContext.Provider>
-        </MyPRsFilterContext.Provider>
-      </PRContext.Provider>
-    </TooltipProvider>
+                  {/* IDE View */}
+                  {viewMode === 'ide' && (
+                    <div className="flex-1 overflow-hidden">
+                      <IDEView currentUser={user?.login || null} />
+                    </div>
+                  )}
+
+                  {/* AI Panel - rendered OUTSIDE view conditionals to persist across view switches */}
+                  {isAIPanelOpen && (
+                    <aside
+                      ref={aiPanelRef}
+                      className="apple-panel overflow-hidden flex relative flex-shrink-0"
+                      style={{
+                        width: aiPanelWidth,
+                        minWidth: aiPanelWidth,
+                        maxWidth: aiPanelWidth,
+                        willChange: isAIResizing ? 'width' : 'auto',
+                        contain: 'layout style'
+                      }}
+                    >
+                      {/* Resize handle */}
+                      <div
+                        role="slider"
+                        aria-orientation="horizontal"
+                        aria-label="Resize AI panel"
+                        aria-valuemin={MIN_PANEL_WIDTH}
+                        aria-valuemax={MAX_PANEL_WIDTH}
+                        aria-valuenow={aiPanelWidth}
+                        tabIndex={0}
+                        className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+                          isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+                        }`}
+                        onMouseDown={handleAIResizeStart}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowLeft') {
+                            setAIPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - 20))
+                          }
+                          if (e.key === 'ArrowRight') {
+                            setAIPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + 20))
+                          }
+                        }}
+                      />
+                      <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                        <AIChatPanel
+                          onClose={toggleAIPanel}
+                          user={user}
+                          linkedPRChat={linkedPRChat}
+                          onClosePRChat={closePRChat}
+                          onSwitchToPRChat={switchToPRChat}
+                          selectedPR={selectedPR}
+                          onStartPRChat={openPRInChat}
+                        />
+                      </div>
+                    </aside>
+                  )}
+                </div>
+
+                <Toaster />
+              </div>
+            </PRChatContext.Provider>
+          </MyPRsFilterContext.Provider>
+        </PRContext.Provider>
+      </TooltipProvider>
+    </StoreSync>
   )
 }
 

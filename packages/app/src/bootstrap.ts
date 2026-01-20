@@ -1,36 +1,33 @@
 /**
  * Bootstrap - Module Registration
  *
- * This file imports all modules to trigger their self-registration.
- * This is the ONLY place where UI modules are imported.
+ * Phase 1: Hybrid Architecture
+ * - Data module is initialized to handle actions
+ * - UI modules are NOT registered to slots (App.tsx renders directly)
+ * - StoreSync keeps the shared store in sync with App state
  *
- * When a module is imported, its top-level registerToSlot() call runs,
- * adding the module to the slot registry.
+ * Phase 2 (Future): Full Modular Architecture
+ * - Uncomment module imports to enable slot registration
+ * - Remove direct rendering from App.tsx
+ * - Components read from store instead of props
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INITIALIZE DATA MODULE (must be first!)
+// INITIALIZE DATA MODULE
 // ═══════════════════════════════════════════════════════════════════════════
 import { initDataModule } from '@codelobby/data-module'
 initDataModule()
 
 // ═══════════════════════════════════════════════════════════════════════════
-// IMPORT UI MODULES (triggers self-registration)
+// UI MODULE IMPORTS (Phase 2 - Currently Disabled)
 // ═══════════════════════════════════════════════════════════════════════════
+// These are disabled because App.tsx currently renders components directly.
+// When we migrate to full modular architecture, uncomment these:
 
-// Header module → registers to 'header' slot
-import '@codelobby/header-module'
+// import '@codelobby/header-module'     // → 'header' slot
+// import '@codelobby/explorer-module'   // → 'left-panel' slot
+// import '@codelobby/canvas-module'     // → 'main' slot
+// import '@codelobby/pr-detail-module'  // → 'right-panel' slot
+// import '@codelobby/ai-chat-module'    // → 'right-panel' slot
 
-// Explorer module → registers to 'left-panel' slot (visible in IDE mode)
-import '@codelobby/explorer-module'
-
-// Canvas module → registers to 'main' slot (visible in Canvas mode)
-import '@codelobby/canvas-module'
-
-// PR Detail module → registers to 'right-panel' slot (visible when PR selected)
-import '@codelobby/pr-detail-module'
-
-// AI Chat module → registers to 'right-panel' slot (visible when AI panel open)
-import '@codelobby/ai-chat-module'
-
-console.log('[bootstrap] All modules registered')
+console.log('[bootstrap] Data module initialized (Phase 1 hybrid mode)')

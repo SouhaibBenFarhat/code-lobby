@@ -25,7 +25,8 @@
       "@codelobby/pr-detail-module": ["packages/pr-detail-module/src/index.ts"],
       "@codelobby/ai-chat-module": ["packages/ai-chat-module/src/index.ts"],
       "@codelobby/app": ["packages/app/src/index.ts"],
-      "@codelobby/app/bootstrap": ["packages/app/src/bootstrap.ts"]
+      "@codelobby/app/bootstrap": ["packages/app/src/bootstrap.ts"],
+      "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"]
     },
     "types": ["node"],
     "outDir": "./out/renderer"

@@ -1,24 +1,25 @@
 /**
  * @codelobby/explorer-module
  *
- * Self-registering Explorer module for CodeLobby.
- * Registers to the 'left-panel' slot on import.
- * Only visible in IDE view mode.
+ * Explorer module for CodeLobby.
+ * Currently re-exports the existing IDEView component.
+ *
+ * The slot registration is disabled for now because the existing App.tsx
+ * renders the IDEView directly. When we fully migrate to the modular
+ * architecture, we can enable the slot registration.
  */
 
-import { registerToSlot } from '@codelobby/slot-system'
-import { Store } from '@codelobby/shared-store'
-import { Explorer } from './Explorer'
+// Re-export the existing component for direct use
+export { IDEView } from '@/components/IDEView'
 
-// Self-register to the 'left-panel' slot
-// Only visible when viewMode is 'ide'
-registerToSlot({
-  id: 'explorer',
-  slot: 'left-panel',
-  component: Explorer,
-  order: 0,
-  visible: () => Store.viewMode.value === 'ide'
-})
-
-// Export for direct use in tests
-export { Explorer }
+// Slot registration (disabled - App.tsx renders directly for now)
+// import { registerToSlot } from '@codelobby/slot-system'
+// import { Store } from '@codelobby/shared-store'
+// 
+// registerToSlot({
+//   id: 'explorer',
+//   slot: 'left-panel',
+//   component: IDEViewWrapper,
+//   order: 0,
+//   visible: () => Store.viewMode.value === 'ide'
+// })
