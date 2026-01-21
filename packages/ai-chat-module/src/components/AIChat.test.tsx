@@ -15,20 +15,31 @@ interface PostableComment {
 
 // Parse POSTABLE metadata from message content
 // Format: <!--POSTABLE:{"file":"path/to/file.ts","line":42}-->
-const POSTABLE_REGEX = /<!--POSTABLE:(\{[^}]+\})-->/g
+const POSTABLE_START = '<!--POSTABLE:'
+const POSTABLE_END = '-->'
 
 function parsePostableComments(content: string): PostableComment[] {
   const comments: PostableComment[] = []
-  const matches = content.matchAll(POSTABLE_REGEX)
+  let searchStart = 0
 
-  for (const match of matches) {
+  while (true) {
+    const startIdx = content.indexOf(POSTABLE_START, searchStart)
+    if (startIdx === -1) break
+
+    const jsonStart = startIdx + POSTABLE_START.length
+    const endIdx = content.indexOf(POSTABLE_END, jsonStart)
+    if (endIdx === -1) break
+
+    const jsonStr = content.slice(jsonStart, endIdx).trim()
+    searchStart = endIdx + POSTABLE_END.length
+
     try {
-      const parsed = JSON.parse(match[1]) as { file?: string; line?: number }
+      const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
       if (parsed.file && typeof parsed.line === 'number') {
         comments.push({ file: parsed.file, line: parsed.line })
       }
     } catch {
-      // Invalid JSON, skip
+      // Invalid JSON, skip this one
     }
   }
   return comments
@@ -36,7 +47,22 @@ function parsePostableComments(content: string): PostableComment[] {
 
 // Remove POSTABLE metadata from content for display
 function stripPostableMetadata(content: string): string {
-  return content.replace(POSTABLE_REGEX, '').trim()
+  let result = content
+  let searchStart = 0
+
+  while (true) {
+    const startIdx = result.indexOf(POSTABLE_START, searchStart)
+    if (startIdx === -1) break
+
+    const endIdx = result.indexOf(POSTABLE_END, startIdx)
+    if (endIdx === -1) break
+
+    // Remove the entire tag including the end marker
+    result = result.slice(0, startIdx) + result.slice(endIdx + POSTABLE_END.length)
+    // Don't advance searchStart since we removed content
+  }
+
+  return result.trim()
 }
 
 describe('parsePostableComments', () => {
@@ -103,6 +129,38 @@ Valid:
     const result = parsePostableComments(content)
     expect(result).toEqual([{ file: 'src/components/ui/buttons/PrimaryButton.tsx', line: 123 }])
   })
+
+  it('should handle JSON with extra fields', () => {
+    const content = `<!--POSTABLE:{"file":"test.ts","line":42,"suggestion":"use optional chaining"}-->`
+    const result = parsePostableComments(content)
+    expect(result).toEqual([{ file: 'test.ts', line: 42 }])
+  })
+
+  it('should handle JSON with whitespace', () => {
+    const content = `<!--POSTABLE:{ "file": "test.ts", "line": 42 }-->`
+    const result = parsePostableComments(content)
+    expect(result).toEqual([{ file: 'test.ts', line: 42 }])
+  })
+
+  it('should handle JSON spread across lines', () => {
+    const content = `<!--POSTABLE:{
+  "file": "test.ts",
+  "line": 42
+}-->`
+    const result = parsePostableComments(content)
+    expect(result).toEqual([{ file: 'test.ts', line: 42 }])
+  })
+
+  it('should handle empty content', () => {
+    const result = parsePostableComments('')
+    expect(result).toEqual([])
+  })
+
+  it('should handle unclosed POSTABLE tag', () => {
+    const content = `Some text <!--POSTABLE:{"file":"test.ts","line":42} more text`
+    const result = parsePostableComments(content)
+    expect(result).toEqual([])
+  })
 })
 
 describe('stripPostableMetadata', () => {
@@ -137,5 +195,22 @@ End`
 
     const result = stripPostableMetadata(content)
     expect(result).toBe('Start\n\nEnd')
+  })
+
+  it('should handle empty content', () => {
+    const result = stripPostableMetadata('')
+    expect(result).toBe('')
+  })
+
+  it('should handle content that is only metadata', () => {
+    const content = `<!--POSTABLE:{"file":"a.ts","line":1}-->`
+    const result = stripPostableMetadata(content)
+    expect(result).toBe('')
+  })
+
+  it('should handle metadata with extra fields', () => {
+    const content = `Text <!--POSTABLE:{"file":"a.ts","line":1,"extra":"data"}--> more text`
+    const result = stripPostableMetadata(content)
+    expect(result).toBe('Text  more text')
   })
 })
