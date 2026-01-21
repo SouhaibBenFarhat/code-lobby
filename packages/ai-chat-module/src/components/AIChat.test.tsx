@@ -17,6 +17,7 @@ interface PostableComment {
 interface ContentSection {
   content: string
   postable: PostableComment | null
+  prComment: string | null
 }
 
 // Parse POSTABLE metadata from message content
@@ -24,32 +25,50 @@ interface ContentSection {
 const POSTABLE_START = '<!--POSTABLE:'
 const POSTABLE_END = '-->'
 
+// Extract PR Comment from content (the part to be posted)
+// Format: > **PR Comment:** This is what gets posted
+function extractPRComment(content: string): string | null {
+  const prCommentRegex = />\s*\*\*PR Comment:\*\*\s*(.+?)(?=\n[^>]|<!--POSTABLE|$)/s
+  const match = content.match(prCommentRegex)
+  if (match?.[1]) {
+    return match[1].trim()
+  }
+  return null
+}
+
 // Extract POSTABLE from a single piece of content
-function extractPostable(content: string): { cleaned: string; postable: PostableComment | null } {
+function extractPostable(content: string): {
+  cleaned: string
+  postable: PostableComment | null
+  prComment: string | null
+} {
   const startIdx = content.indexOf(POSTABLE_START)
   if (startIdx === -1) {
-    return { cleaned: content, postable: null }
+    return { cleaned: content, postable: null, prComment: null }
   }
 
   const jsonStart = startIdx + POSTABLE_START.length
   const endIdx = content.indexOf(POSTABLE_END, jsonStart)
   if (endIdx === -1) {
-    return { cleaned: content, postable: null }
+    return { cleaned: content, postable: null, prComment: null }
   }
 
   const jsonStr = content.slice(jsonStart, endIdx).trim()
   const cleaned = (content.slice(0, startIdx) + content.slice(endIdx + POSTABLE_END.length)).trim()
 
+  // Extract the PR comment before cleaning
+  const prComment = extractPRComment(content)
+
   try {
     const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
     if (parsed.file && typeof parsed.line === 'number') {
-      return { cleaned, postable: { file: parsed.file, line: parsed.line } }
+      return { cleaned, postable: { file: parsed.file, line: parsed.line }, prComment }
     }
   } catch {
     // Invalid JSON
   }
 
-  return { cleaned, postable: null }
+  return { cleaned, postable: null, prComment }
 }
 
 // Parse message into sections, each section may have its own POSTABLE
@@ -57,13 +76,13 @@ function parseContentSections(content: string): ContentSection[] {
   const parts = content.split(/\n---\n/)
 
   if (parts.length === 1) {
-    const { cleaned, postable } = extractPostable(content)
-    return [{ content: cleaned, postable }]
+    const { cleaned, postable, prComment } = extractPostable(content)
+    return [{ content: cleaned, postable, prComment }]
   }
 
   return parts.map((part) => {
-    const { cleaned, postable } = extractPostable(part.trim())
-    return { content: cleaned, postable }
+    const { cleaned, postable, prComment } = extractPostable(part.trim())
+    return { content: cleaned, postable, prComment }
   })
 }
 
@@ -368,5 +387,95 @@ Summary`
     // Third section is summary
     expect(result[2].content).toBe('Summary')
     expect(result[2].postable).toBeNull()
+  })
+})
+
+describe('extractPRComment', () => {
+  it('should extract PR comment from blockquote format', () => {
+    const content = `Some explanation.
+> **PR Comment:** Use optional chaining here.
+<!--POSTABLE:{"file":"test.ts","line":42}-->`
+
+    const result = extractPRComment(content)
+    expect(result).toBe('Use optional chaining here.')
+  })
+
+  it('should extract multi-line PR comment', () => {
+    const content = `**Problem:** This will crash.
+> **PR Comment:** Potential null pointer. Use optional chaining: \`user?.profile?.name\`
+<!--POSTABLE:{"file":"test.ts","line":42}-->`
+
+    const result = extractPRComment(content)
+    expect(result).toBe('Potential null pointer. Use optional chaining: `user?.profile?.name`')
+  })
+
+  it('should return null when no PR comment is present', () => {
+    const content = `Just a regular finding.
+<!--POSTABLE:{"file":"test.ts","line":42}-->`
+
+    const result = extractPRComment(content)
+    expect(result).toBeNull()
+  })
+
+  it('should handle PR comment with code snippets', () => {
+    const content = `**Fix:** Use try-catch.
+> **PR Comment:** Wrap in try-catch: \`try { await fetch() } catch (e) { ... }\`
+<!--POSTABLE:{"file":"api.ts","line":15}-->`
+
+    const result = extractPRComment(content)
+    expect(result).toBe('Wrap in try-catch: `try { await fetch() } catch (e) { ... }`')
+  })
+})
+
+describe('parseContentSections with PR comments', () => {
+  it('should extract PR comment for each section', () => {
+    const content = `Here's my code review:
+
+---
+### 🔴 Critical: Null Pointer Exception
+**File:** \`src/auth.ts\` **Line:** 42
+
+**Current code:**
+\`\`\`ts
+user.profile.name
+\`\`\`
+
+**Problem:** This will crash if user is null.
+
+**Fix:**
+\`\`\`ts
+user?.profile?.name
+\`\`\`
+
+> **PR Comment:** Potential null pointer. Use optional chaining: \`user?.profile?.name\`
+<!--POSTABLE:{"file":"src/auth.ts","line":42}-->
+
+---
+**Summary:** Found 1 issue.`
+
+    const result = parseContentSections(content)
+    expect(result).toHaveLength(3)
+
+    // Intro has no PR comment
+    expect(result[0].prComment).toBeNull()
+
+    // Finding has PR comment
+    expect(result[1].postable).toEqual({ file: 'src/auth.ts', line: 42 })
+    expect(result[1].prComment).toBe(
+      'Potential null pointer. Use optional chaining: `user?.profile?.name`'
+    )
+
+    // Summary has no PR comment
+    expect(result[2].prComment).toBeNull()
+  })
+
+  it('should fall back to section content when no PR comment', () => {
+    const content = `Found a bug at line 42.
+<!--POSTABLE:{"file":"test.ts","line":42}-->`
+
+    const result = parseContentSections(content)
+    expect(result[0].prComment).toBeNull()
+    // When posting, we'd use section.content as fallback
+    expect(result[0].content).toBe('Found a bug at line 42.')
   })
 })

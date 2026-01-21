@@ -628,16 +628,21 @@ describe('buildPRSystemPrompt', () => {
       expect(prompt).toContain('### Required Format for Postable Findings')
       expect(prompt).toContain('**File:**')
       expect(prompt).toContain('**Line:**')
-      expect(prompt).toContain('**Suggestion:**')
+      expect(prompt).toContain('**Current code:**')
+      expect(prompt).toContain('**Problem:**')
+      expect(prompt).toContain('**Fix:**')
+      expect(prompt).toContain('> **PR Comment:**')
     })
 
-    it('should include example with multiple findings', () => {
+    it('should include example with code snippets and PR comment', () => {
       const pr = createBasicPR()
       const prompt = buildPRSystemPrompt(pr)
 
-      expect(prompt).toContain('### Example with Multiple Findings')
+      expect(prompt).toContain('### Example')
       expect(prompt).toContain('Null Pointer Exception')
-      expect(prompt).toContain('Missing Error Handling')
+      expect(prompt).toContain('**Current code:**')
+      expect(prompt).toContain('**Fix:**')
+      expect(prompt).toContain('> **PR Comment:**')
     })
 
     it('should explain when NOT to use postable comments', () => {
@@ -648,12 +653,20 @@ describe('buildPRSystemPrompt', () => {
       expect(prompt).toContain('General explanations or summaries')
     })
 
+    it('should explain what gets posted to PR', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('### What Gets Posted to PR')
+      expect(prompt).toContain('Only the text in the `> **PR Comment:**` blockquote gets posted')
+    })
+
     it('should explain rules for placement', () => {
       const pr = createBasicPR()
       const prompt = buildPRSystemPrompt(pr)
 
       expect(prompt).toContain('### Rules')
-      expect(prompt).toContain('Put `<!--POSTABLE:...-->` IMMEDIATELY after each finding')
+      expect(prompt).toContain('Always show **Current code** and **Fix** code snippets')
       expect(prompt).toContain('Use `---` horizontal rules to separate findings')
     })
   })

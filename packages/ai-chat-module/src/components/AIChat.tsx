@@ -106,6 +106,7 @@ interface PostableComment {
 interface ContentSection {
   content: string // The displayable content (POSTABLE stripped)
   postable: PostableComment | null // If this section has a postable finding
+  prComment: string | null // The extracted PR comment to post (if any)
 }
 
 // Parse POSTABLE metadata from message content
@@ -113,32 +114,51 @@ interface ContentSection {
 const POSTABLE_START = '<!--POSTABLE:'
 const POSTABLE_END = '-->'
 
+// Extract PR Comment from content (the part to be posted)
+// Format: > **PR Comment:** This is what gets posted
+function extractPRComment(content: string): string | null {
+  // Look for blockquote with "PR Comment:" marker
+  const prCommentRegex = />\s*\*\*PR Comment:\*\*\s*(.+?)(?=\n[^>]|<!--POSTABLE|$)/s
+  const match = content.match(prCommentRegex)
+  if (match?.[1]) {
+    return match[1].trim()
+  }
+  return null
+}
+
 // Extract POSTABLE from a single piece of content
-function extractPostable(content: string): { cleaned: string; postable: PostableComment | null } {
+function extractPostable(content: string): {
+  cleaned: string
+  postable: PostableComment | null
+  prComment: string | null
+} {
   const startIdx = content.indexOf(POSTABLE_START)
   if (startIdx === -1) {
-    return { cleaned: content, postable: null }
+    return { cleaned: content, postable: null, prComment: null }
   }
 
   const jsonStart = startIdx + POSTABLE_START.length
   const endIdx = content.indexOf(POSTABLE_END, jsonStart)
   if (endIdx === -1) {
-    return { cleaned: content, postable: null }
+    return { cleaned: content, postable: null, prComment: null }
   }
 
   const jsonStr = content.slice(jsonStart, endIdx).trim()
   const cleaned = (content.slice(0, startIdx) + content.slice(endIdx + POSTABLE_END.length)).trim()
 
+  // Extract the PR comment before cleaning
+  const prComment = extractPRComment(content)
+
   try {
     const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
     if (parsed.file && typeof parsed.line === 'number') {
-      return { cleaned, postable: { file: parsed.file, line: parsed.line } }
+      return { cleaned, postable: { file: parsed.file, line: parsed.line }, prComment }
     }
   } catch {
     console.warn('Failed to parse POSTABLE metadata:', jsonStr)
   }
 
-  return { cleaned, postable: null }
+  return { cleaned, postable: null, prComment }
 }
 
 // Parse message into sections, each section may have its own POSTABLE
@@ -149,13 +169,13 @@ function parseContentSections(content: string): ContentSection[] {
 
   if (parts.length === 1) {
     // No sections, treat entire content as one
-    const { cleaned, postable } = extractPostable(content)
-    return [{ content: cleaned, postable }]
+    const { cleaned, postable, prComment } = extractPostable(content)
+    return [{ content: cleaned, postable, prComment }]
   }
 
   return parts.map((part) => {
-    const { cleaned, postable } = extractPostable(part.trim())
-    return { content: cleaned, postable }
+    const { cleaned, postable, prComment } = extractPostable(part.trim())
+    return { content: cleaned, postable, prComment }
   })
 }
 
@@ -593,7 +613,7 @@ const MessageBubble = React.memo(function MessageBubble({
       return parseContentSections(message.content || '')
     } catch (e) {
       console.error('Error parsing content sections:', e)
-      return [{ content: message.content || '', postable: null }]
+      return [{ content: message.content || '', postable: null, prComment: null }]
     }
   }, [message.content, message.role])
 
@@ -668,7 +688,9 @@ const MessageBubble = React.memo(function MessageBubble({
                 type="button"
                 onClick={() => {
                   if (section.postable) {
-                    handlePostComment(section.postable, section.content, index)
+                    // Use PR comment if available, otherwise fall back to section content
+                    const commentBody = section.prComment || section.content
+                    handlePostComment(section.postable, commentBody, index)
                   }
                 }}
                 className="flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
@@ -681,7 +703,9 @@ const MessageBubble = React.memo(function MessageBubble({
                 type="button"
                 onClick={() => {
                   if (section.postable) {
-                    handlePostComment(section.postable, section.content, index)
+                    // Use PR comment if available, otherwise fall back to section content
+                    const commentBody = section.prComment || section.content
+                    handlePostComment(section.postable, commentBody, index)
                   }
                 }}
                 className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors font-medium"
