@@ -254,40 +254,59 @@ interface QuickPrompt {
   prompt: string
 }
 
-const PR_QUICK_PROMPTS: QuickPrompt[] = [
-  {
-    id: 'review-bugs',
-    label: 'Find bugs',
-    icon: <AlertCircle className="w-3 h-3" />,
-    prompt:
-      'Review this PR for bugs, potential issues, and edge cases. Show me the problematic code and how to fix it.'
-  },
-  {
-    id: 'summarize',
-    label: 'Summarize',
-    icon: <MessageSquare className="w-3 h-3" />,
-    prompt: 'Summarize this PR in 2-3 sentences. What does it do and why?'
-  },
-  {
-    id: 'explain-ci',
-    label: 'Why is CI failing?',
-    icon: <AlertCircle className="w-3 h-3" />,
-    prompt: 'Look at the CI checks and explain why they might be failing. What should be fixed?'
-  },
-  {
-    id: 'security',
-    label: 'Security review',
-    icon: <AlertCircle className="w-3 h-3" />,
-    prompt: 'Review this PR for security vulnerabilities, injection risks, or unsafe patterns.'
-  },
-  {
-    id: 'improvements',
-    label: 'Suggest improvements',
-    icon: <MessageSquare className="w-3 h-3" />,
-    prompt:
-      'Suggest improvements to the code in this PR. Focus on readability, performance, and best practices.'
+// PR context for determining which quick actions to show
+interface PRContext {
+  hasCIFailures?: boolean
+  hasReviews?: boolean
+  isApproved?: boolean
+}
+
+// Get context-aware PR quick prompts
+function getPRQuickPrompts(context: PRContext = {}): QuickPrompt[] {
+  const prompts: QuickPrompt[] = [
+    {
+      id: 'review-bugs',
+      label: 'Find bugs',
+      icon: <AlertCircle className="w-3 h-3" />,
+      prompt:
+        'Review this PR for bugs, potential issues, and edge cases. Show me the problematic code and how to fix it.'
+    },
+    {
+      id: 'summarize',
+      label: 'Summarize',
+      icon: <MessageSquare className="w-3 h-3" />,
+      prompt: 'Summarize this PR in 2-3 sentences. What does it do and why?'
+    }
+  ]
+
+  // Only show "Why is CI failing?" when CI is actually failing
+  if (context.hasCIFailures) {
+    prompts.push({
+      id: 'explain-ci',
+      label: 'Why is CI failing?',
+      icon: <AlertCircle className="w-3 h-3" />,
+      prompt: 'Look at the CI checks and explain why they are failing. What should be fixed?'
+    })
   }
-]
+
+  prompts.push(
+    {
+      id: 'security',
+      label: 'Security review',
+      icon: <AlertCircle className="w-3 h-3" />,
+      prompt: 'Review this PR for security vulnerabilities, injection risks, or unsafe patterns.'
+    },
+    {
+      id: 'improvements',
+      label: 'Suggest improvements',
+      icon: <MessageSquare className="w-3 h-3" />,
+      prompt:
+        'Suggest improvements to the code in this PR. Focus on readability, performance, and best practices.'
+    }
+  )
+
+  return prompts
+}
 
 // Pre-defined prompts for general chat
 const GENERAL_QUICK_PROMPTS: QuickPrompt[] = [
@@ -456,6 +475,10 @@ interface SelectedPR {
       }
       name: string
     }
+  }
+  checks?: {
+    state: 'pending' | 'success' | 'failure' | 'error'
+    total_count: number
   }
 }
 
@@ -2153,7 +2176,15 @@ export function AIChatPanel({
               <div className="space-y-1.5">
                 <p className="text-[10px] text-muted-foreground font-medium">Quick actions</p>
                 <QuickActions
-                  prompts={linkedPRChat ? PR_QUICK_PROMPTS : GENERAL_QUICK_PROMPTS}
+                  prompts={
+                    linkedPRChat
+                      ? getPRQuickPrompts({
+                          hasCIFailures:
+                            selectedPR?.checks?.state === 'failure' ||
+                            selectedPR?.checks?.state === 'error'
+                        })
+                      : GENERAL_QUICK_PROMPTS
+                  }
                   onSelect={(prompt) => {
                     setInput(prompt)
                     textareaRef.current?.focus()
