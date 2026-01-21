@@ -368,10 +368,10 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
     Actions.toggleMyPRsFilter(repoFullName)
   }, [])
 
-  // Handle reload via mutation
+  // Handle reload via mutation - use mutateAsync to return a promise
   const handleReload = useCallback(
     async (repoFullName: string) => {
-      refreshRepoPRsMutation.mutate(repoFullName)
+      await refreshRepoPRsMutation.mutateAsync(repoFullName)
     },
     [refreshRepoPRsMutation]
   )
