@@ -88,6 +88,91 @@ import {
   SelectValue
 } from '@codelobby/ui-kit'
 
+// ===================
+// ERROR BOUNDARY
+// ===================
+
+interface MessageErrorBoundaryProps {
+  children: React.ReactNode
+  messageId?: string
+  content?: string
+}
+
+interface MessageErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}
+
+/**
+ * Error boundary for message content rendering.
+ * Catches React errors during rendering and logs them.
+ */
+class MessageErrorBoundary extends React.Component<
+  MessageErrorBoundaryProps,
+  MessageErrorBoundaryState
+> {
+  constructor(props: MessageErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error): MessageErrorBoundaryState {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    // Log to console for debugging
+    console.error('[AIChat] Message render error:', error)
+    console.error('[AIChat] Error info:', errorInfo)
+    console.error('[AIChat] Message ID:', this.props.messageId)
+    console.error('[AIChat] Content preview:', this.props.content?.slice(0, 500))
+
+    // Log to app logs via electron API
+    if (typeof window !== 'undefined' && window.electron?.logFromRenderer) {
+      window.electron.logFromRenderer(
+        'error',
+        'AI Chat',
+        `Message render error: ${error.message}`,
+        {
+          errorMessage: error.message,
+          errorStack: error.stack,
+          componentStack: errorInfo.componentStack,
+          messageId: this.props.messageId,
+          contentPreview: this.props.content?.slice(0, 200)
+        }
+      )
+    }
+  }
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
+          <div className="flex items-center gap-2 text-destructive font-medium mb-1">
+            <AlertCircle className="w-4 h-4" />
+            Failed to render message
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {this.state.error?.message || 'Unknown rendering error'}
+          </p>
+          {this.props.content && (
+            <details className="mt-2">
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                Show raw content
+              </summary>
+              <pre className="mt-1 p-2 bg-muted/50 rounded text-xs overflow-auto max-h-40 whitespace-pre-wrap">
+                {this.props.content}
+              </pre>
+            </details>
+          )}
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
@@ -786,7 +871,9 @@ const MessageBubble = React.memo(function MessageBubble({
     return (
       <div key={key} className={cn(index > 0 && 'border-t border-border/20 pt-2 mt-2')}>
         <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-          <MarkdownContent content={section.content} />
+          <MessageErrorBoundary messageId={message.id} content={section.content}>
+            <MarkdownContent content={section.content} />
+          </MessageErrorBoundary>
         </div>
 
         {/* Inline Post button for this section */}
@@ -916,7 +1003,9 @@ const MessageBubble = React.memo(function MessageBubble({
                 sections.map((section, index) => renderSection(section, index))
               ) : (
                 <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-                  <MarkdownContent content={message.content || ''} />
+                  <MessageErrorBoundary messageId={message.id} content={message.content}>
+                    <MarkdownContent content={message.content || ''} />
+                  </MessageErrorBoundary>
                 </div>
               )}
             </div>
@@ -993,7 +1082,9 @@ const StreamingBubble = React.memo(function StreamingBubble({
         >
           {streaming.content ? (
             <>
-              <MarkdownContent content={streaming.content} />
+              <MessageErrorBoundary messageId="streaming" content={streaming.content}>
+                <MarkdownContent content={streaming.content} />
+              </MessageErrorBoundary>
               <span className="inline-block w-2 h-4 bg-primary/50 animate-pulse ml-0.5" />
             </>
           ) : (
