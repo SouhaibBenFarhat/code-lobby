@@ -1,33 +1,38 @@
 /**
- * Bootstrap - Module Registration
+ * @codelobby/app - Bootstrap
  *
- * Phase 1: Hybrid Architecture
- * - Data module is initialized to handle actions
- * - UI modules are NOT registered to slots (App.tsx renders directly)
- * - StoreSync keeps the shared store in sync with App state
+ * This module initializes the application:
+ * 1. Initializes the data module (connects actions to IPC)
+ * 2. Imports all UI modules (triggers their self-registration to slots)
  *
- * Phase 2 (Future): Full Modular Architecture
- * - Uncomment module imports to enable slot registration
- * - Remove direct rendering from App.tsx
- * - Components read from store instead of props
+ * Call this once before rendering the App.
  */
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INITIALIZE DATA MODULE
-// ═══════════════════════════════════════════════════════════════════════════
+// Initialize data module first (it handles IPC and populates the store)
 import { initDataModule } from '@codelobby/data-module'
-initDataModule()
 
-// ═══════════════════════════════════════════════════════════════════════════
-// UI MODULE IMPORTS (Phase 2 - Currently Disabled)
-// ═══════════════════════════════════════════════════════════════════════════
-// These are disabled because App.tsx currently renders components directly.
-// When we migrate to full modular architecture, uncomment these:
+// Import modules to trigger their self-registration to slots
+// The order doesn't matter - each module registers itself to the appropriate slot
+import '@codelobby/header-module'
+import '@codelobby/explorer-module'
+import '@codelobby/canvas-module'
+import '@codelobby/pr-detail-module'
+import '@codelobby/ai-chat-module'
 
-// import '@codelobby/header-module'     // → 'header' slot
-// import '@codelobby/explorer-module'   // → 'left-panel' slot
-// import '@codelobby/canvas-module'     // → 'main' slot
-// import '@codelobby/pr-detail-module'  // → 'right-panel' slot
-// import '@codelobby/ai-chat-module'    // → 'right-panel' slot
+/**
+ * Initialize all modules and data layer.
+ * Call this once at app startup.
+ */
+export function bootstrap(): void {
+  console.log('[bootstrap] Initializing CodeLobby...')
 
-console.log('[bootstrap] Data module initialized (Phase 1 hybrid mode)')
+  // Initialize the data module (connects actions to store)
+  initDataModule()
+
+  // Validate the user's token
+  import('@codelobby/shared-store').then(({ Actions }) => {
+    Actions.validateToken()
+  })
+
+  console.log('[bootstrap] CodeLobby initialized')
+}

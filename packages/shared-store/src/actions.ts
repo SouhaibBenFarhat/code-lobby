@@ -7,7 +7,7 @@
  * UI Modules → emit Actions → Data Module listens → Updates Store → UI reacts
  */
 
-import type { PullRequest, ViewMode } from './types'
+import type { CardLayout, PullRequest, ViewMode } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ACTION EVENT TYPES
@@ -15,7 +15,7 @@ import type { PullRequest, ViewMode } from './types'
 
 export type ActionEvents = {
   // GitHub Actions
-  'action:fetch-repos': void
+  'action:fetch-repos': undefined
   'action:fetch-prs': { repos: string[] }
   'action:fetch-pr-details': { prId: string }
   'action:refresh-repo': { repoFullName: string }
@@ -28,24 +28,32 @@ export type ActionEvents = {
   'action:find-preview-url': { pr: PullRequest }
   'action:find-jira-ticket': { pr: PullRequest }
   'action:create-pr-chat': { pr: PullRequest }
-  'action:clear-chat-history': void
+  'action:clear-chat-history': undefined
 
   // Auth Actions
   'action:sign-in': { token: string }
-  'action:sign-out': void
-  'action:validate-token': void
+  'action:sign-out': undefined
+  'action:validate-token': undefined
 
   // Layout Actions
   'action:set-view-mode': { mode: ViewMode }
-  'action:toggle-pr-detail': void
-  'action:toggle-ai-panel': void
+  'action:toggle-pr-detail': undefined
+  'action:toggle-ai-panel': undefined
   'action:resize-pr-detail': { width: number }
   'action:resize-ai-panel': { width: number }
   'action:resize-explorer': { width: number }
+  'action:toggle-repo-expanded': { repoFullName: string }
+  'action:set-expanded-repos': { repos: string[] }
+  'action:toggle-my-prs-filter': { repoFullName: string }
+
+  // Canvas Actions
+  'action:set-card-layouts': { layouts: CardLayout[] }
+  'action:set-repo-color': { repoFullName: string; color: string }
+  'action:set-repo-minimized': { repoFullName: string; minimized: boolean }
 
   // Data Actions
-  'action:clear-cache': void
-  'action:factory-reset': void
+  'action:clear-cache': undefined
+  'action:factory-reset': undefined
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -163,6 +171,32 @@ export const Actions = {
 
   /** Resize explorer panel */
   resizeExplorer: (width: number) => emit('action:resize-explorer', { width }),
+
+  /** Toggle a repo's expanded state */
+  toggleRepoExpanded: (repoFullName: string) =>
+    emit('action:toggle-repo-expanded', { repoFullName }),
+
+  /** Set all expanded repos at once */
+  setExpandedRepos: (repos: string[]) => emit('action:set-expanded-repos', { repos }),
+
+  /** Toggle "My PRs" filter for a repo */
+  toggleMyPRsFilter: (repoFullName: string) =>
+    emit('action:toggle-my-prs-filter', { repoFullName }),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Canvas Actions
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Update card layouts (positions/sizes) */
+  setCardLayouts: (layouts: CardLayout[]) => emit('action:set-card-layouts', { layouts }),
+
+  /** Set a repo's accent color */
+  setRepoColor: (repoFullName: string, color: string) =>
+    emit('action:set-repo-color', { repoFullName, color }),
+
+  /** Minimize/restore a repo card */
+  setRepoMinimized: (repoFullName: string, minimized: boolean) =>
+    emit('action:set-repo-minimized', { repoFullName, minimized }),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Data Actions

@@ -6,13 +6,7 @@
  * App Shell renders whatever is in each slot.
  */
 
-import {
-  type ComponentType,
-  type ReactNode,
-  Suspense,
-  useCallback,
-  useSyncExternalStore
-} from 'react'
+import { type ComponentType, type ReactNode, Suspense, useSyncExternalStore } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -27,6 +21,8 @@ export type SlotName =
   | 'left-panel'
   | 'main'
   | 'right-panel'
+  | 'pr-detail-panel'
+  | 'ai-panel'
   | 'footer'
   | 'modal'
   | 'toast'
@@ -75,7 +71,9 @@ const subscribers = new Set<() => void>()
 
 /** Notify all subscribers of a state change */
 function notifySubscribers() {
-  subscribers.forEach((callback) => callback())
+  for (const callback of subscribers) {
+    callback()
+  }
 }
 
 /** Subscribe to registry changes */
@@ -261,7 +259,7 @@ export function Slot({
 
   // If no modules, render fallback
   if (modules.length === 0) {
-    return fallback ? <>{fallback}</> : null
+    return fallback ? fallback : null
   }
 
   const content = modules.map(({ id, component: Component }) => (

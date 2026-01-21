@@ -1,24 +1,64 @@
-/**
- * @codelobby/ui-kit
- *
- * Re-exports all shared UI components.
- * These are the actual production components from the renderer.
- */
+// Utilities
 
-// Re-export from the renderer's UI components
-// These paths resolve via Vite aliases
-export * from '@/components/ui/avatar'
-export * from '@/components/ui/badge'
-export * from '@/components/ui/button'
-export * from '@/components/ui/card'
-export * from '@/components/ui/dialog'
-export * from '@/components/ui/input'
-export * from '@/components/ui/popover'
-export * from '@/components/ui/scroll-area'
-export * from '@/components/ui/select'
-export * from '@/components/ui/separator'
-export * from '@/components/ui/toaster'
-export * from '@/components/ui/tooltip'
-
-// Re-export utility functions
-export * from '@/lib/utils'
+export { Avatar, AvatarFallback, AvatarImage } from './avatar'
+export { Badge, type BadgeProps, badgeVariants } from './badge'
+// Components
+export { Button, type ButtonProps, buttonVariants } from './button'
+export {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from './card'
+export { ClaudeIcon, ClaudeLogoIcon } from './claude-icon'
+// Logo and Icons
+export { CodeLobbyIcon, CodeLobbyLogo, CodeLobbyLogoAnimated } from './codelobby-logo'
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger
+} from './dialog'
+export { Input, type InputProps } from './input'
+// Markdown
+export { MarkdownContent } from './markdown-content'
+export { Popover, PopoverContent, PopoverTrigger } from './popover'
+export { ScrollArea, ScrollBar } from './scroll-area'
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue
+} from './select'
+export { Separator } from './separator'
+export {
+  Toast,
+  ToastAction,
+  type ToastActionElement,
+  ToastClose,
+  ToastDescription,
+  Toaster,
+  type ToastProps,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+  toast
+} from './toaster'
+// Auth
+export { TokenInput } from './token-input'
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
+export { cn, formatRelativeTime, groupBy, truncate } from './utils'

@@ -13,6 +13,7 @@ export interface PullRequest {
   id: string
   number: number
   title: string
+  body: string | null
   html_url: string
   state: string
   created_at: string

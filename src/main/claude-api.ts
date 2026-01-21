@@ -143,25 +143,23 @@ export async function sendMessage(
 
     // Build request parameters
     // When thinking is enabled, max_tokens must be > thinking.budget_tokens
-    const requestParams: Parameters<typeof client.messages.create>[0] = {
+    const requestParams = {
       model: selectedModel,
       max_tokens: useThinking ? MAX_TOKENS_WITH_THINKING : MAX_TOKENS,
       system: systemPrompt,
       messages: messages.map((m) => ({
-        role: m.role,
+        role: m.role as 'user' | 'assistant',
         content: m.content
-      }))
+      })),
+      stream: false as const // Explicitly disable streaming for proper type narrowing
     }
 
     // Add thinking configuration if supported and enabled
-    if (useThinking) {
-      requestParams.thinking = {
-        type: 'enabled',
-        budget_tokens: THINKING_BUDGET
-      }
-    }
+    const thinkingConfig = useThinking
+      ? { thinking: { type: 'enabled' as const, budget_tokens: THINKING_BUDGET } }
+      : {}
 
-    const response = await client.messages.create(requestParams)
+    const response = await client.messages.create({ ...requestParams, ...thinkingConfig })
 
     // Extract text and thinking content from the response
     let content = ''

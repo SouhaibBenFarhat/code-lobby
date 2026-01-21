@@ -114,6 +114,7 @@ interface StoreSchema {
   prAnalysisPanelStates: Record<string, boolean> // Panel open/closed state per PR (prId -> isOpen)
   prChats: PRChat[] // AI chats linked to specific PRs
   activePRChatId: string | null // Currently active PR chat (null = general chat)
+  tanstackQueryCache: string | null // TanStack Query cache for standardized persistence
 }
 
 const store = new Store<StoreSchema>({
@@ -157,7 +158,8 @@ const store = new Store<StoreSchema>({
     prAnalyses: [],
     prAnalysisPanelStates: {},
     prChats: [],
-    activePRChatId: null
+    activePRChatId: null,
+    tanstackQueryCache: null // TanStack Query cache (starts empty)
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -600,4 +602,22 @@ export function setActivePRChatId(prId: string | null): void {
  */
 export function factoryReset(): void {
   store.clear()
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TANSTACK QUERY CACHE PERSISTENCE
+// ═══════════════════════════════════════════════════════════════════════════
+// These functions allow TanStack Query to persist its cache to disk.
+// This is the STANDARDIZED way to handle query caching in React apps.
+
+export function getQueryCache(): string | null {
+  return store.get('tanstackQueryCache') || null
+}
+
+export function setQueryCache(cache: string): void {
+  store.set('tanstackQueryCache', cache)
+}
+
+export function clearQueryCache(): void {
+  store.delete('tanstackQueryCache')
 }

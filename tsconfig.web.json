@@ -18,18 +18,20 @@
       "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
       "@codelobby/shared-store": ["packages/shared-store/src/index.ts"],
       "@codelobby/shared-store/*": ["packages/shared-store/src/*"],
+      "@codelobby/queries": ["packages/queries/src/index.ts"],
       "@codelobby/data-module": ["packages/data-module/src/index.ts"],
-      "@codelobby/header-module": ["packages/header-module/src/index.ts"],
-      "@codelobby/explorer-module": ["packages/explorer-module/src/index.ts"],
-      "@codelobby/canvas-module": ["packages/canvas-module/src/index.ts"],
-      "@codelobby/pr-detail-module": ["packages/pr-detail-module/src/index.ts"],
-      "@codelobby/ai-chat-module": ["packages/ai-chat-module/src/index.ts"],
+      "@codelobby/header-module": ["packages/header-module/src/index.tsx"],
+      "@codelobby/explorer-module": ["packages/explorer-module/src/index.tsx"],
+      "@codelobby/canvas-module": ["packages/canvas-module/src/index.tsx"],
+      "@codelobby/pr-detail-module": ["packages/pr-detail-module/src/index.tsx"],
+      "@codelobby/ai-chat-module": ["packages/ai-chat-module/src/index.tsx"],
       "@codelobby/app": ["packages/app/src/index.ts"],
       "@codelobby/app/bootstrap": ["packages/app/src/bootstrap.ts"],
-      "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"]
+      "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"],
+      "@codelobby/test-utils": ["packages/test-utils/src/index.ts"]
     },
-    "types": ["node"],
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
     "outDir": "./out/renderer"
   },
-  "include": ["src/renderer/**/*", "src/preload/index.d.ts", "packages/**/*"]
+  "include": ["src/renderer/**/*", "src/preload/electron-api.d.ts", "packages/**/*", "tests/**/*"]
 }

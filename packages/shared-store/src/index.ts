@@ -8,11 +8,11 @@
  * - No direct communication between modules
  */
 
-// Re-export everything
-export * from './types'
-export * from './store'
 export * from './actions'
+export { Actions, onAction } from './actions'
+export * from './store'
 
 // Named exports for convenience
-export { Store, useSignal, createSignal } from './store'
-export { Actions, onAction } from './actions'
+export { createSignal, Store, useSignal } from './store'
+// Re-export everything
+export * from './types'

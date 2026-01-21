@@ -163,13 +163,13 @@ export interface ChatMessage {
 }
 
 export interface PRChat {
-  id: string
   prId: string
   prNumber: number
   prTitle: string
   repoFullName: string
   messages: ChatMessage[]
   createdAt: string
+  updatedAt: string
   systemContext?: string
 }
 
@@ -201,6 +201,7 @@ export interface CardLayout {
 export interface RateLimit {
   limit: number
   remaining: number
-  reset: number
   used: number
+  resetAt: string
+  percentage: number
 }

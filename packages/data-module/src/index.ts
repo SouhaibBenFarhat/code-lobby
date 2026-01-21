@@ -11,74 +11,17 @@
  * UI Modules never call APIs directly - they emit actions, and this module handles them.
  */
 
-import { Store, onAction } from '@codelobby/shared-store'
-import type { ChatMessage, GitHubUser, PRChat, PullRequest, Repository } from '@codelobby/shared-store'
+/// <reference path="../../../src/preload/electron-api.d.ts" />
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ELECTRON API TYPE (from preload)
-// ═══════════════════════════════════════════════════════════════════════════
-
-// This type should match what's exposed in preload/index.ts
-// For now, we'll use window.electron and trust it exists
-declare global {
-  interface Window {
-    electron: {
-      // Auth
-      getToken: () => Promise<string | null>
-      setToken: (token: string) => Promise<{ success: boolean }>
-      clearToken: () => Promise<{ success: boolean }>
-      validateToken: () => Promise<{ valid: boolean; user?: GitHubUser }>
-
-      // GitHub
-      fetchContributedRepos: () => Promise<{ success: boolean; data?: Repository[]; error?: string }>
-      fetchAllPRsForRepos: (repos: string[]) => Promise<{
-        success: boolean
-        data?: PullRequest[]
-        currentUser?: string
-        rateLimit?: { remaining: number; limit: number; reset: number; used: number }
-        error?: string
-      }>
-      refreshRepoPRs: (repoFullName: string) => Promise<{
-        success: boolean
-        data?: PullRequest[]
-        rateLimit?: { remaining: number; limit: number; reset: number; used: number }
-        error?: string
-      }>
-
-      // AI
-      getClaudeApiKey: () => Promise<string | null>
-      setClaudeApiKey: (key: string) => Promise<{ success: boolean }>
-      sendChatMessageStreaming: (params: {
-        message: string
-        history?: ChatMessage[]
-        systemContext?: string
-        activePRChatId?: string | null
-      }) => Promise<AsyncIterable<{ type: string; content: string }>>
-
-      // Store
-      getSelectedRepos: () => Promise<string[] | null>
-      setSelectedRepos: (repos: string[]) => Promise<{ success: boolean }>
-      getViewMode: () => Promise<'canvas' | 'ide'>
-      setViewMode: (mode: 'canvas' | 'ide') => Promise<{ success: boolean }>
-      getAIPanel: () => Promise<{ isOpen: boolean; width: number }>
-      setAIPanel: (settings: { isOpen?: boolean; width?: number }) => Promise<{ success: boolean }>
-      getPRDetailPanel: () => Promise<{ isOpen: boolean; width: number }>
-      setPRDetailPanel: (settings: { isOpen?: boolean; width?: number }) => Promise<{ success: boolean }>
-      getIDEViewSettings: () => Promise<{ sidebarWidth: number; expandedRepos: string[] }>
-      setIDEViewSettings: (settings: { sidebarWidth?: number; expandedRepos?: string[] }) => Promise<{ success: boolean }>
-
-      // PR Chats
-      getPRChats: () => Promise<PRChat[]>
-      createPRChat: (prId: string, prNumber: number, prTitle: string, repoFullName: string, systemContext?: string) => Promise<PRChat>
-      getActivePRChatId: () => Promise<string | null>
-      setActivePRChatId: (id: string | null) => Promise<{ success: boolean }>
-
-      // Data management
-      clearDataCache: () => Promise<{ success: boolean }>
-      factoryReset: () => Promise<{ success: boolean }>
-    }
-  }
-}
+import type {
+  ChatMessage,
+  GitHubUser,
+  PRChat,
+  PullRequest,
+  Repository
+} from '@codelobby/shared-store'
+import { onAction, Store } from '@codelobby/shared-store'
+import { buildPRSystemPrompt } from './prompts/pr-system-prompt'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLEANUP FUNCTIONS
@@ -159,7 +102,7 @@ export function initDataModule(): void {
       try {
         const result = await window.electron.fetchContributedRepos()
         if (result.success && result.data) {
-          Store.repos.value = result.data
+          Store.repos.value = result.data as Repository[]
         } else {
           Store.errors.github.value = new Error(result.error || 'Failed to fetch repos')
         }
@@ -178,7 +121,7 @@ export function initDataModule(): void {
       try {
         const result = await window.electron.fetchAllPRsForRepos(repos)
         if (result.success && result.data) {
-          Store.prs.value = result.data
+          Store.prs.value = result.data as PullRequest[]
           if (result.rateLimit) {
             Store.rateLimit.value = result.rateLimit
           }
@@ -200,7 +143,7 @@ export function initDataModule(): void {
         if (result.success && result.data) {
           // Update PRs for this repo only
           const otherPRs = Store.prs.value.filter((pr) => pr.base.repo.full_name !== repoFullName)
-          Store.prs.value = [...otherPRs, ...result.data]
+          Store.prs.value = [...otherPRs, ...(result.data as PullRequest[])]
           if (result.rateLimit) {
             Store.rateLimit.value = result.rateLimit
           }
@@ -245,37 +188,44 @@ export function initDataModule(): void {
       Store.chatHistory.value = [...Store.chatHistory.value, userMessage]
 
       try {
-        const stream = await window.electron.sendChatMessageStreaming({
-          message,
-          history: Store.chatHistory.value,
-          systemContext,
-          activePRChatId: Store.activePRChatId.value
-        })
+        const result = await window.electron.sendChatMessageStreaming(message, systemContext)
+
+        if (!result.success || !result.streamId) {
+          throw new Error(result.error || 'Failed to start chat stream')
+        }
 
         let assistantContent = ''
         let thinkingContent = ''
 
-        for await (const chunk of stream) {
-          if (chunk.type === 'thinking') {
-            thinkingContent += chunk.content
-            Store.aiThinking.value = thinkingContent
-          } else if (chunk.type === 'text') {
-            assistantContent += chunk.content
-          }
-        }
+        // Subscribe to stream chunks
+        const unsubscribe = window.electron.onChatStreamChunk((chunk) => {
+          if (chunk.streamId !== result.streamId) return
 
-        // Add assistant message
-        const assistantMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: assistantContent,
-          timestamp: new Date().toISOString(),
-          thinking: thinkingContent || undefined
-        }
-        Store.chatHistory.value = [...Store.chatHistory.value, assistantMessage]
+          if (chunk.type === 'thinking' && chunk.thinking) {
+            thinkingContent += chunk.thinking
+            Store.aiThinking.value = thinkingContent
+          } else if (chunk.type === 'text' && chunk.content) {
+            assistantContent += chunk.content
+          } else if (chunk.type === 'done') {
+            // Add assistant message
+            const assistantMessage: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: 'assistant',
+              content: assistantContent,
+              timestamp: new Date().toISOString(),
+              thinking: thinkingContent || undefined
+            }
+            Store.chatHistory.value = [...Store.chatHistory.value, assistantMessage]
+            Store.isAILoading.value = false
+            unsubscribe()
+          } else if (chunk.type === 'error') {
+            Store.errors.ai.value = new Error(chunk.error || 'AI streaming error')
+            Store.isAILoading.value = false
+            unsubscribe()
+          }
+        })
       } catch (error) {
         Store.errors.ai.value = error as Error
-      } finally {
         Store.isAILoading.value = false
       }
     })
@@ -288,15 +238,24 @@ export function initDataModule(): void {
       // Check if chat already exists
       const existing = Store.prChats.value.find((c) => c.prId === prId)
       if (existing) {
-        Store.activePRChatId.value = existing.id
+        Store.activePRChatId.value = existing.prId
         return
       }
 
-      // Create new PR chat
-      const prChat = await window.electron.createPRChat(prId, pr.number, pr.title, pr.base.repo.full_name)
-      Store.prChats.value = [...Store.prChats.value, prChat]
-      Store.activePRChatId.value = prChat.id
-      await window.electron.setActivePRChatId(prChat.id)
+      // Build PR system context for AI
+      const systemContext = buildPRSystemPrompt(pr)
+
+      // Create new PR chat with system context
+      const prChat = await window.electron.createPRChat(
+        prId,
+        pr.number,
+        pr.title,
+        pr.base.repo.full_name,
+        systemContext
+      )
+      Store.prChats.value = [...Store.prChats.value, prChat as PRChat]
+      Store.activePRChatId.value = prChat.prId
+      await window.electron.setActivePRChatId(prChat.prId)
     })
   )
 
@@ -354,13 +313,74 @@ export function initDataModule(): void {
     })
   )
 
+  cleanupFunctions.push(
+    onAction('action:toggle-repo-expanded', async ({ repoFullName }) => {
+      const current = Store.expandedRepos.value
+      const isExpanded = current.includes(repoFullName)
+      const newExpanded = isExpanded
+        ? current.filter((r) => r !== repoFullName)
+        : [...current, repoFullName]
+      Store.expandedRepos.value = newExpanded
+      await window.electron.setIDEViewSettings({ expandedRepos: newExpanded })
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:set-expanded-repos', async ({ repos }) => {
+      Store.expandedRepos.value = repos
+      await window.electron.setIDEViewSettings({ expandedRepos: repos })
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:toggle-my-prs-filter', async ({ repoFullName }) => {
+      const current = Store.myPRsRepos.value
+      const isEnabled = current.includes(repoFullName)
+      Store.myPRsRepos.value = isEnabled
+        ? current.filter((r) => r !== repoFullName)
+        : [...current, repoFullName]
+    })
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CANVAS HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  cleanupFunctions.push(
+    onAction('action:set-card-layouts', async ({ layouts }) => {
+      Store.cardLayouts.value = layouts
+      await window.electron.setCardLayouts(layouts)
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:set-repo-color', async ({ repoFullName, color }) => {
+      Store.repoColors.value = { ...Store.repoColors.value, [repoFullName]: color }
+      await window.electron.setRepoColor(repoFullName, color)
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:set-repo-minimized', async ({ repoFullName, minimized }) => {
+      const current = Store.minimizedRepos.value
+      if (minimized) {
+        if (!current.includes(repoFullName)) {
+          Store.minimizedRepos.value = [...current, repoFullName]
+        }
+      } else {
+        Store.minimizedRepos.value = current.filter((r) => r !== repoFullName)
+      }
+      await window.electron.setRepoMinimized(repoFullName, minimized)
+    })
+  )
+
   // ─────────────────────────────────────────────────────────────────────────
   // DATA MANAGEMENT HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
   cleanupFunctions.push(
     onAction('action:clear-cache', async () => {
-      await window.electron.clearDataCache()
+      await window.electron.clearAllData()
       Store.repos.value = []
       Store.prs.value = []
     })
@@ -395,10 +415,29 @@ export function initDataModule(): void {
 }
 
 /**
+ * Wait for window.electron to be available (preload script)
+ */
+async function waitForElectron(): Promise<void> {
+  if (typeof window !== 'undefined' && window.electron) {
+    return
+  }
+  // Wait up to 5 seconds for electron to be available
+  for (let i = 0; i < 50; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    if (typeof window !== 'undefined' && window.electron) {
+      return
+    }
+  }
+  throw new Error('window.electron not available after 5 seconds')
+}
+
+/**
  * Load initial data from persisted storage.
  */
 async function loadInitialData(): Promise<void> {
   try {
+    await waitForElectron()
+
     // Load view mode
     const viewMode = await window.electron.getViewMode()
     Store.viewMode.value = viewMode
@@ -421,6 +460,16 @@ async function loadInitialData(): Promise<void> {
     const selectedRepos = await window.electron.getSelectedRepos()
     Store.selectedRepos.value = selectedRepos
 
+    // Load canvas settings
+    const cardLayouts = await window.electron.getCardLayouts()
+    Store.cardLayouts.value = cardLayouts || []
+
+    const repoColors = await window.electron.getRepoColors()
+    Store.repoColors.value = repoColors || {}
+
+    const minimizedRepos = await window.electron.getMinimizedRepos()
+    Store.minimizedRepos.value = minimizedRepos || []
+
     // Load PR chats
     const prChats = await window.electron.getPRChats()
     Store.prChats.value = prChats
@@ -429,9 +478,50 @@ async function loadInitialData(): Promise<void> {
     const activePRChatId = await window.electron.getActivePRChatId()
     Store.activePRChatId.value = activePRChatId
 
-    // Load Claude API key
+    // Load Claude API key and AI settings
     const claudeApiKey = await window.electron.getClaudeApiKey()
     Store.claudeApiKey.value = claudeApiKey
+
+    const selectedModel = await window.electron.getSelectedModel()
+    Store.selectedModel.value = selectedModel
+
+    const enableThinking = await window.electron.getEnableThinking()
+    Store.enableThinking.value = enableThinking
+
+    // Load general chat history
+    const chatHistory = await window.electron.getChatHistory()
+    Store.chatHistory.value = chatHistory
+
+    // If authenticated, fetch repos and PRs
+    if (Store.isAuthenticated.value) {
+      console.log('[data-module] User authenticated, fetching repos...')
+      Store.loading.repos.value = true
+      try {
+        const reposResult = await window.electron.fetchContributedRepos()
+        if (reposResult.success && reposResult.data) {
+          const repos = reposResult.data as Repository[]
+          Store.repos.value = repos
+
+          // Fetch PRs for selected repos (or all if none selected)
+          const reposToFetch = selectedRepos || repos.map((r) => r.full_name)
+          if (reposToFetch.length > 0) {
+            Store.loading.prs.value = true
+            const prsResult = await window.electron.fetchAllPRsForRepos(reposToFetch)
+            if (prsResult.success && prsResult.data) {
+              Store.prs.value = prsResult.data as PullRequest[]
+              if (prsResult.rateLimit) {
+                Store.rateLimit.value = prsResult.rateLimit
+              }
+            }
+            Store.loading.prs.value = false
+          }
+        }
+      } catch (error) {
+        console.error('[data-module] Failed to fetch repos:', error)
+      } finally {
+        Store.loading.repos.value = false
+      }
+    }
 
     console.log('[data-module] Initial data loaded')
   } catch (error) {
@@ -444,7 +534,9 @@ async function loadInitialData(): Promise<void> {
  * Call this when the app is shutting down.
  */
 export function destroyDataModule(): void {
-  cleanupFunctions.forEach((cleanup) => cleanup())
+  cleanupFunctions.forEach((cleanup) => {
+    cleanup()
+  })
   cleanupFunctions.length = 0
   console.log('[data-module] Destroyed')
 }

@@ -6,7 +6,16 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
+    "includes": [
+      "*.ts",
+      "*.tsx",
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "packages/*/src/**/*.ts",
+      "packages/*/src/**/*.tsx",
+      "tests/**/*.ts",
+      "tests/**/*.tsx"
+    ]
   },
   "linter": {
     "enabled": true,

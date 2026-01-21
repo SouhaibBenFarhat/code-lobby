@@ -1,18 +1,8 @@
 /**
- * @codelobby/app - Entry Point
+ * @codelobby/app
  *
- * Usage:
- * 1. Import bootstrap to register all modules
- * 2. Render the App component
- *
- * @example
- * ```tsx
- * import '@codelobby/app/bootstrap'  // Must be first!
- * import { App } from '@codelobby/app'
- *
- * createRoot(document.getElementById('root')!).render(<App />)
- * ```
+ * Main app package that exports the App shell and bootstrap function.
  */
 
-// Export the App shell
 export { App } from './App'
+export { bootstrap } from './bootstrap'

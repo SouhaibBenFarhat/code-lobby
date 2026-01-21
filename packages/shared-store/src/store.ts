@@ -38,7 +38,9 @@ export function createSignal<T>(initialValue: T) {
     set value(newValue: T) {
       if (newValue !== value) {
         value = newValue
-        subscribers.forEach((fn) => fn())
+        for (const fn of subscribers) {
+          fn()
+        }
       }
     },
     subscribe(fn: Subscriber) {
@@ -56,11 +58,7 @@ export function createSignal<T>(initialValue: T) {
  * Automatically re-renders when the signal value changes.
  */
 export function useSignal<T>(signal: ReturnType<typeof createSignal<T>>): T {
-  return useSyncExternalStore(
-    signal.subscribe,
-    signal.getSnapshot,
-    signal.getSnapshot
-  )
+  return useSyncExternalStore(signal.subscribe, signal.getSnapshot, signal.getSnapshot)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -185,10 +183,56 @@ export function getCurrentPRChat(): PRChat | null {
 export function getActiveChat(): { messages: ChatMessage[]; isPRChat: boolean } {
   const activePRChatId = Store.activePRChatId.value
   if (activePRChatId) {
-    const prChat = Store.prChats.value.find((c) => c.id === activePRChatId)
+    const prChat = Store.prChats.value.find((c) => c.prId === activePRChatId)
     if (prChat) {
       return { messages: prChat.messages, isPRChat: true }
     }
   }
   return { messages: Store.chatHistory.value, isPRChat: false }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TESTING UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Reset the store to initial state. For testing only.
+ */
+export function resetStore(): void {
+  Store.user.value = null
+  Store.isAuthenticated.value = false
+  Store.repos.value = []
+  Store.prs.value = []
+  Store.selectedRepos.value = null
+  Store.selectedPR.value = null
+  Store.rateLimit.value = null
+  Store.chatHistory.value = []
+  Store.prChats.value = []
+  Store.activePRChatId.value = null
+  Store.linkedPRChat.value = null
+  Store.isAILoading.value = false
+  Store.aiThinking.value = ''
+  Store.claudeApiKey.value = null
+  Store.selectedModel.value = null
+  Store.enableThinking.value = true
+  Store.viewMode.value = 'canvas'
+  Store.prDetailOpen.value = false
+  Store.prDetailWidth.value = 400
+  Store.aiPanelOpen.value = false
+  Store.aiPanelWidth.value = 400
+  Store.explorerWidth.value = 280
+  Store.expandedRepos.value = []
+  Store.cardLayouts.value = []
+  Store.repoColors.value = {}
+  Store.minimizedRepos.value = []
+  Store.myPRsRepos.value = []
+  Store.prAnalyses.value = []
+  Store.prAnalysisPanelStates.value = {}
+  Store.loading.repos.value = false
+  Store.loading.prs.value = false
+  Store.loading.prDetail.value = false
+  Store.loading.auth.value = true
+  Store.errors.github.value = null
+  Store.errors.ai.value = null
+  Store.errors.auth.value = null
 }
