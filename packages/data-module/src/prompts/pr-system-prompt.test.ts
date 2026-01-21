@@ -601,7 +601,7 @@ describe('buildPRSystemPrompt', () => {
       const pr = createBasicPR()
       const prompt = buildPRSystemPrompt(pr)
 
-      expect(prompt).toContain('## Posting Comments to the PR')
+      expect(prompt).toContain('## Posting Code Review Comments')
     })
 
     it('should include the POSTABLE metadata format', () => {
@@ -611,36 +611,50 @@ describe('buildPRSystemPrompt', () => {
       expect(prompt).toContain('<!--POSTABLE:{"file":"path/to/file.ts","line":42}-->')
     })
 
-    it('should explain when to use postable comments', () => {
+    it('should include severity levels', () => {
       const pr = createBasicPR()
       const prompt = buildPRSystemPrompt(pr)
 
-      expect(prompt).toContain('Bug findings')
-      expect(prompt).toContain('Security issues')
-      expect(prompt).toContain('Code review suggestions')
+      expect(prompt).toContain('🔴 **Critical**')
+      expect(prompt).toContain('🟠 **Warning**')
+      expect(prompt).toContain('🟡 **Suggestion**')
+      expect(prompt).toContain('🔵 **Info**')
+    })
+
+    it('should explain structured format for findings', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('### Required Format for Postable Findings')
+      expect(prompt).toContain('**File:**')
+      expect(prompt).toContain('**Line:**')
+      expect(prompt).toContain('**Suggestion:**')
+    })
+
+    it('should include example with multiple findings', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('### Example with Multiple Findings')
+      expect(prompt).toContain('Null Pointer Exception')
+      expect(prompt).toContain('Missing Error Handling')
     })
 
     it('should explain when NOT to use postable comments', () => {
       const pr = createBasicPR()
       const prompt = buildPRSystemPrompt(pr)
 
-      expect(prompt).toContain('When NOT to use')
+      expect(prompt).toContain('### When NOT to Use POSTABLE')
       expect(prompt).toContain('General explanations or summaries')
     })
 
-    it('should explain the required fields', () => {
+    it('should explain rules for placement', () => {
       const pr = createBasicPR()
       const prompt = buildPRSystemPrompt(pr)
 
-      expect(prompt).toContain('`file` must be an exact path from the diff')
-      expect(prompt).toContain('`line` must be a line number in the NEW version')
-    })
-
-    it('should mention multiple postable comments are allowed', () => {
-      const pr = createBasicPR()
-      const prompt = buildPRSystemPrompt(pr)
-
-      expect(prompt).toContain('MULTIPLE postable comments')
+      expect(prompt).toContain('### Rules')
+      expect(prompt).toContain('Put `<!--POSTABLE:...-->` IMMEDIATELY after each finding')
+      expect(prompt).toContain('Use `---` horizontal rules to separate findings')
     })
   })
 })

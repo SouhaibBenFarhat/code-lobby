@@ -102,12 +102,65 @@ interface PostableComment {
   line: number
 }
 
+// A content section that may or may not have a postable comment
+interface ContentSection {
+  content: string // The displayable content (POSTABLE stripped)
+  postable: PostableComment | null // If this section has a postable finding
+}
+
 // Parse POSTABLE metadata from message content
 // Format: <!--POSTABLE:{"file":"path/to/file.ts","line":42}-->
-// Note: Using a simpler approach to handle JSON that may contain special chars
 const POSTABLE_START = '<!--POSTABLE:'
 const POSTABLE_END = '-->'
 
+// Extract POSTABLE from a single piece of content
+function extractPostable(content: string): { cleaned: string; postable: PostableComment | null } {
+  const startIdx = content.indexOf(POSTABLE_START)
+  if (startIdx === -1) {
+    return { cleaned: content, postable: null }
+  }
+
+  const jsonStart = startIdx + POSTABLE_START.length
+  const endIdx = content.indexOf(POSTABLE_END, jsonStart)
+  if (endIdx === -1) {
+    return { cleaned: content, postable: null }
+  }
+
+  const jsonStr = content.slice(jsonStart, endIdx).trim()
+  const cleaned = (content.slice(0, startIdx) + content.slice(endIdx + POSTABLE_END.length)).trim()
+
+  try {
+    const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
+    if (parsed.file && typeof parsed.line === 'number') {
+      return { cleaned, postable: { file: parsed.file, line: parsed.line } }
+    }
+  } catch {
+    console.warn('Failed to parse POSTABLE metadata:', jsonStr)
+  }
+
+  return { cleaned, postable: null }
+}
+
+// Parse message into sections, each section may have its own POSTABLE
+// Sections are delimited by "---" (horizontal rules)
+function parseContentSections(content: string): ContentSection[] {
+  // Split by horizontal rule pattern (--- at start of line, possibly with whitespace)
+  const parts = content.split(/\n---\n/)
+
+  if (parts.length === 1) {
+    // No sections, treat entire content as one
+    const { cleaned, postable } = extractPostable(content)
+    return [{ content: cleaned, postable }]
+  }
+
+  return parts.map((part) => {
+    const { cleaned, postable } = extractPostable(part.trim())
+    return { content: cleaned, postable }
+  })
+}
+
+// Legacy: Parse all POSTABLE comments from content (for backward compat)
+// biome-ignore lint/correctness/noUnusedVariables: Used in tests
 function parsePostableComments(content: string): PostableComment[] {
   const comments: PostableComment[] = []
   let searchStart = 0
@@ -129,28 +182,25 @@ function parsePostableComments(content: string): PostableComment[] {
         comments.push({ file: parsed.file, line: parsed.line })
       }
     } catch {
-      // Invalid JSON, skip this one
-      console.warn('Failed to parse POSTABLE metadata:', jsonStr)
+      // Invalid JSON, skip
     }
   }
   return comments
 }
 
-// Remove POSTABLE metadata from content for display
+// Legacy: Remove all POSTABLE metadata from content for display
+// biome-ignore lint/correctness/noUnusedVariables: Used in tests
 function stripPostableMetadata(content: string): string {
   let result = content
-  let searchStart = 0
 
   while (true) {
-    const startIdx = result.indexOf(POSTABLE_START, searchStart)
+    const startIdx = result.indexOf(POSTABLE_START)
     if (startIdx === -1) break
 
     const endIdx = result.indexOf(POSTABLE_END, startIdx)
     if (endIdx === -1) break
 
-    // Remove the entire tag including the end marker
     result = result.slice(0, startIdx) + result.slice(endIdx + POSTABLE_END.length)
-    // Don't advance searchStart since we removed content
   }
 
   return result.trim()
@@ -536,39 +586,30 @@ const MessageBubble = React.memo(function MessageBubble({
   const [postingState, setPostingState] = useState<PostingState>({})
   const [postedUrls, setPostedUrls] = useState<Record<string, string>>({})
 
-  // Parse postable comments from assistant messages
-  const postableComments = useMemo(() => {
+  // Parse content into sections, each with potential postable
+  const sections = useMemo(() => {
     if (message.role !== 'assistant') return []
     try {
-      return parsePostableComments(message.content || '')
+      return parseContentSections(message.content || '')
     } catch (e) {
-      console.error('Error parsing postable comments:', e)
-      return []
+      console.error('Error parsing content sections:', e)
+      return [{ content: message.content || '', postable: null }]
     }
   }, [message.content, message.role])
 
-  // Strip metadata from content for display
-  const displayContent = useMemo(() => {
-    if (message.role !== 'assistant') return message.content || ''
-    try {
-      const stripped = stripPostableMetadata(message.content || '')
-      // Ensure we always return non-empty content
-      return stripped || message.content || ''
-    } catch (e) {
-      console.error('Error stripping metadata:', e)
-      return message.content || ''
-    }
-  }, [message.content, message.role])
-
-  const handlePostComment = async (comment: PostableComment, index: number) => {
+  const handlePostComment = async (
+    postable: PostableComment,
+    sectionContent: string,
+    sectionIndex: number
+  ) => {
     if (!onPostComment) return
 
-    const key = `${index}`
+    const key = `section-${sectionIndex}`
     setPostingState((prev) => ({ ...prev, [key]: 'posting' }))
 
     try {
-      // Use the full message content (minus metadata) as the comment body
-      const result = await onPostComment(comment.file, comment.line, displayContent)
+      // Post only the content of THIS section, not the whole message
+      const result = await onPostComment(postable.file, postable.line, sectionContent)
 
       if (result.success) {
         setPostingState((prev) => ({ ...prev, [key]: 'posted' }))
@@ -581,6 +622,77 @@ const MessageBubble = React.memo(function MessageBubble({
     } catch {
       setPostingState((prev) => ({ ...prev, [key]: 'error' }))
     }
+  }
+
+  // Render a single section with optional inline Post button
+  const renderSection = (section: ContentSection, index: number) => {
+    const key = `section-${index}`
+    const state = postingState[key]
+    const postedUrl = postedUrls[key]
+    const showPostButton = section.postable && linkedPRChat && onPostComment
+
+    return (
+      <div key={key} className={cn(index > 0 && 'border-t border-border/20 pt-2 mt-2')}>
+        <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+          <MarkdownContent content={section.content} />
+        </div>
+
+        {/* Inline Post button for this section */}
+        {showPostButton && section.postable && (
+          <div className="flex items-center gap-2 mt-2 text-xs bg-blue-500/10 rounded px-2 py-1.5">
+            <MessageSquarePlus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+            <span className="text-muted-foreground truncate flex-1">
+              <code className="text-[10px] bg-black/20 px-1 rounded">{section.postable.file}</code>
+              <span className="text-muted-foreground/60 mx-1">:</span>
+              <span className="text-blue-400">L{section.postable.line}</span>
+            </span>
+
+            {state === 'posted' && postedUrl ? (
+              <a
+                href={postedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors"
+              >
+                <Check className="w-3 h-3" />
+                <span>Posted</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            ) : state === 'posting' ? (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Posting...</span>
+              </span>
+            ) : state === 'error' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (section.postable) {
+                    handlePostComment(section.postable, section.content, index)
+                  }
+                }}
+                className="flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
+              >
+                <AlertCircle className="w-3 h-3" />
+                <span>Retry</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (section.postable) {
+                    handlePostComment(section.postable, section.content, index)
+                  }
+                }}
+                className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors font-medium"
+              >
+                <span>Post to PR</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -641,69 +753,17 @@ const MessageBubble = React.memo(function MessageBubble({
                 )}
               </div>
             )}
-            <div className="prose prose-sm dark:prose-invert max-w-none text-sm px-3 py-2">
-              <MarkdownContent content={displayContent} />
+
+            {/* Render sections with inline Post buttons */}
+            <div className="px-3 py-2">
+              {sections.length > 0 ? (
+                sections.map((section, index) => renderSection(section, index))
+              ) : (
+                <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                  <MarkdownContent content={message.content || ''} />
+                </div>
+              )}
             </div>
-
-            {/* Postable comments UI */}
-            {postableComments.length > 0 && linkedPRChat && onPostComment && (
-              <div className="px-3 pb-2 pt-1 border-t border-border/30 space-y-1.5">
-                {postableComments.map((comment, index) => {
-                  const key = `${index}`
-                  const state = postingState[key]
-                  const postedUrl = postedUrls[key]
-
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center gap-2 text-xs bg-blue-500/10 rounded px-2 py-1.5"
-                    >
-                      <MessageSquarePlus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="text-muted-foreground truncate flex-1">
-                        <code className="text-[10px] bg-black/20 px-1 rounded">{comment.file}</code>
-                        <span className="text-muted-foreground/60 mx-1">:</span>
-                        <span className="text-blue-400">L{comment.line}</span>
-                      </span>
-
-                      {state === 'posted' && postedUrl ? (
-                        <a
-                          href={postedUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>Posted</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ) : state === 'posting' ? (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Posting...</span>
-                        </span>
-                      ) : state === 'error' ? (
-                        <button
-                          type="button"
-                          onClick={() => handlePostComment(comment, index)}
-                          className="flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
-                        >
-                          <AlertCircle className="w-3 h-3" />
-                          <span>Retry</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handlePostComment(comment, index)}
-                          className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors font-medium"
-                        >
-                          <span>Post to PR</span>
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
         ) : (
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>

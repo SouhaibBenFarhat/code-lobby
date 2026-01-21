@@ -13,10 +13,59 @@ interface PostableComment {
   line: number
 }
 
+// A content section that may or may not have a postable comment
+interface ContentSection {
+  content: string
+  postable: PostableComment | null
+}
+
 // Parse POSTABLE metadata from message content
 // Format: <!--POSTABLE:{"file":"path/to/file.ts","line":42}-->
 const POSTABLE_START = '<!--POSTABLE:'
 const POSTABLE_END = '-->'
+
+// Extract POSTABLE from a single piece of content
+function extractPostable(content: string): { cleaned: string; postable: PostableComment | null } {
+  const startIdx = content.indexOf(POSTABLE_START)
+  if (startIdx === -1) {
+    return { cleaned: content, postable: null }
+  }
+
+  const jsonStart = startIdx + POSTABLE_START.length
+  const endIdx = content.indexOf(POSTABLE_END, jsonStart)
+  if (endIdx === -1) {
+    return { cleaned: content, postable: null }
+  }
+
+  const jsonStr = content.slice(jsonStart, endIdx).trim()
+  const cleaned = (content.slice(0, startIdx) + content.slice(endIdx + POSTABLE_END.length)).trim()
+
+  try {
+    const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
+    if (parsed.file && typeof parsed.line === 'number') {
+      return { cleaned, postable: { file: parsed.file, line: parsed.line } }
+    }
+  } catch {
+    // Invalid JSON
+  }
+
+  return { cleaned, postable: null }
+}
+
+// Parse message into sections, each section may have its own POSTABLE
+function parseContentSections(content: string): ContentSection[] {
+  const parts = content.split(/\n---\n/)
+
+  if (parts.length === 1) {
+    const { cleaned, postable } = extractPostable(content)
+    return [{ content: cleaned, postable }]
+  }
+
+  return parts.map((part) => {
+    const { cleaned, postable } = extractPostable(part.trim())
+    return { content: cleaned, postable }
+  })
+}
 
 function parsePostableComments(content: string): PostableComment[] {
   const comments: PostableComment[] = []
@@ -48,18 +97,15 @@ function parsePostableComments(content: string): PostableComment[] {
 // Remove POSTABLE metadata from content for display
 function stripPostableMetadata(content: string): string {
   let result = content
-  let searchStart = 0
 
   while (true) {
-    const startIdx = result.indexOf(POSTABLE_START, searchStart)
+    const startIdx = result.indexOf(POSTABLE_START)
     if (startIdx === -1) break
 
     const endIdx = result.indexOf(POSTABLE_END, startIdx)
     if (endIdx === -1) break
 
-    // Remove the entire tag including the end marker
     result = result.slice(0, startIdx) + result.slice(endIdx + POSTABLE_END.length)
-    // Don't advance searchStart since we removed content
   }
 
   return result.trim()
@@ -212,5 +258,115 @@ End`
     const content = `Text <!--POSTABLE:{"file":"a.ts","line":1,"extra":"data"}--> more text`
     const result = stripPostableMetadata(content)
     expect(result).toBe('Text  more text')
+  })
+})
+
+describe('parseContentSections', () => {
+  it('should parse content without sections as single section', () => {
+    const content = `This is a simple response.
+<!--POSTABLE:{"file":"test.ts","line":42}-->`
+
+    const result = parseContentSections(content)
+    expect(result).toHaveLength(1)
+    expect(result[0].content).toBe('This is a simple response.')
+    expect(result[0].postable).toEqual({ file: 'test.ts', line: 42 })
+  })
+
+  it('should parse multiple sections separated by ---', () => {
+    const content = `Here's my code review:
+
+---
+### 🔴 Critical: Null Pointer
+**File:** \`src/auth.ts\` **Line:** 42
+
+Found null pointer issue.
+<!--POSTABLE:{"file":"src/auth.ts","line":42}-->
+
+---
+### 🟠 Warning: Missing Error Handling
+**File:** \`src/api.ts\` **Line:** 15
+
+No try-catch.
+<!--POSTABLE:{"file":"src/api.ts","line":15}-->
+
+---
+**Summary:** Found 2 issues.`
+
+    const result = parseContentSections(content)
+    expect(result).toHaveLength(4) // intro, finding 1, finding 2, summary
+
+    // Intro section (no postable)
+    expect(result[0].content).toContain("Here's my code review:")
+    expect(result[0].postable).toBeNull()
+
+    // First finding
+    expect(result[1].content).toContain('Null Pointer')
+    expect(result[1].postable).toEqual({ file: 'src/auth.ts', line: 42 })
+
+    // Second finding
+    expect(result[2].content).toContain('Missing Error Handling')
+    expect(result[2].postable).toEqual({ file: 'src/api.ts', line: 15 })
+
+    // Summary (no postable)
+    expect(result[3].content).toContain('Summary')
+    expect(result[3].postable).toBeNull()
+  })
+
+  it('should handle content with no postable metadata', () => {
+    const content = `This is a general explanation.
+
+---
+More details here.
+
+---
+Conclusion.`
+
+    const result = parseContentSections(content)
+    expect(result).toHaveLength(3)
+    expect(result.every((s) => s.postable === null)).toBe(true)
+  })
+
+  it('should handle empty content', () => {
+    const result = parseContentSections('')
+    expect(result).toHaveLength(1)
+    expect(result[0].content).toBe('')
+    expect(result[0].postable).toBeNull()
+  })
+
+  it('should handle single section with postable at end', () => {
+    const content = `Found a bug!
+<!--POSTABLE:{"file":"bug.ts","line":1}-->`
+
+    const result = parseContentSections(content)
+    expect(result).toHaveLength(1)
+    expect(result[0].content).toBe('Found a bug!')
+    expect(result[0].postable).toEqual({ file: 'bug.ts', line: 1 })
+  })
+
+  it('should strip postable metadata from section content', () => {
+    const content = `Intro
+
+---
+Finding description
+<!--POSTABLE:{"file":"test.ts","line":10}-->
+
+---
+Summary`
+
+    const result = parseContentSections(content)
+    expect(result).toHaveLength(3)
+
+    // First section is the intro
+    expect(result[0].content).toBe('Intro')
+    expect(result[0].postable).toBeNull()
+
+    // Second section should not include the POSTABLE tag in content
+    expect(result[1].content).toBe('Finding description')
+    expect(result[1].content).not.toContain('POSTABLE')
+    expect(result[1].postable).toEqual({ file: 'test.ts', line: 10 })
+
+    // Third section is summary
+    expect(result[2].content).toBe('Summary')
+    expect(result[2].postable).toBeNull()
   })
 })
