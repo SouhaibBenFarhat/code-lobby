@@ -965,6 +965,18 @@ function QuickActions({
     }
   }, [prompts.length, customPrompts.length])
 
+  // Build mask gradient based on scroll state
+  const getMaskStyle = (): React.CSSProperties => {
+    const leftFade = canScrollLeft ? 'transparent, black 24px' : 'black, black'
+    const rightFade = canScrollRight ? 'black calc(100% - 24px), transparent' : 'black, black'
+
+    return {
+      maskImage: `linear-gradient(to right, ${leftFade}, ${rightFade})`,
+      WebkitMaskImage: `linear-gradient(to right, ${leftFade}, ${rightFade})`,
+      scrollbarWidth: 'none' // Firefox
+    }
+  }
+
   return (
     <div className={cn('relative', className)}>
       {/* Add Custom Prompt Modal */}
@@ -974,35 +986,11 @@ function QuickActions({
         onSave={onAddCustomPrompt}
       />
 
-      {/* Left fade - only show when scrolled */}
-      <div
-        className={cn(
-          'pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 transition-opacity duration-200',
-          canScrollLeft ? 'opacity-100' : 'opacity-0'
-        )}
-        style={{
-          background: 'linear-gradient(to left, transparent, hsl(var(--background)))'
-        }}
-      />
-
-      {/* Right fade - only show when more content exists */}
-      <div
-        className={cn(
-          'pointer-events-none absolute right-0 top-0 bottom-0 w-8 z-10 transition-opacity duration-200',
-          canScrollRight ? 'opacity-100' : 'opacity-0'
-        )}
-        style={{
-          background: 'linear-gradient(to right, transparent, hsl(var(--background)))'
-        }}
-      />
-
-      {/* Scrollable container with hidden scrollbar */}
+      {/* Scrollable container with mask fade effect */}
       <div
         ref={scrollRef}
         className="flex gap-1.5 overflow-x-auto px-1 [&::-webkit-scrollbar]:hidden"
-        style={{
-          scrollbarWidth: 'none' // Firefox
-        }}
+        style={getMaskStyle()}
       >
         {/* Add custom prompt button - at the start */}
         <button
