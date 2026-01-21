@@ -231,15 +231,22 @@ export function initDataModule(): void {
     })
   )
 
+  // Track in-progress chat creations to prevent duplicates
+  const creatingChats = new Set<string>()
+
   cleanupFunctions.push(
     onAction('action:create-pr-chat', async ({ pr }) => {
       const prId = `${pr.base.repo.full_name}#${pr.number}`
+
+      // Prevent duplicate creation if already in progress
+      if (creatingChats.has(prId)) {
+        return
+      }
 
       // Check if chat already exists
       const existing = Store.prChats.value.find((c) => c.prId === prId)
       if (existing) {
         Store.activePRChatId.value = existing.prId
-        // Also set linkedPRChat so the UI shows the active chat
         Store.linkedPRChat.value = {
           prId: existing.prId,
           prNumber: existing.prNumber,
@@ -249,43 +256,53 @@ export function initDataModule(): void {
         return
       }
 
-      // Fetch changed files with diffs for richer AI context
-      let changedFiles: ChangedFile[] | undefined
-      try {
-        const filesResult = await window.electron.fetchPRFiles(
-          pr.base.repo.owner.login,
-          pr.base.repo.name,
-          pr.number
-        )
-        if (filesResult.success && filesResult.data) {
-          changedFiles = filesResult.data as ChangedFile[]
-        }
-      } catch (error) {
-        // Log but don't fail chat creation if files can't be fetched
-        console.warn('Failed to fetch PR files for chat context:', error)
-      }
+      // Mark as in-progress to prevent duplicate clicks
+      creatingChats.add(prId)
 
-      // Build PR system context for AI (with file diffs if available)
-      const systemContext = buildPRSystemPrompt(pr, changedFiles)
-
-      // Create new PR chat with system context
-      const prChat = await window.electron.createPRChat(
-        prId,
-        pr.number,
-        pr.title,
-        pr.base.repo.full_name,
-        systemContext
-      )
-      Store.prChats.value = [...Store.prChats.value, prChat as PRChat]
-      Store.activePRChatId.value = prChat.prId
-      await window.electron.setActivePRChatId(prChat.prId)
-
-      // Set linkedPRChat so the UI shows the active chat (this was the missing piece!)
+      // IMMEDIATELY switch UI to the chat (before fetching files)
+      // This gives instant feedback to the user
       Store.linkedPRChat.value = {
-        prId: prChat.prId,
-        prNumber: prChat.prNumber,
-        prTitle: prChat.prTitle,
-        repoFullName: prChat.repoFullName
+        prId,
+        prNumber: pr.number,
+        prTitle: pr.title,
+        repoFullName: pr.base.repo.full_name
+      }
+      Store.activePRChatId.value = prId
+
+      try {
+        // Fetch changed files with diffs for richer AI context
+        let changedFiles: ChangedFile[] | undefined
+        try {
+          const filesResult = await window.electron.fetchPRFiles(
+            pr.base.repo.owner.login,
+            pr.base.repo.name,
+            pr.number
+          )
+          if (filesResult.success && filesResult.data) {
+            changedFiles = filesResult.data as ChangedFile[]
+          }
+        } catch (error) {
+          console.warn('Failed to fetch PR files for chat context:', error)
+        }
+
+        // Build PR system context for AI (with file diffs if available)
+        const systemContext = buildPRSystemPrompt(pr, changedFiles)
+
+        // Create the chat in storage with system context
+        const prChat = await window.electron.createPRChat(
+          prId,
+          pr.number,
+          pr.title,
+          pr.base.repo.full_name,
+          systemContext
+        )
+
+        // Update store with the created chat
+        Store.prChats.value = [...Store.prChats.value, prChat as PRChat]
+        await window.electron.setActivePRChatId(prChat.prId)
+      } finally {
+        // Always remove from in-progress set
+        creatingChats.delete(prId)
       }
     })
   )
