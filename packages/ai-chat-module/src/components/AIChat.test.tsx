@@ -817,13 +817,14 @@ function computeSelectedPRId(selectedPR: SelectedPR | null | undefined): string 
 // Helper to check if context is valid (matches implementation)
 function isContextValid(
   linkedPRChat: LinkedPRChat | null | undefined,
-  prSystemContext: string | undefined,
-  selectedPRId: string | null
+  prSystemContext: string | undefined
 ): boolean {
-  // If we're in a PR chat, context should match that PR
+  // If we're in a PR chat, we just need valid context for that chat
   if (linkedPRChat) {
-    // Context should exist and we should be viewing the same PR
-    return prSystemContext !== undefined && linkedPRChat.prId === selectedPRId
+    // Context should exist for the PR chat
+    // Note: We don't require selectedPRId to match because user might be
+    // viewing the chat without having the PR selected in the main view
+    return prSystemContext !== undefined
   }
   // For general chat or PR empty state, context should be undefined
   return prSystemContext === undefined
@@ -883,35 +884,33 @@ describe('Context validity logic', () => {
   const contextForB = 'System context for PR B with diff data...'
 
   describe('isContextValid', () => {
-    it('should return true when PR chat has matching context', () => {
-      const selectedPRId = computeSelectedPRId(prA)
-      expect(isContextValid(linkedChatA, contextForA, selectedPRId)).toBe(true)
+    it('should return true when PR chat has context', () => {
+      expect(isContextValid(linkedChatA, contextForA)).toBe(true)
     })
 
     it('should return false when PR chat has no context', () => {
-      const selectedPRId = computeSelectedPRId(prA)
-      expect(isContextValid(linkedChatA, undefined, selectedPRId)).toBe(false)
+      expect(isContextValid(linkedChatA, undefined)).toBe(false)
     })
 
-    it('should return false when linkedPRChat does not match selectedPR', () => {
-      // User selected PR B but linked chat is for PR A
-      const selectedPRId = computeSelectedPRId(prB)
-      expect(isContextValid(linkedChatA, contextForA, selectedPRId)).toBe(false)
+    it('should return true when PR chat has context regardless of selectedPR', () => {
+      // User might be viewing chat without having PR selected in main view
+      // This should still be valid as long as context exists
+      expect(isContextValid(linkedChatA, contextForA)).toBe(true)
     })
 
     it('should return true for general chat with no context', () => {
-      expect(isContextValid(null, undefined, null)).toBe(true)
+      expect(isContextValid(null, undefined)).toBe(true)
     })
 
     it('should return false for general chat with stale context', () => {
       // No linked chat, but somehow have context (stale)
-      expect(isContextValid(null, contextForA, null)).toBe(false)
+      expect(isContextValid(null, contextForA)).toBe(false)
     })
 
-    it('should return true when selectedPR changes to new PR with matching chat', () => {
-      // User switches to PR B and chat is updated
-      const selectedPRId = computeSelectedPRId(prB)
-      expect(isContextValid(linkedChatB, contextForB, selectedPRId)).toBe(true)
+    it('should return true when PR chat has any valid context', () => {
+      // Context for chat A or B - either should work as long as context exists
+      expect(isContextValid(linkedChatB, contextForB)).toBe(true)
+      expect(isContextValid(linkedChatA, contextForB)).toBe(true) // Even mismatched context - we trust the store
     })
   })
 

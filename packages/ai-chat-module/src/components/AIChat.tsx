@@ -1601,14 +1601,16 @@ export function AIChatPanel({
 
   // Track if context is valid for the current state
   const isContextValid = useMemo(() => {
-    // If we're in a PR chat, context should match that PR
+    // If we're in a PR chat, we just need valid context for that chat
     if (linkedPRChat) {
-      // Context should exist and we should be viewing the same PR
-      return prSystemContext !== undefined && linkedPRChat.prId === selectedPRId
+      // Context should exist for the PR chat
+      // Note: We don't require selectedPRId to match because user might be
+      // viewing the chat without having the PR selected in the main view
+      return prSystemContext !== undefined
     }
     // For general chat or PR empty state, context should be undefined
     return prSystemContext === undefined
-  }, [linkedPRChat, prSystemContext, selectedPRId])
+  }, [linkedPRChat, prSystemContext])
 
   // Auto-switch to PR chat when selectedPR changes
   // Uses cleanup function to handle race conditions
