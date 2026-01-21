@@ -819,60 +819,7 @@ function QuickActions({
           scrollbarWidth: 'none' // Firefox
         }}
       >
-        {/* Built-in prompts */}
-        {prompts.map((prompt) => (
-          <button
-            key={prompt.id}
-            type="button"
-            onClick={() => onSelect(prompt.prompt)}
-            disabled={disabled}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-              'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
-              'text-muted-foreground hover:text-foreground',
-              'transition-all duration-150',
-              disabled && 'opacity-50 cursor-not-allowed'
-            )}
-          >
-            {prompt.icon}
-            <span>{prompt.label}</span>
-          </button>
-        ))}
-
-        {/* Custom prompts with delete button */}
-        {customPrompts.map((prompt) => (
-          <div key={prompt.id} className="relative group flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => onSelect(prompt.prompt)}
-              disabled={disabled}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
-                'bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50',
-                'text-primary hover:text-primary',
-                'transition-all duration-150 pr-7',
-                disabled && 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>{prompt.label}</span>
-            </button>
-            {/* Delete button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeleteCustomPrompt(prompt.id)
-              }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-destructive/80 hover:bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Delete prompt"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
-
-        {/* Add custom prompt button */}
+        {/* Add custom prompt button - at the start */}
         {!isAddingPrompt ? (
           <button
             type="button"
@@ -940,6 +887,59 @@ function QuickActions({
             </button>
           </div>
         )}
+
+        {/* Custom prompts with delete button */}
+        {customPrompts.map((prompt) => (
+          <div key={prompt.id} className="relative group flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => onSelect(prompt.prompt)}
+              disabled={disabled}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
+                'bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50',
+                'text-primary hover:text-primary',
+                'transition-all duration-150 pr-7',
+                disabled && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <MessageSquare className="w-3 h-3" />
+              <span>{prompt.label}</span>
+            </button>
+            {/* Delete button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteCustomPrompt(prompt.id)
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-destructive/80 hover:bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Delete prompt"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+
+        {/* Built-in prompts */}
+        {prompts.map((prompt) => (
+          <button
+            key={prompt.id}
+            type="button"
+            onClick={() => onSelect(prompt.prompt)}
+            disabled={disabled}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
+              'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
+              'text-muted-foreground hover:text-foreground',
+              'transition-all duration-150',
+              disabled && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {prompt.icon}
+            <span>{prompt.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   )
