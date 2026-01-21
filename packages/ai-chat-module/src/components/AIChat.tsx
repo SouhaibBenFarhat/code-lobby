@@ -1524,6 +1524,11 @@ export function AIChatPanel({
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
+    // Reset states for new chat - prevents stale data from previous chat
+    setIsConversationReady(false)
+    initialScrollDoneRef.current = false
+    setError(null) // Clear any errors from previous chat
+
     try {
       const [key, model, thinking, customPromptsData] = await Promise.all([
         window.electron.getClaudeApiKey(),
@@ -1651,26 +1656,15 @@ export function AIChatPanel({
     }
   }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClosePRChat, linkedPRChat])
 
-  // Clear stale prSystemContext when there's a mismatch
-  // This prevents sending messages with wrong context
+  // Clear stale prSystemContext ONLY when there's no linkedPRChat
+  // Note: We do NOT clear context when linkedPRChat.prId !== selectedPRId
+  // because the user might be viewing a different PR while chatting about another one
   useEffect(() => {
     // If we're viewing a PR empty state (selectedPR set but no linkedPRChat),
     // ensure prSystemContext is cleared
     if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
       console.warn(
         '[AIChat] Clearing stale prSystemContext - selectedPR changed but no linkedPRChat'
-      )
-      setPrSystemContext(undefined)
-    }
-    // If linkedPRChat doesn't match selectedPR, clear context as well
-    if (
-      linkedPRChat &&
-      selectedPRId &&
-      linkedPRChat.prId !== selectedPRId &&
-      prSystemContext !== undefined
-    ) {
-      console.warn(
-        '[AIChat] Clearing stale prSystemContext - linkedPRChat does not match selectedPR'
       )
       setPrSystemContext(undefined)
     }
@@ -2046,12 +2040,9 @@ export function AIChatPanel({
         return
       }
 
-      // If linkedPRChat doesn't match selectedPRId, context is stale
-      if (linkedPRChat && selectedPRId && linkedPRChat.prId !== selectedPRId) {
-        console.warn('[AIChat] Context mismatch detected - linkedPRChat does not match selectedPR')
-        setError('PR context is out of sync. Please refresh the page.')
-        return
-      }
+      // Note: We do NOT block sending when linkedPRChat.prId !== selectedPRId
+      // because the user might be viewing a different PR while chatting about another one
+      // The context is tied to linkedPRChat, not selectedPR
 
       const userMessage = messageText.trim()
       const msgId = `temp_${Date.now()}`
@@ -2078,7 +2069,7 @@ export function AIChatPanel({
       // Process immediately
       processMessage(userMessage, msgId)
     },
-    [isSending, processMessage, linkedPRChat, prSystemContext, selectedPRId]
+    [isSending, processMessage, linkedPRChat, prSystemContext]
   )
 
   // Main send message handler (uses input state)

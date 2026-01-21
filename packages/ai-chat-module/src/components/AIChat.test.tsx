@@ -831,6 +831,9 @@ function isContextValid(
 }
 
 // Helper to check if context should be cleared (matches implementation)
+// Note: We ONLY clear context when there's no linkedPRChat
+// We do NOT clear when linkedPRChat.prId !== selectedPRId because
+// the user might be viewing a different PR while chatting about another
 function shouldClearContext(
   selectedPRId: string | null,
   linkedPRChat: LinkedPRChat | null | undefined,
@@ -841,15 +844,8 @@ function shouldClearContext(
   if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
     return true
   }
-  // If linkedPRChat doesn't match selectedPR, context should be cleared
-  if (
-    linkedPRChat &&
-    selectedPRId &&
-    linkedPRChat.prId !== selectedPRId &&
-    prSystemContext !== undefined
-  ) {
-    return true
-  }
+  // NOTE: We do NOT clear when linkedPRChat.prId !== selectedPRId
+  // because user might be chatting about PR A while viewing PR B
   return false
 }
 
@@ -926,10 +922,11 @@ describe('Context validity logic', () => {
       expect(shouldClearContext(selectedPRId, null, undefined)).toBe(false)
     })
 
-    it('should clear context when linkedPRChat does not match selectedPR', () => {
+    it('should NOT clear context when linkedPRChat does not match selectedPR', () => {
       // User selected PR B but linked chat is still PR A with PR A context
+      // This is VALID - user might be viewing PR B while chatting about PR A
       const selectedPRId = computeSelectedPRId(prB)
-      expect(shouldClearContext(selectedPRId, linkedChatA, contextForA)).toBe(true)
+      expect(shouldClearContext(selectedPRId, linkedChatA, contextForA)).toBe(false)
     })
 
     it('should not clear context when linkedPRChat matches selectedPR', () => {
@@ -939,6 +936,13 @@ describe('Context validity logic', () => {
 
     it('should not clear context for general chat with no context', () => {
       expect(shouldClearContext(null, null, undefined)).toBe(false)
+    })
+
+    it('should allow chatting about PR A while viewing PR B', () => {
+      // This is the key behavior: user views PR B, but chat is for PR A
+      // Context should NOT be cleared
+      const selectedPRId = computeSelectedPRId(prB)
+      expect(shouldClearContext(selectedPRId, linkedChatA, contextForA)).toBe(false)
     })
   })
 
@@ -1033,20 +1037,20 @@ describe('Race condition prevention', () => {
 
 describe('Message sending validation', () => {
   // Simulates the validation logic in sendMessage
+  // Note: We only check that prSystemContext exists for PR chats
+  // We do NOT block sending when linkedPRChat.prId !== selectedPRId
+  // because user might be chatting about PR A while viewing PR B
   function validateBeforeSend(
     linkedPRChat: LinkedPRChat | null | undefined,
-    prSystemContext: string | undefined,
-    selectedPRId: string | null
+    prSystemContext: string | undefined
   ): { valid: boolean; error: string | null } {
     // If in PR chat mode, ensure we have valid context for the current PR
     if (linkedPRChat && !prSystemContext) {
       return { valid: false, error: 'PR context not loaded. Please wait a moment and try again.' }
     }
 
-    // If linkedPRChat doesn't match selectedPRId, context is stale
-    if (linkedPRChat && selectedPRId && linkedPRChat.prId !== selectedPRId) {
-      return { valid: false, error: 'PR context is out of sync. Please refresh the page.' }
-    }
+    // Note: We do NOT block when linkedPRChat.prId !== selectedPRId
+    // The context is tied to linkedPRChat, not selectedPR
 
     return { valid: true, error: null }
   }
@@ -1059,31 +1063,31 @@ describe('Message sending validation', () => {
   }
 
   it('should allow sending in general chat', () => {
-    const result = validateBeforeSend(null, undefined, null)
+    const result = validateBeforeSend(null, undefined)
     expect(result.valid).toBe(true)
   })
 
   it('should allow sending in PR chat with valid context', () => {
-    const result = validateBeforeSend(linkedChatA, 'context for PR A', 'owner/repo#1')
+    const result = validateBeforeSend(linkedChatA, 'context for PR A')
     expect(result.valid).toBe(true)
   })
 
   it('should block sending in PR chat without context', () => {
-    const result = validateBeforeSend(linkedChatA, undefined, 'owner/repo#1')
+    const result = validateBeforeSend(linkedChatA, undefined)
     expect(result.valid).toBe(false)
     expect(result.error).toContain('context not loaded')
   })
 
-  it('should block sending when context is out of sync', () => {
-    // linkedPRChat is for PR A, but selectedPR is PR B
-    const result = validateBeforeSend(linkedChatA, 'context for PR A', 'owner/repo#2')
-    expect(result.valid).toBe(false)
-    expect(result.error).toContain('out of sync')
+  it('should allow sending when chatting about PR A while viewing PR B', () => {
+    // linkedPRChat is for PR A, user is viewing PR B - this is VALID
+    // User should be able to continue chatting about PR A
+    const result = validateBeforeSend(linkedChatA, 'context for PR A')
+    expect(result.valid).toBe(true)
   })
 
   it('should allow sending even if selectedPRId is null but linkedPRChat has context', () => {
-    // Edge case: linkedPRChat exists but selectedPRId is null (shouldn't happen normally)
-    const result = validateBeforeSend(linkedChatA, 'context for PR A', null)
+    // Edge case: linkedPRChat exists but user deselected the PR in main view
+    const result = validateBeforeSend(linkedChatA, 'context for PR A')
     expect(result.valid).toBe(true)
   })
 })
