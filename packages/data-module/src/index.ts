@@ -259,16 +259,6 @@ export function initDataModule(): void {
       // Mark as in-progress to prevent duplicate clicks
       creatingChats.add(prId)
 
-      // IMMEDIATELY switch UI to the chat (before fetching files)
-      // This gives instant feedback to the user
-      Store.linkedPRChat.value = {
-        prId,
-        prNumber: pr.number,
-        prTitle: pr.title,
-        repoFullName: pr.base.repo.full_name
-      }
-      Store.activePRChatId.value = prId
-
       try {
         // Fetch changed files with diffs for richer AI context
         let changedFiles: ChangedFile[] | undefined
@@ -300,6 +290,17 @@ export function initDataModule(): void {
         // Update store with the created chat
         Store.prChats.value = [...Store.prChats.value, prChat as PRChat]
         await window.electron.setActivePRChatId(prChat.prId)
+
+        // NOW switch UI to the chat AFTER it's fully created with systemContext
+        // This prevents the race condition where AIChatPanel.loadData() runs
+        // before the chat exists in storage
+        Store.linkedPRChat.value = {
+          prId: prChat.prId,
+          prNumber: prChat.prNumber,
+          prTitle: prChat.prTitle,
+          repoFullName: prChat.repoFullName
+        }
+        Store.activePRChatId.value = prChat.prId
       } finally {
         // Always remove from in-progress set
         creatingChats.delete(prId)
