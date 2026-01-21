@@ -140,6 +140,7 @@ export function AIChatPanel({
     setAllPRChats(infos)
   }, [])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll.resetScroll is stable (empty deps)
   const loadData = useCallback(async () => {
     setIsLoading(true)
     scroll.resetScroll()
@@ -177,7 +178,7 @@ export function AIChatPanel({
     } finally {
       setIsLoading(false)
     }
-  }, [loadModels, linkedPRChat, scroll])
+  }, [loadModels, linkedPRChat])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MESSAGE PROCESSING

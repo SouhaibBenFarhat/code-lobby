@@ -1,8 +1,12 @@
 /**
  * useScrollManagement - Manages scroll state and behavior for chat
+ *
+ * IMPORTANT: Returns a memoized object to prevent infinite render loops.
+ * If returning a new object every render, any component using this hook
+ * in a useCallback dependency would be recreated every render.
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 export interface UseScrollManagementReturn {
   // State
@@ -95,19 +99,29 @@ export function useScrollManagement(
     setIsUserScrolledUp(false)
   }, [])
 
-  // Cleanup on unmount
-  // Note: This is handled by the parent component's useEffect
-
-  return {
-    isUserScrolledUp,
-    isConversationReady,
-    setIsConversationReady,
-    scrollContainerRef,
-    virtualizerScrollToEndRef,
-    initialScrollDoneRef,
-    handleVirtualizerReady,
-    scrollToBottom,
-    handleScroll,
-    resetScroll
-  }
+  // Memoize the return object to prevent infinite render loops
+  // Without this, every render creates a new object, causing any
+  // useCallback that depends on this hook to be recreated
+  return useMemo(
+    () => ({
+      isUserScrolledUp,
+      isConversationReady,
+      setIsConversationReady,
+      scrollContainerRef,
+      virtualizerScrollToEndRef,
+      initialScrollDoneRef,
+      handleVirtualizerReady,
+      scrollToBottom,
+      handleScroll,
+      resetScroll
+    }),
+    [
+      isUserScrolledUp,
+      isConversationReady,
+      handleVirtualizerReady,
+      scrollToBottom,
+      handleScroll,
+      resetScroll
+    ]
+  )
 }
