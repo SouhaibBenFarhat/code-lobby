@@ -5,7 +5,7 @@
 import { Button, ClaudeIcon, cn } from '@codelobby/ui-kit'
 import { GitPullRequest, Loader2, MessageSquare } from 'lucide-react'
 import React from 'react'
-import type { SelectedPR } from '../types'
+import type { SelectedPR } from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Loading Skeleton

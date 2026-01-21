@@ -6,10 +6,16 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import React, { useLayoutEffect, useMemo } from 'react'
-import type { ChatMessage, GitHubUser, LinkedPRChat, QueuedMessage, StreamingState } from '../types'
-import { MessageBubble } from './MessageBubble'
-import { QueuedMessageBubble } from './QueuedMessageBubble'
-import { StreamingBubble } from './StreamingBubble'
+import type {
+  ChatMessage,
+  GitHubUser,
+  LinkedPRChat,
+  QueuedMessage,
+  StreamingState
+} from '../../types'
+import { MessageBubble } from '../MessageBubble'
+import { QueuedMessageBubble } from '../QueuedMessageBubble'
+import { StreamingBubble } from '../StreamingBubble'
 
 export interface VirtualizedMessageListProps {
   messages: ChatMessage[]

@@ -5,7 +5,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@codelobby/ui-kit'
 import { User, X } from 'lucide-react'
 import React from 'react'
-import type { GitHubUser, QueuedMessage } from '../types'
+import type { GitHubUser, QueuedMessage } from '../../types'
 
 export interface QueuedMessageBubbleProps {
   message: QueuedMessage

@@ -1312,50 +1312,78 @@ The `ai-chat-module` is split into small, focused, testable components. Each com
 
 ### Directory Structure
 
+Each component is in its own folder with source and test file co-located:
+
 ```
 packages/ai-chat-module/src/
-├── index.tsx                          # Module entry + slot registration
+├── index.tsx                              # Module entry + slot registration
 ├── components/
-│   ├── AIChat.tsx                     # Main orchestrator (600 lines)
-│   ├── AIChat.test.tsx
-│   ├── AddCustomPromptModal.tsx       # Modal for creating custom prompts
-│   ├── AddCustomPromptModal.test.tsx
-│   ├── ChatEmptyStates.tsx            # Loading, PR empty, default empty states
-│   ├── ChatEmptyStates.test.tsx
-│   ├── ChatHeader.tsx                 # Header with title, nav, actions
-│   ├── ChatHeader.test.tsx
-│   ├── ChatInput.tsx                  # Input area with quick actions
-│   ├── ChatInput.test.tsx
-│   ├── ChatSettings.tsx               # Model selector, thinking toggle
-│   ├── ChatSettings.test.tsx
-│   ├── ContextIndicator.tsx           # Token count display
-│   ├── ContextIndicator.test.tsx
-│   ├── MessageBubble.tsx              # User/assistant message rendering
-│   ├── MessageBubbles.test.tsx        # Tests for all bubble types
-│   ├── MessageErrorBoundary.tsx       # Error boundary for messages
-│   ├── MessageErrorBoundary.test.tsx
-│   ├── QueuedMessageBubble.tsx        # Queued message indicator
-│   ├── QuickActions.tsx               # Pre-prompt buttons
-│   ├── QuickActions.test.tsx
-│   ├── StreamingBubble.tsx            # Streaming response display
-│   ├── VirtualizedMessageList.tsx     # Virtual scroll for messages
-│   ├── VirtualizedMessageList.test.tsx
-│   └── index.ts                       # Barrel exports
+│   ├── index.ts                           # Barrel exports
+│   ├── AIChat/
+│   │   ├── index.ts
+│   │   ├── AIChat.tsx                     # Main orchestrator (600 lines)
+│   │   └── AIChat.test.tsx
+│   ├── AddCustomPromptModal/
+│   │   ├── index.ts
+│   │   ├── AddCustomPromptModal.tsx       # Modal for creating custom prompts
+│   │   └── AddCustomPromptModal.test.tsx
+│   ├── ChatEmptyStates/
+│   │   ├── index.ts
+│   │   ├── ChatEmptyStates.tsx            # Loading, PR empty, default states
+│   │   └── ChatEmptyStates.test.tsx
+│   ├── ChatHeader/
+│   │   ├── index.ts
+│   │   ├── ChatHeader.tsx                 # Header with title, nav, actions
+│   │   └── ChatHeader.test.tsx
+│   ├── ChatInput/
+│   │   ├── index.ts
+│   │   ├── ChatInput.tsx                  # Input area with quick actions
+│   │   └── ChatInput.test.tsx
+│   ├── ChatSettings/
+│   │   ├── index.ts
+│   │   ├── ChatSettings.tsx               # Model selector, thinking toggle
+│   │   └── ChatSettings.test.tsx
+│   ├── ContextIndicator/
+│   │   ├── index.ts
+│   │   ├── ContextIndicator.tsx           # Token count display
+│   │   └── ContextIndicator.test.tsx
+│   ├── MessageBubble/
+│   │   ├── index.ts
+│   │   ├── MessageBubble.tsx              # User/assistant message rendering
+│   │   └── MessageBubbles.test.tsx        # Tests for all bubble types
+│   ├── MessageErrorBoundary/
+│   │   ├── index.ts
+│   │   ├── MessageErrorBoundary.tsx       # Error boundary for messages
+│   │   └── MessageErrorBoundary.test.tsx
+│   ├── QueuedMessageBubble/
+│   │   ├── index.ts
+│   │   └── QueuedMessageBubble.tsx        # Queued message indicator
+│   ├── QuickActions/
+│   │   ├── index.ts
+│   │   ├── QuickActions.tsx               # Pre-prompt buttons
+│   │   └── QuickActions.test.tsx
+│   ├── StreamingBubble/
+│   │   ├── index.ts
+│   │   └── StreamingBubble.tsx            # Streaming response display
+│   └── VirtualizedMessageList/
+│       ├── index.ts
+│       ├── VirtualizedMessageList.tsx     # Virtual scroll for messages
+│       └── VirtualizedMessageList.test.tsx
 ├── hooks/
 │   ├── index.ts
-│   ├── useScrollManagement.ts         # Scroll state & behavior
+│   ├── useScrollManagement.ts             # Scroll state & behavior
 │   ├── useScrollManagement.test.ts
-│   ├── useThrottledValue.ts           # Throttle streaming updates
+│   ├── useThrottledValue.ts               # Throttle streaming updates
 │   └── useThrottledValue.test.ts
 ├── constants/
-│   └── index.ts                       # Quick prompts, defaults
+│   └── index.ts                           # Quick prompts, defaults
 ├── types/
-│   └── index.ts                       # All TypeScript interfaces
+│   └── index.ts                           # All TypeScript interfaces
 └── utils/
     ├── index.ts
-    ├── postable.ts                    # Parse postable metadata from AI
+    ├── postable.ts                        # Parse postable metadata from AI
     ├── postable.test.ts
-    ├── tokens.ts                      # Token estimation
+    ├── tokens.ts                          # Token estimation
     └── tokens.test.ts
 ```
 

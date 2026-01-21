@@ -13,7 +13,7 @@ import {
 } from '@codelobby/ui-kit'
 import { Brain, Loader2, RefreshCw } from 'lucide-react'
 import React from 'react'
-import type { ClaudeModel } from '../types'
+import type { ClaudeModel } from '../../types'
 
 export interface ChatSettingsProps {
   models: ClaudeModel[]

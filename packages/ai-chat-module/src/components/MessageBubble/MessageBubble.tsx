@@ -28,9 +28,9 @@ import type {
   LinkedPRChat,
   PostableComment,
   PostingState
-} from '../types'
-import { parseContentSections } from '../utils/postable'
-import { MessageErrorBoundary } from './MessageErrorBoundary'
+} from '../../types'
+import { parseContentSections } from '../../utils/postable'
+import { MessageErrorBoundary } from '../MessageErrorBoundary'
 
 export interface MessageBubbleProps {
   message: ChatMessage

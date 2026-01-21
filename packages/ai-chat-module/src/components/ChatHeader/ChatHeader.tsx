@@ -13,7 +13,7 @@ import {
 } from '@codelobby/ui-kit'
 import { ArrowLeft, GitPullRequest, List, MessageSquare, Settings, Trash2, X } from 'lucide-react'
 import React from 'react'
-import type { ClaudeModel, LinkedPRChat, PRChatInfo } from '../types'
+import type { ClaudeModel, LinkedPRChat, PRChatInfo } from '../../types'
 
 export interface ChatHeaderProps {
   linkedPRChat: LinkedPRChat | null | undefined

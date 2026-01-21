@@ -5,8 +5,8 @@
 import { cn } from '@codelobby/ui-kit'
 import { MessageSquare, MessageSquarePlus, X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
-import type { CustomPrompt, QuickPrompt } from '../types'
-import { AddCustomPromptModal } from './AddCustomPromptModal'
+import type { CustomPrompt, QuickPrompt } from '../../types'
+import { AddCustomPromptModal } from '../AddCustomPromptModal'
 
 export interface QuickActionsProps {
   prompts: QuickPrompt[]

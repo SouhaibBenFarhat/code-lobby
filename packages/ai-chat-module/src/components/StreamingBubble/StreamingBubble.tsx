@@ -6,8 +6,8 @@
 import { ClaudeIcon, MarkdownContent } from '@codelobby/ui-kit'
 import { Brain, Loader2 } from 'lucide-react'
 import React, { useEffect, useRef } from 'react'
-import type { StreamingState } from '../types'
-import { MessageErrorBoundary } from './MessageErrorBoundary'
+import type { StreamingState } from '../../types'
+import { MessageErrorBoundary } from '../MessageErrorBoundary'
 
 export interface StreamingBubbleProps {
   streaming: StreamingState

@@ -14,13 +14,13 @@
  * - useThrottledValue: Throttle streaming updates
  */
 
-/// <reference path="../../../../src/preload/electron-api.d.ts" />
+/// <reference path="../../../../../src/preload/electron-api.d.ts" />
 
 import { ArrowDown } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import { GENERAL_QUICK_PROMPTS, getPRQuickPrompts } from '../constants'
-import { useScrollManagement, useThrottledValue } from '../hooks'
+import { GENERAL_QUICK_PROMPTS, getPRQuickPrompts } from '../../constants'
+import { useScrollManagement, useThrottledValue } from '../../hooks'
 import type {
   AIChatPanelProps,
   ChatMessage,
@@ -29,7 +29,7 @@ import type {
   PRChatInfo,
   QueuedMessage,
   StreamingState
-} from '../types'
+} from '../../types'
 import {
   ChatLoadingSkeleton,
   ContextSyncBanner,
@@ -37,13 +37,13 @@ import {
   ErrorBanner,
   PRContextBanner,
   PREmptyState
-} from './ChatEmptyStates'
-import { ChatHeader } from './ChatHeader'
-import { ChatInput } from './ChatInput'
-import { ChatSettings } from './ChatSettings'
-import { VirtualizedMessageList } from './VirtualizedMessageList'
+} from '../ChatEmptyStates'
+import { ChatHeader } from '../ChatHeader'
+import { ChatInput } from '../ChatInput'
+import { ChatSettings } from '../ChatSettings'
+import { VirtualizedMessageList } from '../VirtualizedMessageList'
 
-export type { AIChatPanelProps } from '../types'
+export type { AIChatPanelProps } from '../../types'
 
 export function AIChatPanel({
   onClose,

@@ -7,8 +7,8 @@ import userEvent from '@testing-library/user-event'
 import { AlertCircle, MessageSquare } from 'lucide-react'
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CustomPrompt, QuickPrompt } from '../types'
-import { AddCustomPromptModal } from './AddCustomPromptModal'
+import type { CustomPrompt, QuickPrompt } from '../../types'
+import { AddCustomPromptModal } from '../AddCustomPromptModal'
 import { QuickActions } from './QuickActions'
 
 const mockPrompts: QuickPrompt[] = [

@@ -1,0 +1,1 @@
+export { MessageErrorBoundary } from './MessageErrorBoundary'

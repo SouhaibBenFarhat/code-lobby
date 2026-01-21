@@ -3,9 +3,9 @@
  */
 
 import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@codelobby/ui-kit'
-import { CONTEXT_WINDOWS, DEFAULT_CONTEXT_WINDOW } from '../constants'
-import type { ChatMessage } from '../types'
-import { calculateTotalTokens, estimateTokens } from '../utils/tokens'
+import { CONTEXT_WINDOWS, DEFAULT_CONTEXT_WINDOW } from '../../constants'
+import type { ChatMessage } from '../../types'
+import { calculateTotalTokens, estimateTokens } from '../../utils/tokens'
 
 export interface ContextIndicatorProps {
   messages: ChatMessage[]

@@ -6,8 +6,16 @@ import { ChatSettings } from './ChatSettings'
 describe('ChatSettings', () => {
   const defaultProps = {
     models: [
-      { id: 'claude-3-5-sonnet-20241022', display_name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-opus-20240229', display_name: 'Claude 3 Opus' }
+      {
+        id: 'claude-3-5-sonnet-20241022',
+        display_name: 'Claude 3.5 Sonnet',
+        created_at: '2024-10-22T00:00:00Z'
+      },
+      {
+        id: 'claude-3-opus-20240229',
+        display_name: 'Claude 3 Opus',
+        created_at: '2024-02-29T00:00:00Z'
+      }
     ],
     selectedModel: 'claude-3-5-sonnet-20241022',
     enableThinking: false,

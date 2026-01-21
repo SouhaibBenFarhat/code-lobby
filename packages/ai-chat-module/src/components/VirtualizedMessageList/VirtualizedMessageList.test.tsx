@@ -5,7 +5,7 @@
 import { render, screen } from '@testing-library/react'
 import { useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, StreamingState } from '../types'
+import type { ChatMessage, StreamingState } from '../../types'
 import { VirtualizedMessageList } from './VirtualizedMessageList'
 
 // Wrapper component to provide the ref

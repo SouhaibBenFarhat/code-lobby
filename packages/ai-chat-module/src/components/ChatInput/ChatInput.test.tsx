@@ -17,7 +17,9 @@ describe('ChatInput', () => {
     streaming: { content: '', thinking: '', isStreaming: false },
     messages: [],
     selectedModel: 'claude-3-5-sonnet-20241022',
-    prompts: [{ label: 'Test Prompt', prompt: 'Test prompt content' }],
+    prompts: [
+      { id: 'test-prompt', label: 'Test Prompt', prompt: 'Test prompt content', icon: '💡' }
+    ],
     customPrompts: [],
     onInputChange: vi.fn(),
     onSendMessage: vi.fn(),
@@ -200,7 +202,14 @@ describe('ChatInput', () => {
 
   describe('custom prompts', () => {
     it('passes customPrompts to QuickActions', () => {
-      const customPrompts = [{ id: 'custom-1', label: 'My Custom', prompt: 'Custom prompt' }]
+      const customPrompts = [
+        {
+          id: 'custom-1',
+          label: 'My Custom',
+          prompt: 'Custom prompt',
+          createdAt: new Date().toISOString()
+        }
+      ]
       render(<ChatInput {...defaultProps} customPrompts={customPrompts} />)
 
       expect(screen.getByText('My Custom')).toBeInTheDocument()

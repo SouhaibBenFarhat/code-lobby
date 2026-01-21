@@ -5,10 +5,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, QueuedMessage, StreamingState } from '../types'
+import type { ChatMessage, QueuedMessage, StreamingState } from '../../types'
+import { QueuedMessageBubble } from '../QueuedMessageBubble'
+import { StreamingBubble } from '../StreamingBubble'
 import { MessageBubble } from './MessageBubble'
-import { QueuedMessageBubble } from './QueuedMessageBubble'
-import { StreamingBubble } from './StreamingBubble'
 
 describe('MessageBubble', () => {
   const mockExpandedThinking = new Set<string>()

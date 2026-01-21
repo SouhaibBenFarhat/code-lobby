@@ -5,9 +5,9 @@
 import { Button, cn, Input } from '@codelobby/ui-kit'
 import { Key, Loader2, Send } from 'lucide-react'
 import React, { useCallback, useEffect, useRef } from 'react'
-import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../types'
-import { ContextIndicator } from './ContextIndicator'
-import { QuickActions } from './QuickActions'
+import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../../types'
+import { ContextIndicator } from '../ContextIndicator'
+import { QuickActions } from '../QuickActions'
 
 export interface ChatInputProps {
   // API Key state
