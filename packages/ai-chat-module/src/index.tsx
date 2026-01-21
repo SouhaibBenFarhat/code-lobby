@@ -1,8 +1,15 @@
 /**
  * @codelobby/ai-chat-module
  *
- * AI chat panel powered by Claude.
- * Fully self-contained using shared-store.
+ * AI Chat Module - Main entry point
+ * AI chat panel powered by Claude, fully self-contained using shared-store.
+ *
+ * Architecture:
+ * - types/         - Shared TypeScript interfaces
+ * - constants/     - Configuration constants and prompt definitions
+ * - utils/         - Utility functions (postable parsing, token estimation)
+ * - hooks/         - Custom React hooks (useThrottledValue)
+ * - components/    - UI components (split for better testing/extensibility)
  */
 
 /// <reference path="../../../src/preload/electron-api.d.ts" />
@@ -11,13 +18,84 @@ import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import { registerToSlot } from '@codelobby/slot-system'
 import { AIChatPanel } from './components/AIChat'
 
-// Re-export components
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORTS - Components, Types, Utils for external consumers
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Component building blocks - for custom implementations
+export type {
+  AddCustomPromptModalProps,
+  ContextIndicatorProps,
+  MessageBubbleProps,
+  QueuedMessageBubbleProps,
+  QuickActionsProps,
+  StreamingBubbleProps,
+  VirtualizedMessageListProps
+} from './components'
+export {
+  AddCustomPromptModal,
+  ContextIndicator,
+  MessageBubble,
+  MessageErrorBoundary,
+  QueuedMessageBubble,
+  QuickActions,
+  StreamingBubble,
+  VirtualizedMessageList
+} from './components'
+// Main component export
 export { AIChatPanel } from './components/AIChat'
+
+// Constants - for external consumers who want to customize prompts
+export {
+  CONTEXT_WINDOWS,
+  DEFAULT_CONTEXT_WINDOW,
+  GENERAL_QUICK_PROMPTS,
+  getPRQuickPrompts,
+  POSTABLE_END,
+  POSTABLE_START
+} from './constants'
+
+// Hooks - for external consumers
+export { useThrottledValue } from './hooks'
+
+// Types - for external consumers
+export type {
+  AIChatPanelProps,
+  ChatMessage,
+  ClaudeModel,
+  ContentSection,
+  CustomPrompt,
+  GitHubUser,
+  LinkedPRChat,
+  PostableComment,
+  PostingState,
+  PRChatInfo,
+  PRContext,
+  QueuedMessage,
+  QuickPrompt,
+  SelectedPR,
+  StreamingState
+} from './types'
+
+// Utils - for external consumers who need postable parsing
+export {
+  extractPostable,
+  extractPRComment,
+  parseContentSections,
+  parsePostableComments,
+  stripPostableMetadata
+} from './utils'
+export { calculateTotalTokens, estimateTokens } from './utils/tokens'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SLOT SYSTEM INTEGRATION
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * AIChatWrapper connects AIChatPanel to the shared store.
+ * This wrapper allows the stateful AIChatPanel to be used with the slot system.
  */
-function AIChatWrapper() {
+function AIChatWrapper(): React.JSX.Element | null {
   const user = useSignal(Store.user)
   const linkedPRChat = useSignal(Store.linkedPRChat)
   const selectedPR = useSignal(Store.selectedPR)
@@ -28,11 +106,11 @@ function AIChatWrapper() {
     return null
   }
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     Actions.toggleAIPanel()
   }
 
-  const handleClosePRChat = async () => {
+  const handleClosePRChat = async (): Promise<void> => {
     if (linkedPRChat) {
       await window.electron.deletePRChat(linkedPRChat.prId)
       Store.activePRChatId.value = null
@@ -40,7 +118,7 @@ function AIChatWrapper() {
     }
   }
 
-  const handleSwitchToPRChat = async (prId: string) => {
+  const handleSwitchToPRChat = async (prId: string): Promise<void> => {
     const chat = await window.electron.getPRChat(prId)
     if (chat) {
       Store.activePRChatId.value = chat.prId
@@ -53,7 +131,7 @@ function AIChatWrapper() {
     }
   }
 
-  const handleStartPRChat = async () => {
+  const handleStartPRChat = async (): Promise<void> => {
     if (selectedPR) {
       Actions.createPRChat(selectedPR)
     }

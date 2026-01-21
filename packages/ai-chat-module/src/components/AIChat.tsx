@@ -1,1414 +1,61 @@
 /**
  * AIChat - AI chat panel powered by Claude.
- * Uses shared-store instead of React Context.
+ * Main component that orchestrates the chat experience.
  */
 
 /// <reference path="../../../../src/preload/electron-api.d.ts" />
 
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  ClaudeIcon,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@codelobby/ui-kit'
-import { useVirtualizer } from '@tanstack/react-virtual'
-import {
-  AlertCircle,
-  ArrowDown,
-  ArrowLeft,
-  Brain,
-  Check,
-  ChevronRight,
-  ExternalLink,
-  GitPullRequest,
-  Key,
-  List,
-  Loader2,
-  MessageSquare,
-  MessageSquarePlus,
-  RefreshCw,
-  Send,
-  Settings,
-  Trash2,
-  User,
-  X
-} from 'lucide-react'
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-
-// Utility for throttling with requestAnimationFrame
-function useThrottledValue<T>(value: T, fps = 30): T {
-  const [throttledValue, setThrottledValue] = useState(value)
-  const lastUpdateRef = useRef(0)
-  const frameRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    const minInterval = 1000 / fps
-    const now = performance.now()
-
-    if (now - lastUpdateRef.current >= minInterval) {
-      setThrottledValue(value)
-      lastUpdateRef.current = now
-    } else {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
-      }
-      frameRef.current = requestAnimationFrame(() => {
-        setThrottledValue(value)
-        lastUpdateRef.current = performance.now()
-      })
-    }
-
-    return () => {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
-      }
-    }
-  }, [value, fps])
-
-  return throttledValue
-}
-
-import {
   Button,
+  ClaudeIcon,
   cn,
   formatRelativeTime,
   Input,
-  MarkdownContent,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
 } from '@codelobby/ui-kit'
-
-// ===================
-// ERROR BOUNDARY
-// ===================
-
-interface MessageErrorBoundaryProps {
-  children: React.ReactNode
-  messageId?: string
-  content?: string
-}
-
-interface MessageErrorBoundaryState {
-  hasError: boolean
-  error: Error | null
-}
-
-/**
- * Error boundary for message content rendering.
- * Catches React errors during rendering and logs them.
- */
-class MessageErrorBoundary extends React.Component<
-  MessageErrorBoundaryProps,
-  MessageErrorBoundaryState
-> {
-  constructor(props: MessageErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-
-  static getDerivedStateFromError(error: Error): MessageErrorBoundaryState {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log to console for debugging
-    console.error('[AIChat] Message render error:', error)
-    console.error('[AIChat] Error info:', errorInfo)
-    console.error('[AIChat] Message ID:', this.props.messageId)
-    console.error('[AIChat] Content preview:', this.props.content?.slice(0, 500))
-
-    // Log to app logs via electron API
-    if (typeof window !== 'undefined' && window.electron?.logFromRenderer) {
-      window.electron.logFromRenderer(
-        'error',
-        'AI Chat',
-        `Message render error: ${error.message}`,
-        {
-          errorMessage: error.message,
-          errorStack: error.stack,
-          componentStack: errorInfo.componentStack,
-          messageId: this.props.messageId,
-          contentPreview: this.props.content?.slice(0, 200)
-        }
-      )
-    }
-  }
-
-  render(): React.ReactNode {
-    if (this.state.hasError) {
-      return (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
-          <div className="flex items-center gap-2 text-destructive font-medium mb-1">
-            <AlertCircle className="w-4 h-4" />
-            Failed to render message
-          </div>
-          <p className="text-muted-foreground text-xs">
-            {this.state.error?.message || 'Unknown rendering error'}
-          </p>
-          {this.props.content && (
-            <details className="mt-2">
-              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                Show raw content
-              </summary>
-              <pre className="mt-1 p-2 bg-muted/50 rounded text-xs overflow-auto max-h-40 whitespace-pre-wrap">
-                {this.props.content}
-              </pre>
-            </details>
-          )}
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
-}
-
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  thinking?: string
-  timestamp: string
-}
-
-// Postable comment metadata that Claude can embed in responses
-interface PostableComment {
-  file: string
-  line: number
-}
-
-// A content section that may or may not have a postable comment
-interface ContentSection {
-  content: string // The displayable content (POSTABLE stripped)
-  postable: PostableComment | null // If this section has a postable finding
-  prComment: string | null // The extracted PR comment to post (if any)
-}
-
-// Parse POSTABLE metadata from message content
-// Format: <!--POSTABLE:{"file":"path/to/file.ts","line":42}-->
-const POSTABLE_START = '<!--POSTABLE:'
-const POSTABLE_END = '-->'
-
-// Extract PR Comment from content (the part to be posted)
-// Format: > **PR Comment:** This is what gets posted
-function extractPRComment(content: string): string | null {
-  // Look for blockquote with "PR Comment:" marker
-  const prCommentRegex = />\s*\*\*PR Comment:\*\*\s*(.+?)(?=\n[^>]|<!--POSTABLE|$)/s
-  const match = content.match(prCommentRegex)
-  if (match?.[1]) {
-    return match[1].trim()
-  }
-  return null
-}
-
-// Extract POSTABLE from a single piece of content
-function extractPostable(content: string): {
-  cleaned: string
-  postable: PostableComment | null
-  prComment: string | null
-} {
-  const startIdx = content.indexOf(POSTABLE_START)
-  if (startIdx === -1) {
-    return { cleaned: content, postable: null, prComment: null }
-  }
-
-  const jsonStart = startIdx + POSTABLE_START.length
-  const endIdx = content.indexOf(POSTABLE_END, jsonStart)
-  if (endIdx === -1) {
-    return { cleaned: content, postable: null, prComment: null }
-  }
-
-  const jsonStr = content.slice(jsonStart, endIdx).trim()
-  const cleaned = (content.slice(0, startIdx) + content.slice(endIdx + POSTABLE_END.length)).trim()
-
-  // Extract the PR comment before cleaning
-  const prComment = extractPRComment(content)
-
-  try {
-    const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
-    if (parsed.file && typeof parsed.line === 'number') {
-      return { cleaned, postable: { file: parsed.file, line: parsed.line }, prComment }
-    }
-  } catch {
-    console.warn('Failed to parse POSTABLE metadata:', jsonStr)
-  }
-
-  return { cleaned, postable: null, prComment }
-}
-
-// Parse message into sections, each section may have its own POSTABLE
-// Sections are delimited by "---" (horizontal rules)
-function parseContentSections(content: string): ContentSection[] {
-  // Split by horizontal rule pattern (--- at start of line, possibly with whitespace)
-  const parts = content.split(/\n---\n/)
-
-  if (parts.length === 1) {
-    // No sections, treat entire content as one
-    const { cleaned, postable, prComment } = extractPostable(content)
-    return [{ content: cleaned, postable, prComment }]
-  }
-
-  return parts.map((part) => {
-    const { cleaned, postable, prComment } = extractPostable(part.trim())
-    return { content: cleaned, postable, prComment }
-  })
-}
-
-// Legacy: Parse all POSTABLE comments from content (for backward compat)
-// biome-ignore lint/correctness/noUnusedVariables: Used in tests
-function parsePostableComments(content: string): PostableComment[] {
-  const comments: PostableComment[] = []
-  let searchStart = 0
-
-  while (true) {
-    const startIdx = content.indexOf(POSTABLE_START, searchStart)
-    if (startIdx === -1) break
-
-    const jsonStart = startIdx + POSTABLE_START.length
-    const endIdx = content.indexOf(POSTABLE_END, jsonStart)
-    if (endIdx === -1) break
-
-    const jsonStr = content.slice(jsonStart, endIdx).trim()
-    searchStart = endIdx + POSTABLE_END.length
-
-    try {
-      const parsed = JSON.parse(jsonStr) as { file?: string; line?: number }
-      if (parsed.file && typeof parsed.line === 'number') {
-        comments.push({ file: parsed.file, line: parsed.line })
-      }
-    } catch {
-      // Invalid JSON, skip
-    }
-  }
-  return comments
-}
-
-// Legacy: Remove all POSTABLE metadata from content for display
-// biome-ignore lint/correctness/noUnusedVariables: Used in tests
-function stripPostableMetadata(content: string): string {
-  let result = content
-
-  while (true) {
-    const startIdx = result.indexOf(POSTABLE_START)
-    if (startIdx === -1) break
-
-    const endIdx = result.indexOf(POSTABLE_END, startIdx)
-    if (endIdx === -1) break
-
-    result = result.slice(0, startIdx) + result.slice(endIdx + POSTABLE_END.length)
-  }
-
-  return result.trim()
-}
-
-// Context window sizes by model (in tokens)
-// NOTE: Anthropic's API does not return context window size, so we must hardcode these.
-// All current Claude models use 200K context. This is standard practice (Cursor does the same).
-// We only find out the actual limit when we exceed it (error: model_context_window_exceeded).
-const CONTEXT_WINDOWS: Record<string, number> = {
-  'claude-sonnet-4-20250514': 200000,
-  'claude-opus-4-20250514': 200000,
-  'claude-3-7-sonnet-20250219': 200000,
-  'claude-3-5-sonnet-20241022': 200000,
-  'claude-3-5-haiku-20241022': 200000,
-  'claude-3-opus-20240229': 200000,
-  'claude-3-sonnet-20240229': 200000,
-  'claude-3-haiku-20240307': 200000
-}
-const DEFAULT_CONTEXT_WINDOW = 200000
-
-// ===================
-// QUICK ACTION PROMPTS
-// ===================
-
-// Pre-defined prompts for PR-specific chats
-interface QuickPrompt {
-  id: string
-  label: string
-  icon: React.ReactNode
-  prompt: string
-}
-
-// PR context for determining which quick actions to show
-interface PRContext {
-  hasCIFailures?: boolean
-  hasReviews?: boolean
-  isApproved?: boolean
-}
-
-// Get context-aware PR quick prompts
-function getPRQuickPrompts(context: PRContext = {}): QuickPrompt[] {
-  const prompts: QuickPrompt[] = [
-    {
-      id: 'review-bugs',
-      label: 'Find bugs',
-      icon: <AlertCircle className="w-3 h-3" />,
-      prompt:
-        'Review this PR for bugs, potential issues, and edge cases. Show me the problematic code and how to fix it.'
-    },
-    {
-      id: 'summarize',
-      label: 'Summarize',
-      icon: <MessageSquare className="w-3 h-3" />,
-      prompt: 'Summarize this PR in 2-3 sentences. What does it do and why?'
-    }
-  ]
-
-  // Only show "Why is CI failing?" when CI is actually failing
-  if (context.hasCIFailures) {
-    prompts.push({
-      id: 'explain-ci',
-      label: 'Why is CI failing?',
-      icon: <AlertCircle className="w-3 h-3" />,
-      prompt: 'Look at the CI checks and explain why they are failing. What should be fixed?'
-    })
-  }
-
-  prompts.push(
-    {
-      id: 'security',
-      label: 'Security review',
-      icon: <AlertCircle className="w-3 h-3" />,
-      prompt: 'Review this PR for security vulnerabilities, injection risks, or unsafe patterns.'
-    },
-    {
-      id: 'improvements',
-      label: 'Suggest improvements',
-      icon: <MessageSquare className="w-3 h-3" />,
-      prompt:
-        'Suggest improvements to the code in this PR. Focus on readability, performance, and best practices.'
-    }
-  )
-
-  return prompts
-}
-
-// Pre-defined prompts for general chat
-const GENERAL_QUICK_PROMPTS: QuickPrompt[] = [
-  {
-    id: 'explain-code',
-    label: 'Explain this code',
-    icon: <MessageSquare className="w-3 h-3" />,
-    prompt: 'Can you explain how this codebase is organized and what the main components do?'
-  },
-  {
-    id: 'best-practices',
-    label: 'Best practices',
-    icon: <MessageSquare className="w-3 h-3" />,
-    prompt: 'What are some best practices I should follow for this type of project?'
-  },
-  {
-    id: 'debug-help',
-    label: 'Help me debug',
-    icon: <AlertCircle className="w-3 h-3" />,
-    prompt: "I'm having an issue with my code. Can you help me debug it?"
-  }
-]
-
-// Estimate tokens from text (~4 characters per token for English)
-// This is a rough estimate. Actual tokenization varies by model.
-// For accurate counting, we track input_tokens from API responses.
-function estimateTokens(text: string): number {
-  if (!text) return 0
-  return Math.ceil(text.length / 4)
-}
-
-// Calculate total tokens from messages
-// Uses estimation - actual tokens are tracked separately via API responses
-function calculateTotalTokens(
-  messages: ChatMessage[],
-  streamingContent?: string,
-  streamingThinking?: string
-): number {
-  let total = 0
-
-  // Add tokens from all messages
-  for (const msg of messages) {
-    total += estimateTokens(msg.content)
-    if (msg.thinking) {
-      total += estimateTokens(msg.thinking)
-    }
-  }
-
-  // Add streaming content if present
-  if (streamingContent) {
-    total += estimateTokens(streamingContent)
-  }
-  if (streamingThinking) {
-    total += estimateTokens(streamingThinking)
-  }
-
-  // Add overhead for message formatting (~20 tokens per message)
-  total += messages.length * 20
-
-  return total
-}
-
-// Context load indicator component
-interface ContextIndicatorProps {
-  messages: ChatMessage[]
-  streamingContent?: string
-  streamingThinking?: string
-  model: string
-  inputText?: string
-}
-
-function ContextIndicator({
-  messages,
-  streamingContent,
-  streamingThinking,
-  model,
-  inputText
-}: ContextIndicatorProps) {
-  const maxTokens = CONTEXT_WINDOWS[model] || DEFAULT_CONTEXT_WINDOW
-  const usedTokens =
-    calculateTotalTokens(messages, streamingContent, streamingThinking) +
-    estimateTokens(inputText || '')
-  const percentage = Math.min((usedTokens / maxTokens) * 100, 100)
-
-  // Color based on usage
-  const getColor = () => {
-    if (percentage < 50) return 'bg-green-500'
-    if (percentage < 80) return 'bg-yellow-500'
-    if (percentage < 95) return 'bg-orange-500'
-    return 'bg-red-500'
-  }
-
-  // Format numbers with K suffix
-  const formatTokens = (n: number) => {
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-    return n.toString()
-  }
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 cursor-help">
-            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className={cn('h-full rounded-full transition-all duration-300', getColor())}
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-            {percentage >= 95 && <span className="text-[10px] text-red-500">⚠️</span>}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs px-2 py-1">
-          <span>
-            {percentage.toFixed(1)}% • {formatTokens(usedTokens)} / {formatTokens(maxTokens)}{' '}
-            context used
-          </span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
-
-interface ClaudeModel {
-  id: string
-  display_name: string
-  created_at: string
-}
-
-// GitHub user for avatar display
-interface GitHubUser {
-  login: string
-  avatar_url: string
-  name: string | null
-}
-
-// Linked PR chat info
-interface LinkedPRChat {
-  prId: string
-  prNumber: number
-  prTitle: string
-  repoFullName: string
-}
-
-// PR Chat from store
-interface PRChatInfo {
-  prId: string
-  prNumber: number
-  prTitle: string
-  repoFullName: string
-  updatedAt: string
-  messageCount: number
-}
-
-interface SelectedPR {
-  number: number
-  title: string
-  head: {
-    sha: string
-  }
-  base: {
-    repo: {
-      full_name: string
-      owner: {
-        login: string
-      }
-      name: string
-    }
-  }
-  checks?: {
-    state: 'pending' | 'success' | 'failure' | 'error'
-    total_count: number
-  }
-}
-
-interface AIChatPanelProps {
-  onClose: () => void
-  user?: GitHubUser | null
-  linkedPRChat?: LinkedPRChat | null
-  onClosePRChat?: () => void | Promise<void>
-  onSwitchToPRChat?: (prId: string) => void
-  selectedPR?: SelectedPR | null
-  onStartPRChat?: (pr: SelectedPR) => void
-}
-
-// Streaming state for the current assistant message being generated
-interface StreamingState {
-  content: string
-  thinking: string
-  isStreaming: boolean
-}
-
-// Queued message waiting to be sent
-interface QueuedMessage {
-  id: string
-  content: string
-}
-
-// Virtualized message list component for performance
-// IMPORTANT: Streaming content is rendered OUTSIDE the virtualizer to avoid constant re-measurements
-interface VirtualizedMessageListProps {
-  messages: ChatMessage[]
-  streaming: StreamingState
-  throttledStreaming: StreamingState // Throttled version for display
-  messageQueue: QueuedMessage[]
-  expandedThinking: Set<string>
-  toggleThinkingExpanded: (id: string) => void
-  setMessageQueue: React.Dispatch<React.SetStateAction<QueuedMessage[]>>
-  scrollContainerRef: React.RefObject<HTMLDivElement>
-  onScroll: () => void
-  onVirtualizerReady: (scrollToEnd: () => void) => void
-  user?: GitHubUser | null
-  linkedPRChat?: LinkedPRChat | null
-  onPostComment?: (
-    file: string,
-    line: number,
-    body: string
-  ) => Promise<{ success: boolean; commentUrl?: string }>
-}
-
-function VirtualizedMessageList({
-  messages,
-  streaming,
-  throttledStreaming,
-  messageQueue,
-  expandedThinking,
-  toggleThinkingExpanded,
-  setMessageQueue,
-  scrollContainerRef,
-  onScroll,
-  onVirtualizerReady,
-  user,
-  linkedPRChat,
-  onPostComment
-}: VirtualizedMessageListProps) {
-  // Only virtualize static messages - streaming content is rendered separately
-  const allItems = useMemo(() => {
-    const items: Array<{
-      type: 'message' | 'queued'
-      data: ChatMessage | QueuedMessage
-      index?: number
-    }> = []
-
-    // Add messages
-    messages.forEach((msg) => {
-      items.push({ type: 'message', data: msg })
-    })
-
-    // Add queued messages (these are static, ok to virtualize)
-    messageQueue.forEach((msg, idx) => {
-      items.push({ type: 'queued', data: msg, index: idx })
-    })
-
-    return items
-  }, [messages, messageQueue])
-
-  const virtualizer = useVirtualizer({
-    count: allItems.length,
-    getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 100, // Slightly larger estimate for safety
-    overscan: 5 // Render 5 extra items above/below viewport
-  })
-
-  const virtualItems = virtualizer.getVirtualItems()
-
-  // Expose scrollToEnd function to parent via callback
-  // This uses virtualizer's scrollToIndex which is more reliable
-  useLayoutEffect(() => {
-    const scrollToEnd = () => {
-      if (allItems.length > 0) {
-        // Use virtualizer's scrollToIndex for accurate positioning
-        virtualizer.scrollToIndex(allItems.length - 1, { align: 'end' })
-
-        // Also scroll to absolute bottom to include streaming content
-        requestAnimationFrame(() => {
-          const container = scrollContainerRef.current
-          if (container) {
-            container.scrollTop = container.scrollHeight
-          }
-        })
-      }
-    }
-    onVirtualizerReady(scrollToEnd)
-  }, [allItems.length, virtualizer, onVirtualizerReady, scrollContainerRef])
-
-  return (
-    <div ref={scrollContainerRef} className="h-full overflow-auto p-3" onScroll={onScroll}>
-      {/* Virtualized messages */}
-      <div
-        style={{
-          height: allItems.length > 0 ? `${virtualizer.getTotalSize()}px` : 'auto',
-          width: '100%',
-          position: 'relative'
-        }}
-      >
-        {virtualItems.map((virtualItem) => {
-          const item = allItems[virtualItem.index]
-
-          return (
-            <div
-              key={virtualItem.key}
-              data-index={virtualItem.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualItem.start}px)`
-              }}
-              className="pb-3"
-            >
-              {item.type === 'message' && (
-                <MessageBubble
-                  message={item.data as ChatMessage}
-                  expandedThinking={expandedThinking}
-                  toggleThinkingExpanded={toggleThinkingExpanded}
-                  user={user}
-                  linkedPRChat={linkedPRChat}
-                  onPostComment={onPostComment}
-                />
-              )}
-
-              {item.type === 'queued' && (
-                <QueuedMessageBubble
-                  message={item.data as QueuedMessage}
-                  index={item.index ?? 0}
-                  onRemove={() =>
-                    setMessageQueue((prev) =>
-                      prev.filter((m) => m.id !== (item.data as QueuedMessage).id)
-                    )
-                  }
-                  user={user}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Streaming content - rendered OUTSIDE virtualizer for smooth updates */}
-      {streaming.isStreaming && (
-        <div className="pb-3">
-          <StreamingBubble streaming={throttledStreaming} />
-        </div>
-      )}
-
-      {/* Queue header - rendered outside virtualizer when streaming */}
-      {streaming.isStreaming && messageQueue.length > 0 && (
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-2 pb-3 border-t border-dashed border-border/50">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          <span>
-            {messageQueue.length} message{messageQueue.length > 1 ? 's' : ''} queued
-          </span>
-        </div>
-      )}
-
-      {/* Scroll anchor at absolute bottom */}
-      <div data-scroll-anchor className="h-px" />
-    </div>
-  )
-}
-
-// ===================
-// QUICK ACTIONS COMPONENT
-// ===================
-
-// Quick action chips that users can click to send pre-defined prompts
-// Custom prompt from storage
-interface CustomPrompt {
-  id: string
-  label: string
-  prompt: string
-  createdAt: string
-}
-
-// Modal for creating custom prompts with better UX
-function AddCustomPromptModal({
-  isOpen,
-  onClose,
-  onSave
-}: {
-  isOpen: boolean
-  onClose: () => void
-  onSave: (label: string, prompt: string) => Promise<void>
-}) {
-  const [label, setLabel] = useState('')
-  const [prompt, setPrompt] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const labelInputRef = useRef<HTMLInputElement>(null)
-
-  // Focus label input when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => labelInputRef.current?.focus(), 100)
-    }
-  }, [isOpen])
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setLabel('')
-      setPrompt('')
-      setError(null)
-    }
-  }, [isOpen])
-
-  const handleSave = async () => {
-    if (!label.trim()) {
-      setError('Please enter a label')
-      return
-    }
-    if (!prompt.trim()) {
-      setError('Please enter a prompt')
-      return
-    }
-    if (label.length > 30) {
-      setError('Label must be 30 characters or less')
-      return
-    }
-
-    setIsSaving(true)
-    setError(null)
-    try {
-      await onSave(label.trim(), prompt.trim())
-      onClose()
-    } catch {
-      setError('Failed to save prompt')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.metaKey) {
-      handleSave()
-    }
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquarePlus className="w-5 h-5 text-primary" />
-            Create Custom Prompt
-          </DialogTitle>
-          <DialogDescription>
-            Create a reusable prompt for quick access. Your prompts are saved locally and persist
-            across sessions.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {/* Label input */}
-          <div className="space-y-2">
-            <label htmlFor="prompt-label" className="text-sm font-medium">
-              Label <span className="text-muted-foreground">(button text)</span>
-            </label>
-            <Input
-              ref={labelInputRef}
-              id="prompt-label"
-              placeholder="e.g., Check types, Find bugs, Optimize..."
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              maxLength={30}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">{label.length}/30 characters</p>
-          </div>
-
-          {/* Prompt textarea */}
-          <div className="space-y-2">
-            <label htmlFor="prompt-content" className="text-sm font-medium">
-              Prompt <span className="text-muted-foreground">(what to send to AI)</span>
-            </label>
-            <textarea
-              id="prompt-content"
-              placeholder="Write your prompt here...&#10;&#10;Example: Review this code for TypeScript errors. Check for:&#10;- Missing type annotations&#10;- Incorrect type usage&#10;- Potential null/undefined issues&#10;&#10;Show me the problematic code and how to fix it."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={8}
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none font-mono"
-            />
-            <p className="text-xs text-muted-foreground">
-              Tip: Be specific! "Find performance issues in loops" works better than "Review code"
-            </p>
-          </div>
-
-          {/* Error message */}
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="w-4 h-4" />
-              {error}
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving || !label.trim() || !prompt.trim()}>
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                Save Prompt
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function QuickActions({
-  prompts,
-  customPrompts,
-  onSelect,
-  onAddCustomPrompt,
-  onDeleteCustomPrompt,
-  disabled = false,
-  className = ''
-}: {
-  prompts: QuickPrompt[]
-  customPrompts: CustomPrompt[]
-  onSelect: (prompt: string) => void
-  onAddCustomPrompt: (label: string, prompt: string) => Promise<void>
-  onDeleteCustomPrompt: (id: string) => Promise<void>
-  disabled?: boolean
-  className?: string
-}) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
-  // Check scroll state on mount and when content changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: need to recalculate when prompts change
-  useEffect(() => {
-    const checkScroll = () => {
-      const el = scrollRef.current
-      if (el) {
-        setCanScrollLeft(el.scrollLeft > 0)
-        setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1)
-      }
-    }
-
-    checkScroll()
-    const el = scrollRef.current
-    el?.addEventListener('scroll', checkScroll)
-    window.addEventListener('resize', checkScroll)
-
-    return () => {
-      el?.removeEventListener('scroll', checkScroll)
-      window.removeEventListener('resize', checkScroll)
-    }
-  }, [prompts.length, customPrompts.length])
-
-  // Build mask gradient based on scroll state
-  const getMaskStyle = (): React.CSSProperties => {
-    const leftFade = canScrollLeft ? 'transparent, black 24px' : 'black, black'
-    const rightFade = canScrollRight ? 'black calc(100% - 24px), transparent' : 'black, black'
-
-    return {
-      maskImage: `linear-gradient(to right, ${leftFade}, ${rightFade})`,
-      WebkitMaskImage: `linear-gradient(to right, ${leftFade}, ${rightFade})`,
-      scrollbarWidth: 'none' // Firefox
-    }
-  }
-
-  return (
-    <div className={cn('relative', className)}>
-      {/* Add Custom Prompt Modal */}
-      <AddCustomPromptModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={onAddCustomPrompt}
-      />
-
-      {/* Scrollable container with mask fade effect */}
-      <div
-        ref={scrollRef}
-        className="flex gap-1.5 overflow-x-auto px-1 [&::-webkit-scrollbar]:hidden"
-        style={getMaskStyle()}
-      >
-        {/* Add custom prompt button - at the start */}
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          disabled={disabled}
-          className={cn(
-            'inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-            'bg-transparent hover:bg-muted/60 border border-dashed border-border/50 hover:border-border',
-            'text-muted-foreground/60 hover:text-muted-foreground',
-            'transition-all duration-150',
-            disabled && 'opacity-50 cursor-not-allowed'
-          )}
-          title="Add custom prompt"
-        >
-          <MessageSquarePlus className="w-3 h-3" />
-        </button>
-
-        {/* Custom prompts with delete button */}
-        {customPrompts.map((prompt) => (
-          <div key={prompt.id} className="relative group flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => onSelect(prompt.prompt)}
-              disabled={disabled}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
-                'bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50',
-                'text-primary hover:text-primary',
-                'transition-all duration-150 pr-7',
-                disabled && 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>{prompt.label}</span>
-            </button>
-            {/* Delete button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeleteCustomPrompt(prompt.id)
-              }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-destructive/80 hover:bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Delete prompt"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
-
-        {/* Built-in prompts */}
-        {prompts.map((prompt) => (
-          <button
-            key={prompt.id}
-            type="button"
-            onClick={() => onSelect(prompt.prompt)}
-            disabled={disabled}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-              'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
-              'text-muted-foreground hover:text-foreground',
-              'transition-all duration-150',
-              disabled && 'opacity-50 cursor-not-allowed'
-            )}
-          >
-            {prompt.icon}
-            <span>{prompt.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// State for tracking posted comments and posting in progress
-interface PostingState {
-  [key: string]: 'posting' | 'posted' | 'error'
-}
-
-// Individual message bubble component (memoized for performance)
-const MessageBubble = React.memo(function MessageBubble({
-  message,
-  expandedThinking,
-  toggleThinkingExpanded,
-  user,
-  linkedPRChat,
-  onPostComment
-}: {
-  message: ChatMessage
-  expandedThinking: Set<string>
-  toggleThinkingExpanded: (id: string) => void
-  user?: GitHubUser | null
-  linkedPRChat?: LinkedPRChat | null
-  onPostComment?: (
-    file: string,
-    line: number,
-    body: string
-  ) => Promise<{ success: boolean; commentUrl?: string }>
-}) {
-  const [postingState, setPostingState] = useState<PostingState>({})
-  const [postedUrls, setPostedUrls] = useState<Record<string, string>>({})
-
-  // Parse content into sections, each with potential postable
-  const sections = useMemo(() => {
-    if (message.role !== 'assistant') return []
-    try {
-      return parseContentSections(message.content || '')
-    } catch (e) {
-      console.error('Error parsing content sections:', e)
-      return [{ content: message.content || '', postable: null, prComment: null }]
-    }
-  }, [message.content, message.role])
-
-  const handlePostComment = async (
-    postable: PostableComment,
-    sectionContent: string,
-    sectionIndex: number
-  ) => {
-    if (!onPostComment) return
-
-    const key = `section-${sectionIndex}`
-    setPostingState((prev) => ({ ...prev, [key]: 'posting' }))
-
-    try {
-      // Post only the content of THIS section, not the whole message
-      const result = await onPostComment(postable.file, postable.line, sectionContent)
-
-      if (result.success) {
-        setPostingState((prev) => ({ ...prev, [key]: 'posted' }))
-        if (result.commentUrl) {
-          setPostedUrls((prev) => ({ ...prev, [key]: result.commentUrl as string }))
-        }
-      } else {
-        setPostingState((prev) => ({ ...prev, [key]: 'error' }))
-      }
-    } catch {
-      setPostingState((prev) => ({ ...prev, [key]: 'error' }))
-    }
-  }
-
-  // Render a single section with optional inline Post button
-  const renderSection = (section: ContentSection, index: number) => {
-    const key = `section-${index}`
-    const state = postingState[key]
-    const postedUrl = postedUrls[key]
-    const showPostButton = section.postable && linkedPRChat && onPostComment
-
-    return (
-      <div key={key} className={cn(index > 0 && 'border-t border-border/20 pt-2 mt-2')}>
-        <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-          <MessageErrorBoundary messageId={message.id} content={section.content}>
-            <MarkdownContent content={section.content} />
-          </MessageErrorBoundary>
-        </div>
-
-        {/* Inline Post button for this section */}
-        {showPostButton && section.postable && (
-          <div className="flex items-center gap-2 mt-2 text-xs bg-blue-500/10 rounded px-2 py-1.5">
-            <MessageSquarePlus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-            <span className="text-muted-foreground truncate flex-1">
-              <code className="text-[10px] bg-black/20 px-1 rounded">{section.postable.file}</code>
-              <span className="text-muted-foreground/60 mx-1">:</span>
-              <span className="text-blue-400">L{section.postable.line}</span>
-            </span>
-
-            {state === 'posted' && postedUrl ? (
-              <a
-                href={postedUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors"
-              >
-                <Check className="w-3 h-3" />
-                <span>Posted</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            ) : state === 'posting' ? (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Posting...</span>
-              </span>
-            ) : state === 'error' ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (section.postable) {
-                    // Use PR comment if available, otherwise fall back to section content
-                    const commentBody = section.prComment || section.content
-                    handlePostComment(section.postable, commentBody, index)
-                  }
-                }}
-                className="flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
-              >
-                <AlertCircle className="w-3 h-3" />
-                <span>Retry</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  if (section.postable) {
-                    // Use PR comment if available, otherwise fall back to section content
-                    const commentBody = section.prComment || section.content
-                    handlePostComment(section.postable, commentBody, index)
-                  }
-                }}
-                className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors font-medium"
-              >
-                <span>Post to PR</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-      {message.role === 'assistant' && (
-        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <ClaudeIcon className="w-3.5 h-3.5 text-primary" />
-        </div>
-      )}
-
-      <div
-        className={cn(
-          'max-w-[85%] rounded-lg',
-          message.role === 'user'
-            ? 'bg-primary text-primary-foreground px-3 py-2 selection:bg-white/30 selection:text-white'
-            : 'bg-muted'
-        )}
-      >
-        {message.role === 'assistant' ? (
-          <div className="space-y-0">
-            {message.thinking && (
-              <div
-                className={cn(
-                  'border-b transition-colors',
-                  expandedThinking.has(message.id)
-                    ? 'border-primary/20 bg-primary/5'
-                    : 'border-border/50'
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleThinkingExpanded(message.id)}
-                  className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ChevronRight
-                    className={cn(
-                      'w-3 h-3 transition-transform',
-                      expandedThinking.has(message.id) && 'rotate-90'
-                    )}
-                  />
-                  <Brain
-                    className={cn(
-                      'w-3.5 h-3.5',
-                      expandedThinking.has(message.id) && 'text-primary'
-                    )}
-                  />
-                  <span>Thinking</span>
-                  <span className="text-[10px] text-muted-foreground/60 ml-auto">
-                    Click to {expandedThinking.has(message.id) ? 'hide' : 'show'}
-                  </span>
-                </button>
-                {expandedThinking.has(message.id) && (
-                  <div className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded">
-                    <pre className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed">
-                      {message.thinking}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Render sections with inline Post buttons */}
-            <div className="px-3 py-2">
-              {sections.length > 0 ? (
-                sections.map((section, index) => renderSection(section, index))
-              ) : (
-                <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
-                  <MessageErrorBoundary messageId={message.id} content={message.content}>
-                    <MarkdownContent content={message.content || ''} />
-                  </MessageErrorBoundary>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        )}
-      </div>
-
-      {message.role === 'user' && (
-        <Avatar className="w-7 h-7 flex-shrink-0">
-          {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.login} /> : null}
-          <AvatarFallback className="bg-muted">
-            <User className="w-3.5 h-3.5" />
-          </AvatarFallback>
-        </Avatar>
-      )}
-    </div>
-  )
-})
-
-// Streaming bubble component - optimized for frequent updates
-// Uses will-change to hint GPU acceleration and contain: content to isolate layout
-const StreamingBubble = React.memo(function StreamingBubble({
-  streaming
-}: {
-  streaming: StreamingState
-}) {
-  const thinkingRef = useRef<HTMLPreElement>(null)
-
-  // Auto-scroll thinking section to bottom as new content streams in
-  useEffect(() => {
-    if (thinkingRef.current && streaming.thinking) {
-      thinkingRef.current.scrollTop = thinkingRef.current.scrollHeight
-    }
-  }, [streaming.thinking])
-
-  return (
-    <div
-      className="flex gap-2"
-      style={{
-        contain: 'content', // Isolate layout changes to this subtree
-        willChange: 'contents' // Hint to browser about updates
-      }}
-    >
-      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <ClaudeIcon className="w-3.5 h-3.5 text-primary" />
-      </div>
-      <div className="max-w-[85%] rounded-lg bg-muted min-h-[40px]">
-        {streaming.thinking && (
-          <div className="border-b border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-1.5 px-3 py-2 text-xs text-primary/80">
-              <Brain className="w-3.5 h-3.5 animate-pulse" />
-              <span className="font-medium">Thinking...</span>
-              <span className="text-[10px] text-muted-foreground ml-auto">Extended reasoning</span>
-            </div>
-            <div
-              className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded"
-              style={{ contain: 'content' }}
-            >
-              <pre
-                ref={thinkingRef}
-                className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed"
-              >
-                {streaming.thinking}
-                <span className="inline-block w-2 h-3 bg-primary/60 animate-pulse ml-0.5 rounded-sm" />
-              </pre>
-            </div>
-          </div>
-        )}
-        <div
-          className="prose prose-sm dark:prose-invert max-w-none text-sm px-3 py-2"
-          style={{ contain: 'content' }}
-        >
-          {streaming.content ? (
-            <>
-              <MessageErrorBoundary messageId="streaming" content={streaming.content}>
-                <MarkdownContent content={streaming.content} />
-              </MessageErrorBoundary>
-              <span className="inline-block w-2 h-4 bg-primary/50 animate-pulse ml-0.5" />
-            </>
-          ) : (
-            !streaming.thinking && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-xs">Generating response...</span>
-              </div>
-            )
-          )}
-        </div>
-      </div>
-    </div>
-  )
-})
-
-// Queued message bubble component
-const QueuedMessageBubble = React.memo(function QueuedMessageBubble({
-  message,
-  index,
-  onRemove,
-  user
-}: {
-  message: QueuedMessage
-  index: number
-  onRemove: () => void
-  user?: GitHubUser | null
-}) {
-  return (
-    <div className="flex gap-2 justify-end opacity-60">
-      <div className="max-w-[85%] rounded-lg bg-primary/50 text-primary-foreground px-3 py-2 relative group selection:bg-white/30 selection:text-white">
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Remove from queue"
-        >
-          <X className="w-3 h-3" />
-        </button>
-        <span className="absolute -bottom-1 -left-1 text-[9px] bg-muted text-muted-foreground px-1 rounded">
-          #{index + 1}
-        </span>
-      </div>
-      <Avatar className="w-7 h-7 flex-shrink-0 opacity-50">
-        {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.login} /> : null}
-        <AvatarFallback className="bg-muted/50">
-          <User className="w-3.5 h-3.5" />
-        </AvatarFallback>
-      </Avatar>
-    </div>
-  )
-})
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowLeft,
+  Brain,
+  GitPullRequest,
+  Key,
+  List,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  Send,
+  Settings,
+  Trash2,
+  X
+} from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+
+// Internal imports
+import { GENERAL_QUICK_PROMPTS, getPRQuickPrompts } from '../constants'
+import { useThrottledValue } from '../hooks/useThrottledValue'
+import type {
+  AIChatPanelProps,
+  ChatMessage,
+  ClaudeModel,
+  CustomPrompt,
+  PRChatInfo,
+  QueuedMessage,
+  StreamingState
+} from '../types'
+import { ContextIndicator } from './ContextIndicator'
+import { QuickActions } from './QuickActions'
+import { VirtualizedMessageList } from './VirtualizedMessageList'
+
+// Re-export types for external consumers
+export type { AIChatPanelProps } from '../types'
 
 export function AIChatPanel({
   onClose,
@@ -1419,6 +66,7 @@ export function AIChatPanel({
   selectedPR,
   onStartPRChat
 }: AIChatPanelProps): React.JSX.Element {
+  // Core state
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [isSettingKey, setIsSettingKey] = useState(false)
@@ -1442,13 +90,16 @@ export function AIChatPanel({
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
   const [customPrompts, setCustomPrompts] = useState<CustomPrompt[]>([])
 
-  // All PR chats for the conversation navigator
+  // PR chat state
   const [allPRChats, setAllPRChats] = useState<PRChatInfo[]>([])
   const [showConversations, setShowConversations] = useState(false)
-  // System context for PR chats (invisible to user, sent to AI)
   const [prSystemContext, setPrSystemContext] = useState<string | undefined>(undefined)
+
+  // Scroll and UI state
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false)
   const [isConversationReady, setIsConversationReady] = useState(false)
+
+  // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const streamCleanupRef = useRef<(() => void) | null>(null)
@@ -1457,19 +108,29 @@ export function AIChatPanel({
   const scrollFrameRef = useRef<number | null>(null)
   const virtualizerScrollToEndRef = useRef<(() => void) | null>(null)
   const initialScrollDoneRef = useRef(false)
+  const processMessageRef = useRef<(userMessage: string, tempMsgId: string) => Promise<void>>()
 
   // Throttle streaming content to ~30fps to avoid layout thrashing
   const throttledStreaming = useThrottledValue(streaming, 30)
 
-  // Callback when virtualizer is ready with scrollToEnd function
+  // Computed values
+  const selectedPRId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
+
+  const isContextValid = useMemo(() => {
+    if (linkedPRChat) {
+      return prSystemContext !== undefined
+    }
+    return prSystemContext === undefined
+  }, [linkedPRChat, prSystemContext])
+
+  const showPREmptyState = selectedPR && (!linkedPRChat || linkedPRChat.prId !== selectedPRId)
+
+  // Callbacks
   const handleVirtualizerReady = useCallback(
     (scrollToEnd: () => void) => {
       virtualizerScrollToEndRef.current = scrollToEnd
-
-      // If we haven't done initial scroll yet and data is loaded, do it now
       if (!initialScrollDoneRef.current && !isLoading && messages.length > 0) {
         initialScrollDoneRef.current = true
-        // Small delay to ensure DOM is painted
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             scrollToEnd()
@@ -1487,13 +148,6 @@ export function AIChatPanel({
       const result = await window.electron.fetchClaudeModels()
       if (result.success && result.models) {
         setModels(result.models)
-        window.electron.logFromRenderer('info', 'API', 'Claude models loaded', {
-          count: result.models.length
-        })
-      } else {
-        window.electron.logFromRenderer('error', 'API', 'Failed to load Claude models', {
-          error: result.error
-        })
       }
     } catch (e) {
       console.error('Failed to load models:', e)
@@ -1502,7 +156,6 @@ export function AIChatPanel({
     }
   }, [])
 
-  // Load all PR chats for the conversation navigator
   const loadAllPRChats = useCallback(async () => {
     try {
       const chats = await window.electron.getPRChats()
@@ -1514,7 +167,6 @@ export function AIChatPanel({
         updatedAt: chat.updatedAt,
         messageCount: chat.messages.length
       }))
-      // Sort by most recently updated
       chatInfos.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       setAllPRChats(chatInfos)
     } catch (e) {
@@ -1524,10 +176,9 @@ export function AIChatPanel({
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
-    // Reset states for new chat - prevents stale data from previous chat
     setIsConversationReady(false)
     initialScrollDoneRef.current = false
-    setError(null) // Clear any errors from previous chat
+    setError(null)
 
     try {
       const [key, model, thinking, customPromptsData] = await Promise.all([
@@ -1541,12 +192,11 @@ export function AIChatPanel({
       setEnableThinking(thinking)
       setCustomPrompts(customPromptsData)
 
-      // Load appropriate chat history based on linkedPRChat
       if (linkedPRChat) {
         const prChat = await window.electron.getPRChat(linkedPRChat.prId)
         if (prChat) {
           setMessages(prChat.messages)
-          setPrSystemContext(prChat.systemContext) // Load system context (invisible to user)
+          setPrSystemContext(prChat.systemContext)
           setChatStarted(prChat.messages.length > 0)
         } else {
           setMessages([])
@@ -1556,11 +206,10 @@ export function AIChatPanel({
       } else {
         const history = await window.electron.getChatHistory()
         setMessages(history)
-        setPrSystemContext(undefined) // Clear system context for general chat
+        setPrSystemContext(undefined)
         setChatStarted(history.length > 0)
       }
 
-      // If we have an API key, fetch available models
       if (key) {
         loadModels()
       }
@@ -1571,10 +220,154 @@ export function AIChatPanel({
     }
   }, [loadModels, linkedPRChat])
 
-  // Load API key and chat history on mount or when linkedPRChat changes
+  // Effects
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const linkedPRChatId = linkedPRChat?.prId
+  useEffect(() => {
+    void linkedPRChatId
+    loadAllPRChats()
+  }, [loadAllPRChats, linkedPRChatId])
+
+  // Auto-switch to PR chat when selectedPR changes
+  useEffect(() => {
+    if (!selectedPRId) return
+    if (linkedPRChat?.prId === selectedPRId) return
+
+    let cancelled = false
+    const checkAndSwitch = async () => {
+      try {
+        const existingChat = await window.electron.getPRChat(selectedPRId)
+        if (cancelled) return
+        if (existingChat && onSwitchToPRChat) {
+          onSwitchToPRChat(selectedPRId)
+        } else if (linkedPRChat && onClosePRChat) {
+          onClosePRChat()
+        }
+      } catch (e) {
+        console.error('Error checking for PR chat:', e)
+      }
+    }
+    checkAndSwitch()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClosePRChat, linkedPRChat])
+
+  // Clear stale context
+  useEffect(() => {
+    if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
+      setPrSystemContext(undefined)
+    }
+  }, [selectedPRId, linkedPRChat, prSystemContext])
+
+  // Scroll management
+  const isNearBottom = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return true
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 100
+  }, [])
+
+  const scrollToBottom = useCallback(
+    (force = false, _instant = false) => {
+      if (scrollFrameRef.current) {
+        cancelAnimationFrame(scrollFrameRef.current)
+      }
+      scrollFrameRef.current = requestAnimationFrame(() => {
+        if (!force && isUserScrolledUp) return
+        if (virtualizerScrollToEndRef.current) {
+          virtualizerScrollToEndRef.current()
+        } else {
+          const container = scrollContainerRef.current
+          if (container) {
+            container.scrollTop = container.scrollHeight
+          }
+        }
+        setIsUserScrolledUp(false)
+      })
+    },
+    [isUserScrolledUp]
+  )
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const currentScrollTop = container.scrollTop
+    const wasScrollingUp = currentScrollTop < lastScrollTopRef.current
+    lastScrollTopRef.current = currentScrollTop
+    if (wasScrollingUp && !isNearBottom()) {
+      setIsUserScrolledUp(true)
+    } else if (isNearBottom()) {
+      setIsUserScrolledUp(false)
+    }
+  }, [isNearBottom])
+
+  // Auto-scroll effects
+  useEffect(() => {
+    if (!isUserScrolledUp && !streaming.isStreaming) {
+      scrollToBottom(false, false)
+    }
+  }, [scrollToBottom, isUserScrolledUp, streaming.isStreaming])
+
+  useLayoutEffect(() => {
+    if (streaming.isStreaming && !isUserScrolledUp) {
+      scrollToBottom(false, true)
+    }
+  }, [streaming.isStreaming, scrollToBottom, isUserScrolledUp])
+
+  // Cleanup effects
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current) {
+        cancelAnimationFrame(scrollFrameRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (streamCleanupRef.current) {
+        streamCleanupRef.current()
+      }
+    }
+  }, [])
+
+  // Focus and textarea effects
+  useEffect(() => {
+    if (!isLoading && apiKey && textareaRef.current) {
+      setTimeout(() => textareaRef.current?.focus(), 100)
+    }
+  }, [isLoading, apiKey])
+
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      const newHeight = Math.min(textarea.scrollHeight, 200)
+      textarea.style.height = `${Math.max(newHeight, 72)}px`
+    }
+  }, [])
+
+  // Initial scroll
+  useEffect(() => {
+    if (!isLoading && messages.length > 0 && !initialScrollDoneRef.current) {
+      if (virtualizerScrollToEndRef.current) {
+        initialScrollDoneRef.current = true
+        const timeout = setTimeout(() => {
+          requestAnimationFrame(() => {
+            virtualizerScrollToEndRef.current?.()
+            setIsConversationReady(true)
+          })
+        }, 50)
+        return () => clearTimeout(timeout)
+      }
+    } else if (!isLoading && messages.length === 0) {
+      setIsConversationReady(true)
+      initialScrollDoneRef.current = true
+    }
+  }, [isLoading, messages.length])
 
   // Custom prompt handlers
   const handleAddCustomPrompt = useCallback(async (label: string, prompt: string) => {
@@ -1592,303 +385,25 @@ export function AIChatPanel({
     }
   }, [])
 
-  // Load all PR chats for conversation navigator
-  // Using linkedPRChat?.prId to trigger reload when switching chats
-  const linkedPRChatId = linkedPRChat?.prId
-  useEffect(() => {
-    // Reference linkedPRChatId to satisfy exhaustive deps and trigger reload on chat switch
-    void linkedPRChatId
-    loadAllPRChats()
-  }, [loadAllPRChats, linkedPRChatId])
-
-  // Compute selectedPRId once as a stable string for dependency arrays
-  const selectedPRId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
-
-  // Track if context is valid for the current state
-  const isContextValid = useMemo(() => {
-    // If we're in a PR chat, we just need valid context for that chat
-    if (linkedPRChat) {
-      // Context should exist for the PR chat
-      // Note: We don't require selectedPRId to match because user might be
-      // viewing the chat without having the PR selected in the main view
-      return prSystemContext !== undefined
-    }
-    // For general chat or PR empty state, context should be undefined
-    return prSystemContext === undefined
-  }, [linkedPRChat, prSystemContext])
-
-  // Auto-switch to PR chat when selectedPR changes
-  // Uses cleanup function to handle race conditions
-  useEffect(() => {
-    if (!selectedPRId) return
-
-    // If already showing this PR's chat, do nothing
-    if (linkedPRChat?.prId === selectedPRId) return
-
-    let cancelled = false
-
-    // Check if a chat exists for this PR
-    const checkAndSwitch = async () => {
-      try {
-        const existingChat = await window.electron.getPRChat(selectedPRId)
-
-        // If this effect was cancelled (user switched to another PR), abort
-        if (cancelled) return
-
-        if (existingChat && onSwitchToPRChat) {
-          // Chat exists, switch to it
-          onSwitchToPRChat(selectedPRId)
-        } else if (linkedPRChat && onClosePRChat) {
-          // No chat exists for this PR, but we have an old chat open
-          // Close the old chat to avoid stale context
-          onClosePRChat()
-        }
-      } catch (e) {
-        console.error('Error checking for PR chat:', e)
-      }
-    }
-
-    checkAndSwitch()
-
-    // Cleanup: cancel the async operation if effect re-runs
-    return () => {
-      cancelled = true
-    }
-  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClosePRChat, linkedPRChat])
-
-  // Clear stale prSystemContext ONLY when there's no linkedPRChat
-  // Note: We do NOT clear context when linkedPRChat.prId !== selectedPRId
-  // because the user might be viewing a different PR while chatting about another one
-  useEffect(() => {
-    // If we're viewing a PR empty state (selectedPR set but no linkedPRChat),
-    // ensure prSystemContext is cleared
-    if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
-      console.warn(
-        '[AIChat] Clearing stale prSystemContext - selectedPR changed but no linkedPRChat'
-      )
-      setPrSystemContext(undefined)
-    }
-  }, [selectedPRId, linkedPRChat, prSystemContext])
-
-  // Compute if we should show empty state for selected PR with no chat
-  const showPREmptyState = selectedPR && (!linkedPRChat || linkedPRChat.prId !== selectedPRId)
-
-  const handleModelChange = async (modelId: string) => {
-    setSelectedModel(modelId)
-    await window.electron.setSelectedModel(modelId)
-    window.electron.logFromRenderer('info', 'API', 'Model changed', { model: modelId })
-  }
-
-  const handleThinkingChange = async (enabled: boolean) => {
-    setEnableThinking(enabled)
-    await window.electron.setEnableThinking(enabled)
-    window.electron.logFromRenderer('info', 'API', 'Extended thinking changed', { enabled })
-  }
-
-  const toggleThinkingExpanded = (messageId: string) => {
-    setExpandedThinking((prev) => {
-      const next = new Set(prev)
-      if (next.has(messageId)) {
-        next.delete(messageId)
-      } else {
-        next.add(messageId)
-      }
-      return next
-    })
-  }
-
-  // Check if user is near the bottom of scroll container
-  const isNearBottom = useCallback(() => {
-    const container = scrollContainerRef.current
-    if (!container) return true
-    const threshold = 100 // pixels from bottom
-    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold
-  }, [])
-
-  // Scroll to bottom - uses virtualizer's scrollToIndex when available, falls back to scrollTop
-  const scrollToBottom = useCallback(
-    (force = false, _instant = false) => {
-      if (scrollFrameRef.current) {
-        cancelAnimationFrame(scrollFrameRef.current)
-      }
-
-      scrollFrameRef.current = requestAnimationFrame(() => {
-        if (!force && isUserScrolledUp) return
-
-        // Use virtualizer's scrollToEnd if available (more accurate)
-        if (virtualizerScrollToEndRef.current) {
-          virtualizerScrollToEndRef.current()
-        } else {
-          // Fallback to direct scroll
-          const container = scrollContainerRef.current
-          if (container) {
-            container.scrollTop = container.scrollHeight
-          }
-        }
-        setIsUserScrolledUp(false)
-      })
-    },
-    [isUserScrolledUp]
-  )
-
-  // Handle user scroll to detect if they scrolled up
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    const currentScrollTop = container.scrollTop
-    const wasScrollingUp = currentScrollTop < lastScrollTopRef.current
-    lastScrollTopRef.current = currentScrollTop
-
-    if (wasScrollingUp && !isNearBottom()) {
-      setIsUserScrolledUp(true)
-    } else if (isNearBottom()) {
-      setIsUserScrolledUp(false)
-    }
-  }, [isNearBottom])
-
-  // Auto-scroll when messages change (new message added, not during streaming)
-  useEffect(() => {
-    if (!isUserScrolledUp && !streaming.isStreaming) {
-      scrollToBottom(false, false) // smooth scroll for new messages
-    }
-  }, [scrollToBottom, isUserScrolledUp, streaming.isStreaming])
-
-  // Auto-scroll during streaming - use instant scroll to avoid jerkiness
-  // Use useLayoutEffect to sync with paint cycle
-  useLayoutEffect(() => {
-    if (streaming.isStreaming && !isUserScrolledUp) {
-      // Use instant scroll during streaming
-      scrollToBottom(false, true)
-    }
-  }, [streaming.isStreaming, scrollToBottom, isUserScrolledUp])
-
-  // Cleanup scroll animation frame on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollFrameRef.current) {
-        cancelAnimationFrame(scrollFrameRef.current)
-      }
-    }
-  }, [])
-
-  // Clean up stream listener on unmount
-  useEffect(() => {
-    return () => {
-      if (streamCleanupRef.current) {
-        streamCleanupRef.current()
-      }
-    }
-  }, [])
-
-  // Focus textarea when ready
-  useEffect(() => {
-    if (!isLoading && apiKey && textareaRef.current) {
-      setTimeout(() => textareaRef.current?.focus(), 100)
-    }
-  }, [isLoading, apiKey])
-
-  // Auto-resize textarea based on content
-  const adjustTextareaHeight = useCallback(() => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = 'auto'
-      const newHeight = Math.min(textarea.scrollHeight, 200) // Max height of 200px
-      textarea.style.height = `${Math.max(newHeight, 72)}px` // Min height of 72px (3 lines)
-    }
-  }, [])
-
-  // Handle initial scroll after data loads
-  // This triggers when isLoading becomes false and we have messages
-  useEffect(() => {
-    if (!isLoading && messages.length > 0 && !initialScrollDoneRef.current) {
-      // If virtualizer is already ready, scroll now
-      if (virtualizerScrollToEndRef.current) {
-        initialScrollDoneRef.current = true
-        // Give DOM time to render, then scroll
-        const timeout = setTimeout(() => {
-          requestAnimationFrame(() => {
-            virtualizerScrollToEndRef.current?.()
-            setIsConversationReady(true)
-          })
-        }, 50)
-        return () => clearTimeout(timeout)
-      }
-      // Otherwise, the handleVirtualizerReady callback will handle it
-    } else if (!isLoading && messages.length === 0) {
-      // No messages, just mark as ready
-      setIsConversationReady(true)
-      initialScrollDoneRef.current = true
-    }
-  }, [isLoading, messages.length])
-
+  // API key handlers
   const handleSetApiKey = async () => {
-    // Log immediately when button is clicked
-    console.log(
-      '[AIChat] handleSetApiKey called, apiKeyInput:',
-      apiKeyInput ? `${apiKeyInput.length} chars` : 'empty'
-    )
-    window.electron.logFromRenderer('info', 'AUTH', 'API key button clicked', {
-      hasInput: !!apiKeyInput,
-      inputLength: apiKeyInput?.length || 0
-    })
-
-    if (!apiKeyInput.trim()) {
-      console.log('[AIChat] Empty input, returning')
-      window.electron.logFromRenderer('warn', 'AUTH', 'Empty API key input, ignoring')
-      return
-    }
-
+    if (!apiKeyInput.trim()) return
     const keyToSet = apiKeyInput.trim()
-    console.log(
-      '[AIChat] Setting key, length:',
-      keyToSet.length,
-      'prefix:',
-      keyToSet.substring(0, 10)
-    )
-
-    await window.electron.logFromRenderer('info', 'AUTH', 'Setting Claude API key from UI', {
-      keyLength: keyToSet.length,
-      keyPrefix: `${keyToSet.substring(0, 10)}...`
-    })
-
     setIsSettingKey(true)
     setError(null)
-
     try {
-      console.log('[AIChat] Calling IPC setClaudeApiKey...')
-      await window.electron.logFromRenderer('info', 'AUTH', 'Calling setClaudeApiKey IPC...')
       const result = await window.electron.setClaudeApiKey(keyToSet)
-
-      console.log('[AIChat] IPC result:', result)
-      await window.electron.logFromRenderer('info', 'AUTH', 'setClaudeApiKey IPC result', {
-        result
-      })
-
       if (result.success) {
-        console.log('[AIChat] Success!')
-        await window.electron.logFromRenderer('info', 'AUTH', 'API key set successfully')
         setApiKey(keyToSet)
         setApiKeyInput('')
-        // Load available models and get default
         const [defaultModel] = await Promise.all([window.electron.getSelectedModel()])
         setSelectedModel(defaultModel)
         loadModels()
       } else {
-        console.log('[AIChat] Failed:', result.error)
-        await window.electron.logFromRenderer('error', 'AUTH', 'API key set failed', {
-          error: result.error
-        })
         setError(result.error || 'Invalid API key')
       }
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e)
-      const stack = e instanceof Error ? e.stack : undefined
-      console.error('[AIChat] Exception:', errorMsg, e)
-      await window.electron.logFromRenderer('error', 'AUTH', 'Exception setting API key', {
-        error: errorMsg,
-        stack
-      })
       setError(`Failed to set API key: ${errorMsg}`)
     } finally {
       setIsSettingKey(false)
@@ -1903,17 +418,34 @@ export function AIChatPanel({
     setMessageQueue([])
   }
 
-  // Ref for processMessage to break circular dependency
-  const processMessageRef = useRef<(userMessage: string, tempMsgId: string) => Promise<void>>()
+  // Model and settings handlers
+  const handleModelChange = async (modelId: string) => {
+    setSelectedModel(modelId)
+    await window.electron.setSelectedModel(modelId)
+  }
 
-  // Process next message in queue
+  const handleThinkingChange = async (enabled: boolean) => {
+    setEnableThinking(enabled)
+    await window.electron.setEnableThinking(enabled)
+  }
+
+  const toggleThinkingExpanded = (messageId: string) => {
+    setExpandedThinking((prev) => {
+      const next = new Set(prev)
+      if (next.has(messageId)) {
+        next.delete(messageId)
+      } else {
+        next.add(messageId)
+      }
+      return next
+    })
+  }
+
+  // Message processing
   const processNextInQueue = useCallback(() => {
     setMessageQueue((prev) => {
       if (prev.length === 0) return prev
-
       const [next, ...rest] = prev
-
-      // Add next message to UI and start processing
       const tempUserMsg: ChatMessage = {
         id: next.id,
         role: 'user',
@@ -1921,17 +453,13 @@ export function AIChatPanel({
         timestamp: new Date().toISOString()
       }
       setMessages((msgs) => [...msgs, tempUserMsg])
-
-      // Process the message (delayed to allow state to update)
       setTimeout(() => {
         processMessageRef.current?.(next.content, next.id)
       }, 100)
-
       return rest
     })
   }, [])
 
-  // Process a single message (internal function)
   const processMessage = useCallback(
     async (userMessage: string, tempMsgId: string) => {
       isProcessingRef.current = true
@@ -1940,63 +468,46 @@ export function AIChatPanel({
       setStreaming({ content: '', thinking: '', isStreaming: true })
 
       try {
-        // Clean up any previous stream listener
         if (streamCleanupRef.current) {
           streamCleanupRef.current()
         }
 
-        // Set up stream chunk handler
         const cleanup = window.electron.onChatStreamChunk((chunk) => {
           if (chunk.type === 'text' && chunk.content) {
             setStreaming((prev) => ({ ...prev, content: prev.content + chunk.content }))
           } else if (chunk.type === 'thinking' && chunk.thinking) {
             setStreaming((prev) => ({ ...prev, thinking: prev.thinking + chunk.thinking }))
           } else if (chunk.type === 'done') {
-            // Stream complete - reload history from the correct source
-            // Main process now handles saving to the correct chat (PR or general)
             setStreaming({ content: '', thinking: '', isStreaming: false })
-
-            // Reload messages from the appropriate source
             if (linkedPRChat) {
               window.electron.getPRChat(linkedPRChat.prId).then((prChat) => {
-                if (prChat) {
-                  setMessages(prChat.messages)
-                }
+                if (prChat) setMessages(prChat.messages)
               })
             } else {
-              window.electron.getChatHistory().then((history) => {
-                setMessages(history)
-              })
+              window.electron.getChatHistory().then((history) => setMessages(history))
             }
-
             setIsSending(false)
             isProcessingRef.current = false
-            // Clean up listener
             if (streamCleanupRef.current) {
               streamCleanupRef.current()
               streamCleanupRef.current = null
             }
-            // Process next message in queue
             processNextInQueue()
           } else if (chunk.type === 'error') {
             setError(chunk.error || 'Failed to send message')
             setStreaming({ content: '', thinking: '', isStreaming: false })
             setIsSending(false)
             isProcessingRef.current = false
-            // Remove the optimistic message on error
             setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
-            // Clean up listener
             if (streamCleanupRef.current) {
               streamCleanupRef.current()
               streamCleanupRef.current = null
             }
-            // Still try to process next in queue
             processNextInQueue()
           }
         })
         streamCleanupRef.current = cleanup
 
-        // Start streaming (pass system context for PR chats)
         const result = await window.electron.sendChatMessageStreaming(userMessage, prSystemContext)
         if (!result.success) {
           setError(result.error || 'Failed to send message')
@@ -2010,7 +521,7 @@ export function AIChatPanel({
           }
           processNextInQueue()
         }
-      } catch (_e) {
+      } catch {
         setError('Failed to communicate with Claude')
         setStreaming({ content: '', thinking: '', isStreaming: false })
         setMessages((prev) => prev.filter((m) => m.id !== tempMsgId))
@@ -2022,64 +533,39 @@ export function AIChatPanel({
     [processNextInQueue, linkedPRChat, prSystemContext]
   )
 
-  // Keep ref updated with latest processMessage
   useEffect(() => {
     processMessageRef.current = processMessage
   }, [processMessage])
 
-  // Core send message function - can be called with a specific message
   const sendMessage = useCallback(
     (messageText: string) => {
       if (!messageText.trim()) return
-
-      // Validate context before sending
-      // If in PR chat mode, ensure we have valid context for the current PR
       if (linkedPRChat && !prSystemContext) {
-        console.warn('[AIChat] Attempted to send message without valid PR context')
         setError('PR context not loaded. Please wait a moment and try again.')
         return
       }
 
-      // Note: We do NOT block sending when linkedPRChat.prId !== selectedPRId
-      // because the user might be viewing a different PR while chatting about another one
-      // The context is tied to linkedPRChat, not selectedPR
-
       const userMessage = messageText.trim()
       const msgId = `temp_${Date.now()}`
 
-      // If already processing, add to queue
       if (isProcessingRef.current || isSending) {
-        const queuedMsg: QueuedMessage = {
-          id: msgId,
-          content: userMessage
-        }
-        setMessageQueue((prev) => [...prev, queuedMsg])
+        setMessageQueue((prev) => [...prev, { id: msgId, content: userMessage }])
         return
       }
 
-      // Optimistically add user message to UI
-      const tempUserMsg: ChatMessage = {
-        id: msgId,
-        role: 'user',
-        content: userMessage,
-        timestamp: new Date().toISOString()
-      }
-      setMessages((prev) => [...prev, tempUserMsg])
-
-      // Process immediately
+      setMessages((prev) => [
+        ...prev,
+        { id: msgId, role: 'user', content: userMessage, timestamp: new Date().toISOString() }
+      ])
       processMessage(userMessage, msgId)
     },
     [isSending, processMessage, linkedPRChat, prSystemContext]
   )
 
-  // Main send message handler (uses input state)
   const handleSendMessage = useCallback(() => {
     if (!input.trim()) return
-
     sendMessage(input.trim())
     setInput('')
-
-    // Reset textarea height after clearing
     if (textareaRef.current) {
       textareaRef.current.style.height = '72px'
     }
@@ -2094,38 +580,26 @@ export function AIChatPanel({
     setMessages([])
   }
 
-  // Handler for posting AI comments to the PR
   const handlePostComment = useCallback(
     async (
       file: string,
       line: number,
       body: string
     ): Promise<{ success: boolean; commentUrl?: string }> => {
-      if (!selectedPR || !linkedPRChat) {
-        return { success: false }
-      }
+      if (!selectedPR || !linkedPRChat) return { success: false }
 
-      const owner = selectedPR.base.repo.owner.login
-      const repo = selectedPR.base.repo.name
-      const prNumber = selectedPR.number
-      const commitId = selectedPR.head.sha
-
-      // Add attribution to the comment body
       const attributedBody = `${body}\n\n---\n_Posted by AI Assistant via CodeLobby_`
-
       try {
-        const result = await window.electron.postPRComment(
-          owner,
-          repo,
-          prNumber,
-          commitId,
+        return await window.electron.postPRComment(
+          selectedPR.base.repo.owner.login,
+          selectedPR.base.repo.name,
+          selectedPR.number,
+          selectedPR.head.sha,
           file,
           line,
           attributedBody
         )
-        return result
-      } catch (error) {
-        console.error('Failed to post PR comment:', error)
+      } catch {
         return { success: false }
       }
     },
@@ -2139,7 +613,7 @@ export function AIChatPanel({
     }
   }
 
-  // Chat interface (unified - handles both API key setup and chat)
+  // Render
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -2175,11 +649,9 @@ export function AIChatPanel({
                   title="Switch conversation"
                 >
                   <List className="w-4 h-4" />
-                  {allPRChats.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                      {allPRChats.length}
-                    </span>
-                  )}
+                  <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                    {allPRChats.length}
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0" align="end" side="bottom" sideOffset={5}>
@@ -2187,7 +659,6 @@ export function AIChatPanel({
                   <h4 className="text-xs font-medium">Conversations</h4>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
-                  {/* General Chat Option */}
                   <button
                     type="button"
                     className={cn(
@@ -2195,9 +666,7 @@ export function AIChatPanel({
                       !linkedPRChat && 'bg-primary/10'
                     )}
                     onClick={() => {
-                      if (onClosePRChat) {
-                        onClosePRChat()
-                      }
+                      onClosePRChat?.()
                       setShowConversations(false)
                     }}
                   >
@@ -2211,14 +680,12 @@ export function AIChatPanel({
                     )}
                   </button>
 
-                  {/* Separator */}
                   {allPRChats.length > 0 && (
                     <div className="px-3 py-1.5 text-[10px] text-muted-foreground font-medium bg-muted/30">
                       PR Conversations ({allPRChats.length})
                     </div>
                   )}
 
-                  {/* PR Chats */}
                   {allPRChats.map((chat) => (
                     <div
                       key={chat.prId}
@@ -2232,9 +699,7 @@ export function AIChatPanel({
                         type="button"
                         className="flex-1 text-left min-w-0"
                         onClick={() => {
-                          if (onSwitchToPRChat) {
-                            onSwitchToPRChat(chat.prId)
-                          }
+                          onSwitchToPRChat?.(chat.prId)
                           setShowConversations(false)
                         }}
                       >
@@ -2249,23 +714,16 @@ export function AIChatPanel({
                           )}
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-0.5">
-                          <span className="truncate">{chat.repoFullName}</span>
-                          <span className="mx-1">•</span>
-                          <span>{chat.messageCount} msgs</span>
-                          <span className="mx-1">•</span>
-                          <span>{formatRelativeTime(chat.updatedAt)}</span>
+                          {chat.repoFullName} • {chat.messageCount} msgs •{' '}
+                          {formatRelativeTime(chat.updatedAt)}
                         </div>
                       </button>
-                      {/* Delete button - shown on hover */}
                       <button
                         type="button"
                         className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity flex-shrink-0"
                         onClick={async (e) => {
                           e.stopPropagation()
-                          // If deleting the active chat, switch to general first
-                          if (linkedPRChat?.prId === chat.prId && onClosePRChat) {
-                            await onClosePRChat()
-                          }
+                          if (linkedPRChat?.prId === chat.prId) await onClosePRChat?.()
                           await window.electron.deletePRChat(chat.prId)
                           loadAllPRChats()
                         }}
@@ -2339,7 +797,6 @@ export function AIChatPanel({
       {/* Settings Panel */}
       {showSettings && apiKey && (
         <div className="p-3 border-b border-border bg-muted/40 space-y-3">
-          {/* Model Selector */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Model</span>
@@ -2403,7 +860,6 @@ export function AIChatPanel({
             )}
           </div>
 
-          {/* Extended Thinking Toggle */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <div className="flex items-center gap-2">
               <Brain className="w-3.5 h-3.5 text-muted-foreground" />
@@ -2431,7 +887,6 @@ export function AIChatPanel({
             </p>
           )}
 
-          {/* API Key */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <span className="text-xs text-muted-foreground">API Key configured</span>
             <Button
@@ -2446,12 +901,11 @@ export function AIChatPanel({
         </div>
       )}
 
-      {/* Messages area with virtual scrolling */}
+      {/* Messages area */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Loading skeleton - shown while fetching or before virtualizer is ready */}
+        {/* Loading skeleton */}
         {(isLoading || (!isConversationReady && messages.length > 0)) && (
           <div className="absolute inset-0 z-10 bg-background p-3 space-y-3 overflow-hidden">
-            {/* Skeleton messages */}
             {[
               { id: 'skeleton-1', isUser: false, width: 65, height: 55 },
               { id: 'skeleton-2', isUser: true, width: 50, height: 45 },
@@ -2471,10 +925,7 @@ export function AIChatPanel({
                     'rounded-lg animate-pulse',
                     skeleton.isUser ? 'bg-primary/20' : 'bg-muted'
                   )}
-                  style={{
-                    width: `${skeleton.width}%`,
-                    height: `${skeleton.height}px`
-                  }}
+                  style={{ width: `${skeleton.width}%`, height: `${skeleton.height}px` }}
                 />
                 {skeleton.isUser && (
                   <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
@@ -2488,7 +939,7 @@ export function AIChatPanel({
           </div>
         )}
 
-        {/* PR Empty state - shown when PR is selected but no chat exists for it */}
+        {/* PR Empty state */}
         {!isLoading && showPREmptyState && selectedPR && (
           <div className="h-full flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-4 px-6 max-w-md">
@@ -2516,7 +967,7 @@ export function AIChatPanel({
           </div>
         )}
 
-        {/* Default empty state - only when no PR selected and no messages */}
+        {/* Default empty state */}
         {!isLoading && !showPREmptyState && messages.length === 0 && !streaming.isStreaming && (
           <div className="h-full flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-4">
@@ -2528,7 +979,6 @@ export function AIChatPanel({
                 <Button
                   onClick={() => {
                     setChatStarted(true)
-                    // Focus the input after a small delay to let it render
                     setTimeout(() => textareaRef.current?.focus(), 50)
                   }}
                   className="gap-2"
@@ -2541,7 +991,7 @@ export function AIChatPanel({
           </div>
         )}
 
-        {/* Message list - show only when not in PR empty state */}
+        {/* Message list */}
         {!isLoading && !showPREmptyState && (messages.length > 0 || streaming.isStreaming) && (
           <VirtualizedMessageList
             messages={messages}
@@ -2593,10 +1043,9 @@ export function AIChatPanel({
         </div>
       )}
 
-      {/* Input area - shows API key input or message input */}
+      {/* Input area */}
       <div className="p-3 border-t border-border">
         {!apiKey ? (
-          // API Key input
           <div className="space-y-2">
             <div className="flex gap-2">
               <Input
@@ -2634,9 +1083,7 @@ export function AIChatPanel({
             </p>
           </div>
         ) : chatStarted || messages.length > 0 || streaming.isStreaming || linkedPRChat ? (
-          // Message input - only show when chat has started, has messages, or is a PR chat
           <div className="space-y-2">
-            {/* Quick action prompts - always visible */}
             <QuickActions
               prompts={
                 linkedPRChat
@@ -2648,10 +1095,7 @@ export function AIChatPanel({
                   : GENERAL_QUICK_PROMPTS
               }
               customPrompts={customPrompts}
-              onSelect={(prompt) => {
-                // Send the prompt immediately
-                sendMessage(prompt)
-              }}
+              onSelect={sendMessage}
               onAddCustomPrompt={handleAddCustomPrompt}
               onDeleteCustomPrompt={handleDeleteCustomPrompt}
               disabled={isSending || streaming.isStreaming || (!!linkedPRChat && !isContextValid)}
