@@ -3,7 +3,7 @@
  * Uses shared-store instead of React Context.
  */
 
-import { type PRFile, usePRFiles } from '@codelobby/queries'
+import { type PRFile, usePRFiles, useRefreshPRDetail } from '@codelobby/queries'
 import type { PullRequest, ReviewThread } from '@codelobby/shared-store'
 import { Actions } from '@codelobby/shared-store'
 import {
@@ -1243,6 +1243,25 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
   const [streamingAnalysis, setStreamingAnalysis] = useState<string>('')
   const thinkingContainerRef = useRef<HTMLDivElement>(null)
 
+  // Refresh PR detail mutation
+  const refreshPRDetailMutation = useRefreshPRDetail()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefreshPR = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      const [owner, repo] = pr.base.repo.full_name.split('/')
+      await refreshPRDetailMutation.mutateAsync({
+        owner,
+        repo,
+        prNumber: pr.number,
+        repoFullName: pr.base.repo.full_name
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [pr.base.repo.full_name, pr.number, refreshPRDetailMutation])
+
   // Auto-scroll thinking container to bottom when new content arrives
   useLayoutEffect(() => {
     if (thinkingContainerRef.current && streamingThinking) {
@@ -1887,6 +1906,24 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                   AI finds the Jira ticket from PR context and opens it
                 </p>
               </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={handleRefreshPR}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh PR details</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>

@@ -717,6 +717,55 @@ export function useRefreshRepoPRs(): UseMutationResult<
 }
 
 /**
+ * Mutation to refresh a specific PR's detail view.
+ * Refreshes the PR data from the repo and invalidates PR files cache.
+ */
+export function useRefreshPRDetail(): UseMutationResult<
+  {
+    success: boolean
+    data?: unknown[]
+    currentUser?: string
+    rateLimit?: RateLimit
+    error?: string
+  },
+  Error,
+  { owner: string; repo: string; prNumber: number; repoFullName: string },
+  unknown
+> {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ repoFullName }) => window.electron.refreshRepoPRs(repoFullName),
+    onSuccess: (result, { owner, repo, prNumber, repoFullName }) => {
+      // Update the allPrs cache by replacing PRs for this specific repo
+      queryClient.setQueryData<{ prs: PullRequest[]; rateLimit: RateLimit | null }>(
+        queryKeys.allPrs,
+        (old) => {
+          if (!old) return old
+          const newPRs = (result.data || []) as PullRequest[]
+          // Remove old PRs for this repo, add new ones
+          const filteredPRs = old.prs.filter((pr) => pr.base.repo.full_name !== repoFullName)
+          return {
+            prs: [...filteredPRs, ...newPRs],
+            rateLimit: result.rateLimit || old.rateLimit
+          }
+        }
+      )
+
+      // Invalidate PR files cache to force refetch of changed files
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.prFiles(owner, repo, prNumber)
+      })
+
+      // Update rate limit
+      if (result.rateLimit) {
+        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+      }
+    }
+  })
+}
+
+/**
  * Mutation to clear all cache and refetch
  */
 export function useClearCacheAndRefresh(): UseMutationResult<void, Error, void, unknown> {
