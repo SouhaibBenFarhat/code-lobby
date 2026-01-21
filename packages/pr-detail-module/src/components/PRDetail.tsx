@@ -134,13 +134,13 @@ function getFileExtension(path: string): string {
   return parts.length > 1 ? parts[parts.length - 1] : ''
 }
 
-function getDirectoryPath(path: string): string {
+function _getDirectoryPath(path: string): string {
   const parts = path.split('/')
   if (parts.length <= 1) return ''
   return parts.slice(0, -1).join('/')
 }
 
-function getFileName(path: string): string {
+function _getFileName(path: string): string {
   const parts = path.split('/')
   return parts[parts.length - 1]
 }
@@ -267,6 +267,168 @@ function DiffViewer({
   )
 }
 
+// Tree node structure for file tree
+interface FileTreeNode {
+  name: string
+  path: string
+  isFile: boolean
+  file?: PRFile
+  children: Map<string, FileTreeNode>
+}
+
+// Build tree structure from files
+function buildFileTreeFromFiles(files: PRFile[]): FileTreeNode {
+  const root: FileTreeNode = { name: '', path: '', isFile: false, children: new Map() }
+
+  for (const file of files) {
+    const parts = file.path.split('/')
+    let current = root
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      const isLastPart = i === parts.length - 1
+      const currentPath = parts.slice(0, i + 1).join('/')
+
+      let child = current.children.get(part)
+      if (!child) {
+        child = {
+          name: part,
+          path: currentPath,
+          isFile: isLastPart,
+          file: isLastPart ? file : undefined,
+          children: new Map()
+        }
+        current.children.set(part, child)
+      }
+      current = child
+    }
+  }
+
+  return root
+}
+
+// Sort tree children: directories first, then files, alphabetically
+function getSortedChildren(node: FileTreeNode): FileTreeNode[] {
+  return Array.from(node.children.values()).sort((a, b) => {
+    if (a.isFile !== b.isFile) return a.isFile ? 1 : -1
+    return a.name.localeCompare(b.name)
+  })
+}
+
+// Recursive tree node component
+function FileTreeNodeComponent({
+  node,
+  isLast,
+  prefix,
+  expandedDirs,
+  expandedFiles,
+  toggleDir,
+  toggleFile,
+  searchQuery
+}: {
+  node: FileTreeNode
+  isLast: boolean
+  prefix: string
+  expandedDirs: Set<string>
+  expandedFiles: Set<string>
+  toggleDir: (path: string) => void
+  toggleFile: (path: string) => void
+  searchQuery: string
+}): React.JSX.Element | null {
+  const isExpanded = node.isFile ? expandedFiles.has(node.path) : expandedDirs.has(node.path)
+  const connector = isLast ? '└── ' : '├── '
+  const childPrefix = prefix + (isLast ? '    ' : '│   ')
+  const children = getSortedChildren(node)
+
+  // Auto-expand directories when searching
+  const shouldAutoExpand = searchQuery.trim() !== '' && !node.isFile
+
+  if (node.isFile && node.file) {
+    const file = node.file
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => toggleFile(node.path)}
+          className="w-full flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors group text-left"
+        >
+          <span className="text-muted-foreground/50 font-mono text-[10px] whitespace-pre select-none">
+            {prefix}
+            {connector}
+          </span>
+          {file.patch &&
+            (isExpanded ? (
+              <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            ) : (
+              <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            ))}
+          {!file.patch && <span className="w-3" />}
+          {getFileIcon(file.changeType)}
+          <span className="flex-1 truncate font-mono text-foreground/90">{node.name}</span>
+          <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-70 group-hover:opacity-100">
+            {file.additions > 0 && <span className="text-success">+{file.additions}</span>}
+            {file.deletions > 0 && <span className="text-destructive">−{file.deletions}</span>}
+          </div>
+          {getFileExtension(file.path) && (
+            <Badge variant="outline" className="text-[8px] h-4 px-1 font-mono opacity-50">
+              {getFileExtension(file.path)}
+            </Badge>
+          )}
+        </button>
+        {isExpanded && file.patch && (
+          <div className="ml-4 mb-2">
+            <DiffViewer patch={file.patch} fileName={file.path} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Directory node
+  const actualExpanded = shouldAutoExpand || isExpanded
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => toggleDir(node.path)}
+        className="w-full flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors text-left"
+      >
+        <span className="text-muted-foreground/50 font-mono text-[10px] whitespace-pre select-none">
+          {prefix}
+          {connector}
+        </span>
+        {actualExpanded ? (
+          <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+        ) : (
+          <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+        )}
+        <FolderOpen className="w-3.5 h-3.5 text-warning flex-shrink-0" />
+        <span className="flex-1 truncate text-muted-foreground font-medium">{node.name}/</span>
+        <Badge variant="outline" className="text-[9px] h-4 px-1 opacity-60">
+          {children.length}
+        </Badge>
+      </button>
+      {actualExpanded && children.length > 0 && (
+        <div>
+          {children.map((child, idx) => (
+            <FileTreeNodeComponent
+              key={child.path}
+              node={child}
+              isLast={idx === children.length - 1}
+              prefix={childPrefix}
+              expandedDirs={expandedDirs}
+              expandedFiles={expandedFiles}
+              toggleDir={toggleDir}
+              toggleFile={toggleFile}
+              searchQuery={searchQuery}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ChangedFilesSection({
   owner,
   repo,
@@ -286,26 +448,18 @@ function ChangedFilesSection({
     return files.filter((f) => f.path.toLowerCase().includes(query))
   }, [files, searchQuery])
 
-  // Group files by directory
-  const groupedFiles = useMemo(() => {
-    const groups: Record<string, PRFile[]> = {}
-    for (const file of filteredFiles) {
-      const dir = getDirectoryPath(file.path) || '(root)'
-      if (!groups[dir]) groups[dir] = []
-      groups[dir].push(file)
-    }
-    // Sort directories alphabetically
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-  }, [filteredFiles])
+  // Build file tree from filtered files
+  const fileTree = useMemo(() => buildFileTreeFromFiles(filteredFiles), [filteredFiles])
+  const rootChildren = useMemo(() => getSortedChildren(fileTree), [fileTree])
 
   // Toggle directory expansion
-  const toggleDir = useCallback((dir: string) => {
+  const toggleDir = useCallback((path: string) => {
     setExpandedDirs((prev) => {
       const next = new Set(prev)
-      if (next.has(dir)) {
-        next.delete(dir)
+      if (next.has(path)) {
+        next.delete(path)
       } else {
-        next.add(dir)
+        next.add(path)
       }
       return next
     })
@@ -323,13 +477,6 @@ function ChangedFilesSection({
       return next
     })
   }, [])
-
-  // Expand all directories when searching
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      setExpandedDirs(new Set(groupedFiles.map(([dir]) => dir)))
-    }
-  }, [searchQuery, groupedFiles])
 
   // File statistics by type
   const fileStats = useMemo(() => {
@@ -431,7 +578,7 @@ function ChangedFilesSection({
             )}
           </div>
 
-          {/* Content */}
+          {/* Content - File Tree */}
           {isLoading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -446,79 +593,19 @@ function ChangedFilesSection({
               {searchQuery ? 'No files match your search' : 'No changed files'}
             </div>
           ) : (
-            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
-              {groupedFiles.map(([dir, dirFiles]) => (
-                <div key={dir} className="rounded-lg border bg-card/50 overflow-hidden">
-                  {/* Directory header */}
-                  <button
-                    type="button"
-                    onClick={() => toggleDir(dir)}
-                    className="w-full flex items-center gap-2 p-2 text-xs font-medium hover:bg-muted/50 transition-colors"
-                  >
-                    {expandedDirs.has(dir) ? (
-                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                    )}
-                    <FolderOpen className="w-3.5 h-3.5 text-warning" />
-                    <span className="truncate flex-1 text-left text-muted-foreground">{dir}</span>
-                    <Badge variant="outline" className="text-[9px] h-4 px-1">
-                      {dirFiles.length}
-                    </Badge>
-                  </button>
-
-                  {/* Files in directory */}
-                  {expandedDirs.has(dir) && (
-                    <div className="border-t">
-                      {dirFiles.map((file) => (
-                        <div key={file.path} className="border-b last:border-b-0">
-                          {/* File header row - clickable to expand diff */}
-                          <button
-                            type="button"
-                            onClick={() => toggleFile(file.path)}
-                            className="w-full flex items-center gap-2 p-2 pl-6 text-xs hover:bg-muted/30 transition-colors group text-left"
-                          >
-                            {/* Expand/collapse indicator */}
-                            {file.patch ? (
-                              expandedFiles.has(file.path) ? (
-                                <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                              ) : (
-                                <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                              )
-                            ) : (
-                              <span className="w-3" />
-                            )}
-                            {getFileIcon(file.changeType)}
-                            <span className="flex-1 truncate font-mono text-foreground/90">
-                              {getFileName(file.path)}
-                            </span>
-                            <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-70 group-hover:opacity-100">
-                              {file.additions > 0 && (
-                                <span className="text-success">+{file.additions}</span>
-                              )}
-                              {file.deletions > 0 && (
-                                <span className="text-destructive">−{file.deletions}</span>
-                              )}
-                            </div>
-                            {getFileExtension(file.path) && (
-                              <Badge
-                                variant="outline"
-                                className="text-[8px] h-4 px-1 font-mono opacity-50"
-                              >
-                                {getFileExtension(file.path)}
-                              </Badge>
-                            )}
-                          </button>
-
-                          {/* Expanded diff view */}
-                          {expandedFiles.has(file.path) && (
-                            <DiffViewer patch={file.patch} fileName={file.path} />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <div className="rounded-lg border bg-card/50 p-2 max-h-[400px] overflow-y-auto">
+              {rootChildren.map((child, idx) => (
+                <FileTreeNodeComponent
+                  key={child.path}
+                  node={child}
+                  isLast={idx === rootChildren.length - 1}
+                  prefix=""
+                  expandedDirs={expandedDirs}
+                  expandedFiles={expandedFiles}
+                  toggleDir={toggleDir}
+                  toggleFile={toggleFile}
+                  searchQuery={searchQuery}
+                />
               ))}
             </div>
           )}
