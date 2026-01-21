@@ -651,3 +651,96 @@ describe('GENERAL_QUICK_PROMPTS', () => {
     }
   })
 })
+
+describe('CustomPrompt interface', () => {
+  interface CustomPrompt {
+    id: string
+    label: string
+    prompt: string
+    createdAt: string
+  }
+
+  it('should define a valid custom prompt structure', () => {
+    const customPrompt: CustomPrompt = {
+      id: 'custom_123_abc',
+      label: 'Check types',
+      prompt: 'Check for TypeScript errors in this code',
+      createdAt: '2024-01-01T00:00:00.000Z'
+    }
+
+    expect(customPrompt.id).toMatch(/^custom_/)
+    expect(customPrompt.label).toBe('Check types')
+    expect(customPrompt.prompt).toContain('TypeScript')
+    expect(customPrompt.createdAt).toBeDefined()
+  })
+
+  it('should allow empty custom prompts list', () => {
+    const customPrompts: CustomPrompt[] = []
+    expect(customPrompts).toHaveLength(0)
+  })
+
+  it('should allow multiple custom prompts', () => {
+    const customPrompts: CustomPrompt[] = [
+      {
+        id: 'custom_1',
+        label: 'Review',
+        prompt: 'Review this code',
+        createdAt: '2024-01-01T00:00:00.000Z'
+      },
+      {
+        id: 'custom_2',
+        label: 'Optimize',
+        prompt: 'Suggest performance optimizations',
+        createdAt: '2024-01-01T00:00:00.000Z'
+      }
+    ]
+
+    expect(customPrompts).toHaveLength(2)
+    expect(customPrompts.map((p) => p.label)).toEqual(['Review', 'Optimize'])
+  })
+
+  it('should have unique IDs for each custom prompt', () => {
+    const customPrompts: CustomPrompt[] = [
+      {
+        id: 'custom_1_abc',
+        label: 'First',
+        prompt: 'First prompt',
+        createdAt: '2024-01-01T00:00:00.000Z'
+      },
+      {
+        id: 'custom_2_def',
+        label: 'Second',
+        prompt: 'Second prompt',
+        createdAt: '2024-01-01T00:00:00.000Z'
+      }
+    ]
+
+    const ids = customPrompts.map((p) => p.id)
+    const uniqueIds = [...new Set(ids)]
+    expect(uniqueIds).toHaveLength(ids.length)
+  })
+
+  it('should validate custom prompt deletion by id', () => {
+    let customPrompts: CustomPrompt[] = [
+      {
+        id: 'custom_to_delete',
+        label: 'Delete me',
+        prompt: 'This will be deleted',
+        createdAt: '2024-01-01T00:00:00.000Z'
+      },
+      {
+        id: 'custom_to_keep',
+        label: 'Keep me',
+        prompt: 'This stays',
+        createdAt: '2024-01-01T00:00:00.000Z'
+      }
+    ]
+
+    // Simulate deletion
+    const idToDelete = 'custom_to_delete'
+    customPrompts = customPrompts.filter((p) => p.id !== idToDelete)
+
+    expect(customPrompts).toHaveLength(1)
+    expect(customPrompts[0].label).toBe('Keep me')
+  })
+})

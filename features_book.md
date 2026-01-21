@@ -280,6 +280,40 @@ The AI knows when a finding is "postable" (has a specific file and line) and wil
 
 ---
 
+### ⚡ Quick Actions & Custom Prompts
+
+Start AI conversations faster with pre-defined quick actions. Plus, create your own custom prompts for frequently used requests.
+
+**Built-in Quick Actions:**
+| Context | Actions Available |
+|---------|-------------------|
+| **PR Chat** | Find bugs, Summarize, Why is CI failing? (if CI is failing), Security review, Suggest improvements |
+| **General Chat** | Explain this code, Best practices, Help me debug |
+
+**Context-Aware:**
+- "Why is CI failing?" only appears when CI is actually failing
+- PR-specific prompts include full code diff context
+- One-click sends the prompt immediately (no extra steps)
+
+**Custom Prompts — Save Your Own:**
+1. Click the **+** button at the end of the quick actions row
+2. Enter a **label** (what you'll see on the button)
+3. Enter the **prompt** (what gets sent to the AI)
+4. Press **Enter** to save
+
+**Managing Custom Prompts:**
+- Custom prompts appear with a distinct **highlighted style**
+- Hover over any custom prompt to reveal the **delete** button
+- Your prompts are **persisted** — they survive app restarts
+- Use them for frequent requests like "Check for TypeScript errors" or "Suggest better variable names"
+
+**Pro Tips:**
+- Keep labels short (they appear on small buttons)
+- Make prompts specific — "Find performance issues in this code" beats "Review code"
+- Your custom prompts work in both general and PR-specific chats
+
+---
+
 ### 📋 Conversation Navigator
 
 Managing multiple AI conversations? The conversation navigator makes switching instant.
@@ -460,6 +494,8 @@ We're actively building:
 | **Context-Aware AI** | AI knows about CodeLobby |
 | **PR-Specific AI Chat** | Context-aware conversations |
 | **Conversation Navigator** | Switch between chats instantly |
+| **Quick Actions** | Start AI chats with one click |
+| **Custom Prompts** | Save your own quick prompts |
 | **Post AI to PR** | Post AI findings as PR comments |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
