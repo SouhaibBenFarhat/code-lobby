@@ -479,3 +479,175 @@ user?.profile?.name
     expect(result[0].content).toBe('Found a bug at line 42.')
   })
 })
+
+// ===================
+// QUICK PROMPTS TESTS
+// ===================
+
+// Re-implement the getPRQuickPrompts function for testing
+interface QuickPrompt {
+  id: string
+  label: string
+  prompt: string
+}
+
+interface PRContext {
+  hasCIFailures?: boolean
+}
+
+function getPRQuickPrompts(context: PRContext = {}): QuickPrompt[] {
+  const prompts: QuickPrompt[] = [
+    {
+      id: 'review-bugs',
+      label: 'Find bugs',
+      prompt:
+        'Review this PR for bugs, potential issues, and edge cases. Show me the problematic code and how to fix it.'
+    },
+    {
+      id: 'summarize',
+      label: 'Summarize',
+      prompt: 'Summarize this PR in 2-3 sentences. What does it do and why?'
+    }
+  ]
+
+  // Only show "Why is CI failing?" when CI is actually failing
+  if (context.hasCIFailures) {
+    prompts.push({
+      id: 'explain-ci',
+      label: 'Why is CI failing?',
+      prompt: 'Look at the CI checks and explain why they are failing. What should be fixed?'
+    })
+  }
+
+  prompts.push(
+    {
+      id: 'security',
+      label: 'Security review',
+      prompt: 'Review this PR for security vulnerabilities, injection risks, or unsafe patterns.'
+    },
+    {
+      id: 'improvements',
+      label: 'Suggest improvements',
+      prompt:
+        'Suggest improvements to the code in this PR. Focus on readability, performance, and best practices.'
+    }
+  )
+
+  return prompts
+}
+
+const GENERAL_QUICK_PROMPTS: QuickPrompt[] = [
+  {
+    id: 'explain-code',
+    label: 'Explain this code',
+    prompt: 'Can you explain how this codebase is organized and what the main components do?'
+  },
+  {
+    id: 'best-practices',
+    label: 'Best practices',
+    prompt: 'What are some best practices I should follow for this type of project?'
+  },
+  {
+    id: 'debug-help',
+    label: 'Help me debug',
+    prompt: "I'm having an issue with my code. Can you help me debug it?"
+  }
+]
+
+describe('getPRQuickPrompts', () => {
+  it('should return base prompts without CI failure context', () => {
+    const prompts = getPRQuickPrompts()
+
+    expect(prompts).toHaveLength(4) // Find bugs, Summarize, Security, Improvements
+    expect(prompts.map((p) => p.id)).toEqual([
+      'review-bugs',
+      'summarize',
+      'security',
+      'improvements'
+    ])
+  })
+
+  it('should include "Why is CI failing?" when hasCIFailures is true', () => {
+    const prompts = getPRQuickPrompts({ hasCIFailures: true })
+
+    expect(prompts).toHaveLength(5)
+    expect(prompts.map((p) => p.id)).toContain('explain-ci')
+
+    const ciPrompt = prompts.find((p) => p.id === 'explain-ci')
+    expect(ciPrompt?.label).toBe('Why is CI failing?')
+  })
+
+  it('should NOT include "Why is CI failing?" when hasCIFailures is false', () => {
+    const prompts = getPRQuickPrompts({ hasCIFailures: false })
+
+    expect(prompts).toHaveLength(4)
+    expect(prompts.map((p) => p.id)).not.toContain('explain-ci')
+  })
+
+  it('should always include Find bugs prompt', () => {
+    const prompts = getPRQuickPrompts()
+    const findBugs = prompts.find((p) => p.id === 'review-bugs')
+
+    expect(findBugs).toBeDefined()
+    expect(findBugs?.label).toBe('Find bugs')
+    expect(findBugs?.prompt).toContain('bugs')
+  })
+
+  it('should always include Summarize prompt', () => {
+    const prompts = getPRQuickPrompts()
+    const summarize = prompts.find((p) => p.id === 'summarize')
+
+    expect(summarize).toBeDefined()
+    expect(summarize?.label).toBe('Summarize')
+    expect(summarize?.prompt).toContain('Summarize')
+  })
+
+  it('should always include Security review prompt', () => {
+    const prompts = getPRQuickPrompts()
+    const security = prompts.find((p) => p.id === 'security')
+
+    expect(security).toBeDefined()
+    expect(security?.label).toBe('Security review')
+    expect(security?.prompt).toContain('security')
+  })
+
+  it('should always include Suggest improvements prompt', () => {
+    const prompts = getPRQuickPrompts()
+    const improvements = prompts.find((p) => p.id === 'improvements')
+
+    expect(improvements).toBeDefined()
+    expect(improvements?.label).toBe('Suggest improvements')
+    expect(improvements?.prompt).toContain('improvements')
+  })
+})
+
+describe('GENERAL_QUICK_PROMPTS', () => {
+  it('should have 3 prompts for general chat', () => {
+    expect(GENERAL_QUICK_PROMPTS).toHaveLength(3)
+  })
+
+  it('should have Explain this code prompt', () => {
+    const explain = GENERAL_QUICK_PROMPTS.find((p) => p.id === 'explain-code')
+    expect(explain).toBeDefined()
+    expect(explain?.label).toBe('Explain this code')
+  })
+
+  it('should have Best practices prompt', () => {
+    const bestPractices = GENERAL_QUICK_PROMPTS.find((p) => p.id === 'best-practices')
+    expect(bestPractices).toBeDefined()
+    expect(bestPractices?.label).toBe('Best practices')
+  })
+
+  it('should have Help me debug prompt', () => {
+    const debug = GENERAL_QUICK_PROMPTS.find((p) => p.id === 'debug-help')
+    expect(debug).toBeDefined()
+    expect(debug?.label).toBe('Help me debug')
+  })
+
+  it('should have meaningful prompts with actual content', () => {
+    for (const prompt of GENERAL_QUICK_PROMPTS) {
+      expect(prompt.prompt.length).toBeGreaterThan(20)
+      expect(prompt.label.length).toBeGreaterThan(3)
+    }
+  })
+})

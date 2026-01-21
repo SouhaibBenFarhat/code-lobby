@@ -1594,41 +1594,51 @@ export function AIChatPanel({
     processMessageRef.current = processMessage
   }, [processMessage])
 
-  // Main send message handler
-  const handleSendMessage = useCallback(async () => {
+  // Core send message function - can be called with a specific message
+  const sendMessage = useCallback(
+    (messageText: string) => {
+      if (!messageText.trim()) return
+
+      const userMessage = messageText.trim()
+      const msgId = `temp_${Date.now()}`
+
+      // If already processing, add to queue
+      if (isProcessingRef.current || isSending) {
+        const queuedMsg: QueuedMessage = {
+          id: msgId,
+          content: userMessage
+        }
+        setMessageQueue((prev) => [...prev, queuedMsg])
+        return
+      }
+
+      // Optimistically add user message to UI
+      const tempUserMsg: ChatMessage = {
+        id: msgId,
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date().toISOString()
+      }
+      setMessages((prev) => [...prev, tempUserMsg])
+
+      // Process immediately
+      processMessage(userMessage, msgId)
+    },
+    [isSending, processMessage]
+  )
+
+  // Main send message handler (uses input state)
+  const handleSendMessage = useCallback(() => {
     if (!input.trim()) return
 
-    const userMessage = input.trim()
-    const msgId = `temp_${Date.now()}`
+    sendMessage(input.trim())
     setInput('')
 
     // Reset textarea height after clearing
     if (textareaRef.current) {
       textareaRef.current.style.height = '72px'
     }
-
-    // If already processing, add to queue
-    if (isProcessingRef.current || isSending) {
-      const queuedMsg: QueuedMessage = {
-        id: msgId,
-        content: userMessage
-      }
-      setMessageQueue((prev) => [...prev, queuedMsg])
-      return
-    }
-
-    // Optimistically add user message to UI
-    const tempUserMsg: ChatMessage = {
-      id: msgId,
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date().toISOString()
-    }
-    setMessages((prev) => [...prev, tempUserMsg])
-
-    // Process immediately
-    processMessage(userMessage, msgId)
-  }, [input, isSending, processMessage])
+  }, [input, sendMessage])
 
   const handleClearHistory = async () => {
     if (linkedPRChat) {
@@ -2186,8 +2196,8 @@ export function AIChatPanel({
                       : GENERAL_QUICK_PROMPTS
                   }
                   onSelect={(prompt) => {
-                    setInput(prompt)
-                    textareaRef.current?.focus()
+                    // Send the prompt immediately
+                    sendMessage(prompt)
                   }}
                   disabled={isSending}
                 />
