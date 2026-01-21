@@ -2533,31 +2533,26 @@ export function AIChatPanel({
         ) : chatStarted || messages.length > 0 || streaming.isStreaming || linkedPRChat ? (
           // Message input - only show when chat has started, has messages, or is a PR chat
           <div className="space-y-2">
-            {/* Quick action prompts - show when no messages yet */}
-            {messages.length === 0 && !streaming.isStreaming && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] text-muted-foreground font-medium">Quick actions</p>
-                <QuickActions
-                  prompts={
-                    linkedPRChat
-                      ? getPRQuickPrompts({
-                          hasCIFailures:
-                            selectedPR?.checks?.state === 'failure' ||
-                            selectedPR?.checks?.state === 'error'
-                        })
-                      : GENERAL_QUICK_PROMPTS
-                  }
-                  customPrompts={customPrompts}
-                  onSelect={(prompt) => {
-                    // Send the prompt immediately
-                    sendMessage(prompt)
-                  }}
-                  onAddCustomPrompt={handleAddCustomPrompt}
-                  onDeleteCustomPrompt={handleDeleteCustomPrompt}
-                  disabled={isSending}
-                />
-              </div>
-            )}
+            {/* Quick action prompts - always visible */}
+            <QuickActions
+              prompts={
+                linkedPRChat
+                  ? getPRQuickPrompts({
+                      hasCIFailures:
+                        selectedPR?.checks?.state === 'failure' ||
+                        selectedPR?.checks?.state === 'error'
+                    })
+                  : GENERAL_QUICK_PROMPTS
+              }
+              customPrompts={customPrompts}
+              onSelect={(prompt) => {
+                // Send the prompt immediately
+                sendMessage(prompt)
+              }}
+              onAddCustomPrompt={handleAddCustomPrompt}
+              onDeleteCustomPrompt={handleDeleteCustomPrompt}
+              disabled={isSending || streaming.isStreaming}
+            />
 
             <div className="flex gap-2 items-end">
               <textarea
