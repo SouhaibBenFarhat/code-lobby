@@ -772,7 +772,13 @@ function QuickActions({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-wrap gap-1.5', className)}>
+    <div
+      className={cn(
+        'flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent',
+        className
+      )}
+      style={{ scrollbarWidth: 'thin' }}
+    >
       {prompts.map((prompt) => (
         <button
           key={prompt.id}
@@ -780,7 +786,7 @@ function QuickActions({
           onClick={() => onSelect(prompt.prompt)}
           disabled={disabled}
           className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs',
+            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
             'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
             'text-muted-foreground hover:text-foreground',
             'transition-all duration-150',
