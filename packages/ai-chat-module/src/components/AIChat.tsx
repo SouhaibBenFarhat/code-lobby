@@ -939,6 +939,31 @@ function QuickActions({
   className?: string
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  // Check scroll state on mount and when content changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: need to recalculate when prompts change
+  useEffect(() => {
+    const checkScroll = () => {
+      const el = scrollRef.current
+      if (el) {
+        setCanScrollLeft(el.scrollLeft > 0)
+        setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1)
+      }
+    }
+
+    checkScroll()
+    const el = scrollRef.current
+    el?.addEventListener('scroll', checkScroll)
+    window.addEventListener('resize', checkScroll)
+
+    return () => {
+      el?.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [prompts.length, customPrompts.length])
 
   return (
     <div className={cn('relative', className)}>
@@ -949,16 +974,32 @@ function QuickActions({
         onSave={onAddCustomPrompt}
       />
 
-      {/* Fade gradient on the right edge to indicate more content */}
+      {/* Left fade - only show when scrolled */}
       <div
-        className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 z-10"
+        className={cn(
+          'pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 transition-opacity duration-200',
+          canScrollLeft ? 'opacity-100' : 'opacity-0'
+        )}
+        style={{
+          background: 'linear-gradient(to left, transparent, hsl(var(--background)))'
+        }}
+      />
+
+      {/* Right fade - only show when more content exists */}
+      <div
+        className={cn(
+          'pointer-events-none absolute right-0 top-0 bottom-0 w-8 z-10 transition-opacity duration-200',
+          canScrollRight ? 'opacity-100' : 'opacity-0'
+        )}
         style={{
           background: 'linear-gradient(to right, transparent, hsl(var(--background)))'
         }}
       />
+
       {/* Scrollable container with hidden scrollbar */}
       <div
-        className="flex gap-1.5 overflow-x-auto pr-10 [&::-webkit-scrollbar]:hidden"
+        ref={scrollRef}
+        className="flex gap-1.5 overflow-x-auto px-1 [&::-webkit-scrollbar]:hidden"
         style={{
           scrollbarWidth: 'none' // Firefox
         }}
