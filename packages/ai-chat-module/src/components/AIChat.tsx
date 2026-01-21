@@ -242,6 +242,75 @@ const CONTEXT_WINDOWS: Record<string, number> = {
 }
 const DEFAULT_CONTEXT_WINDOW = 200000
 
+// ===================
+// QUICK ACTION PROMPTS
+// ===================
+
+// Pre-defined prompts for PR-specific chats
+interface QuickPrompt {
+  id: string
+  label: string
+  icon: React.ReactNode
+  prompt: string
+}
+
+const PR_QUICK_PROMPTS: QuickPrompt[] = [
+  {
+    id: 'review-bugs',
+    label: 'Find bugs',
+    icon: <AlertCircle className="w-3 h-3" />,
+    prompt:
+      'Review this PR for bugs, potential issues, and edge cases. Show me the problematic code and how to fix it.'
+  },
+  {
+    id: 'summarize',
+    label: 'Summarize',
+    icon: <MessageSquare className="w-3 h-3" />,
+    prompt: 'Summarize this PR in 2-3 sentences. What does it do and why?'
+  },
+  {
+    id: 'explain-ci',
+    label: 'Why is CI failing?',
+    icon: <AlertCircle className="w-3 h-3" />,
+    prompt: 'Look at the CI checks and explain why they might be failing. What should be fixed?'
+  },
+  {
+    id: 'security',
+    label: 'Security review',
+    icon: <AlertCircle className="w-3 h-3" />,
+    prompt: 'Review this PR for security vulnerabilities, injection risks, or unsafe patterns.'
+  },
+  {
+    id: 'improvements',
+    label: 'Suggest improvements',
+    icon: <MessageSquare className="w-3 h-3" />,
+    prompt:
+      'Suggest improvements to the code in this PR. Focus on readability, performance, and best practices.'
+  }
+]
+
+// Pre-defined prompts for general chat
+const GENERAL_QUICK_PROMPTS: QuickPrompt[] = [
+  {
+    id: 'explain-code',
+    label: 'Explain this code',
+    icon: <MessageSquare className="w-3 h-3" />,
+    prompt: 'Can you explain how this codebase is organized and what the main components do?'
+  },
+  {
+    id: 'best-practices',
+    label: 'Best practices',
+    icon: <MessageSquare className="w-3 h-3" />,
+    prompt: 'What are some best practices I should follow for this type of project?'
+  },
+  {
+    id: 'debug-help',
+    label: 'Help me debug',
+    icon: <AlertCircle className="w-3 h-3" />,
+    prompt: "I'm having an issue with my code. Can you help me debug it?"
+  }
+]
+
 // Estimate tokens from text (~4 characters per token for English)
 // This is a rough estimate. Actual tokenization varies by model.
 // For accurate counting, we track input_tokens from API responses.
@@ -574,6 +643,46 @@ function VirtualizedMessageList({
 
       {/* Scroll anchor at absolute bottom */}
       <div data-scroll-anchor className="h-px" />
+    </div>
+  )
+}
+
+// ===================
+// QUICK ACTIONS COMPONENT
+// ===================
+
+// Quick action chips that users can click to send pre-defined prompts
+function QuickActions({
+  prompts,
+  onSelect,
+  disabled = false,
+  className = ''
+}: {
+  prompts: QuickPrompt[]
+  onSelect: (prompt: string) => void
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <div className={cn('flex flex-wrap gap-1.5', className)}>
+      {prompts.map((prompt) => (
+        <button
+          key={prompt.id}
+          type="button"
+          onClick={() => onSelect(prompt.prompt)}
+          disabled={disabled}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs',
+            'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
+            'text-muted-foreground hover:text-foreground',
+            'transition-all duration-150',
+            disabled && 'opacity-50 cursor-not-allowed'
+          )}
+        >
+          {prompt.icon}
+          <span>{prompt.label}</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -1904,7 +2013,7 @@ export function AIChatPanel({
         {/* PR Empty state - shown when PR is selected but no chat exists for it */}
         {!isLoading && showPREmptyState && selectedPR && (
           <div className="h-full flex items-center justify-center min-h-[200px]">
-            <div className="text-center space-y-4 px-6">
+            <div className="text-center space-y-4 px-6 max-w-md">
               <GitPullRequest className="w-12 h-12 mx-auto text-blue-500/40" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
@@ -2038,14 +2147,31 @@ export function AIChatPanel({
           </div>
         ) : chatStarted || messages.length > 0 || streaming.isStreaming || linkedPRChat ? (
           // Message input - only show when chat has started, has messages, or is a PR chat
-          <div className="space-y-1">
+          <div className="space-y-2">
+            {/* Quick action prompts - show when no messages yet */}
+            {messages.length === 0 && !streaming.isStreaming && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-muted-foreground font-medium">Quick actions</p>
+                <QuickActions
+                  prompts={linkedPRChat ? PR_QUICK_PROMPTS : GENERAL_QUICK_PROMPTS}
+                  onSelect={(prompt) => {
+                    setInput(prompt)
+                    textareaRef.current?.focus()
+                  }}
+                  disabled={isSending}
+                />
+              </div>
+            )}
+
             <div className="flex gap-2 items-end">
               <textarea
                 ref={textareaRef}
                 placeholder={
                   isSending
                     ? 'Type to queue another message...'
-                    : 'Type a message... (Shift+Enter for new line)'
+                    : linkedPRChat
+                      ? 'Ask about this PR...'
+                      : 'Type a message... (Shift+Enter for new line)'
                 }
                 value={input}
                 onChange={(e) => {
