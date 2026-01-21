@@ -1212,6 +1212,98 @@ When refactoring any module:
 - [ ] Test that module appears in the correct slot after refactor
 - [ ] Check `npm run dev` shows the module rendering correctly
 
+### 🎯 Dumb Component Pattern (When Splitting Components)
+
+When extracting smaller components from a larger one, keep them **"dumb" (presentational)**:
+
+**✅ Dumb components SHOULD:**
+- Receive all data via **props**
+- Receive all handlers via **callback props**
+- Only import from:
+  - `@codelobby/ui-kit` (shared UI components)
+  - `lucide-react` or other icon libraries
+  - `react` and React hooks
+  - Internal types (`../types`)
+  - Sibling components (`./OtherComponent`)
+
+**❌ Dumb components should NOT:**
+- Call `window.electron` directly
+- Import `@codelobby/shared-store`
+- Import `@codelobby/queries`
+- Manage global state
+- Make API calls
+
+**Example - Correct Pattern:**
+```typescript
+// ✅ GOOD - Dumb presentational component
+// ChatHeader.tsx
+import { Button, ClaudeIcon } from '@codelobby/ui-kit'
+import { Settings } from 'lucide-react'
+import type { LinkedPRChat } from '../types'
+
+interface ChatHeaderProps {
+  linkedPRChat: LinkedPRChat | null
+  onClose: () => void           // ← Callback prop
+  onClearHistory: () => void    // ← Callback prop
+}
+
+export function ChatHeader({ linkedPRChat, onClose, onClearHistory }: ChatHeaderProps) {
+  return (
+    <div>
+      <Button onClick={onClose}>Close</Button>
+      <Button onClick={onClearHistory}>Clear</Button>
+    </div>
+  )
+}
+```
+
+```typescript
+// ❌ BAD - Component reaching outside for data/actions
+// ChatHeader.tsx
+import { Store, Actions } from '@codelobby/shared-store'  // ❌ Direct store access
+
+export function ChatHeader() {
+  const linkedPRChat = useSignal(Store.linkedPRChat)  // ❌ Reading from store
+  
+  const handleClear = async () => {
+    await window.electron.clearChatHistory()  // ❌ Direct IPC call
+    Actions.clearChat()  // ❌ Direct action dispatch
+  }
+  
+  return <Button onClick={handleClear}>Clear</Button>
+}
+```
+
+**The orchestrator pattern:**
+```
+┌─────────────────────────────────────────────────────┐
+│  index.tsx (Wrapper)                                │
+│  - Connects to shared-store via useSignal()         │
+│  - Passes props down                                │
+└─────────────────────┬───────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────┐
+│  MainComponent.tsx (Orchestrator)                   │
+│  - Manages local state                              │
+│  - Calls window.electron for IPC                    │
+│  - Passes data + callbacks to children              │
+└─────────────────────┬───────────────────────────────┘
+                      │
+    ┌─────────────────┼─────────────────┐
+    │                 │                 │
+┌───▼───┐        ┌────▼────┐       ┌────▼────┐
+│Header │        │ Content │       │  Input  │
+│(dumb) │        │ (dumb)  │       │ (dumb)  │
+└───────┘        └─────────┘       └─────────┘
+   All receive props, none access global state directly
+```
+
+This pattern ensures:
+1. **Testability** - Dumb components are easy to test with mock props
+2. **Reusability** - No hidden dependencies on global state
+3. **Maintainability** - Clear data flow, easy to understand
+4. **Module isolation** - Components stay within their module boundaries
+
 ---
 
 ## 🔮 Vision Context
