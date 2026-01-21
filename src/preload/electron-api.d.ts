@@ -72,6 +72,21 @@ export interface ElectronAPI {
     error?: string
   }>
 
+  // Post PR review comment
+  postPRComment: (
+    owner: string,
+    repo: string,
+    prNumber: number,
+    commitId: string,
+    path: string,
+    line: number,
+    body: string
+  ) => Promise<{
+    success: boolean
+    commentUrl?: string
+    error?: string
+  }>
+
   // Settings
   getSettings: () => Promise<{ notifications: boolean; pollInterval: number; theme: string }>
   setSettings: (settings: Record<string, unknown>) => Promise<{ success: boolean }>

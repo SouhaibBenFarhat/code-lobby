@@ -693,9 +693,11 @@ MIT License - See [LICENSE](LICENSE) for details.
 - Full context display (CI, comments, reviews)
 - Customizable spatial layout
 - All PRs view (not just yours)
+- AI-powered PR analysis ("Why is this PR still open?")
+- PR-specific AI chat with full code diff context
+- Post AI findings as PR review comments
 
 ### Next 🔜
-- AI-powered PR analysis ("Explain this failure")
 - Smart suggestions ("This comment is asking for X")
 - Natural language search ("Show me PRs touching the auth module")
 

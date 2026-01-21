@@ -248,6 +248,38 @@ This means the AI can:
 
 ---
 
+### 📝 Post AI Findings as PR Comments
+
+When the AI identifies a bug, security issue, or has a suggestion for a specific line of code, you can post it directly to the PR as a review comment.
+
+**How It Works:**
+1. Ask the AI to review your code or find issues
+2. If the AI finds something at a specific file and line, it will include a "Post to PR" button
+3. Click the button to post the finding as a GitHub review comment
+4. A link to the posted comment appears so you can view it on GitHub
+
+**What Gets Posted:**
+- The AI's full response as the comment body
+- Attached to the specific file and line number
+- Attribution showing it was posted via CodeLobby
+
+**Example Flow:**
+1. You: "Are there any bugs in this PR?"
+2. AI: "I found a potential null pointer issue at `src/utils/auth.ts` line 42..."
+3. You see a **Post to PR** button appear
+4. Click it → Comment appears on GitHub at that exact line
+5. Link shown: "Posted ✓" with direct link to the comment
+
+**Best For:**
+- Code review findings
+- Security vulnerability reports
+- Refactoring suggestions
+- Bug reports with specific locations
+
+The AI knows when a finding is "postable" (has a specific file and line) and will automatically provide the posting option.
+
+---
+
 ### 📋 Conversation Navigator
 
 Managing multiple AI conversations? The conversation navigator makes switching instant.
@@ -428,6 +460,7 @@ We're actively building:
 | **Context-Aware AI** | AI knows about CodeLobby |
 | **PR-Specific AI Chat** | Context-aware conversations |
 | **Conversation Navigator** | Switch between chats instantly |
+| **Post AI to PR** | Post AI findings as PR comments |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |

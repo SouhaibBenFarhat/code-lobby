@@ -261,6 +261,41 @@ export function buildPRSystemPrompt(pr: PullRequest, changedFiles?: ChangedFile[
   lines.push('- Answer questions about the code changes')
   lines.push('- Suggest alternative implementations')
   lines.push('')
+
+  // ===================
+  // POSTABLE COMMENTS
+  // ===================
+  lines.push('## Posting Comments to the PR')
+  lines.push('')
+  lines.push(
+    'When you identify specific issues (bugs, security problems, code smells) at a specific file and line,'
+  )
+  lines.push(
+    'you can make your feedback **postable** as a PR review comment. The user can then click a button to post it.'
+  )
+  lines.push('')
+  lines.push('To make a finding postable, append this metadata at the END of your message:')
+  lines.push('')
+  lines.push('```')
+  lines.push('<!--POSTABLE:{"file":"path/to/file.ts","line":42}-->')
+  lines.push('```')
+  lines.push('')
+  lines.push('**Rules:**')
+  lines.push('- `file` must be an exact path from the diff (e.g., `src/utils/auth.ts`)')
+  lines.push('- `line` must be a line number in the NEW version of the file (right side of diff)')
+  lines.push('- Only include for findings with a SPECIFIC file and line location')
+  lines.push('- You can include MULTIPLE postable comments in one response')
+  lines.push('')
+  lines.push('**When to use:**')
+  lines.push('- Bug findings: "Found null pointer issue at line 42"')
+  lines.push('- Security issues: "SQL injection vulnerability at line 15"')
+  lines.push('- Code review suggestions: "Consider using optional chaining here"')
+  lines.push('')
+  lines.push('**When NOT to use:**')
+  lines.push('- General explanations or summaries')
+  lines.push('- Questions or clarifications')
+  lines.push('- Responses without specific line references')
+  lines.push('')
   lines.push('Ask me anything about this PR!')
 
   return lines.join('\n')

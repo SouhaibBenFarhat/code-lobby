@@ -1300,3 +1300,77 @@ export async function fetchPRFiles(
 
   return { files: allFiles, rateLimit }
 }
+
+/**
+ * Post a review comment on a specific line of a PR
+ * Uses GitHub REST API as GraphQL doesn't support creating review comments easily
+ */
+export async function postPRReviewComment(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  commitId: string,
+  path: string,
+  line: number,
+  body: string
+): Promise<{ success: boolean; commentUrl?: string; error?: string }> {
+  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`
+
+  logger.info(LogCategory.API, 'Posting PR review comment', {
+    owner,
+    repo,
+    prNumber,
+    path,
+    line
+  })
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        body,
+        commit_id: commitId,
+        path,
+        line,
+        side: 'RIGHT' // Comment on the new version of the file
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = (await response.json()) as { message?: string }
+      logger.error(LogCategory.API, 'Failed to post PR comment', {
+        status: response.status,
+        error: errorData.message
+      })
+      return {
+        success: false,
+        error: errorData.message || `HTTP ${response.status}: ${response.statusText}`
+      }
+    }
+
+    const data = (await response.json()) as { html_url: string }
+
+    logger.info(LogCategory.API, 'Posted PR review comment successfully', {
+      commentUrl: data.html_url
+    })
+
+    return {
+      success: true,
+      commentUrl: data.html_url
+    }
+  } catch (error) {
+    logger.error(LogCategory.API, 'Error posting PR comment', {
+      error: (error as Error).message
+    })
+    return {
+      success: false,
+      error: (error as Error).message
+    }
+  }
+}

@@ -591,4 +591,56 @@ describe('buildPRSystemPrompt', () => {
       expect(prompt.startsWith('# PR #')).toBe(true)
     })
   })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TESTS: POSTABLE COMMENTS INSTRUCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('Postable Comments Instructions', () => {
+    it('should include postable comments section', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('## Posting Comments to the PR')
+    })
+
+    it('should include the POSTABLE metadata format', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('<!--POSTABLE:{"file":"path/to/file.ts","line":42}-->')
+    })
+
+    it('should explain when to use postable comments', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('Bug findings')
+      expect(prompt).toContain('Security issues')
+      expect(prompt).toContain('Code review suggestions')
+    })
+
+    it('should explain when NOT to use postable comments', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('When NOT to use')
+      expect(prompt).toContain('General explanations or summaries')
+    })
+
+    it('should explain the required fields', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('`file` must be an exact path from the diff')
+      expect(prompt).toContain('`line` must be a line number in the NEW version')
+    })
+
+    it('should mention multiple postable comments are allowed', () => {
+      const pr = createBasicPR()
+      const prompt = buildPRSystemPrompt(pr)
+
+      expect(prompt).toContain('MULTIPLE postable comments')
+    })
+  })
 })

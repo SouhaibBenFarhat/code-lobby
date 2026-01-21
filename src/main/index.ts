@@ -476,6 +476,48 @@ function setupIPCHandlers(): void {
     }
   })
 
+  // Post PR review comment
+  ipcMain.handle(
+    'post-pr-comment',
+    async (
+      _,
+      owner: string,
+      repo: string,
+      prNumber: number,
+      commitId: string,
+      path: string,
+      line: number,
+      body: string
+    ) => {
+      const token = getToken()
+      if (!token) return { success: false, error: 'No token' }
+      try {
+        const { postPRReviewComment } = await import('./github-graphql')
+        const result = await postPRReviewComment(
+          token,
+          owner,
+          repo,
+          prNumber,
+          commitId,
+          path,
+          line,
+          body
+        )
+        return result
+      } catch (error) {
+        logger.error(LogCategory.GRAPHQL, 'Failed to post PR comment', {
+          owner,
+          repo,
+          prNumber,
+          path,
+          line,
+          error: (error as Error).message
+        })
+        return { success: false, error: (error as Error).message }
+      }
+    }
+  )
+
   // Settings
   ipcMain.handle('get-settings', async () => {
     return getSettings()

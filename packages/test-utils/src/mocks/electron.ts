@@ -137,6 +137,9 @@ interface MockElectronAPI {
   getActivePRChatId: ReturnType<typeof vi.fn>
   setActivePRChatId: ReturnType<typeof vi.fn>
 
+  // Post PR comments
+  postPRComment: ReturnType<typeof vi.fn>
+
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
@@ -332,6 +335,12 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     deletePRChat: vi.fn().mockResolvedValue({ success: true }),
     getActivePRChatId: vi.fn().mockResolvedValue(null),
     setActivePRChatId: vi.fn().mockResolvedValue({ success: true }),
+
+    // Post PR comments
+    postPRComment: vi.fn().mockResolvedValue({
+      success: true,
+      commentUrl: 'https://github.com/owner/repo/pull/1#discussion_r1234567890'
+    }),
 
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),

@@ -33,6 +33,17 @@ const electronAPI: ElectronAPI = {
   fetchPRFiles: (owner: string, repo: string, prNumber: number) =>
     ipcRenderer.invoke('fetch-pr-files', owner, repo, prNumber),
 
+  // Post PR review comment
+  postPRComment: (
+    owner: string,
+    repo: string,
+    prNumber: number,
+    commitId: string,
+    path: string,
+    line: number,
+    body: string
+  ) => ipcRenderer.invoke('post-pr-comment', owner, repo, prNumber, commitId, path, line, body),
+
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
   setSettings: (settings: Record<string, unknown>) => ipcRenderer.invoke('set-settings', settings),

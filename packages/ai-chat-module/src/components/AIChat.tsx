@@ -24,12 +24,15 @@ import {
   ArrowDown,
   ArrowLeft,
   Brain,
+  Check,
   ChevronRight,
+  ExternalLink,
   GitPullRequest,
   Key,
   List,
   Loader2,
   MessageSquare,
+  MessageSquarePlus,
   RefreshCw,
   Send,
   Settings,
@@ -91,6 +94,38 @@ interface ChatMessage {
   content: string
   thinking?: string
   timestamp: string
+}
+
+// Postable comment metadata that Claude can embed in responses
+interface PostableComment {
+  file: string
+  line: number
+}
+
+// Parse POSTABLE metadata from message content
+// Format: <!--POSTABLE:{"file":"path/to/file.ts","line":42}-->
+const POSTABLE_REGEX = /<!--POSTABLE:(\{[^}]+\})-->/g
+
+function parsePostableComments(content: string): PostableComment[] {
+  const comments: PostableComment[] = []
+  const matches = content.matchAll(POSTABLE_REGEX)
+
+  for (const match of matches) {
+    try {
+      const parsed = JSON.parse(match[1]) as { file?: string; line?: number }
+      if (parsed.file && typeof parsed.line === 'number') {
+        comments.push({ file: parsed.file, line: parsed.line })
+      }
+    } catch {
+      // Invalid JSON, skip
+    }
+  }
+  return comments
+}
+
+// Remove POSTABLE metadata from content for display
+function stripPostableMetadata(content: string): string {
+  return content.replace(POSTABLE_REGEX, '').trim()
 }
 
 // Context window sizes by model (in tokens)
@@ -243,9 +278,16 @@ interface PRChatInfo {
 interface SelectedPR {
   number: number
   title: string
+  head: {
+    sha: string
+  }
   base: {
     repo: {
       full_name: string
+      owner: {
+        login: string
+      }
+      name: string
     }
   }
 }
@@ -287,6 +329,12 @@ interface VirtualizedMessageListProps {
   onScroll: () => void
   onVirtualizerReady: (scrollToEnd: () => void) => void
   user?: GitHubUser | null
+  linkedPRChat?: LinkedPRChat | null
+  onPostComment?: (
+    file: string,
+    line: number,
+    body: string
+  ) => Promise<{ success: boolean; commentUrl?: string }>
 }
 
 function VirtualizedMessageList({
@@ -300,7 +348,9 @@ function VirtualizedMessageList({
   scrollContainerRef,
   onScroll,
   onVirtualizerReady,
-  user
+  user,
+  linkedPRChat,
+  onPostComment
 }: VirtualizedMessageListProps) {
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
@@ -385,6 +435,8 @@ function VirtualizedMessageList({
                   expandedThinking={expandedThinking}
                   toggleThinkingExpanded={toggleThinkingExpanded}
                   user={user}
+                  linkedPRChat={linkedPRChat}
+                  onPostComment={onPostComment}
                 />
               )}
 
@@ -428,18 +480,69 @@ function VirtualizedMessageList({
   )
 }
 
+// State for tracking posted comments and posting in progress
+interface PostingState {
+  [key: string]: 'posting' | 'posted' | 'error'
+}
+
 // Individual message bubble component (memoized for performance)
 const MessageBubble = React.memo(function MessageBubble({
   message,
   expandedThinking,
   toggleThinkingExpanded,
-  user
+  user,
+  linkedPRChat,
+  onPostComment
 }: {
   message: ChatMessage
   expandedThinking: Set<string>
   toggleThinkingExpanded: (id: string) => void
   user?: GitHubUser | null
+  linkedPRChat?: LinkedPRChat | null
+  onPostComment?: (
+    file: string,
+    line: number,
+    body: string
+  ) => Promise<{ success: boolean; commentUrl?: string }>
 }) {
+  const [postingState, setPostingState] = useState<PostingState>({})
+  const [postedUrls, setPostedUrls] = useState<Record<string, string>>({})
+
+  // Parse postable comments from assistant messages
+  const postableComments = useMemo(() => {
+    if (message.role !== 'assistant') return []
+    return parsePostableComments(message.content)
+  }, [message.content, message.role])
+
+  // Strip metadata from content for display
+  const displayContent = useMemo(() => {
+    if (message.role !== 'assistant') return message.content
+    return stripPostableMetadata(message.content)
+  }, [message.content, message.role])
+
+  const handlePostComment = async (comment: PostableComment, index: number) => {
+    if (!onPostComment) return
+
+    const key = `${index}`
+    setPostingState((prev) => ({ ...prev, [key]: 'posting' }))
+
+    try {
+      // Use the full message content (minus metadata) as the comment body
+      const result = await onPostComment(comment.file, comment.line, displayContent)
+
+      if (result.success) {
+        setPostingState((prev) => ({ ...prev, [key]: 'posted' }))
+        if (result.commentUrl) {
+          setPostedUrls((prev) => ({ ...prev, [key]: result.commentUrl as string }))
+        }
+      } else {
+        setPostingState((prev) => ({ ...prev, [key]: 'error' }))
+      }
+    } catch {
+      setPostingState((prev) => ({ ...prev, [key]: 'error' }))
+    }
+  }
+
   return (
     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
       {message.role === 'assistant' && (
@@ -499,8 +602,68 @@ const MessageBubble = React.memo(function MessageBubble({
               </div>
             )}
             <div className="prose prose-sm dark:prose-invert max-w-none text-sm px-3 py-2">
-              <MarkdownContent content={message.content} />
+              <MarkdownContent content={displayContent} />
             </div>
+
+            {/* Postable comments UI */}
+            {postableComments.length > 0 && linkedPRChat && onPostComment && (
+              <div className="px-3 pb-2 pt-1 border-t border-border/30 space-y-1.5">
+                {postableComments.map((comment, index) => {
+                  const key = `${index}`
+                  const state = postingState[key]
+                  const postedUrl = postedUrls[key]
+
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-2 text-xs bg-blue-500/10 rounded px-2 py-1.5"
+                    >
+                      <MessageSquarePlus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-muted-foreground truncate flex-1">
+                        <code className="text-[10px] bg-black/20 px-1 rounded">{comment.file}</code>
+                        <span className="text-muted-foreground/60 mx-1">:</span>
+                        <span className="text-blue-400">L{comment.line}</span>
+                      </span>
+
+                      {state === 'posted' && postedUrl ? (
+                        <a
+                          href={postedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors"
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>Posted</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : state === 'posting' ? (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Posting...</span>
+                        </span>
+                      ) : state === 'error' ? (
+                        <button
+                          type="button"
+                          onClick={() => handlePostComment(comment, index)}
+                          className="flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
+                        >
+                          <AlertCircle className="w-3 h-3" />
+                          <span>Retry</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handlePostComment(comment, index)}
+                          className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors font-medium"
+                        >
+                          <span>Post to PR</span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -1220,6 +1383,44 @@ export function AIChatPanel({
     setMessages([])
   }
 
+  // Handler for posting AI comments to the PR
+  const handlePostComment = useCallback(
+    async (
+      file: string,
+      line: number,
+      body: string
+    ): Promise<{ success: boolean; commentUrl?: string }> => {
+      if (!selectedPR || !linkedPRChat) {
+        return { success: false }
+      }
+
+      const owner = selectedPR.base.repo.owner.login
+      const repo = selectedPR.base.repo.name
+      const prNumber = selectedPR.number
+      const commitId = selectedPR.head.sha
+
+      // Add attribution to the comment body
+      const attributedBody = `${body}\n\n---\n_Posted by AI Assistant via CodeLobby_`
+
+      try {
+        const result = await window.electron.postPRComment(
+          owner,
+          repo,
+          prNumber,
+          commitId,
+          file,
+          line,
+          attributedBody
+        )
+        return result
+      } catch (error) {
+        console.error('Failed to post PR comment:', error)
+        return { success: false }
+      }
+    },
+    [selectedPR, linkedPRChat]
+  )
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -1643,6 +1844,8 @@ export function AIChatPanel({
             onScroll={handleScroll}
             onVirtualizerReady={handleVirtualizerReady}
             user={user}
+            linkedPRChat={linkedPRChat}
+            onPostComment={handlePostComment}
           />
         )}
 
