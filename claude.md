@@ -1306,6 +1306,130 @@ This pattern ensures:
 
 ---
 
+## 💬 AI Chat Module Structure
+
+The `ai-chat-module` is split into small, focused, testable components. Each component has a corresponding test file.
+
+### Directory Structure
+
+```
+packages/ai-chat-module/src/
+├── index.tsx                          # Module entry + slot registration
+├── components/
+│   ├── AIChat.tsx                     # Main orchestrator (600 lines)
+│   ├── AIChat.test.tsx
+│   ├── AddCustomPromptModal.tsx       # Modal for creating custom prompts
+│   ├── AddCustomPromptModal.test.tsx
+│   ├── ChatEmptyStates.tsx            # Loading, PR empty, default empty states
+│   ├── ChatEmptyStates.test.tsx
+│   ├── ChatHeader.tsx                 # Header with title, nav, actions
+│   ├── ChatHeader.test.tsx
+│   ├── ChatInput.tsx                  # Input area with quick actions
+│   ├── ChatInput.test.tsx
+│   ├── ChatSettings.tsx               # Model selector, thinking toggle
+│   ├── ChatSettings.test.tsx
+│   ├── ContextIndicator.tsx           # Token count display
+│   ├── ContextIndicator.test.tsx
+│   ├── MessageBubble.tsx              # User/assistant message rendering
+│   ├── MessageBubbles.test.tsx        # Tests for all bubble types
+│   ├── MessageErrorBoundary.tsx       # Error boundary for messages
+│   ├── MessageErrorBoundary.test.tsx
+│   ├── QueuedMessageBubble.tsx        # Queued message indicator
+│   ├── QuickActions.tsx               # Pre-prompt buttons
+│   ├── QuickActions.test.tsx
+│   ├── StreamingBubble.tsx            # Streaming response display
+│   ├── VirtualizedMessageList.tsx     # Virtual scroll for messages
+│   ├── VirtualizedMessageList.test.tsx
+│   └── index.ts                       # Barrel exports
+├── hooks/
+│   ├── index.ts
+│   ├── useScrollManagement.ts         # Scroll state & behavior
+│   ├── useScrollManagement.test.ts
+│   ├── useThrottledValue.ts           # Throttle streaming updates
+│   └── useThrottledValue.test.ts
+├── constants/
+│   └── index.ts                       # Quick prompts, defaults
+├── types/
+│   └── index.ts                       # All TypeScript interfaces
+└── utils/
+    ├── index.ts
+    ├── postable.ts                    # Parse postable metadata from AI
+    ├── postable.test.ts
+    ├── tokens.ts                      # Token estimation
+    └── tokens.test.ts
+```
+
+### Component Responsibilities
+
+| Component | Lines | Purpose |
+|-----------|-------|---------|
+| `AIChat.tsx` | ~600 | Main orchestrator - state, IPC calls, delegates to children |
+| `ChatHeader.tsx` | ~214 | Title, conversation navigator popover, action buttons |
+| `ChatInput.tsx` | ~198 | API key input, message textarea, quick actions, context indicator |
+| `ChatSettings.tsx` | ~140 | Model selector dropdown, thinking toggle, API key removal |
+| `ChatEmptyStates.tsx` | ~196 | 6 components: LoadingSkeleton, PREmptyState, DefaultEmptyState, PRContextBanner, ContextSyncBanner, ErrorBanner |
+| `VirtualizedMessageList.tsx` | ~200 | TanStack Virtual for message rendering |
+| `QuickActions.tsx` | ~250 | Pre-prompt buttons with horizontal scroll + fade |
+
+### Hook Responsibilities
+
+| Hook | Purpose |
+|------|---------|
+| `useScrollManagement` | Scroll state, auto-scroll, user scroll detection, virtualizer integration |
+| `useThrottledValue` | Throttle streaming content to 30fps |
+
+### ⚠️ Critical Pattern: Memoize Hook Returns
+
+Custom hooks that return objects MUST use `useMemo` to prevent infinite render loops:
+
+```typescript
+// ❌ BAD - Returns new object every render
+export function useScrollManagement() {
+  // ...
+  return { isScrolledUp, scrollToBottom, handleScroll }  // New object each render!
+}
+
+// ✅ GOOD - Memoized return value
+export function useScrollManagement() {
+  // ...
+  return useMemo(() => ({
+    isScrolledUp,
+    scrollToBottom,
+    handleScroll
+  }), [isScrolledUp, scrollToBottom, handleScroll])
+}
+```
+
+**Why this matters:** If `loadData` depends on `scroll` (from hook), and `scroll` changes every render, then `loadData` is recreated every render, causing `useEffect([loadData])` to fire every render → infinite loop!
+
+### Data Flow
+
+```
+index.tsx (Wrapper)
+    │
+    │ useSignal(Store.linkedPRChat), useSignal(Store.selectedPR), etc.
+    │
+    ▼
+AIChat.tsx (Orchestrator)
+    │
+    │ - Local state (messages, streaming, input, etc.)
+    │ - IPC calls (window.electron.*)
+    │ - Passes data + callbacks as props
+    │
+    ├──► ChatHeader (dumb)
+    ├──► ChatSettings (dumb)
+    ├──► ChatEmptyStates/* (dumb)
+    ├──► VirtualizedMessageList (dumb)
+    │       ├──► MessageBubble (dumb)
+    │       ├──► StreamingBubble (dumb)
+    │       └──► QueuedMessageBubble (dumb)
+    └──► ChatInput (dumb)
+            └──► QuickActions (dumb)
+                    └──► AddCustomPromptModal (dumb)
+```
+
+---
+
 ## 🔮 Vision Context
 
 CodeLobby is evolving toward **intent-driven development** where:
