@@ -10,6 +10,12 @@ import {
   AvatarFallback,
   AvatarImage,
   ClaudeIcon,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -768,6 +774,153 @@ interface CustomPrompt {
   createdAt: string
 }
 
+// Modal for creating custom prompts with better UX
+function AddCustomPromptModal({
+  isOpen,
+  onClose,
+  onSave
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onSave: (label: string, prompt: string) => Promise<void>
+}) {
+  const [label, setLabel] = useState('')
+  const [prompt, setPrompt] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const labelInputRef = useRef<HTMLInputElement>(null)
+
+  // Focus label input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => labelInputRef.current?.focus(), 100)
+    }
+  }, [isOpen])
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setLabel('')
+      setPrompt('')
+      setError(null)
+    }
+  }, [isOpen])
+
+  const handleSave = async () => {
+    if (!label.trim()) {
+      setError('Please enter a label')
+      return
+    }
+    if (!prompt.trim()) {
+      setError('Please enter a prompt')
+      return
+    }
+    if (label.length > 30) {
+      setError('Label must be 30 characters or less')
+      return
+    }
+
+    setIsSaving(true)
+    setError(null)
+    try {
+      await onSave(label.trim(), prompt.trim())
+      onClose()
+    } catch {
+      setError('Failed to save prompt')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && e.metaKey) {
+      handleSave()
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageSquarePlus className="w-5 h-5 text-primary" />
+            Create Custom Prompt
+          </DialogTitle>
+          <DialogDescription>
+            Create a reusable prompt for quick access. Your prompts are saved locally and persist
+            across sessions.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Label input */}
+          <div className="space-y-2">
+            <label htmlFor="prompt-label" className="text-sm font-medium">
+              Label <span className="text-muted-foreground">(button text)</span>
+            </label>
+            <Input
+              ref={labelInputRef}
+              id="prompt-label"
+              placeholder="e.g., Check types, Find bugs, Optimize..."
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              maxLength={30}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">{label.length}/30 characters</p>
+          </div>
+
+          {/* Prompt textarea */}
+          <div className="space-y-2">
+            <label htmlFor="prompt-content" className="text-sm font-medium">
+              Prompt <span className="text-muted-foreground">(what to send to AI)</span>
+            </label>
+            <textarea
+              id="prompt-content"
+              placeholder="Write your prompt here...&#10;&#10;Example: Review this code for TypeScript errors. Check for:&#10;- Missing type annotations&#10;- Incorrect type usage&#10;- Potential null/undefined issues&#10;&#10;Show me the problematic code and how to fix it."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={8}
+              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Tip: Be specific! "Find performance issues in loops" works better than "Review code"
+            </p>
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving || !label.trim() || !prompt.trim()}>
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Save Prompt
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function QuickActions({
   prompts,
   customPrompts,
@@ -785,26 +938,17 @@ function QuickActions({
   disabled?: boolean
   className?: string
 }) {
-  const [isAddingPrompt, setIsAddingPrompt] = useState(false)
-  const [newLabel, setNewLabel] = useState('')
-  const [newPrompt, setNewPrompt] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-
-  const handleAddPrompt = async () => {
-    if (!newLabel.trim() || !newPrompt.trim()) return
-    setIsSaving(true)
-    try {
-      await onAddCustomPrompt(newLabel.trim(), newPrompt.trim())
-      setNewLabel('')
-      setNewPrompt('')
-      setIsAddingPrompt(false)
-    } finally {
-      setIsSaving(false)
-    }
-  }
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
     <div className={cn('relative', className)}>
+      {/* Add Custom Prompt Modal */}
+      <AddCustomPromptModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={onAddCustomPrompt}
+      />
+
       {/* Fade gradient on the right edge to indicate more content */}
       <div
         className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 z-10"
@@ -820,73 +964,21 @@ function QuickActions({
         }}
       >
         {/* Add custom prompt button - at the start */}
-        {!isAddingPrompt ? (
-          <button
-            type="button"
-            onClick={() => setIsAddingPrompt(true)}
-            disabled={disabled}
-            className={cn(
-              'inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-              'bg-transparent hover:bg-muted/60 border border-dashed border-border/50 hover:border-border',
-              'text-muted-foreground/60 hover:text-muted-foreground',
-              'transition-all duration-150',
-              disabled && 'opacity-50 cursor-not-allowed'
-            )}
-            title="Add custom prompt"
-          >
-            <MessageSquarePlus className="w-3 h-3" />
-          </button>
-        ) : (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <input
-              ref={(el) => el?.focus()}
-              type="text"
-              placeholder="Label"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              className="w-16 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:border-primary"
-            />
-            <input
-              type="text"
-              placeholder="Prompt text..."
-              value={newPrompt}
-              onChange={(e) => setNewPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newLabel.trim() && newPrompt.trim()) {
-                  handleAddPrompt()
-                } else if (e.key === 'Escape') {
-                  setIsAddingPrompt(false)
-                  setNewLabel('')
-                  setNewPrompt('')
-                }
-              }}
-              className="w-32 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:border-primary"
-            />
-            <button
-              type="button"
-              onClick={handleAddPrompt}
-              disabled={isSaving || !newLabel.trim() || !newPrompt.trim()}
-              className="p-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isSaving ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Check className="w-3 h-3" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsAddingPrompt(false)
-                setNewLabel('')
-                setNewPrompt('')
-              }}
-              className="p-1 rounded hover:bg-muted text-muted-foreground"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          disabled={disabled}
+          className={cn(
+            'inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
+            'bg-transparent hover:bg-muted/60 border border-dashed border-border/50 hover:border-border',
+            'text-muted-foreground/60 hover:text-muted-foreground',
+            'transition-all duration-150',
+            disabled && 'opacity-50 cursor-not-allowed'
+          )}
+          title="Add custom prompt"
+        >
+          <MessageSquarePlus className="w-3 h-3" />
+        </button>
 
         {/* Custom prompts with delete button */}
         {customPrompts.map((prompt) => (

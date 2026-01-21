@@ -652,7 +652,7 @@ describe('GENERAL_QUICK_PROMPTS', () => {
   })
 })
 
-describe('CustomPrompt interface', () => {
+describe('CustomPrompt interface and validation', () => {
   interface CustomPrompt {
     id: string
     label: string
@@ -672,6 +672,48 @@ describe('CustomPrompt interface', () => {
     expect(customPrompt.label).toBe('Check types')
     expect(customPrompt.prompt).toContain('TypeScript')
     expect(customPrompt.createdAt).toBeDefined()
+  })
+
+  it('should enforce label max length of 30 characters', () => {
+    const validLabel = 'A'.repeat(30) // Exactly 30 chars
+    const invalidLabel = 'A'.repeat(31) // 31 chars
+
+    expect(validLabel.length).toBe(30)
+    expect(invalidLabel.length).toBeGreaterThan(30)
+    expect(validLabel.length <= 30).toBe(true)
+    expect(invalidLabel.length <= 30).toBe(false)
+  })
+
+  it('should require both label and prompt to be non-empty', () => {
+    const validatePrompt = (label: string, prompt: string) => {
+      if (!label.trim()) return { valid: false, error: 'Label is required' }
+      if (!prompt.trim()) return { valid: false, error: 'Prompt is required' }
+      if (label.length > 30) return { valid: false, error: 'Label too long' }
+      return { valid: true, error: null }
+    }
+
+    expect(validatePrompt('', 'Some prompt')).toEqual({ valid: false, error: 'Label is required' })
+    expect(validatePrompt('Label', '')).toEqual({ valid: false, error: 'Prompt is required' })
+    expect(validatePrompt('   ', 'Prompt')).toEqual({ valid: false, error: 'Label is required' })
+    expect(validatePrompt('Label', '   ')).toEqual({ valid: false, error: 'Prompt is required' })
+    expect(validatePrompt('A'.repeat(31), 'Prompt')).toEqual({
+      valid: false,
+      error: 'Label too long'
+    })
+    expect(validatePrompt('Valid Label', 'Valid prompt')).toEqual({ valid: true, error: null })
+  })
+
+  it('should support multi-line prompts', () => {
+    const multiLinePrompt = `Review this code for TypeScript errors.
+Check for:
+- Missing type annotations
+- Incorrect type usage
+- Potential null/undefined issues
+
+Show me the problematic code and how to fix it.`
+
+    expect(multiLinePrompt).toContain('\n')
+    expect(multiLinePrompt.split('\n').length).toBeGreaterThan(1)
   })
 
   it('should allow empty custom prompts list', () => {

@@ -296,10 +296,18 @@ Start AI conversations faster with pre-defined quick actions. Plus, create your 
 - One-click sends the prompt immediately (no extra steps)
 
 **Custom Prompts — Save Your Own:**
-1. Click the **+** button at the end of the quick actions row
-2. Enter a **label** (what you'll see on the button)
-3. Enter the **prompt** (what gets sent to the AI)
-4. Press **Enter** to save
+1. Click the **+** button at the start of the quick actions row
+2. A **modal dialog** opens with a full-featured prompt editor
+3. Enter a **label** (max 30 characters — this is the button text)
+4. Write your **prompt** in a large text area with room to craft detailed instructions
+5. Click **Save Prompt** or press **⌘+Enter** to save
+
+**The Prompt Editor:**
+- **Large text area** — Room to write multi-line, detailed prompts
+- **Monospace font** — Perfect for formatting code examples
+- **Character counter** — See label length in real-time
+- **Placeholder examples** — Shows you what a good prompt looks like
+- **Validation** — Catches missing fields before saving
 
 **Managing Custom Prompts:**
 - Custom prompts appear with a distinct **highlighted style**
@@ -308,8 +316,9 @@ Start AI conversations faster with pre-defined quick actions. Plus, create your 
 - Use them for frequent requests like "Check for TypeScript errors" or "Suggest better variable names"
 
 **Pro Tips:**
-- Keep labels short (they appear on small buttons)
-- Make prompts specific — "Find performance issues in this code" beats "Review code"
+- Keep labels short (max 30 chars — they appear on small buttons)
+- Make prompts specific and detailed — the editor gives you room!
+- Include formatting like bullet points for structured reviews
 - Your custom prompts work in both general and PR-specific chats
 
 ---
