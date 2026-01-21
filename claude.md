@@ -1083,6 +1083,137 @@ mouseup → setState → ONE re-render to persist final width
 
 ---
 
+## 🧩 Slot-Based Modular Architecture
+
+CodeLobby uses a **slot-based module system** that enables **zero cross-imports between UI modules**. This is a CRITICAL architectural pattern.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     App Shell (App.tsx)                      │
+│   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────┐   │
+│   │ <Slot   │ │ <Slot   │ │ <Slot   │ │ <Slot           │   │
+│   │ name=   │ │ name=   │ │ name=   │ │ name=           │   │
+│   │"header">│ │"left-   │ │"main">  │ │"ai-panel">      │   │
+│   │         │ │panel">  │ │         │ │                 │   │
+│   └────┬────┘ └────┬────┘ └────┬────┘ └────────┬────────┘   │
+└────────┼──────────┼──────────┼─────────────────┼────────────┘
+         │          │          │                 │
+    ┌────▼────┐┌────▼────┐┌────▼────┐      ┌────▼────┐
+    │ header- ││explorer-││ canvas- │      │ai-chat- │
+    │ module  ││ module  ││ module  │      │ module  │
+    └─────────┘└─────────┘└─────────┘      └─────────┘
+    
+    Each module self-registers to its slot via registerToSlot()
+    NO imports between modules - only to shared packages!
+```
+
+### Available Slots
+
+| Slot | Purpose | Module |
+|------|---------|--------|
+| `header` | App header with nav & controls | header-module |
+| `left-panel` | Explorer sidebar (IDE mode) | explorer-module |
+| `main` | Main content area | canvas-module, pr-detail-module |
+| `pr-detail-panel` | PR detail sidebar (Canvas mode) | pr-detail-module |
+| `ai-panel` | Claude AI chat panel | ai-chat-module |
+
+### Module Registration Pattern
+
+Every UI module MUST follow this pattern:
+
+```typescript
+// packages/my-module/src/index.tsx
+
+import { Store, useSignal } from '@codelobby/shared-store'
+import { registerToSlot } from '@codelobby/slot-system'
+import { MyComponent } from './components/MyComponent'
+
+// Wrapper connects component to shared store
+function MyComponentWrapper() {
+  const someState = useSignal(Store.someState)
+  
+  return <MyComponent state={someState} />
+}
+
+// CRITICAL: Self-register to slot
+registerToSlot({
+  id: 'my-module',
+  slot: 'main',  // or 'header', 'left-panel', etc.
+  component: MyComponentWrapper,
+  order: 0,
+  visible: () => Store.someCondition.value
+})
+```
+
+### Allowed Dependencies Per Module
+
+Each module can ONLY import from:
+- ✅ `@codelobby/shared-store` - Global state (Store, Actions, signals)
+- ✅ `@codelobby/slot-system` - Slot registration
+- ✅ `@codelobby/ui-kit` - Shared UI components
+- ✅ `@codelobby/queries` - Data fetching hooks
+- ✅ `@codelobby/data-module` - Data utilities
+- ✅ `@codelobby/test-utils` - Test utilities
+- ✅ Its own internal components (`./components/...`)
+
+### ❌ FORBIDDEN Imports
+
+**Never import one UI module from another:**
+```typescript
+// ❌ NEVER DO THIS
+import { SomeComponent } from '@codelobby/canvas-module'
+import { AnotherComponent } from '@codelobby/header-module'
+```
+
+### ⚠️ CRITICAL: Never Remove Slot Registration
+
+**When refactoring a module, ALWAYS preserve the slot registration code!**
+
+```typescript
+// ❌ BAD - Removed slot registration during refactor
+export { MyComponent } from './components/MyComponent'
+// Registration code was here but got deleted...
+
+// ✅ GOOD - Slot registration preserved alongside exports
+export { MyComponent } from './components/MyComponent'
+
+// KEEP THIS - connects module to the app!
+function MyComponentWrapper() { ... }
+
+registerToSlot({
+  id: 'my-module',
+  slot: 'main',
+  component: MyComponentWrapper,
+  ...
+})
+```
+
+### Bootstrap Process
+
+Modules are loaded in `packages/app/src/bootstrap.ts`:
+```typescript
+// Each import triggers the module's registerToSlot() call
+import '@codelobby/header-module'
+import '@codelobby/explorer-module'
+import '@codelobby/canvas-module'
+import '@codelobby/pr-detail-module'
+import '@codelobby/ai-chat-module'
+```
+
+### Refactoring Checklist
+
+When refactoring any module:
+
+- [ ] Preserve `registerToSlot()` call in `index.tsx`
+- [ ] Keep the Wrapper component that connects to shared-store
+- [ ] Verify no cross-module imports added
+- [ ] Test that module appears in the correct slot after refactor
+- [ ] Check `npm run dev` shows the module rendering correctly
+
+---
+
 ## 🔮 Vision Context
 
 CodeLobby is evolving toward **intent-driven development** where:
