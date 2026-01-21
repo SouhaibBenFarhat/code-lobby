@@ -358,44 +358,104 @@ npm run dev
 
 ### Project Structure
 
+CodeLobby uses a **modular monorepo architecture** with npm workspaces. Each UI feature is an independent module that registers itself to the app shell via a slot system.
+
 ```
 codelobby/
 ├── src/
-│   ├── main/                 # Electron main process
-│   │   ├── index.ts          # App entry, IPC handlers
-│   │   ├── github-graphql.ts # GraphQL queries & data fetching
-│   │   └── store.ts          # Persistent storage (token, layouts)
+│   ├── main/                      # Electron main process (Node.js)
+│   │   ├── index.ts               # App entry, IPC handlers
+│   │   ├── github-graphql.ts      # GraphQL queries & data fetching
+│   │   ├── claude-api.ts          # Claude AI integration
+│   │   ├── store.ts               # Persistent storage (electron-store)
+│   │   ├── logger.ts              # Structured logging
+│   │   └── *.test.ts              # Colocated tests
 │   │
-│   ├── preload/              # Electron preload scripts
-│   │   └── index.ts          # Secure IPC bridge
+│   ├── preload/                   # Electron preload scripts
+│   │   ├── index.ts               # Secure IPC bridge implementation
+│   │   └── electron-api.d.ts      # Type definitions for window.electron
 │   │
-│   └── renderer/             # React frontend
-│       ├── App.tsx           # Main app component
-│       ├── main.tsx          # React entry point
-│       ├── components/
-│       │   ├── Header.tsx        # Top navigation bar
-│       │   ├── PRGrid.tsx        # Free-form card canvas
-│       │   ├── RepoCard.tsx      # Repository card component
-│       │   ├── PRCard.tsx        # PR list item
-│       │   ├── PRDetail.tsx      # PR detail panel
-│       │   ├── EventStream.tsx   # Activity stream popover
-│       │   ├── TokenInput.tsx    # Login screen
-│       │   ├── CodeLobbyLogo.tsx # SVG logo component
-│       │   ├── types.ts          # TypeScript interfaces
-│       │   └── ui/               # shadcn/ui components
-│       ├── lib/
-│       │   └── utils.ts          # Utility functions
-│       └── styles/
-│           └── globals.css       # Global styles & Tailwind
+│   └── renderer/                  # React entry point only
+│       ├── main.tsx               # Bootstraps the app
+│       └── styles/globals.css     # Global styles & Tailwind
 │
-├── build/                    # Build assets
-│   └── icon.svg              # App icon
+├── packages/                      # 📦 Modular UI packages
+│   ├── app/                       # App shell (renders slots)
+│   ├── shared-store/              # Reactive state (@preact/signals)
+│   ├── slot-system/               # Module registration system
+│   ├── queries/                   # TanStack Query definitions
+│   ├── data-module/               # Data fetching & store updates
+│   ├── ui-kit/                    # Shared UI components (shadcn/ui)
+│   ├── header-module/             # Header bar, settings, logs
+│   ├── canvas-module/             # Free-form PR card canvas
+│   ├── explorer-module/           # IDE-style tree view
+│   ├── pr-detail-module/          # PR detail side panel
+│   ├── ai-chat-module/            # Claude AI chat panel
+│   └── test-utils/                # Shared test utilities & mocks
 │
-├── electron.vite.config.ts   # Vite configuration
-├── tailwind.config.js        # Tailwind configuration
-├── tsconfig.json             # TypeScript configuration
-└── package.json              # Dependencies & scripts
+├── tsconfig.json                  # Project references root
+├── tsconfig.web.json              # Renderer + packages config
+├── tsconfig.node.json             # Main process config
+└── package.json                   # Workspaces: ["packages/*"]
 ```
+
+### Modular Architecture
+
+The app follows a **"Buffet Pattern"** where modules are self-contained and register themselves:
+
+```typescript
+// Each module registers to a slot at import time
+// packages/header-module/src/index.tsx
+import { registerToSlot } from '@codelobby/slot-system'
+import { Header } from './components/Header'
+
+registerToSlot({
+  id: 'header',
+  slot: 'header',
+  component: Header
+})
+```
+
+**Key Principles:**
+- **Zero cross-imports** between UI modules
+- **Shared state** via `@codelobby/shared-store` (signals-based)
+- **Shared types** via `@codelobby/shared-store/types`
+- **Test files colocated** with source (e.g., `Header.tsx` + `Header.test.tsx`)
+
+### TypeScript Configuration
+
+The project uses a **project references** setup for Electron's dual-process architecture:
+
+```
+tsconfig.json (root)
+├── references → tsconfig.web.json    # Renderer + packages
+└── references → tsconfig.node.json   # Main process
+```
+
+| Config | Purpose | Includes |
+|--------|---------|----------|
+| `tsconfig.json` | Root with project references | `"files": []` (delegates to children) |
+| `tsconfig.web.json` | Browser/renderer context | `packages/**/*`, `src/renderer/**/*` |
+| `tsconfig.node.json` | Node.js/main process | `src/main/**/*`, `src/preload/**/*` |
+
+**Path Aliases** (defined in `tsconfig.web.json`):
+```json
+{
+  "@codelobby/shared-store": ["packages/shared-store/src/index.ts"],
+  "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"],
+  "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
+  // ... etc
+}
+```
+
+**Global Types** (`window.electron`):
+- Defined in `src/preload/electron-api.d.ts`
+- Included via `tsconfig.web.json` → `"include": ["src/preload/electron-api.d.ts"]`
+- Uses `declare global { interface Window { electron: ElectronAPI } }`
+
+**IDE Type Checking:**
+- Restart TS server after config changes: `Cmd+Shift+P` → "TypeScript: Restart TS Server"
+- The root `tsconfig.json` uses project references; IDE resolves via `tsconfig.web.json`
 
 ### Data Flow
 
