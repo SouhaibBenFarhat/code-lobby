@@ -772,31 +772,40 @@ function QuickActions({
   className?: string
 }) {
   return (
-    <div
-      className={cn(
-        'flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent',
-        className
-      )}
-      style={{ scrollbarWidth: 'thin' }}
-    >
-      {prompts.map((prompt) => (
-        <button
-          key={prompt.id}
-          type="button"
-          onClick={() => onSelect(prompt.prompt)}
-          disabled={disabled}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-            'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
-            'text-muted-foreground hover:text-foreground',
-            'transition-all duration-150',
-            disabled && 'opacity-50 cursor-not-allowed'
-          )}
-        >
-          {prompt.icon}
-          <span>{prompt.label}</span>
-        </button>
-      ))}
+    <div className={cn('relative', className)}>
+      {/* Fade gradient on the right edge to indicate more content */}
+      <div
+        className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 z-10"
+        style={{
+          background: 'linear-gradient(to right, transparent, hsl(var(--background)))'
+        }}
+      />
+      {/* Scrollable container with hidden scrollbar */}
+      <div
+        className="flex gap-1.5 overflow-x-auto pr-10 [&::-webkit-scrollbar]:hidden"
+        style={{
+          scrollbarWidth: 'none' // Firefox
+        }}
+      >
+        {prompts.map((prompt) => (
+          <button
+            key={prompt.id}
+            type="button"
+            onClick={() => onSelect(prompt.prompt)}
+            disabled={disabled}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
+              'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
+              'text-muted-foreground hover:text-foreground',
+              'transition-all duration-150',
+              disabled && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {prompt.icon}
+            <span>{prompt.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
