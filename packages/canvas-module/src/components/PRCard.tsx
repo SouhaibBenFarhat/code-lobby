@@ -34,7 +34,7 @@ interface PRCardProps {
   pr: PullRequest
 }
 
-export function PRCard({ pr }: PRCardProps) {
+export function PRCard({ pr }: PRCardProps): React.JSX.Element {
   // Use shared store instead of context
   const selectedPR = useSignal(Store.selectedPR)
   const isSelected = selectedPR?.id === pr.id

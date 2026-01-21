@@ -637,7 +637,7 @@ export function AIChatPanel({
   onSwitchToPRChat,
   selectedPR,
   onStartPRChat
-}: AIChatPanelProps) {
+}: AIChatPanelProps): React.JSX.Element {
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [isSettingKey, setIsSettingKey] = useState(false)

@@ -103,7 +103,7 @@ describe('RepoCard', () => {
       expect(spinner).toBeInTheDocument()
     })
 
-    it('should show PRs once loading completes', () => {
+    it('should show PRs once loading completes', async () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({
         title: 'My Loaded PR',
@@ -127,11 +127,14 @@ describe('RepoCard', () => {
         isLoading: false
       })
 
-      rerender(<RepoCard repo={repo} {...defaultProps} />)
+      // Force re-render with new key to bypass memo
+      rerender(<RepoCard repo={{ ...repo }} {...defaultProps} />)
 
       // PR should now be visible
-      expect(screen.queryByText(/Loading PRs/i)).not.toBeInTheDocument()
-      expect(screen.getByText('My Loaded PR')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText(/Loading PRs/i)).not.toBeInTheDocument()
+        expect(screen.getByText('My Loaded PR')).toBeInTheDocument()
+      })
     })
 
     it('should show empty state when loading completes with no PRs', () => {

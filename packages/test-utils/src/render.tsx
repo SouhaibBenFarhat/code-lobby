@@ -122,16 +122,23 @@ export function customRender(ui: ReactElement, options?: CustomRenderOptions): R
 
 // Legacy context exports for backward compatibility (tests that haven't been migrated)
 // These are no-ops now since components use shared-store
-export const usePRContext = () => ({
+export const usePRContext: () => {
+  selectedPR: PullRequest | null
+  setSelectedPR: (pr: PullRequest | null) => void
+} = () => ({
   selectedPR: Store.selectedPR.value,
-  setSelectedPR: (pr: PullRequest | null) => {
+  setSelectedPR: (pr: PullRequest | null): void => {
     Store.selectedPR.value = pr
   }
 })
 
-export const useMyPRsFilter = () => ({
+export const useMyPRsFilter: () => {
+  myPRsRepos: Set<string>
+  toggleMyPRsFilter: (repo: string) => void
+  isMyPRsFilterEnabled: (repo: string) => boolean
+} = () => ({
   myPRsRepos: new Set(Store.myPRsRepos.value),
-  toggleMyPRsFilter: (repo: string) => {
+  toggleMyPRsFilter: (repo: string): void => {
     const current = Store.myPRsRepos.value
     if (current.includes(repo)) {
       Store.myPRsRepos.value = current.filter((r) => r !== repo)
@@ -139,12 +146,16 @@ export const useMyPRsFilter = () => ({
       Store.myPRsRepos.value = [...current, repo]
     }
   },
-  isMyPRsFilterEnabled: (repo: string) => Store.myPRsRepos.value.includes(repo)
+  isMyPRsFilterEnabled: (repo: string): boolean => Store.myPRsRepos.value.includes(repo)
 })
 
-export const usePRChat = () => ({
+export const usePRChat: () => {
+  linkedPRChat: { prId: string; prNumber: number; prTitle: string; repoFullName: string } | null
+  openPRInChat: (pr: PullRequest) => void
+  closePRChat: () => void
+} = () => ({
   linkedPRChat: Store.linkedPRChat.value,
-  openPRInChat: (pr: PullRequest) => {
+  openPRInChat: (pr: PullRequest): void => {
     Store.linkedPRChat.value = {
       prId: `${pr.base.repo.full_name}#${pr.number}`,
       prNumber: pr.number,
@@ -152,7 +163,7 @@ export const usePRChat = () => ({
       repoFullName: pr.base.repo.full_name
     }
   },
-  closePRChat: () => {
+  closePRChat: (): void => {
     Store.linkedPRChat.value = null
   }
 })

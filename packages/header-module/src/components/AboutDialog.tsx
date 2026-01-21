@@ -285,7 +285,7 @@ interface AboutDialogProps {
   onFactoryReset?: () => void
 }
 
-export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps) {
+export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [isResetting, setIsResetting] = useState(false)

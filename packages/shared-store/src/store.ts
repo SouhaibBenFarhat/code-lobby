@@ -27,12 +27,19 @@ type Subscriber = () => void
 /**
  * A simple reactive signal that notifies subscribers on change.
  */
-export function createSignal<T>(initialValue: T) {
+/** A reactive signal that can be subscribed to */
+export interface Signal<T> {
+  value: T
+  subscribe(fn: Subscriber): () => boolean
+  getSnapshot(): T
+}
+
+export function createSignal<T>(initialValue: T): Signal<T> {
   let value = initialValue
   const subscribers = new Set<Subscriber>()
 
   return {
-    get value() {
+    get value(): T {
       return value
     },
     set value(newValue: T) {
@@ -43,11 +50,11 @@ export function createSignal<T>(initialValue: T) {
         }
       }
     },
-    subscribe(fn: Subscriber) {
+    subscribe(fn: Subscriber): () => boolean {
       subscribers.add(fn)
       return () => subscribers.delete(fn)
     },
-    getSnapshot() {
+    getSnapshot(): T {
       return value
     }
   }
@@ -57,7 +64,7 @@ export function createSignal<T>(initialValue: T) {
  * Hook to use a signal in React components.
  * Automatically re-renders when the signal value changes.
  */
-export function useSignal<T>(signal: ReturnType<typeof createSignal<T>>): T {
+export function useSignal<T>(signal: Signal<T>): T {
   return useSyncExternalStore(signal.subscribe, signal.getSnapshot, signal.getSnapshot)
 }
 
@@ -65,7 +72,58 @@ export function useSignal<T>(signal: ReturnType<typeof createSignal<T>>): T {
 // THE STORE (The Buffet Table)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const Store = {
+/** Type definition for the Store object */
+export interface StoreType {
+  // Authentication
+  user: Signal<GitHubUser | null>
+  isAuthenticated: Signal<boolean>
+  // GitHub Data
+  repos: Signal<Repository[]>
+  prs: Signal<PullRequest[]>
+  selectedRepos: Signal<string[] | null>
+  selectedPR: Signal<PullRequest | null>
+  rateLimit: Signal<RateLimit | null>
+  // AI Chat
+  chatHistory: Signal<ChatMessage[]>
+  prChats: Signal<PRChat[]>
+  activePRChatId: Signal<string | null>
+  linkedPRChat: Signal<LinkedPRChat | null>
+  isAILoading: Signal<boolean>
+  aiThinking: Signal<string>
+  claudeApiKey: Signal<string | null>
+  selectedModel: Signal<string | null>
+  enableThinking: Signal<boolean>
+  // Layout & UI State
+  viewMode: Signal<ViewMode>
+  prDetailOpen: Signal<boolean>
+  prDetailWidth: Signal<number>
+  aiPanelOpen: Signal<boolean>
+  aiPanelWidth: Signal<number>
+  explorerWidth: Signal<number>
+  expandedRepos: Signal<string[]>
+  cardLayouts: Signal<CardLayout[]>
+  repoColors: Signal<Record<string, string>>
+  minimizedRepos: Signal<string[]>
+  myPRsRepos: Signal<string[]>
+  // PR Analysis
+  prAnalyses: Signal<Array<{ prId: string; analysis: string }>>
+  prAnalysisPanelStates: Signal<Record<string, boolean>>
+  // Loading States
+  loading: {
+    repos: Signal<boolean>
+    prs: Signal<boolean>
+    prDetail: Signal<boolean>
+    auth: Signal<boolean>
+  }
+  // Errors
+  errors: {
+    github: Signal<Error | null>
+    ai: Signal<Error | null>
+    auth: Signal<Error | null>
+  }
+}
+
+export const Store: StoreType = {
   // ─────────────────────────────────────────────────────────────────────────
   // Authentication
   // ─────────────────────────────────────────────────────────────────────────

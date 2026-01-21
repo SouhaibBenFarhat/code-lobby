@@ -82,7 +82,7 @@ export function Header({
   onViewModeChange,
   isAIPanelOpen,
   onToggleAIPanel
-}: HeaderProps) {
+}: HeaderProps): React.JSX.Element {
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERY - Data fetching with automatic caching
   // ═══════════════════════════════════════════════════════════════════════════

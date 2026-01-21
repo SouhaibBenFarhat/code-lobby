@@ -12,7 +12,14 @@
 /// <reference path="../../../src/preload/electron-api.d.ts" />
 
 import type { PullRequest, RateLimit, Repository } from '@codelobby/shared-store'
-import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  QueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+  useMutation,
+  useQuery,
+  useQueryClient
+} from '@tanstack/react-query'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
@@ -22,9 +29,9 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/re
 export const queryKeys = {
   // GitHub data
   repos: ['repos'] as const,
-  prs: (repoNames: string[]) => ['prs', ...repoNames] as const,
+  prs: (repoNames: string[]): readonly ['prs', ...string[]] => ['prs', ...repoNames] as const,
   allPrs: ['prs'] as const,
-  prDetails: (prId: string) => ['pr', prId] as const,
+  prDetails: (prId: string): readonly ['pr', string] => ['pr', prId] as const,
   prEvents: ['pr-events'] as const,
   rateLimit: ['rate-limit'] as const,
   user: ['user'] as const,
@@ -57,7 +64,7 @@ export const queryKeys = {
 /**
  * Fetch all contributed repositories
  */
-export function useRepos() {
+export function useRepos(): UseQueryResult<Repository[], Error> {
   return useQuery({
     queryKey: queryKeys.repos,
     queryFn: async () => {
@@ -74,7 +81,7 @@ export function useRepos() {
  * Fetch PRs for a SINGLE repo (lazy loading).
  * Each repo's PRs are cached separately.
  */
-export function usePRsForRepo(repoFullName: string | null) {
+export function usePRsForRepo(repoFullName: string | null): UseQueryResult<PullRequest[], Error> {
   const queryClient = useQueryClient()
 
   return useQuery({
@@ -104,7 +111,10 @@ export function usePRsForRepo(repoFullName: string | null) {
  * - array of repos = fetch PRs for ONLY those repos
  * - Per-repo caching: already-fetched repos are instant
  */
-export function usePRs() {
+export function usePRs(): UseQueryResult<
+  { prs: PullRequest[]; rateLimit: RateLimit | null },
+  Error
+> {
   const { data: selectedRepos } = useSelectedRepos()
   const queryClient = useQueryClient()
 
@@ -179,7 +189,7 @@ export function usePRs() {
 /**
  * Fetch rate limit information
  */
-export function useRateLimit() {
+export function useRateLimit(): UseQueryResult<RateLimit | undefined, Error> {
   return useQuery({
     queryKey: queryKeys.rateLimit,
     queryFn: async () => {
@@ -195,7 +205,7 @@ export function useRateLimit() {
 /**
  * Fetch PR events for activity stream
  */
-export function usePREvents() {
+export function usePREvents(): UseQueryResult<unknown[], Error> {
   return useQuery({
     queryKey: queryKeys.prEvents,
     queryFn: async () => {
@@ -215,7 +225,7 @@ export function usePREvents() {
 /**
  * Get selected repositories
  */
-export function useSelectedRepos() {
+export function useSelectedRepos(): UseQueryResult<string[] | null, Error> {
   return useQuery({
     queryKey: queryKeys.selectedRepos,
     queryFn: () => window.electron.getSelectedRepos(),
@@ -227,7 +237,10 @@ export function useSelectedRepos() {
 /**
  * Get card layouts for canvas view
  */
-export function useCardLayouts() {
+export function useCardLayouts(): UseQueryResult<
+  Array<{ i: string; x: number; y: number; w: number; h: number }>,
+  Error
+> {
   return useQuery({
     queryKey: queryKeys.cardLayouts,
     queryFn: () => window.electron.getCardLayouts(),
@@ -239,7 +252,7 @@ export function useCardLayouts() {
 /**
  * Get repo colors
  */
-export function useRepoColors() {
+export function useRepoColors(): UseQueryResult<Record<string, string>, Error> {
   return useQuery({
     queryKey: queryKeys.repoColors,
     queryFn: () => window.electron.getRepoColors(),
@@ -251,7 +264,7 @@ export function useRepoColors() {
 /**
  * Get minimized repos
  */
-export function useMinimizedRepos() {
+export function useMinimizedRepos(): UseQueryResult<string[], Error> {
   return useQuery({
     queryKey: queryKeys.minimizedRepos,
     queryFn: () => window.electron.getMinimizedRepos(),
@@ -263,7 +276,7 @@ export function useMinimizedRepos() {
 /**
  * Get view mode
  */
-export function useViewMode() {
+export function useViewMode(): UseQueryResult<'canvas' | 'ide', Error> {
   return useQuery({
     queryKey: queryKeys.viewMode,
     queryFn: () => window.electron.getViewMode(),
@@ -275,7 +288,10 @@ export function useViewMode() {
 /**
  * Get IDE view settings
  */
-export function useIDESettings() {
+export function useIDESettings(): UseQueryResult<
+  { sidebarWidth: number; expandedRepos: string[] },
+  Error
+> {
   return useQuery({
     queryKey: queryKeys.ideSettings,
     queryFn: () => window.electron.getIDEViewSettings(),
@@ -287,7 +303,7 @@ export function useIDESettings() {
 /**
  * Get AI panel settings
  */
-export function useAIPanel() {
+export function useAIPanel(): UseQueryResult<{ isOpen: boolean; width: number } | null, Error> {
   return useQuery({
     queryKey: queryKeys.aiPanel,
     queryFn: () => window.electron.getAIPanel(),
@@ -299,7 +315,10 @@ export function useAIPanel() {
 /**
  * Get PR detail panel settings
  */
-export function usePRDetailPanel() {
+export function usePRDetailPanel(): UseQueryResult<
+  { isOpen: boolean; width: number } | null,
+  Error
+> {
   return useQuery({
     queryKey: queryKeys.prDetailPanel,
     queryFn: () => window.electron.getPRDetailPanel(),
@@ -315,7 +334,7 @@ export function usePRDetailPanel() {
 /**
  * Get Claude API key
  */
-export function useClaudeApiKey() {
+export function useClaudeApiKey(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: queryKeys.claudeApiKey,
     queryFn: () => window.electron.getClaudeApiKey(),
@@ -327,7 +346,7 @@ export function useClaudeApiKey() {
 /**
  * Get selected AI model
  */
-export function useSelectedModel() {
+export function useSelectedModel(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: queryKeys.selectedModel,
     queryFn: () => window.electron.getSelectedModel(),
@@ -339,7 +358,7 @@ export function useSelectedModel() {
 /**
  * Get enable thinking setting
  */
-export function useEnableThinking() {
+export function useEnableThinking(): UseQueryResult<boolean, Error> {
   return useQuery({
     queryKey: queryKeys.enableThinking,
     queryFn: () => window.electron.getEnableThinking(),
@@ -351,7 +370,16 @@ export function useEnableThinking() {
 /**
  * Get chat history
  */
-export function useChatHistory() {
+export function useChatHistory(): UseQueryResult<
+  Array<{
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    thinking?: string
+    timestamp: string
+  }>,
+  Error
+> {
   return useQuery({
     queryKey: queryKeys.chatHistory,
     queryFn: () => window.electron.getChatHistory(),
@@ -363,7 +391,25 @@ export function useChatHistory() {
 /**
  * Get PR chats
  */
-export function usePRChats() {
+export function usePRChats(): UseQueryResult<
+  Array<{
+    prId: string
+    prNumber: number
+    prTitle: string
+    repoFullName: string
+    messages: Array<{
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      thinking?: string
+      timestamp: string
+    }>
+    createdAt: string
+    updatedAt: string
+    systemContext?: string
+  }>,
+  Error
+> {
   return useQuery({
     queryKey: queryKeys.prChats,
     queryFn: () => window.electron.getPRChats(),
@@ -375,7 +421,7 @@ export function usePRChats() {
 /**
  * Get active PR chat ID
  */
-export function useActivePRChatId() {
+export function useActivePRChatId(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: queryKeys.activePrChatId,
     queryFn: () => window.electron.getActivePRChatId(),
@@ -394,7 +440,12 @@ export function useActivePRChatId() {
  * - Selection is UI-only filtering, no API calls
  * - PRs are fetched once via usePRs(), TanStack Query handles caching
  */
-export function useSetSelectedRepos() {
+export function useSetSelectedRepos(): UseMutationResult<
+  { success: boolean },
+  Error,
+  string[],
+  { previousRepos: string[] | null | undefined }
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -402,7 +453,7 @@ export function useSetSelectedRepos() {
     // Optimistic update: Update UI immediately (synchronous)
     onMutate: (repos) => {
       // Cancel queries is not needed - we're not refetching
-      const previousRepos = queryClient.getQueryData(queryKeys.selectedRepos)
+      const previousRepos = queryClient.getQueryData<string[] | null>(queryKeys.selectedRepos)
       queryClient.setQueryData(queryKeys.selectedRepos, repos)
       return { previousRepos }
     },
@@ -415,17 +466,34 @@ export function useSetSelectedRepos() {
   })
 }
 
+/** Layout type for card positions */
+type CardLayout = { i: string; x: number; y: number; w: number; h: number }
+
 /**
  * Mutation to set card layouts
  */
-export function useSetCardLayouts() {
+export function useSetCardLayouts(): UseMutationResult<
+  { success: boolean },
+  Error,
+  CardLayout[],
+  { previousLayouts: CardLayout[] | undefined }
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) =>
-      window.electron.setCardLayouts(layouts),
-    onSuccess: (_, layouts) => {
+    mutationFn: (layouts: CardLayout[]) => window.electron.setCardLayouts(layouts),
+    // CRITICAL: Optimistic update to prevent "snap back" on drag & drop
+    // Without this, the card snaps to old position while waiting for API
+    onMutate: (layouts) => {
+      const previousLayouts = queryClient.getQueryData<CardLayout[]>(queryKeys.cardLayouts)
       queryClient.setQueryData(queryKeys.cardLayouts, layouts)
+      return { previousLayouts }
+    },
+    onError: (_err, _layouts, context) => {
+      // Rollback on error
+      if (context?.previousLayouts !== undefined) {
+        queryClient.setQueryData(queryKeys.cardLayouts, context.previousLayouts)
+      }
     }
   })
 }
@@ -433,7 +501,12 @@ export function useSetCardLayouts() {
 /**
  * Mutation to set repo color
  */
-export function useSetRepoColor() {
+export function useSetRepoColor(): UseMutationResult<
+  { success: boolean },
+  Error,
+  { repoFullName: string; color: string | null },
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -456,7 +529,12 @@ export function useSetRepoColor() {
 /**
  * Mutation to set repo minimized state
  */
-export function useSetRepoMinimized() {
+export function useSetRepoMinimized(): UseMutationResult<
+  { success: boolean },
+  Error,
+  { repoFullName: string; isMinimized: boolean },
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -477,7 +555,12 @@ export function useSetRepoMinimized() {
 /**
  * Mutation to set view mode
  */
-export function useSetViewMode() {
+export function useSetViewMode(): UseMutationResult<
+  { success: boolean },
+  Error,
+  'canvas' | 'ide',
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -491,7 +574,12 @@ export function useSetViewMode() {
 /**
  * Mutation to set AI panel
  */
-export function useSetAIPanel() {
+export function useSetAIPanel(): UseMutationResult<
+  { success: boolean },
+  Error,
+  { isOpen?: boolean; width?: number },
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -512,7 +600,12 @@ export function useSetAIPanel() {
 /**
  * Mutation to set PR detail panel
  */
-export function useSetPRDetailPanel() {
+export function useSetPRDetailPanel(): UseMutationResult<
+  { success: boolean },
+  Error,
+  { isOpen?: boolean; width?: number },
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -531,13 +624,21 @@ export function useSetPRDetailPanel() {
 }
 
 /**
- * Mutation to refresh a specific repo's PRs
- */
-/**
  * Mutation to refresh/fetch PRs for a specific repo.
  * Updates the cached allPrs data without full refetch.
  */
-export function useRefreshRepoPRs() {
+export function useRefreshRepoPRs(): UseMutationResult<
+  {
+    success: boolean
+    data?: unknown[]
+    currentUser?: string
+    rateLimit?: RateLimit
+    error?: string
+  },
+  Error,
+  string,
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -569,7 +670,7 @@ export function useRefreshRepoPRs() {
 /**
  * Mutation to clear all cache and refetch
  */
-export function useClearCacheAndRefresh() {
+export function useClearCacheAndRefresh(): UseMutationResult<void, Error, void, unknown> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -586,7 +687,12 @@ export function useClearCacheAndRefresh() {
 /**
  * Mutation to set Claude API key
  */
-export function useSetClaudeApiKey() {
+export function useSetClaudeApiKey(): UseMutationResult<
+  { success: boolean; user?: unknown; error?: string },
+  Error,
+  string,
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -600,7 +706,12 @@ export function useSetClaudeApiKey() {
 /**
  * Mutation to set selected model
  */
-export function useSetSelectedModel() {
+export function useSetSelectedModel(): UseMutationResult<
+  { success: boolean },
+  Error,
+  string,
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -614,7 +725,12 @@ export function useSetSelectedModel() {
 /**
  * Mutation to set enable thinking
  */
-export function useSetEnableThinking() {
+export function useSetEnableThinking(): UseMutationResult<
+  { success: boolean },
+  Error,
+  boolean,
+  unknown
+> {
   const queryClient = useQueryClient()
 
   return useMutation({

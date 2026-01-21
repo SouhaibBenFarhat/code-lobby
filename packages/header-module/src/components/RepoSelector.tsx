@@ -19,7 +19,7 @@ import {
 import { Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-export function RepoSelector() {
+export function RepoSelector(): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   // Snapshot of selected repos when dropdown opens - used for stable sorting

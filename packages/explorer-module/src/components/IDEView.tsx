@@ -271,7 +271,7 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
   )
 }
 
-export function IDEView({ currentUser }: IDEViewProps) {
+export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERY - Data fetching with automatic caching
   // ═══════════════════════════════════════════════════════════════════════════

@@ -32,3 +32,4 @@ release/
 # Misc
 *.pem
 coverage/
+.typecheck-temp

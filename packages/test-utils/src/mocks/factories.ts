@@ -148,12 +148,12 @@ export interface MockRateLimit {
 // ============================================================================
 
 let idCounter = 1
-const getNextId = () => idCounter++
-const resetIdCounter = () => {
+function getNextId(): number {
+  return idCounter++
+}
+export function resetIdCounter(): void {
   idCounter = 1
 }
-
-export { resetIdCounter }
 
 // ============================================================================
 // User Factory
@@ -534,7 +534,14 @@ export function createMockRepoWithPRs(prCount = 3): {
   return { repo, prs }
 }
 
-export function createMockDashboardData(repoCount = 2, prsPerRepo = 3) {
+export function createMockDashboardData(
+  repoCount = 2,
+  prsPerRepo = 3
+): {
+  repos: MockRepository[]
+  prs: MockPullRequest[]
+  rateLimit: MockRateLimit
+} {
   const repos: MockRepository[] = []
   const prs: MockPullRequest[] = []
 
@@ -544,7 +551,7 @@ export function createMockDashboardData(repoCount = 2, prsPerRepo = 3) {
     prs.push(...repoPRs)
   }
 
-  return { repos, prs, rateLimit: createMockRateLimit() }
+  return { repos: repos, prs: prs, rateLimit: createMockRateLimit() }
 }
 
 // ============================================================================

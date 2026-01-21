@@ -5,6 +5,7 @@
 /// <reference path="../../../src/preload/electron-api.d.ts" />
 
 import { ChevronDown, ChevronUp, ExternalLink, Key, Loader2, Shield } from 'lucide-react'
+import type { JSX } from 'react'
 import { useState } from 'react'
 import { Button } from './button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
@@ -25,7 +26,7 @@ interface TokenInputProps {
   onAuthenticated: (user: User) => void
 }
 
-export function TokenInput({ onAuthenticated }: TokenInputProps) {
+export function TokenInput({ onAuthenticated }: TokenInputProps): JSX.Element {
   const [token, setToken] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)

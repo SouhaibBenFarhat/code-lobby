@@ -1,12 +1,16 @@
 import * as ToastPrimitives from '@radix-ui/react-toast'
-import { cva, type VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 import { cn } from './utils'
 
-const ToastProvider = ToastPrimitives.Provider
+type ForwardRefComponent<T, P> = React.ForwardRefExoticComponent<P & React.RefAttributes<T>>
 
-const ToastViewport = React.forwardRef<
+const ToastProvider: typeof ToastPrimitives.Provider = ToastPrimitives.Provider
+
+const ToastViewport: ForwardRefComponent<
+  React.ElementRef<typeof ToastPrimitives.Viewport>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
+> = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
 >(({ className, ...props }, ref) => (
@@ -21,25 +25,25 @@ const ToastViewport = React.forwardRef<
 ))
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
-const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full',
-  {
-    variants: {
-      variant: {
-        default: 'border bg-background text-foreground',
-        destructive:
-          'destructive group border-destructive bg-destructive text-destructive-foreground'
-      }
-    },
-    defaultVariants: {
-      variant: 'default'
-    }
+function toastVariants(props?: { variant?: 'default' | 'destructive' | null }): string {
+  const variantClasses: Record<string, string> = {
+    default: 'border bg-background text-foreground',
+    destructive: 'destructive group border-destructive bg-destructive text-destructive-foreground'
   }
-)
+  const variant = props?.variant || 'default'
+  return `group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full ${variantClasses[variant]}`
+}
 
-const Toast = React.forwardRef<
+interface ToastVariantProps {
+  variant?: 'default' | 'destructive' | null
+}
+
+const Toast: ForwardRefComponent<
   React.ElementRef<typeof ToastPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & VariantProps<typeof toastVariants>
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & ToastVariantProps
+> = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Root>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & ToastVariantProps
 >(({ className, variant, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
@@ -51,7 +55,10 @@ const Toast = React.forwardRef<
 })
 Toast.displayName = ToastPrimitives.Root.displayName
 
-const ToastAction = React.forwardRef<
+const ToastAction: ForwardRefComponent<
+  React.ElementRef<typeof ToastPrimitives.Action>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
+> = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
 >(({ className, ...props }, ref) => (
@@ -66,7 +73,10 @@ const ToastAction = React.forwardRef<
 ))
 ToastAction.displayName = ToastPrimitives.Action.displayName
 
-const ToastClose = React.forwardRef<
+const ToastClose: ForwardRefComponent<
+  React.ElementRef<typeof ToastPrimitives.Close>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
+> = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
 >(({ className, ...props }, ref) => (
@@ -84,7 +94,10 @@ const ToastClose = React.forwardRef<
 ))
 ToastClose.displayName = ToastPrimitives.Close.displayName
 
-const ToastTitle = React.forwardRef<
+const ToastTitle: ForwardRefComponent<
+  React.ElementRef<typeof ToastPrimitives.Title>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
+> = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
 >(({ className, ...props }, ref) => (
@@ -92,7 +105,10 @@ const ToastTitle = React.forwardRef<
 ))
 ToastTitle.displayName = ToastPrimitives.Title.displayName
 
-const ToastDescription = React.forwardRef<
+const ToastDescription: ForwardRefComponent<
+  React.ElementRef<typeof ToastPrimitives.Description>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
+> = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
 >(({ className, ...props }, ref) => (
@@ -121,10 +137,10 @@ interface ToastState {
 const toastState: ToastState = { toasts: [] }
 const listeners: Array<() => void> = []
 
-function notifyListeners() {
-  listeners.forEach((listener) => {
+function notifyListeners(): void {
+  for (const listener of listeners) {
     listener()
-  })
+  }
 }
 
 export function toast({
@@ -135,7 +151,7 @@ export function toast({
   title?: string
   description?: string
   variant?: 'default' | 'destructive'
-}) {
+}): void {
   const id = Math.random().toString(36).slice(2)
   toastState.toasts.push({ id, title, description, variant })
   notifyListeners()
@@ -146,11 +162,11 @@ export function toast({
   }, 5000)
 }
 
-export function Toaster() {
+export function Toaster(): React.JSX.Element {
   const [toasts, setToasts] = React.useState(toastState.toasts)
 
   React.useEffect(() => {
-    const listener = () => setToasts([...toastState.toasts])
+    const listener = (): void => setToasts([...toastState.toasts])
     listeners.push(listener)
     return () => {
       const index = listeners.indexOf(listener)

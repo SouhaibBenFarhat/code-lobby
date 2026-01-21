@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import { cn } from './utils'
 
 interface CodeLobbyLogoProps {
@@ -5,7 +6,7 @@ interface CodeLobbyLogoProps {
   size?: number
 }
 
-export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps) {
+export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps): JSX.Element {
   return (
     <svg
       width={size}
@@ -33,7 +34,7 @@ export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps) {
 }
 
 // Simplified icon for smaller sizes
-export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps) {
+export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps): JSX.Element {
   return (
     <svg
       width={size}
@@ -60,7 +61,7 @@ export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps) {
 }
 
 // Animated version for loading
-export function CodeLobbyLogoAnimated({ className, size = 32 }: CodeLobbyLogoProps) {
+export function CodeLobbyLogoAnimated({ className, size = 32 }: CodeLobbyLogoProps): JSX.Element {
   return (
     <svg
       width={size}

@@ -143,7 +143,7 @@ function EventItem({ event }: EventItemProps) {
   )
 }
 
-export function EventStream() {
+export function EventStream(): React.JSX.Element {
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERY - Data fetching with automatic caching
   // ═══════════════════════════════════════════════════════════════════════════

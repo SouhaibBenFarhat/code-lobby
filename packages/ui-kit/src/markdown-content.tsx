@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
@@ -9,7 +10,7 @@ interface MarkdownContentProps {
   className?: string
 }
 
-export function MarkdownContent({ content, className }: MarkdownContentProps) {
+export function MarkdownContent({ content, className }: MarkdownContentProps): JSX.Element {
   return (
     <div className={cn('markdown-content', className)}>
       <ReactMarkdown

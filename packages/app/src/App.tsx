@@ -25,7 +25,7 @@ const DEFAULT_AI_PANEL_WIDTH = 380
 /**
  * Main App Shell component.
  */
-export function App() {
+export function App(): React.JSX.Element {
   // Read global state from the store
   const isAuthenticated = useSignal(Store.isAuthenticated)
   const isAuthLoading = useSignal(Store.loading.auth)

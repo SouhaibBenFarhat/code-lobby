@@ -1,11 +1,11 @@
-import { SVGProps } from 'react'
+import { JSX, SVGProps } from 'react'
 
 interface ClaudeIconProps extends SVGProps<SVGSVGElement> {
   className?: string
 }
 
 // Claude-inspired AI sparkle icon in signature coral color
-export function ClaudeIcon({ className, ...props }: ClaudeIconProps) {
+export function ClaudeIcon({ className, ...props }: ClaudeIconProps): JSX.Element {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -25,7 +25,7 @@ export function ClaudeIcon({ className, ...props }: ClaudeIconProps) {
 }
 
 // Alternative: Anthropic 'A' inspired mark
-export function ClaudeLogoIcon({ className, ...props }: ClaudeIconProps) {
+export function ClaudeLogoIcon({ className, ...props }: ClaudeIconProps): JSX.Element {
   return (
     <svg
       viewBox="0 0 24 24"

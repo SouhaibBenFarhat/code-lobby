@@ -784,7 +784,7 @@ function _ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: str
   )
 }
 
-export function PRDetail({ pr, onClose }: PRDetailProps) {
+export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
   // Use Actions instead of context for opening PR in chat
   const openPRInChat = useCallback((pr: PullRequest) => {
     Actions.createPRChat(pr)

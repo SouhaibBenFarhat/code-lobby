@@ -49,7 +49,7 @@ const levelConfig = {
   debug: { icon: Bug, color: 'text-gray-500', bg: 'bg-gray-500/10' }
 }
 
-export function LogsViewer() {
+export function LogsViewer(): React.JSX.Element {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')

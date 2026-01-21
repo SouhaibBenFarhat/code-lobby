@@ -91,7 +91,46 @@ export function onAction<K extends keyof ActionEvents>(
 // PUBLIC ACTIONS API
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const Actions = {
+/** Type definition for all available actions */
+export interface ActionsType {
+  // GitHub Actions
+  fetchRepos: () => void
+  fetchPRs: (repos: string[]) => void
+  fetchPRDetails: (prId: string) => void
+  refreshRepo: (repoFullName: string) => void
+  selectPR: (pr: PullRequest | null) => void
+  selectRepos: (repos: string[] | null) => void
+  // AI Actions
+  sendAIMessage: (message: string, systemContext?: string) => void
+  analyzePR: (pr: PullRequest) => void
+  findPreviewURL: (pr: PullRequest) => void
+  findJiraTicket: (pr: PullRequest) => void
+  createPRChat: (pr: PullRequest) => void
+  clearChatHistory: () => void
+  // Auth Actions
+  signIn: (token: string) => void
+  signOut: () => void
+  validateToken: () => void
+  // Layout Actions
+  setViewMode: (mode: ViewMode) => void
+  togglePRDetail: () => void
+  toggleAIPanel: () => void
+  resizePRDetail: (width: number) => void
+  resizeAIPanel: (width: number) => void
+  resizeExplorer: (width: number) => void
+  toggleRepoExpanded: (repoFullName: string) => void
+  setExpandedRepos: (repos: string[]) => void
+  toggleMyPRsFilter: (repoFullName: string) => void
+  // Canvas Actions
+  setCardLayouts: (layouts: CardLayout[]) => void
+  setRepoColor: (repoFullName: string, color: string) => void
+  setRepoMinimized: (repoFullName: string, minimized: boolean) => void
+  // Data Actions
+  clearCache: () => void
+  factoryReset: () => void
+}
+
+export const Actions: ActionsType = {
   // ─────────────────────────────────────────────────────────────────────────
   // GitHub Actions
   // ─────────────────────────────────────────────────────────────────────────

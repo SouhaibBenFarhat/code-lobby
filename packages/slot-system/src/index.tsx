@@ -70,20 +70,20 @@ let slotRegistry: SlotEntry[] = []
 const subscribers = new Set<() => void>()
 
 /** Notify all subscribers of a state change */
-function notifySubscribers() {
+function notifySubscribers(): void {
   for (const callback of subscribers) {
     callback()
   }
 }
 
 /** Subscribe to registry changes */
-function subscribe(callback: () => void) {
+function subscribe(callback: () => void): () => boolean {
   subscribers.add(callback)
   return () => subscribers.delete(callback)
 }
 
 /** Get current snapshot of registry */
-function getSnapshot() {
+function getSnapshot(): SlotEntry[] {
   return slotRegistry
 }
 
@@ -204,7 +204,7 @@ export function useSlotModules(slotName: SlotName): SlotEntry[] {
 /**
  * Default loading skeleton for slots
  */
-function SlotSkeleton() {
+function SlotSkeleton(): React.JSX.Element {
   return (
     <div
       className="animate-pulse bg-muted/50 rounded"
@@ -254,12 +254,13 @@ export function Slot({
   className = '',
   loadingFallback,
   wrapInContainer = true
-}: SlotProps) {
+}: SlotProps): React.JSX.Element | null {
   const modules = useSlotModules(name)
 
-  // If no modules, render fallback
+  // If no modules, render fallback (wrapping in fragment to satisfy JSX.Element return type)
   if (modules.length === 0) {
-    return fallback ? fallback : null
+    // biome-ignore lint/complexity/noUselessFragments: Required to satisfy React.JSX.Element return type from ReactNode
+    return fallback ? <>{fallback}</> : null
   }
 
   const content = modules.map(({ id, component: Component }) => (
@@ -283,7 +284,7 @@ export function Slot({
  * Conditional slot that only renders if modules are registered.
  * Useful for panels that should not take space when empty.
  */
-export function ConditionalSlot(props: SlotProps) {
+export function ConditionalSlot(props: SlotProps): React.JSX.Element | null {
   const modules = useSlotModules(props.name)
 
   if (modules.length === 0) {

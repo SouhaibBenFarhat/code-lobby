@@ -38,7 +38,6 @@ interface MockElectronAPI {
   clearQueryCache: ReturnType<typeof vi.fn>
 
   // GitHub API
-  fetchPRs: ReturnType<typeof vi.fn>
   fetchAllPRsForRepos: ReturnType<typeof vi.fn>
   refreshRepoPRs: ReturnType<typeof vi.fn>
   fetchPREvents: ReturnType<typeof vi.fn>
@@ -169,7 +168,6 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     clearQueryCache: vi.fn().mockResolvedValue({ success: true }),
 
     // GitHub API
-    fetchPRs: vi.fn().mockResolvedValue({ success: true, data: [] }),
     fetchAllPRsForRepos: vi.fn().mockResolvedValue({
       success: true,
       data: [],
@@ -387,7 +385,7 @@ export function setupAuthenticatedScenario(
     prs?: MockPullRequest[]
     selectedRepos?: string[]
   } = {}
-) {
+): MockElectronAPI {
   const user = options.user || createMockUser({ login: 'testuser' })
   const repos = options.repos || [
     createMockRepository({ name: 'frontend', owner: { login: 'myorg', avatar_url: '' } }),
@@ -416,7 +414,7 @@ export function setupAuthenticatedScenario(
 /**
  * Setup for unauthenticated state
  */
-export function setupUnauthenticatedScenario() {
+export function setupUnauthenticatedScenario(): MockElectronAPI {
   return setupMockElectron({
     validateToken: vi.fn().mockResolvedValue({ valid: false }),
     getToken: vi.fn().mockResolvedValue(null)
@@ -426,18 +424,17 @@ export function setupUnauthenticatedScenario() {
 /**
  * Setup for error scenarios
  */
-export function setupErrorScenario(errorMessage = 'API Error') {
+export function setupErrorScenario(errorMessage = 'API Error'): MockElectronAPI {
   return setupMockElectron({
     fetchContributedRepos: vi.fn().mockResolvedValue({ success: false, error: errorMessage }),
-    fetchAllPRsForRepos: vi.fn().mockResolvedValue({ success: false, error: errorMessage }),
-    fetchPRs: vi.fn().mockResolvedValue({ success: false, error: errorMessage })
+    fetchAllPRsForRepos: vi.fn().mockResolvedValue({ success: false, error: errorMessage })
   })
 }
 
 /**
  * Setup for rate limit exceeded scenario
  */
-export function setupRateLimitExceededScenario() {
+export function setupRateLimitExceededScenario(): MockElectronAPI {
   const rateLimit = createMockRateLimit({ used: 4999, remaining: 1, percentage: 100 })
   return setupMockElectron({
     getRateLimit: vi.fn().mockResolvedValue({ success: true, data: rateLimit }),

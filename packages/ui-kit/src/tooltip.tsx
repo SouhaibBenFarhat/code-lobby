@@ -2,13 +2,18 @@ import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import * as React from 'react'
 import { cn } from './utils'
 
-const TooltipProvider = TooltipPrimitive.Provider
+type ForwardRefComponent<T, P> = React.ForwardRefExoticComponent<P & React.RefAttributes<T>>
 
-const Tooltip = TooltipPrimitive.Root
+const TooltipProvider: typeof TooltipPrimitive.Provider = TooltipPrimitive.Provider
 
-const TooltipTrigger = TooltipPrimitive.Trigger
+const Tooltip: typeof TooltipPrimitive.Root = TooltipPrimitive.Root
 
-const TooltipContent = React.forwardRef<
+const TooltipTrigger: typeof TooltipPrimitive.Trigger = TooltipPrimitive.Trigger
+
+const TooltipContent: ForwardRefComponent<
+  React.ElementRef<typeof TooltipPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+> = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => (
