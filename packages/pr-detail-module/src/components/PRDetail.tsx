@@ -3,6 +3,7 @@
  * Uses shared-store instead of React Context.
  */
 
+import { type PRFile, usePRFiles } from '@codelobby/queries'
 import type { PullRequest, ReviewThread } from '@codelobby/shared-store'
 import { Actions } from '@codelobby/shared-store'
 import {
@@ -37,8 +38,12 @@ import {
   Edit,
   ExternalLink,
   FileCode,
+  FileDiff,
   FileEdit,
+  FileMinus,
+  FilePlus,
   FileText,
+  FolderOpen,
   GitBranch,
   GitPullRequest,
   Globe,
@@ -96,6 +101,430 @@ function CheckItem({
         {check.status === 'in_progress' ? 'Running' : check.conclusion || check.status}
       </Badge>
     </button>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHANGED FILES SECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ChangedFilesSectionProps {
+  owner: string
+  repo: string
+  prNumber: number
+  totalChanged: number
+}
+
+function getFileIcon(changeType: PRFile['changeType']): React.JSX.Element {
+  switch (changeType) {
+    case 'ADDED':
+      return <FilePlus className="w-4 h-4 text-success" />
+    case 'DELETED':
+      return <FileMinus className="w-4 h-4 text-destructive" />
+    case 'RENAMED':
+    case 'COPIED':
+      return <FileEdit className="w-4 h-4 text-warning" />
+    default:
+      return <FileDiff className="w-4 h-4 text-primary" />
+  }
+}
+
+function getFileExtension(path: string): string {
+  const parts = path.split('.')
+  return parts.length > 1 ? parts[parts.length - 1] : ''
+}
+
+function getDirectoryPath(path: string): string {
+  const parts = path.split('/')
+  if (parts.length <= 1) return ''
+  return parts.slice(0, -1).join('/')
+}
+
+function getFileName(path: string): string {
+  const parts = path.split('/')
+  return parts[parts.length - 1]
+}
+
+// Diff line parser for syntax highlighting
+interface DiffLine {
+  type: 'addition' | 'deletion' | 'context' | 'header' | 'info'
+  content: string
+  oldLineNum?: number
+  newLineNum?: number
+}
+
+function parseDiffLines(patch: string | null): DiffLine[] {
+  if (!patch) return []
+
+  const lines = patch.split('\n')
+  const result: DiffLine[] = []
+  let oldLineNum = 0
+  let newLineNum = 0
+
+  for (const line of lines) {
+    if (line.startsWith('@@')) {
+      // Parse hunk header like @@ -1,5 +1,6 @@
+      const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+      if (match) {
+        oldLineNum = Number.parseInt(match[1], 10)
+        newLineNum = Number.parseInt(match[2], 10)
+      }
+      result.push({ type: 'header', content: line })
+    } else if (line.startsWith('+')) {
+      result.push({ type: 'addition', content: line.slice(1), newLineNum })
+      newLineNum++
+    } else if (line.startsWith('-')) {
+      result.push({ type: 'deletion', content: line.slice(1), oldLineNum })
+      oldLineNum++
+    } else if (line.startsWith(' ')) {
+      result.push({ type: 'context', content: line.slice(1), oldLineNum, newLineNum })
+      oldLineNum++
+      newLineNum++
+    } else if (line.startsWith('\\')) {
+      // "\ No newline at end of file"
+      result.push({ type: 'info', content: line })
+    }
+  }
+
+  return result
+}
+
+function DiffViewer({
+  patch,
+  fileName
+}: {
+  patch: string | null
+  fileName: string
+}): React.JSX.Element {
+  const lines = useMemo(() => parseDiffLines(patch), [patch])
+
+  if (!patch) {
+    return (
+      <div className="p-3 text-xs text-muted-foreground italic bg-muted/30">
+        Binary file or diff too large to display
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto bg-[#0d1117] dark:bg-[#0d1117] rounded-b-md">
+      <table className="w-full text-[11px] font-mono leading-relaxed">
+        <tbody>
+          {lines.map((line) => {
+            // Create a stable unique key from line properties
+            const lineKey = `${fileName}-${line.type}-${line.oldLineNum ?? 'x'}-${line.newLineNum ?? 'x'}-${line.content.slice(0, 20)}`
+
+            const bgClass =
+              line.type === 'addition'
+                ? 'bg-success/15'
+                : line.type === 'deletion'
+                  ? 'bg-destructive/15'
+                  : line.type === 'header'
+                    ? 'bg-primary/10'
+                    : ''
+
+            const textClass =
+              line.type === 'addition'
+                ? 'text-success'
+                : line.type === 'deletion'
+                  ? 'text-destructive'
+                  : line.type === 'header'
+                    ? 'text-primary font-semibold'
+                    : line.type === 'info'
+                      ? 'text-muted-foreground italic'
+                      : 'text-foreground/80'
+
+            const prefix =
+              line.type === 'addition'
+                ? '+'
+                : line.type === 'deletion'
+                  ? '-'
+                  : line.type === 'context'
+                    ? ' '
+                    : ''
+
+            return (
+              <tr key={lineKey} className={cn(bgClass, 'hover:bg-muted/20')}>
+                {/* Line numbers */}
+                <td className="w-10 text-right pr-2 text-muted-foreground/50 select-none border-r border-border/30 sticky left-0 bg-inherit">
+                  {line.oldLineNum || ''}
+                </td>
+                <td className="w-10 text-right pr-2 text-muted-foreground/50 select-none border-r border-border/30">
+                  {line.newLineNum || ''}
+                </td>
+                {/* Prefix (+/-/space) */}
+                <td className={cn('w-4 text-center select-none', textClass)}>{prefix}</td>
+                {/* Content */}
+                <td className={cn('pl-2 pr-4 whitespace-pre', textClass)}>
+                  {line.content || (line.type === 'header' ? line.content : ' ')}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ChangedFilesSection({
+  owner,
+  repo,
+  prNumber,
+  totalChanged
+}: ChangedFilesSectionProps): React.JSX.Element {
+  const { data: files = [], isLoading, error } = usePRFiles(owner, repo, prNumber)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isExpanded, setIsExpanded] = useState(true)
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
+
+  // Filter files based on search
+  const filteredFiles = useMemo(() => {
+    if (!searchQuery.trim()) return files
+    const query = searchQuery.toLowerCase()
+    return files.filter((f) => f.path.toLowerCase().includes(query))
+  }, [files, searchQuery])
+
+  // Group files by directory
+  const groupedFiles = useMemo(() => {
+    const groups: Record<string, PRFile[]> = {}
+    for (const file of filteredFiles) {
+      const dir = getDirectoryPath(file.path) || '(root)'
+      if (!groups[dir]) groups[dir] = []
+      groups[dir].push(file)
+    }
+    // Sort directories alphabetically
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+  }, [filteredFiles])
+
+  // Toggle directory expansion
+  const toggleDir = useCallback((dir: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev)
+      if (next.has(dir)) {
+        next.delete(dir)
+      } else {
+        next.add(dir)
+      }
+      return next
+    })
+  }, [])
+
+  // Toggle file diff expansion
+  const toggleFile = useCallback((path: string) => {
+    setExpandedFiles((prev) => {
+      const next = new Set(prev)
+      if (next.has(path)) {
+        next.delete(path)
+      } else {
+        next.add(path)
+      }
+      return next
+    })
+  }, [])
+
+  // Expand all directories when searching
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setExpandedDirs(new Set(groupedFiles.map(([dir]) => dir)))
+    }
+  }, [searchQuery, groupedFiles])
+
+  // File statistics by type
+  const fileStats = useMemo(() => {
+    const stats = { added: 0, deleted: 0, modified: 0, renamed: 0 }
+    for (const file of files) {
+      switch (file.changeType) {
+        case 'ADDED':
+          stats.added++
+          break
+        case 'DELETED':
+          stats.deleted++
+          break
+        case 'RENAMED':
+        case 'COPIED':
+          stats.renamed++
+          break
+        default:
+          stats.modified++
+      }
+    }
+    return stats
+  }, [files])
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center gap-2"
+      >
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4 text-primary" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-primary" />
+          )}
+          <FileDiff className="w-4 h-4 text-primary" />
+          Changed Files
+          <Badge variant="secondary" className="text-[10px] h-5">
+            {totalChanged}
+          </Badge>
+        </h3>
+      </button>
+
+      {isExpanded && (
+        <>
+          {/* Search and Stats */}
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search files..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 text-sm"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+
+            {/* File type stats */}
+            {files.length > 0 && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {fileStats.added > 0 && (
+                  <Badge variant="secondary" className="bg-success/15 text-success gap-1">
+                    <FilePlus className="w-3 h-3" />
+                    {fileStats.added} added
+                  </Badge>
+                )}
+                {fileStats.modified > 0 && (
+                  <Badge variant="secondary" className="bg-primary/15 text-primary gap-1">
+                    <FileDiff className="w-3 h-3" />
+                    {fileStats.modified} modified
+                  </Badge>
+                )}
+                {fileStats.deleted > 0 && (
+                  <Badge variant="secondary" className="bg-destructive/15 text-destructive gap-1">
+                    <FileMinus className="w-3 h-3" />
+                    {fileStats.deleted} deleted
+                  </Badge>
+                )}
+                {fileStats.renamed > 0 && (
+                  <Badge variant="secondary" className="bg-warning/15 text-warning gap-1">
+                    <FileEdit className="w-3 h-3" />
+                    {fileStats.renamed} renamed
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              <AlertCircle className="w-5 h-5 mx-auto mb-2 text-destructive" />
+              Failed to load files
+            </div>
+          ) : filteredFiles.length === 0 ? (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              {searchQuery ? 'No files match your search' : 'No changed files'}
+            </div>
+          ) : (
+            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
+              {groupedFiles.map(([dir, dirFiles]) => (
+                <div key={dir} className="rounded-lg border bg-card/50 overflow-hidden">
+                  {/* Directory header */}
+                  <button
+                    type="button"
+                    onClick={() => toggleDir(dir)}
+                    className="w-full flex items-center gap-2 p-2 text-xs font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    {expandedDirs.has(dir) ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
+                    <FolderOpen className="w-3.5 h-3.5 text-warning" />
+                    <span className="truncate flex-1 text-left text-muted-foreground">{dir}</span>
+                    <Badge variant="outline" className="text-[9px] h-4 px-1">
+                      {dirFiles.length}
+                    </Badge>
+                  </button>
+
+                  {/* Files in directory */}
+                  {expandedDirs.has(dir) && (
+                    <div className="border-t">
+                      {dirFiles.map((file) => (
+                        <div key={file.path} className="border-b last:border-b-0">
+                          {/* File header row - clickable to expand diff */}
+                          <button
+                            type="button"
+                            onClick={() => toggleFile(file.path)}
+                            className="w-full flex items-center gap-2 p-2 pl-6 text-xs hover:bg-muted/30 transition-colors group text-left"
+                          >
+                            {/* Expand/collapse indicator */}
+                            {file.patch ? (
+                              expandedFiles.has(file.path) ? (
+                                <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              )
+                            ) : (
+                              <span className="w-3" />
+                            )}
+                            {getFileIcon(file.changeType)}
+                            <span className="flex-1 truncate font-mono text-foreground/90">
+                              {getFileName(file.path)}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-70 group-hover:opacity-100">
+                              {file.additions > 0 && (
+                                <span className="text-success">+{file.additions}</span>
+                              )}
+                              {file.deletions > 0 && (
+                                <span className="text-destructive">−{file.deletions}</span>
+                              )}
+                            </div>
+                            {getFileExtension(file.path) && (
+                              <Badge
+                                variant="outline"
+                                className="text-[8px] h-4 px-1 font-mono opacity-50"
+                              >
+                                {getFileExtension(file.path)}
+                              </Badge>
+                            )}
+                          </button>
+
+                          {/* Expanded diff view */}
+                          {expandedFiles.has(file.path) && (
+                            <DiffViewer patch={file.patch} fileName={file.path} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -1808,6 +2237,16 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
               </div>
             )}
           </div>
+
+          <Separator />
+
+          {/* Changed Files Section */}
+          <ChangedFilesSection
+            owner={pr.base.repo.owner.login}
+            repo={pr.base.repo.name}
+            prNumber={pr.number}
+            totalChanged={pr.changed_files}
+          />
 
           <Separator />
 

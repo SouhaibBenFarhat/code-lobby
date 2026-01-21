@@ -49,6 +49,28 @@ export interface ElectronAPI {
     ref: string
   ) => Promise<{ success: boolean; data?: unknown; error?: string }>
   fetchContributedRepos: () => Promise<{ success: boolean; data?: unknown[]; error?: string }>
+  fetchPRFiles: (
+    owner: string,
+    repo: string,
+    prNumber: number
+  ) => Promise<{
+    success: boolean
+    data?: Array<{
+      path: string
+      additions: number
+      deletions: number
+      changeType: 'ADDED' | 'DELETED' | 'MODIFIED' | 'RENAMED' | 'COPIED'
+      patch: string | null
+    }>
+    rateLimit?: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+    }
+    error?: string
+  }>
 
   // Settings
   getSettings: () => Promise<{ notifications: boolean; pollInterval: number; theme: string }>

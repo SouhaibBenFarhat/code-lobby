@@ -30,6 +30,8 @@ const electronAPI: ElectronAPI = {
   fetchPRChecks: (owner: string, repo: string, ref: string) =>
     ipcRenderer.invoke('fetch-pr-checks', owner, repo, ref),
   fetchContributedRepos: () => ipcRenderer.invoke('fetch-contributed-repos'),
+  fetchPRFiles: (owner: string, repo: string, prNumber: number) =>
+    ipcRenderer.invoke('fetch-pr-files', owner, repo, prNumber),
 
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),

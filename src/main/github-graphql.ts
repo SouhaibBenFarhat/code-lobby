@@ -89,6 +89,15 @@ export interface CheckStatus {
   }>
 }
 
+export interface PRFile {
+  path: string
+  additions: number
+  deletions: number
+  changeType: 'ADDED' | 'DELETED' | 'MODIFIED' | 'RENAMED' | 'COPIED'
+  /** The unified diff patch content for this file */
+  patch: string | null
+}
+
 export interface PRComment {
   id: string
   body: string
@@ -570,6 +579,8 @@ const GET_REPOS_BY_SEARCH = `
     }
   }
 `
+
+// Note: PR files with patches are fetched via REST API (GraphQL doesn't provide patch content)
 
 function createGraphQLClient(token: string) {
   return graphql.defaults({
@@ -1196,4 +1207,96 @@ export async function fetchAllPRsForRepos(
   })
 
   return { pullRequests: allPRs, currentUser, rateLimit }
+}
+
+/**
+ * Fetch changed files for a specific PR using REST API
+ * REST API provides everything: path, additions, deletions, status, AND patch content
+ * (GraphQL doesn't provide patch content, so we use REST directly)
+ */
+export async function fetchPRFiles(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<{ files: PRFile[]; rateLimit: RateLimitInfo }> {
+  logger.info(LogCategory.API, 'Fetching PR files via REST API', { owner, repo, prNumber })
+
+  const allFiles: PRFile[] = []
+  let page = 1
+  const perPage = 100
+
+  // Fetch all pages (REST API paginates at 100 files)
+  while (true) {
+    const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github.v3+json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`REST API error: ${response.status} ${response.statusText}`)
+    }
+
+    const files = (await response.json()) as Array<{
+      filename: string
+      patch?: string
+      additions: number
+      deletions: number
+      status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged'
+    }>
+
+    // Map REST status to our changeType enum
+    const statusToChangeType = (status: string): PRFile['changeType'] => {
+      switch (status) {
+        case 'added':
+          return 'ADDED'
+        case 'removed':
+          return 'DELETED'
+        case 'renamed':
+          return 'RENAMED'
+        case 'copied':
+          return 'COPIED'
+        default:
+          return 'MODIFIED'
+      }
+    }
+
+    for (const file of files) {
+      allFiles.push({
+        path: file.filename,
+        additions: file.additions,
+        deletions: file.deletions,
+        changeType: statusToChangeType(file.status),
+        patch: file.patch || null
+      })
+    }
+
+    // Check if there are more pages
+    if (files.length < perPage) {
+      break
+    }
+    page++
+  }
+
+  // Get rate limit from headers (REST API provides this)
+  const rateLimit: RateLimitInfo = {
+    limit: 5000, // Default for authenticated requests
+    remaining: 5000,
+    used: 0,
+    resetAt: new Date().toISOString(),
+    percentage: 0
+  }
+
+  logger.info(LogCategory.API, 'Fetched PR files', {
+    owner,
+    repo,
+    prNumber,
+    fileCount: allFiles.length
+  })
+
+  return { files: allFiles, rateLimit }
 }

@@ -1,7 +1,7 @@
 # CodeLobby Work Plan
 
-> **Last Updated**: January 18, 2026  
-> **Last Reviewed**: January 18, 2026  
+> **Last Updated**: January 21, 2026  
+> **Last Reviewed**: January 21, 2026  
 > **Status**: Active Development (v1.0.0)
 
 ---
@@ -28,6 +28,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | **PR Detail Panel** | Resizable side panel | ✅ Complete |
 | | Job grouping by status | ✅ Complete |
 | | Comment filtering (human/bot) | ✅ Complete |
+| | Changed files with diff viewer | ✅ Complete |
 | **AI Assistant** | Claude API integration | ✅ Complete |
 | | Streaming responses | ✅ Complete |
 | | Message queue | ✅ Complete |
@@ -438,6 +439,73 @@ A "nuclear option" that erases absolutely everything—like reinstalling the app
 - `tests/main/store.test.ts` - Added 10 tests
 
 **Completed:** January 20, 2026
+
+---
+
+### 1.1.7 Changed Files Section ✅ Complete
+> Display changed files in PR detail view with search and collapsible directories
+
+**Concept:**
+Show all files changed in a PR with their change status (added, modified, deleted, renamed), grouped by directory. Includes search functionality to quickly find specific files and collapsible directory sections for better organization.
+
+**Why This Matters:**
+- **Quick Overview** — See all changed files at a glance without opening GitHub
+- **Navigation** — Quickly find specific files in large PRs
+- **Context** — Understand the scope of changes before reviewing
+
+**Implementation Summary:**
+- New GraphQL query `GET_PR_FILES` to fetch changed files from GitHub API
+- `fetchPRFiles()` function with pagination support for PRs with 100+ files
+- New IPC handler `fetch-pr-files` for main process communication
+- `usePRFiles` React Query hook with caching (10 min stale, 1 hour cache)
+- `ChangedFilesSection` component with:
+  - Directory grouping (alphabetically sorted)
+  - Search/filter functionality
+  - Collapsible directories (expand all when searching)
+  - Change type badges (added, modified, deleted, renamed)
+  - Per-file additions/deletions count
+  - File extension badges
+- Positioned above Discussion section in PR detail view
+
+**Technical Details:**
+| File | Changes |
+|------|---------|
+| `src/main/github-graphql.ts` | Added `PRFile` interface, `GET_PR_FILES` query, `fetchPRFiles()` function |
+| `src/main/index.ts` | Added `fetch-pr-files` IPC handler |
+| `src/preload/index.ts` | Added `fetchPRFiles` method to Electron API |
+| `src/preload/electron-api.d.ts` | Added type definition for `fetchPRFiles` |
+| `packages/queries/src/index.ts` | Added `PRFile` type, `prFiles` query key, `usePRFiles` hook |
+| `packages/pr-detail-module/src/components/PRDetail.tsx` | Added `ChangedFilesSection` component |
+
+**UI Features:**
+```
+┌─ Changed Files [15] ───────────────────── +100 −50 ─┐
+│ [Search files...]                                    │
+│ [+5 added] [~8 modified] [-2 deleted]               │
+│                                                      │
+│ ▼ src/components (5 files)                          │
+│   ▶ Button.tsx                      +10 −5    .tsx  │
+│   ▼ Header.tsx                      +25 −10   .tsx  │
+│   ┌──────────────────────────────────────────────┐  │
+│   │ @@ -1,5 +1,10 @@                             │  │
+│   │  1  1   import React from 'react'           │  │
+│   │     2 + import { Logo } from './Logo'       │  │
+│   │  2  3   export function Header() {          │  │
+│   └──────────────────────────────────────────────┘  │
+│   + NewFile.tsx                     +50       .tsx  │
+│                                                      │
+│ ▶ src/utils (3 files)  [collapsed]                  │
+└──────────────────────────────────────────────────────┘
+```
+
+**Diff Viewer Features:**
+- Syntax-highlighted unified diff format
+- Line numbers for old and new file versions
+- Color-coded additions (+green), deletions (-red), context (neutral)
+- Clickable file rows to expand/collapse diff
+- Handles binary files gracefully ("Binary file or diff too large")
+
+**Completed:** January 21, 2026
 
 ---
 

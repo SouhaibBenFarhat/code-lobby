@@ -9,6 +9,17 @@
 import type { PullRequest } from '@codelobby/shared-store'
 
 /**
+ * Changed file with diff content
+ */
+export interface ChangedFile {
+  path: string
+  additions: number
+  deletions: number
+  changeType: 'ADDED' | 'DELETED' | 'MODIFIED' | 'RENAMED' | 'COPIED'
+  patch: string | null
+}
+
+/**
  * Build a comprehensive PR context message for AI chat
  *
  * This creates a markdown-formatted context that includes:
@@ -18,11 +29,13 @@ import type { PullRequest } from '@codelobby/shared-store'
  * - CI/CD status summary
  * - Review status
  * - Recent comments (optional)
+ * - Changed files with diffs (when provided)
  *
  * @param pr - The Pull Request object
+ * @param changedFiles - Optional array of changed files with their diffs
  * @returns A formatted string to use as AI system context
  */
-export function buildPRSystemPrompt(pr: PullRequest): string {
+export function buildPRSystemPrompt(pr: PullRequest, changedFiles?: ChangedFile[]): string {
   const lines: string[] = []
 
   // ===================
@@ -172,6 +185,84 @@ export function buildPRSystemPrompt(pr: PullRequest): string {
   }
 
   // ===================
+  // CHANGED FILES
+  // ===================
+  if (changedFiles && changedFiles.length > 0) {
+    lines.push('## Changed Files')
+    lines.push('')
+    lines.push(`This PR modifies ${changedFiles.length} file(s):`)
+    lines.push('')
+
+    // Group files by change type
+    const added = changedFiles.filter((f) => f.changeType === 'ADDED')
+    const modified = changedFiles.filter((f) => f.changeType === 'MODIFIED')
+    const deleted = changedFiles.filter((f) => f.changeType === 'DELETED')
+    const renamed = changedFiles.filter(
+      (f) => f.changeType === 'RENAMED' || f.changeType === 'COPIED'
+    )
+
+    if (added.length > 0) {
+      lines.push(`- 🆕 **Added:** ${added.length} file(s)`)
+    }
+    if (modified.length > 0) {
+      lines.push(`- 📝 **Modified:** ${modified.length} file(s)`)
+    }
+    if (deleted.length > 0) {
+      lines.push(`- 🗑️ **Deleted:** ${deleted.length} file(s)`)
+    }
+    if (renamed.length > 0) {
+      lines.push(`- 📁 **Renamed/Copied:** ${renamed.length} file(s)`)
+    }
+    lines.push('')
+
+    // Include actual file diffs (limit total characters to avoid huge prompts)
+    const MAX_TOTAL_DIFF_CHARS = 50000 // ~50KB of diff content
+    const MAX_SINGLE_FILE_CHARS = 10000 // Max per file
+    let totalChars = 0
+
+    for (const file of changedFiles) {
+      if (totalChars >= MAX_TOTAL_DIFF_CHARS) {
+        lines.push(`\n_Note: Additional file diffs truncated to keep context manageable._`)
+        break
+      }
+
+      const changeIcon =
+        file.changeType === 'ADDED'
+          ? '🆕'
+          : file.changeType === 'DELETED'
+            ? '🗑️'
+            : file.changeType === 'MODIFIED'
+              ? '📝'
+              : '📁'
+
+      lines.push(`### ${changeIcon} \`${file.path}\``)
+      lines.push(`_+${file.additions} / -${file.deletions}_`)
+      lines.push('')
+
+      if (file.patch) {
+        // Truncate individual file diffs if too long
+        const patchContent =
+          file.patch.length > MAX_SINGLE_FILE_CHARS
+            ? `${file.patch.slice(0, MAX_SINGLE_FILE_CHARS)}\n... (diff truncated, ${file.patch.length - MAX_SINGLE_FILE_CHARS} more characters)`
+            : file.patch
+
+        lines.push('```diff')
+        lines.push(patchContent)
+        lines.push('```')
+        lines.push('')
+
+        totalChars += patchContent.length
+      } else if (file.changeType === 'DELETED') {
+        lines.push('_File deleted._')
+        lines.push('')
+      } else {
+        lines.push('_Binary file or diff not available._')
+        lines.push('')
+      }
+    }
+  }
+
+  // ===================
   // INSTRUCTIONS FOR AI
   // ===================
   lines.push('---')
@@ -180,11 +271,12 @@ export function buildPRSystemPrompt(pr: PullRequest): string {
   lines.push('')
   lines.push('Based on this PR context, you can:')
   lines.push('- Summarize the changes and their purpose')
+  lines.push('- Review the code diffs and suggest improvements')
+  lines.push('- Identify bugs, security issues, or potential risks')
   lines.push('- Explain why CI checks might be failing')
-  lines.push('- Identify potential issues or risks')
   lines.push('- Help write review comments')
   lines.push('- Answer questions about the code changes')
-  lines.push('- Suggest improvements or alternatives')
+  lines.push('- Suggest alternative implementations')
   lines.push('')
   lines.push('Ask me anything about this PR!')
 

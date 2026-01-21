@@ -32,6 +32,11 @@ export const queryKeys = {
   prs: (repoNames: string[]): readonly ['prs', ...string[]] => ['prs', ...repoNames] as const,
   allPrs: ['prs'] as const,
   prDetails: (prId: string): readonly ['pr', string] => ['pr', prId] as const,
+  prFiles: (
+    owner: string,
+    repo: string,
+    prNumber: number
+  ): readonly ['pr-files', string, string, number] => ['pr-files', owner, repo, prNumber] as const,
   prEvents: ['pr-events'] as const,
   rateLimit: ['rate-limit'] as const,
   user: ['user'] as const,
@@ -101,6 +106,50 @@ export function usePRsForRepo(repoFullName: string | null): UseQueryResult<PullR
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     enabled: !!repoFullName
+  })
+}
+
+/**
+ * PR File type for changed files
+ */
+export interface PRFile {
+  path: string
+  additions: number
+  deletions: number
+  changeType: 'ADDED' | 'DELETED' | 'MODIFIED' | 'RENAMED' | 'COPIED'
+  /** The unified diff patch content for this file */
+  patch: string | null
+}
+
+/**
+ * Fetch changed files for a specific PR.
+ * Files are cached per PR (owner/repo#number).
+ */
+export function usePRFiles(
+  owner: string | null,
+  repo: string | null,
+  prNumber: number | null
+): UseQueryResult<PRFile[], Error> {
+  const queryClient = useQueryClient()
+
+  return useQuery({
+    queryKey:
+      owner && repo && prNumber ? queryKeys.prFiles(owner, repo, prNumber) : ['pr-files', 'none'],
+    queryFn: async () => {
+      if (!owner || !repo || !prNumber) return [] as PRFile[]
+
+      const result = await window.electron.fetchPRFiles(owner, repo, prNumber)
+      if (!result.success) throw new Error(result.error || 'Failed to fetch PR files')
+
+      if (result.rateLimit) {
+        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+      }
+
+      return (result.data || []) as PRFile[]
+    },
+    staleTime: 10 * 60 * 1000, // Files don't change often, 10 min stale
+    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    enabled: !!owner && !!repo && !!prNumber
   })
 }
 

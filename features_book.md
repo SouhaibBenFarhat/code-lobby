@@ -224,11 +224,27 @@ Want to discuss a specific PR with the AI? Don't copy-paste context manually.
 - If no chat exists, you'll see an empty state with "Start chatting about this PR"
 - Conversations persist across sessions
 
+**Full Code Context:**
+When you start a PR chat, the AI receives comprehensive context including:
+- PR metadata (title, author, branch, status)
+- Full description and labels
+- CI/CD status with failed check details
+- Review status and unresolved threads
+- All comments and discussions
+- **Complete file diffs** — The actual code changes with additions and deletions
+
+This means the AI can:
+- Review specific lines of code you changed
+- Identify potential bugs in your diff
+- Suggest improvements to your implementation
+- Explain complex changes in plain English
+
 **Use Cases:**
-- "Summarize the changes in this PR"
-- "What are the potential risks?"
-- "Help me write a review comment"
-- "Explain what this file does"
+- "Review this code for bugs"
+- "What are the potential risks in these changes?"
+- "Help me write a review comment for line 45"
+- "Explain what this function change does"
+- "Are there any security issues in my changes?"
 
 ---
 

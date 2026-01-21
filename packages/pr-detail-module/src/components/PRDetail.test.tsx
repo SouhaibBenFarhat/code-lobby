@@ -300,8 +300,9 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest({ additions: 100, deletions: 50 })
       render(<PRDetail pr={pr} onClose={mockOnClose} />)
 
-      expect(screen.getByText(/\+100/)).toBeInTheDocument()
-      expect(screen.getByText(/-50/)).toBeInTheDocument()
+      // Multiple elements may show additions/deletions (header, changed files section)
+      expect(screen.getAllByText(/\+100/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/-50|−50/).length).toBeGreaterThan(0)
     })
 
     it('should display changed files count', () => {

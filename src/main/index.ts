@@ -457,6 +457,25 @@ function setupIPCHandlers(): void {
     }
   })
 
+  // Fetch PR changed files
+  ipcMain.handle('fetch-pr-files', async (_, owner: string, repo: string, prNumber: number) => {
+    const token = getToken()
+    if (!token) return { success: false, error: 'No token' }
+    try {
+      const { fetchPRFiles } = await import('./github-graphql')
+      const { files, rateLimit } = await fetchPRFiles(token, owner, repo, prNumber)
+      return { success: true, data: files, rateLimit }
+    } catch (error) {
+      logger.error(LogCategory.GRAPHQL, 'Failed to fetch PR files', {
+        owner,
+        repo,
+        prNumber,
+        error: (error as Error).message
+      })
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
   // Settings
   ipcMain.handle('get-settings', async () => {
     return getSettings()

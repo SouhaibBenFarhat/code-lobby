@@ -56,6 +56,7 @@ export function LogsViewer(): React.JSX.Element {
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [copied, setCopied] = useState(false)
+  const [copiedLogId, setCopiedLogId] = useState<string | null>(null)
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
 
   const {
@@ -128,12 +129,21 @@ export function LogsViewer(): React.JSX.Element {
     URL.revokeObjectURL(url)
   }
 
-  // Copy logs to clipboard
+  // Copy all logs to clipboard
   const handleCopy = async () => {
     const logsJson = await window.electron.exportLogs()
     await navigator.clipboard.writeText(logsJson)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Copy single log entry to clipboard
+  const handleCopyLog = async (log: LogEntry, event: React.MouseEvent) => {
+    event.stopPropagation() // Prevent expanding/collapsing when clicking copy
+    const logText = `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.category}] ${log.message}${log.details ? `\n${JSON.stringify(log.details, null, 2)}` : ''}`
+    await navigator.clipboard.writeText(logText)
+    setCopiedLogId(log.id)
+    setTimeout(() => setCopiedLogId(null), 2000)
   }
 
   // Toggle log details expansion
@@ -271,6 +281,8 @@ export function LogsViewer(): React.JSX.Element {
                 const isExpanded = expandedLogs.has(log.id)
                 const hasDetails = log.details !== undefined
 
+                const isCopied = copiedLogId === log.id
+
                 const logContent = (
                   <>
                     <div className="flex items-start gap-2">
@@ -282,6 +294,20 @@ export function LogsViewer(): React.JSX.Element {
                         {log.category}
                       </Badge>
                       <span className="flex-1 break-words">{log.message}</span>
+                      {/* Copy button for individual log */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyLog(log, e)}
+                        className="flex-shrink-0 p-1 rounded hover:bg-black/20 transition-colors"
+                        title="Copy this log"
+                        aria-label={isCopied ? 'Copied log' : 'Copy log'}
+                      >
+                        {isCopied ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        )}
+                      </button>
                       {hasDetails && (
                         <span className="text-muted-foreground text-xs">
                           {isExpanded ? '▼' : '▶'}

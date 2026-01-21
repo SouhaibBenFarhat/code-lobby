@@ -21,7 +21,7 @@ import type {
   Repository
 } from '@codelobby/shared-store'
 import { onAction, Store } from '@codelobby/shared-store'
-import { buildPRSystemPrompt } from './prompts/pr-system-prompt'
+import { buildPRSystemPrompt, type ChangedFile } from './prompts/pr-system-prompt'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLEANUP FUNCTIONS
@@ -242,8 +242,24 @@ export function initDataModule(): void {
         return
       }
 
-      // Build PR system context for AI
-      const systemContext = buildPRSystemPrompt(pr)
+      // Fetch changed files with diffs for richer AI context
+      let changedFiles: ChangedFile[] | undefined
+      try {
+        const filesResult = await window.electron.fetchPRFiles(
+          pr.base.repo.owner.login,
+          pr.base.repo.name,
+          pr.number
+        )
+        if (filesResult.success && filesResult.data) {
+          changedFiles = filesResult.data as ChangedFile[]
+        }
+      } catch (error) {
+        // Log but don't fail chat creation if files can't be fetched
+        console.warn('Failed to fetch PR files for chat context:', error)
+      }
+
+      // Build PR system context for AI (with file diffs if available)
+      const systemContext = buildPRSystemPrompt(pr, changedFiles)
 
       // Create new PR chat with system context
       const prChat = await window.electron.createPRChat(
