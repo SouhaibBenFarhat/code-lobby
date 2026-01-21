@@ -239,6 +239,13 @@ export function initDataModule(): void {
       const existing = Store.prChats.value.find((c) => c.prId === prId)
       if (existing) {
         Store.activePRChatId.value = existing.prId
+        // Also set linkedPRChat so the UI shows the active chat
+        Store.linkedPRChat.value = {
+          prId: existing.prId,
+          prNumber: existing.prNumber,
+          prTitle: existing.prTitle,
+          repoFullName: existing.repoFullName
+        }
         return
       }
 
@@ -272,6 +279,14 @@ export function initDataModule(): void {
       Store.prChats.value = [...Store.prChats.value, prChat as PRChat]
       Store.activePRChatId.value = prChat.prId
       await window.electron.setActivePRChatId(prChat.prId)
+
+      // Set linkedPRChat so the UI shows the active chat (this was the missing piece!)
+      Store.linkedPRChat.value = {
+        prId: prChat.prId,
+        prNumber: prChat.prNumber,
+        prTitle: prChat.prTitle,
+        repoFullName: prChat.repoFullName
+      }
     })
   )
 
