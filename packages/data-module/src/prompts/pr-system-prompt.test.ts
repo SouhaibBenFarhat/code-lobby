@@ -7,7 +7,7 @@
 
 import type { PullRequest } from '@codelobby/shared-store'
 import { describe, expect, it } from 'vitest'
-import { buildPRSystemPrompt, type ChangedFile } from './pr-system-prompt'
+import { buildFileTree, buildPRSystemPrompt, type ChangedFile } from './pr-system-prompt'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOCK DATA FACTORIES
@@ -481,6 +481,122 @@ describe('buildPRSystemPrompt', () => {
 
       const renamedFile: ChangedFile[] = [createChangedFile({ changeType: 'RENAMED' })]
       expect(buildPRSystemPrompt(pr, renamedFile)).toContain('### 📁')
+    })
+
+    it('should include file tree visualization', () => {
+      const pr = createBasicPR()
+      const files: ChangedFile[] = [
+        createChangedFile({ path: 'src/index.ts', changeType: 'MODIFIED' })
+      ]
+      const prompt = buildPRSystemPrompt(pr, files)
+
+      // Should have a tree section with the file
+      expect(prompt).toContain('📝 index.ts')
+    })
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TESTS: FILE TREE BUILDER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('buildFileTree', () => {
+    it('should render single file in root', () => {
+      const files: ChangedFile[] = [
+        createChangedFile({ path: 'README.md', additions: 5, deletions: 2, changeType: 'MODIFIED' })
+      ]
+      const tree = buildFileTree(files)
+
+      expect(tree).toContain('📝 README.md (+5/-2)')
+    })
+
+    it('should render nested file structure', () => {
+      const files: ChangedFile[] = [
+        createChangedFile({
+          path: 'src/components/Button.tsx',
+          additions: 10,
+          deletions: 5,
+          changeType: 'MODIFIED'
+        })
+      ]
+      const tree = buildFileTree(files)
+
+      expect(tree).toContain('src/')
+      expect(tree).toContain('components/')
+      expect(tree).toContain('📝 Button.tsx (+10/-5)')
+    })
+
+    it('should use correct icons for change types', () => {
+      const files: ChangedFile[] = [
+        createChangedFile({ path: 'added.ts', changeType: 'ADDED', additions: 10, deletions: 0 }),
+        createChangedFile({
+          path: 'modified.ts',
+          changeType: 'MODIFIED',
+          additions: 5,
+          deletions: 3
+        }),
+        createChangedFile({
+          path: 'deleted.ts',
+          changeType: 'DELETED',
+          additions: 0,
+          deletions: 20
+        }),
+        createChangedFile({ path: 'renamed.ts', changeType: 'RENAMED', additions: 1, deletions: 1 })
+      ]
+      const tree = buildFileTree(files)
+
+      expect(tree).toContain('🆕 added.ts')
+      expect(tree).toContain('📝 modified.ts')
+      expect(tree).toContain('🗑️ deleted.ts')
+      expect(tree).toContain('📁 renamed.ts')
+    })
+
+    it('should sort directories before files', () => {
+      const files: ChangedFile[] = [
+        createChangedFile({ path: 'b-file.ts', changeType: 'MODIFIED' }),
+        createChangedFile({ path: 'a-dir/file.ts', changeType: 'MODIFIED' }),
+        createChangedFile({ path: 'a-file.ts', changeType: 'MODIFIED' })
+      ]
+      const tree = buildFileTree(files)
+      const lines = tree.split('\n')
+
+      // Directory should come before files
+      const dirIndex = lines.findIndex((l) => l.includes('a-dir/'))
+      const aFileIndex = lines.findIndex((l) => l.includes('a-file.ts'))
+      const bFileIndex = lines.findIndex((l) => l.includes('b-file.ts'))
+
+      expect(dirIndex).toBeLessThan(aFileIndex)
+      expect(dirIndex).toBeLessThan(bFileIndex)
+      // Files should be sorted alphabetically
+      expect(aFileIndex).toBeLessThan(bFileIndex)
+    })
+
+    it('should render multiple files in same directory', () => {
+      const files: ChangedFile[] = [
+        createChangedFile({ path: 'src/a.ts', changeType: 'MODIFIED' }),
+        createChangedFile({ path: 'src/b.ts', changeType: 'ADDED' }),
+        createChangedFile({ path: 'src/c.ts', changeType: 'DELETED' })
+      ]
+      const tree = buildFileTree(files)
+
+      expect(tree).toContain('src/')
+      expect(tree).toContain('📝 a.ts')
+      expect(tree).toContain('🆕 b.ts')
+      expect(tree).toContain('🗑️ c.ts')
+    })
+
+    it('should render complex nested structure with proper tree connectors', () => {
+      const files: ChangedFile[] = [
+        createChangedFile({ path: 'packages/ui/src/Button.tsx', changeType: 'MODIFIED' }),
+        createChangedFile({ path: 'packages/ui/src/Input.tsx', changeType: 'ADDED' }),
+        createChangedFile({ path: 'packages/api/src/client.ts', changeType: 'MODIFIED' })
+      ]
+      const tree = buildFileTree(files)
+
+      expect(tree).toContain('packages/')
+      expect(tree).toContain('ui/')
+      expect(tree).toContain('api/')
+      expect(tree).toContain('├──')
+      expect(tree).toContain('└──')
     })
   })
 

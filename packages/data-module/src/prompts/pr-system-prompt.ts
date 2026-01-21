@@ -20,6 +20,90 @@ export interface ChangedFile {
 }
 
 /**
+ * Build a visual file tree from changed files
+ */
+interface TreeNode {
+  name: string
+  isFile: boolean
+  file?: ChangedFile
+  children: Map<string, TreeNode>
+}
+
+function getChangeIcon(changeType: ChangedFile['changeType']): string {
+  switch (changeType) {
+    case 'ADDED':
+      return '🆕'
+    case 'DELETED':
+      return '🗑️'
+    case 'MODIFIED':
+      return '📝'
+    default:
+      return '📁'
+  }
+}
+
+export function buildFileTree(files: ChangedFile[]): string {
+  // Build tree structure
+  const root: TreeNode = { name: '', isFile: false, children: new Map() }
+
+  for (const file of files) {
+    const parts = file.path.split('/')
+    let current = root
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      const isLastPart = i === parts.length - 1
+
+      let child = current.children.get(part)
+      if (!child) {
+        child = {
+          name: part,
+          isFile: isLastPart,
+          file: isLastPart ? file : undefined,
+          children: new Map()
+        }
+        current.children.set(part, child)
+      }
+      current = child
+    }
+  }
+
+  // Render tree to string
+  const lines: string[] = []
+
+  function renderNode(node: TreeNode, prefix: string, _isLast: boolean): void {
+    const children = Array.from(node.children.values())
+
+    // Sort: directories first, then files, alphabetically within each group
+    children.sort((a, b) => {
+      if (a.isFile !== b.isFile) {
+        return a.isFile ? 1 : -1
+      }
+      return a.name.localeCompare(b.name)
+    })
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      const isChildLast = i === children.length - 1
+      const connector = isChildLast ? '└── ' : '├── '
+      const childPrefix = prefix + (isChildLast ? '    ' : '│   ')
+
+      if (child.isFile && child.file) {
+        const icon = getChangeIcon(child.file.changeType)
+        const stats = `(+${child.file.additions}/-${child.file.deletions})`
+        lines.push(`${prefix}${connector}${icon} ${child.name} ${stats}`)
+      } else {
+        lines.push(`${prefix}${connector}${child.name}/`)
+        renderNode(child, childPrefix, isChildLast)
+      }
+    }
+  }
+
+  renderNode(root, '', true)
+  return lines.join('\n')
+}
+
+/**
  * Build a comprehensive PR context message for AI chat
  *
  * This creates a markdown-formatted context that includes:
@@ -193,7 +277,7 @@ export function buildPRSystemPrompt(pr: PullRequest, changedFiles?: ChangedFile[
     lines.push(`This PR modifies ${changedFiles.length} file(s):`)
     lines.push('')
 
-    // Group files by change type
+    // Group files by change type for summary
     const added = changedFiles.filter((f) => f.changeType === 'ADDED')
     const modified = changedFiles.filter((f) => f.changeType === 'MODIFIED')
     const deleted = changedFiles.filter((f) => f.changeType === 'DELETED')
@@ -213,6 +297,12 @@ export function buildPRSystemPrompt(pr: PullRequest, changedFiles?: ChangedFile[
     if (renamed.length > 0) {
       lines.push(`- 📁 **Renamed/Copied:** ${renamed.length} file(s)`)
     }
+    lines.push('')
+
+    // Build file tree visualization
+    lines.push('```')
+    lines.push(buildFileTree(changedFiles))
+    lines.push('```')
     lines.push('')
 
     // Include all file diffs - no truncation, Claude can handle large contexts
