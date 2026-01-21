@@ -215,17 +215,8 @@ export function buildPRSystemPrompt(pr: PullRequest, changedFiles?: ChangedFile[
     }
     lines.push('')
 
-    // Include actual file diffs (limit total characters to avoid huge prompts)
-    const MAX_TOTAL_DIFF_CHARS = 50000 // ~50KB of diff content
-    const MAX_SINGLE_FILE_CHARS = 10000 // Max per file
-    let totalChars = 0
-
+    // Include all file diffs - no truncation, Claude can handle large contexts
     for (const file of changedFiles) {
-      if (totalChars >= MAX_TOTAL_DIFF_CHARS) {
-        lines.push(`\n_Note: Additional file diffs truncated to keep context manageable._`)
-        break
-      }
-
       const changeIcon =
         file.changeType === 'ADDED'
           ? '🆕'
@@ -240,18 +231,10 @@ export function buildPRSystemPrompt(pr: PullRequest, changedFiles?: ChangedFile[
       lines.push('')
 
       if (file.patch) {
-        // Truncate individual file diffs if too long
-        const patchContent =
-          file.patch.length > MAX_SINGLE_FILE_CHARS
-            ? `${file.patch.slice(0, MAX_SINGLE_FILE_CHARS)}\n... (diff truncated, ${file.patch.length - MAX_SINGLE_FILE_CHARS} more characters)`
-            : file.patch
-
         lines.push('```diff')
-        lines.push(patchContent)
+        lines.push(file.patch)
         lines.push('```')
         lines.push('')
-
-        totalChars += patchContent.length
       } else if (file.changeType === 'DELETED') {
         lines.push('_File deleted._')
         lines.push('')

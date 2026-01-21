@@ -452,9 +452,9 @@ describe('buildPRSystemPrompt', () => {
       expect(prompt).toContain('_Binary file or diff not available._')
     })
 
-    it('should truncate very long diffs', () => {
+    it('should include complete diffs without truncation', () => {
       const pr = createBasicPR()
-      const longPatch = 'x'.repeat(15000) // Over 10KB
+      const longPatch = 'x'.repeat(15000) // Large diff
       const files: ChangedFile[] = [
         createChangedFile({
           patch: longPatch
@@ -462,8 +462,9 @@ describe('buildPRSystemPrompt', () => {
       ]
       const prompt = buildPRSystemPrompt(pr, files)
 
-      expect(prompt).toContain('... (diff truncated')
-      expect(prompt).not.toContain('x'.repeat(15000))
+      // Should include the full diff without truncation
+      expect(prompt).toContain('x'.repeat(15000))
+      expect(prompt).not.toContain('truncated')
     })
 
     it('should include correct icon for each change type', () => {
