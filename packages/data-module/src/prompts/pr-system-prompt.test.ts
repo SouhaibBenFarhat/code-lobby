@@ -659,6 +659,7 @@ describe('buildPRSystemPrompt', () => {
 
       expect(prompt).toContain('### What Gets Posted to PR')
       expect(prompt).toContain('Only the text in the `> **PR Comment:**` blockquote gets posted')
+      expect(prompt).toContain('Always include a code snippet showing the correct code')
     })
 
     it('should explain rules for placement', () => {
@@ -667,6 +668,7 @@ describe('buildPRSystemPrompt', () => {
 
       expect(prompt).toContain('### Rules')
       expect(prompt).toContain('Always show **Current code** and **Fix** code snippets')
+      expect(prompt).toContain('PR Comment MUST include a code snippet')
       expect(prompt).toContain('Use `---` horizontal rules to separate findings')
     })
   })
