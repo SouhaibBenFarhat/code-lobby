@@ -86,6 +86,14 @@ export interface PRChat {
   updatedAt: string
 }
 
+// Custom quick prompt (user-created pre-prompts)
+export interface CustomQuickPrompt {
+  id: string
+  label: string
+  prompt: string
+  createdAt: string
+}
+
 // Cache TTL constants (in milliseconds)
 export const CACHE_TTL_PR_DATA = 30 * 60 * 1000 // 30 minutes
 export const CACHE_TTL_ALL_REPOS = 30 * 60 * 1000 // 30 minutes
@@ -115,6 +123,7 @@ interface StoreSchema {
   prChats: PRChat[] // AI chats linked to specific PRs
   activePRChatId: string | null // Currently active PR chat (null = general chat)
   tanstackQueryCache: string | null // TanStack Query cache for standardized persistence
+  customQuickPrompts: CustomQuickPrompt[] // User-created quick prompts
 }
 
 const store = new Store<StoreSchema>({
@@ -159,7 +168,8 @@ const store = new Store<StoreSchema>({
     prAnalysisPanelStates: {},
     prChats: [],
     activePRChatId: null,
-    tanstackQueryCache: null // TanStack Query cache (starts empty)
+    tanstackQueryCache: null, // TanStack Query cache (starts empty)
+    customQuickPrompts: [] // User-created quick prompts
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -620,4 +630,35 @@ export function setQueryCache(cache: string): void {
 
 export function clearQueryCache(): void {
   store.delete('tanstackQueryCache')
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CUSTOM QUICK PROMPTS
+// ═══════════════════════════════════════════════════════════════════════════
+// User-created pre-prompts for the AI chat
+
+export function getCustomQuickPrompts(): CustomQuickPrompt[] {
+  return store.get('customQuickPrompts') || []
+}
+
+export function addCustomQuickPrompt(label: string, prompt: string): CustomQuickPrompt {
+  const prompts = getCustomQuickPrompts()
+  const newPrompt: CustomQuickPrompt = {
+    id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    label,
+    prompt,
+    createdAt: new Date().toISOString()
+  }
+  prompts.push(newPrompt)
+  store.set('customQuickPrompts', prompts)
+  return newPrompt
+}
+
+export function deleteCustomQuickPrompt(id: string): boolean {
+  const prompts = getCustomQuickPrompts()
+  const index = prompts.findIndex((p) => p.id === id)
+  if (index === -1) return false
+  prompts.splice(index, 1)
+  store.set('customQuickPrompts', prompts)
+  return true
 }

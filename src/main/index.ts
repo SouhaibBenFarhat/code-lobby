@@ -30,6 +30,7 @@ import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   AIPanelSettings,
   addChatMessage,
+  addCustomQuickPrompt,
   addMessageToPRChat,
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
@@ -39,6 +40,7 @@ import {
   clearDataCache,
   clearQueryCache,
   clearToken,
+  deleteCustomQuickPrompt,
   deletePRAnalysis,
   factoryReset,
   getActivePRChatId,
@@ -47,6 +49,7 @@ import {
   getCardLayouts,
   getChatHistory,
   getClaudeApiKey,
+  getCustomQuickPrompts,
   getEnableThinking,
   getIDEViewSettings,
   getMinimizedRepos,
@@ -246,6 +249,39 @@ function setupIPCHandlers(): void {
   ipcMain.handle('clear-query-cache', async () => {
     clearQueryCache()
     return { success: true }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CUSTOM QUICK PROMPTS
+  // ═══════════════════════════════════════════════════════════════════════════
+  // User-created pre-prompts for the AI chat
+
+  ipcMain.handle('get-custom-prompts', async () => {
+    return getCustomQuickPrompts()
+  })
+
+  ipcMain.handle('add-custom-prompt', async (_, label: string, prompt: string) => {
+    try {
+      const newPrompt = addCustomQuickPrompt(label, prompt)
+      logger.info(LogCategory.APP, 'Added custom prompt', { id: newPrompt.id, label })
+      return { success: true, prompt: newPrompt }
+    } catch (error) {
+      logger.error(LogCategory.APP, 'Failed to add custom prompt', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('delete-custom-prompt', async (_, id: string) => {
+    try {
+      const deleted = deleteCustomQuickPrompt(id)
+      if (deleted) {
+        logger.info(LogCategory.APP, 'Deleted custom prompt', { id })
+      }
+      return { success: deleted }
+    } catch (error) {
+      logger.error(LogCategory.APP, 'Failed to delete custom prompt', { error })
+      return { success: false, error: String(error) }
+    }
   })
 
   ipcMain.handle('validate-token', async () => {

@@ -19,6 +19,12 @@ const electronAPI: ElectronAPI = {
   setQueryCache: (cache: string) => ipcRenderer.invoke('set-query-cache', cache),
   clearQueryCache: () => ipcRenderer.invoke('clear-query-cache'),
 
+  // Custom quick prompts
+  getCustomPrompts: () => ipcRenderer.invoke('get-custom-prompts'),
+  addCustomPrompt: (label: string, prompt: string) =>
+    ipcRenderer.invoke('add-custom-prompt', label, prompt),
+  deleteCustomPrompt: (id: string) => ipcRenderer.invoke('delete-custom-prompt', id),
+
   validateToken: () => ipcRenderer.invoke('validate-token'),
 
   // GitHub API (GraphQL - one query gets everything!)

@@ -12,6 +12,30 @@ export interface ElectronAPI {
   setQueryCache: (cache: string) => Promise<{ success: boolean }>
   clearQueryCache: () => Promise<{ success: boolean }>
 
+  // Custom quick prompts
+  getCustomPrompts: () => Promise<
+    Array<{
+      id: string
+      label: string
+      prompt: string
+      createdAt: string
+    }>
+  >
+  addCustomPrompt: (
+    label: string,
+    prompt: string
+  ) => Promise<{
+    success: boolean
+    prompt?: {
+      id: string
+      label: string
+      prompt: string
+      createdAt: string
+    }
+    error?: string
+  }>
+  deleteCustomPrompt: (id: string) => Promise<{ success: boolean; error?: string }>
+
   validateToken: () => Promise<{ valid: boolean; user?: unknown }>
 
   // GitHub API (GraphQL - one query gets everything!)

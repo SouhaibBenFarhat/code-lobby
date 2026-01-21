@@ -760,17 +760,49 @@ function VirtualizedMessageList({
 // ===================
 
 // Quick action chips that users can click to send pre-defined prompts
+// Custom prompt from storage
+interface CustomPrompt {
+  id: string
+  label: string
+  prompt: string
+  createdAt: string
+}
+
 function QuickActions({
   prompts,
+  customPrompts,
   onSelect,
+  onAddCustomPrompt,
+  onDeleteCustomPrompt,
   disabled = false,
   className = ''
 }: {
   prompts: QuickPrompt[]
+  customPrompts: CustomPrompt[]
   onSelect: (prompt: string) => void
+  onAddCustomPrompt: (label: string, prompt: string) => Promise<void>
+  onDeleteCustomPrompt: (id: string) => Promise<void>
   disabled?: boolean
   className?: string
 }) {
+  const [isAddingPrompt, setIsAddingPrompt] = useState(false)
+  const [newLabel, setNewLabel] = useState('')
+  const [newPrompt, setNewPrompt] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleAddPrompt = async () => {
+    if (!newLabel.trim() || !newPrompt.trim()) return
+    setIsSaving(true)
+    try {
+      await onAddCustomPrompt(newLabel.trim(), newPrompt.trim())
+      setNewLabel('')
+      setNewPrompt('')
+      setIsAddingPrompt(false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className={cn('relative', className)}>
       {/* Fade gradient on the right edge to indicate more content */}
@@ -787,6 +819,7 @@ function QuickActions({
           scrollbarWidth: 'none' // Firefox
         }}
       >
+        {/* Built-in prompts */}
         {prompts.map((prompt) => (
           <button
             key={prompt.id}
@@ -805,6 +838,108 @@ function QuickActions({
             <span>{prompt.label}</span>
           </button>
         ))}
+
+        {/* Custom prompts with delete button */}
+        {customPrompts.map((prompt) => (
+          <div key={prompt.id} className="relative group flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => onSelect(prompt.prompt)}
+              disabled={disabled}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
+                'bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50',
+                'text-primary hover:text-primary',
+                'transition-all duration-150 pr-7',
+                disabled && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <MessageSquare className="w-3 h-3" />
+              <span>{prompt.label}</span>
+            </button>
+            {/* Delete button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteCustomPrompt(prompt.id)
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-destructive/80 hover:bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Delete prompt"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+
+        {/* Add custom prompt button */}
+        {!isAddingPrompt ? (
+          <button
+            type="button"
+            onClick={() => setIsAddingPrompt(true)}
+            disabled={disabled}
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
+              'bg-transparent hover:bg-muted/60 border border-dashed border-border/50 hover:border-border',
+              'text-muted-foreground/60 hover:text-muted-foreground',
+              'transition-all duration-150',
+              disabled && 'opacity-50 cursor-not-allowed'
+            )}
+            title="Add custom prompt"
+          >
+            <MessageSquarePlus className="w-3 h-3" />
+          </button>
+        ) : (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <input
+              ref={(el) => el?.focus()}
+              type="text"
+              placeholder="Label"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              className="w-16 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:border-primary"
+            />
+            <input
+              type="text"
+              placeholder="Prompt text..."
+              value={newPrompt}
+              onChange={(e) => setNewPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newLabel.trim() && newPrompt.trim()) {
+                  handleAddPrompt()
+                } else if (e.key === 'Escape') {
+                  setIsAddingPrompt(false)
+                  setNewLabel('')
+                  setNewPrompt('')
+                }
+              }}
+              className="w-32 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={handleAddPrompt}
+              disabled={isSaving || !newLabel.trim() || !newPrompt.trim()}
+              className="p-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Check className="w-3 h-3" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingPrompt(false)
+                setNewLabel('')
+                setNewPrompt('')
+              }}
+              className="p-1 rounded hover:bg-muted text-muted-foreground"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1184,6 +1319,7 @@ export function AIChatPanel({
     isStreaming: false
   })
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
+  const [customPrompts, setCustomPrompts] = useState<CustomPrompt[]>([])
 
   // All PR chats for the conversation navigator
   const [allPRChats, setAllPRChats] = useState<PRChatInfo[]>([])
@@ -1268,14 +1404,16 @@ export function AIChatPanel({
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [key, model, thinking] = await Promise.all([
+      const [key, model, thinking, customPromptsData] = await Promise.all([
         window.electron.getClaudeApiKey(),
         window.electron.getSelectedModel(),
-        window.electron.getEnableThinking()
+        window.electron.getEnableThinking(),
+        window.electron.getCustomPrompts()
       ])
       setApiKey(key)
       setSelectedModel(model)
       setEnableThinking(thinking)
+      setCustomPrompts(customPromptsData)
 
       // Load appropriate chat history based on linkedPRChat
       if (linkedPRChat) {
@@ -1311,6 +1449,22 @@ export function AIChatPanel({
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Custom prompt handlers
+  const handleAddCustomPrompt = useCallback(async (label: string, prompt: string) => {
+    const result = await window.electron.addCustomPrompt(label, prompt)
+    if (result.success && result.prompt) {
+      const newPrompt = result.prompt
+      setCustomPrompts((prev) => [...prev, newPrompt])
+    }
+  }, [])
+
+  const handleDeleteCustomPrompt = useCallback(async (id: string) => {
+    const result = await window.electron.deleteCustomPrompt(id)
+    if (result.success) {
+      setCustomPrompts((prev) => prev.filter((p) => p.id !== id))
+    }
+  }, [])
 
   // Load all PR chats for conversation navigator
   // Using linkedPRChat?.prId to trigger reload when switching chats
@@ -2301,10 +2455,13 @@ export function AIChatPanel({
                         })
                       : GENERAL_QUICK_PROMPTS
                   }
+                  customPrompts={customPrompts}
                   onSelect={(prompt) => {
                     // Send the prompt immediately
                     sendMessage(prompt)
                   }}
+                  onAddCustomPrompt={handleAddCustomPrompt}
+                  onDeleteCustomPrompt={handleDeleteCustomPrompt}
                   disabled={isSending}
                 />
               </div>

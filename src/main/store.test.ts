@@ -39,7 +39,8 @@ vi.mock('electron-store', () => {
             prAnalyses: [],
             prAnalysisPanelStates: {},
             prChats: [],
-            activePRChatId: null
+            activePRChatId: null,
+            customQuickPrompts: []
           }
           return defaults[key]
         }
@@ -63,6 +64,7 @@ import ElectronStore from 'electron-store'
 // Import after mocking
 import {
   addChatMessage,
+  addCustomQuickPrompt,
   addMessageToPRChat,
   CACHE_TTL_ALL_REPOS,
   CACHE_TTL_PR_DATA,
@@ -74,6 +76,7 @@ import {
   clearPRChatMessages,
   clearToken,
   createPRChat,
+  deleteCustomQuickPrompt,
   deletePRAnalysis,
   deletePRChat,
   factoryReset,
@@ -83,6 +86,7 @@ import {
   getCardLayouts,
   getChatHistory,
   getClaudeApiKey,
+  getCustomQuickPrompts,
   getIDEViewSettings,
   getMinimizedRepos,
   getMyPRsRepos,
@@ -1167,6 +1171,64 @@ describe('Store', () => {
       expect(getActivePRChatId()).toBeNull()
       expect(getChatHistory()).toEqual([])
       expect(getMyPRsRepos()).toEqual([])
+    })
+  })
+
+  describe('Custom Quick Prompts', () => {
+    it('should return empty array for no custom prompts', () => {
+      expect(getCustomQuickPrompts()).toEqual([])
+    })
+
+    it('should add a custom prompt', () => {
+      const prompt = addCustomQuickPrompt('My Prompt', 'Review this code')
+      expect(prompt.id).toMatch(/^custom_/)
+      expect(prompt.label).toBe('My Prompt')
+      expect(prompt.prompt).toBe('Review this code')
+      expect(prompt.createdAt).toBeDefined()
+
+      const prompts = getCustomQuickPrompts()
+      expect(prompts).toHaveLength(1)
+      expect(prompts[0].label).toBe('My Prompt')
+    })
+
+    it('should add multiple custom prompts', () => {
+      addCustomQuickPrompt('Prompt 1', 'First prompt')
+      addCustomQuickPrompt('Prompt 2', 'Second prompt')
+      addCustomQuickPrompt('Prompt 3', 'Third prompt')
+
+      const prompts = getCustomQuickPrompts()
+      expect(prompts).toHaveLength(3)
+      expect(prompts.map((p) => p.label)).toEqual(['Prompt 1', 'Prompt 2', 'Prompt 3'])
+    })
+
+    it('should delete a custom prompt by id', () => {
+      const prompt1 = addCustomQuickPrompt('Prompt 1', 'First')
+      addCustomQuickPrompt('Prompt 2', 'Second')
+
+      expect(getCustomQuickPrompts()).toHaveLength(2)
+
+      const result = deleteCustomQuickPrompt(prompt1.id)
+      expect(result).toBe(true)
+
+      const remaining = getCustomQuickPrompts()
+      expect(remaining).toHaveLength(1)
+      expect(remaining[0].label).toBe('Prompt 2')
+    })
+
+    it('should return false when deleting non-existent prompt', () => {
+      addCustomQuickPrompt('Prompt 1', 'First')
+
+      const result = deleteCustomQuickPrompt('non-existent-id')
+      expect(result).toBe(false)
+
+      expect(getCustomQuickPrompts()).toHaveLength(1)
+    })
+
+    it('should generate unique IDs for each prompt', () => {
+      const prompt1 = addCustomQuickPrompt('Prompt 1', 'First')
+      const prompt2 = addCustomQuickPrompt('Prompt 2', 'Second')
+
+      expect(prompt1.id).not.toBe(prompt2.id)
     })
   })
 })
