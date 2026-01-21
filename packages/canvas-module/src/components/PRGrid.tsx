@@ -6,8 +6,6 @@
 import {
   useCardLayouts,
   useMinimizedRepos,
-  usePRs,
-  useRefreshRepoPRs,
   useRepoColors,
   useRepos,
   useSelectedRepos,
@@ -18,7 +16,7 @@ import {
 } from '@codelobby/queries'
 import type { CardLayout, Repository } from '@codelobby/shared-store'
 import { Actions, Store, useSignal } from '@codelobby/shared-store'
-import { Button, groupBy, Tooltip, TooltipContent, TooltipTrigger } from '@codelobby/ui-kit'
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@codelobby/ui-kit'
 import {
   AlertCircle,
   FolderGit2,
@@ -45,16 +43,15 @@ interface PRGridProps {
 
 export function PRGrid({ currentUser }: PRGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [layouts, setLayouts] = useState<CardLayout[]>([])
   const [isLayoutLocked, setIsLayoutLocked] = useState(false)
   const [containerSize, setContainerSize] = useState({ width: 1200, height: 800 })
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERY - Data fetching with automatic caching
+  // PRs are fetched by each RepoCard individually for independent loading
   // ═══════════════════════════════════════════════════════════════════════════
   const { data: reposData, isLoading: reposLoading, error: reposError } = useRepos()
   const { data: selectedReposData } = useSelectedRepos()
-  const { data: prsResult, isLoading: prsLoading } = usePRs(selectedReposData || null)
   const { data: savedLayouts } = useCardLayouts()
   const { data: repoColors } = useRepoColors()
   const { data: minimizedReposArray } = useMinimizedRepos()
@@ -63,29 +60,27 @@ export function PRGrid({ currentUser }: PRGridProps) {
   const setCardLayoutsMutation = useSetCardLayouts()
   const setRepoColorMutation = useSetRepoColor()
   const setRepoMinimizedMutation = useSetRepoMinimized()
-  const refreshRepoPRsMutation = useRefreshRepoPRs()
   const setSelectedReposMutation = useSetSelectedRepos()
 
   // UI state from Store (non-API data)
   const user = useSignal(Store.user)
 
-  // Extract PRs from query result
-  const prsData = prsResult?.prs || []
-
   // Convert minimizedRepos array to Set for O(1) lookup
   const minimizedRepos = useMemo(() => new Set(minimizedReposArray || []), [minimizedReposArray])
 
-  // Filter repos based on selection
+  // Filter repos based on selection, PRESERVING SELECTION ORDER
+  // First selected = first slot, second selected = second slot, etc.
   const filteredRepos = useMemo(() => {
     if (!reposData || reposData.length === 0) return []
-    if (selectedReposData === null || selectedReposData === undefined) {
-      return reposData as Repository[]
+    if (!selectedReposData || selectedReposData.length === 0) {
+      return [] // No repos selected = show no cards
     }
-    if (selectedReposData.length === 0) {
-      return []
-    }
-    const selectedSet = new Set(selectedReposData)
-    return (reposData as Repository[]).filter((repo) => selectedSet.has(repo.full_name))
+    // Create a map for O(1) lookup
+    const repoMap = new Map((reposData as Repository[]).map((r) => [r.full_name, r]))
+    // Return repos in SELECTION ORDER (selectedReposData order)
+    return selectedReposData
+      .map((fullName) => repoMap.get(fullName))
+      .filter((repo): repo is Repository => repo !== undefined)
   }, [reposData, selectedReposData])
 
   // Handle closing/hiding a repo card
@@ -139,48 +134,68 @@ export function PRGrid({ currentUser }: PRGridProps) {
     }
   }, [])
 
-  // Generate default layout for repos
-  const generateDefaultLayout = useCallback(
-    (repos: Repository[], existingLayouts: CardLayout[]): CardLayout[] => {
-      const layoutMap = new Map(existingLayouts.map((l) => [l.i, l]))
-      const newLayouts: CardLayout[] = []
+  // Generate layouts for SELECTED repos
+  // RULE: Existing cards NEVER move. New cards go to next available slot.
+  // This preserves stable positioning - adding a new repo won't shift existing windows.
+  const visibleLayouts = useMemo((): { layouts: CardLayout[]; newLayouts: CardLayout[] } => {
+    if (filteredRepos.length === 0) return { layouts: [], newLayouts: [] }
 
-      const cardsPerRow = Math.max(
-        1,
-        Math.floor((containerSize.width - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP))
-      )
+    const savedLayoutMap = new Map(((savedLayouts as CardLayout[]) || []).map((l) => [l.i, l]))
+    const cardsPerRow = Math.max(
+      1,
+      Math.floor((containerSize.width - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP))
+    )
 
-      repos.forEach((repo, index) => {
-        const existing = layoutMap.get(repo.full_name)
-        if (existing) {
-          newLayouts.push(existing)
-        } else {
-          const col = index % cardsPerRow
-          const row = Math.floor(index / cardsPerRow)
+    // Track which grid slots are occupied (for finding next available for new repos)
+    const occupiedSlots = new Set<string>()
 
-          newLayouts.push({
-            i: repo.full_name,
-            x: col * (DEFAULT_CARD_W + CARD_GAP) + CARD_GAP,
-            y: row * (DEFAULT_CARD_H + CARD_GAP) + CARD_GAP,
-            w: DEFAULT_CARD_W,
-            h: DEFAULT_CARD_H
-          })
-        }
-      })
+    // First pass: Collect layouts for repos that have saved positions
+    // and mark their slots as occupied
+    const resultLayouts: CardLayout[] = []
+    const reposNeedingLayout: Repository[] = []
 
-      return newLayouts
-    },
-    [containerSize.width]
-  )
+    for (const repo of filteredRepos) {
+      const saved = savedLayoutMap.get(repo.full_name)
+      if (saved) {
+        resultLayouts.push(saved)
+        // Mark this slot as occupied (approximate grid position)
+        const col = Math.round((saved.x - CARD_GAP) / (DEFAULT_CARD_W + CARD_GAP))
+        const row = Math.round((saved.y - CARD_GAP) / (DEFAULT_CARD_H + CARD_GAP))
+        occupiedSlots.add(`${col},${row}`)
+      } else {
+        reposNeedingLayout.push(repo)
+      }
+    }
 
-  // Apply saved layouts when data loads
-  useEffect(() => {
-    if (!filteredRepos || filteredRepos.length === 0) return
+    // Second pass: Assign new repos to next available slots (filling from top-left)
+    // This ensures new cards don't displace existing ones
+    const newLayouts: CardLayout[] = []
+    let slotIndex = 0
+    for (const repo of reposNeedingLayout) {
+      // Find next unoccupied slot
+      let col: number
+      let row: number
+      do {
+        col = slotIndex % cardsPerRow
+        row = Math.floor(slotIndex / cardsPerRow)
+        slotIndex++
+      } while (occupiedSlots.has(`${col},${row}`))
 
-    const existingLayouts = (savedLayouts as CardLayout[]) || []
-    const newLayouts = generateDefaultLayout(filteredRepos, existingLayouts)
-    setLayouts(newLayouts)
-  }, [filteredRepos, savedLayouts, generateDefaultLayout])
+      // Mark as occupied and add layout
+      occupiedSlots.add(`${col},${row}`)
+      const newLayout = {
+        i: repo.full_name,
+        x: col * (DEFAULT_CARD_W + CARD_GAP) + CARD_GAP,
+        y: row * (DEFAULT_CARD_H + CARD_GAP) + CARD_GAP,
+        w: DEFAULT_CARD_W,
+        h: DEFAULT_CARD_H
+      }
+      resultLayouts.push(newLayout)
+      newLayouts.push(newLayout)
+    }
+
+    return { layouts: resultLayouts, newLayouts }
+  }, [filteredRepos, savedLayouts, containerSize.width])
 
   // Save layouts via mutation
   const saveLayouts = useCallback(
@@ -189,6 +204,17 @@ export function PRGrid({ currentUser }: PRGridProps) {
     },
     [setCardLayoutsMutation]
   )
+
+  // Auto-save layouts for NEW cards to prevent them from being repositioned
+  // This runs after render when new cards are added
+  useEffect(() => {
+    if (visibleLayouts.newLayouts.length > 0) {
+      // Merge new layouts with existing saved layouts
+      const existingSaved = (savedLayouts as CardLayout[]) || []
+      const allLayouts = [...existingSaved, ...visibleLayouts.newLayouts]
+      saveLayouts(allLayouts)
+    }
+  }, [visibleLayouts.newLayouts, savedLayouts, saveLayouts])
 
   // Handle repo color change via mutation
   const handleColorChange = useCallback(
@@ -204,46 +230,32 @@ export function PRGrid({ currentUser }: PRGridProps) {
       setRepoMinimizedMutation.mutate({ repoFullName, isMinimized })
 
       const MINIMIZED_HEIGHT = 85
-      const newLayouts = layouts.map((l) => {
+      const newLayouts = visibleLayouts.layouts.map((l) => {
         if (l.i === repoFullName) {
-          return {
-            ...l,
-            h: isMinimized ? MINIMIZED_HEIGHT : DEFAULT_CARD_H
-          }
+          return { ...l, h: isMinimized ? MINIMIZED_HEIGHT : DEFAULT_CARD_H }
         }
         return l
       })
-      setLayouts(newLayouts)
       saveLayouts(newLayouts)
     },
-    [layouts, saveLayouts, setRepoMinimizedMutation]
+    [visibleLayouts.layouts, saveLayouts, setRepoMinimizedMutation]
   )
 
-  // Handle reload via mutation
-  const handleReload = useCallback(
-    (repoFullName: string) => {
-      refreshRepoPRsMutation.mutate(repoFullName)
-    },
-    [refreshRepoPRsMutation]
-  )
-
-  // Handle drag/resize end
+  // Handle drag/resize end - save to persistent storage
   const handleDragStop = useCallback(
     (id: string, x: number, y: number) => {
-      const newLayouts = layouts.map((l) => (l.i === id ? { ...l, x, y } : l))
-      setLayouts(newLayouts)
+      const newLayouts = visibleLayouts.layouts.map((l) => (l.i === id ? { ...l, x, y } : l))
       saveLayouts(newLayouts)
     },
-    [layouts, saveLayouts]
+    [visibleLayouts.layouts, saveLayouts]
   )
 
   const handleResizeStop = useCallback(
     (id: string, w: number, h: number, x: number, y: number) => {
-      const newLayouts = layouts.map((l) => (l.i === id ? { ...l, w, h, x, y } : l))
-      setLayouts(newLayouts)
+      const newLayouts = visibleLayouts.layouts.map((l) => (l.i === id ? { ...l, w, h, x, y } : l))
       saveLayouts(newLayouts)
     },
-    [layouts, saveLayouts]
+    [visibleLayouts.layouts, saveLayouts]
   )
 
   // Auto-arrange cards in a grid
@@ -268,7 +280,6 @@ export function PRGrid({ currentUser }: PRGridProps) {
       }
     })
 
-    setLayouts(newLayouts)
     saveLayouts(newLayouts)
   }, [filteredRepos, containerSize.width, saveLayouts])
 
@@ -296,23 +307,13 @@ export function PRGrid({ currentUser }: PRGridProps) {
       }
     })
 
-    setLayouts(newLayouts)
     saveLayouts(newLayouts)
   }, [filteredRepos, containerSize, saveLayouts])
 
-  const isLoading = reposLoading || prsLoading
+  // Only show full-page loading for repos, NOT for PRs
+  // PRs loading shows spinner inside individual cards
+  const isLoading = reposLoading
   const error = reposError
-
-  // Memoize PRs grouped by repo, sorted by created_at (newest first)
-  const prsByRepo = useMemo(() => {
-    const grouped = groupBy(prsData || [], (pr) => pr.base.repo.full_name)
-    for (const repoName of Object.keys(grouped)) {
-      grouped[repoName].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    }
-    return grouped
-  }, [prsData])
 
   // Memoize repos map for quick lookup
   const reposMap = useMemo(() => {
@@ -324,13 +325,13 @@ export function PRGrid({ currentUser }: PRGridProps) {
     let maxX = containerSize.width
     let maxY = containerSize.height
 
-    for (const layout of layouts) {
+    for (const layout of visibleLayouts.layouts) {
       maxX = Math.max(maxX, layout.x + layout.w + CARD_GAP)
       maxY = Math.max(maxY, layout.y + layout.h + CARD_GAP)
     }
 
     return { width: maxX, height: maxY }
-  }, [layouts, containerSize])
+  }, [visibleLayouts.layouts, containerSize])
 
   if (isLoading) {
     return (
@@ -485,7 +486,7 @@ export function PRGrid({ currentUser }: PRGridProps) {
             }}
           />
 
-          {layouts.map((layout) => {
+          {visibleLayouts.layouts.map((layout) => {
             const repo = reposMap.get(layout.i)
             if (!repo) return null
             const isMinimized = minimizedRepos?.has(repo.full_name) || false
@@ -541,7 +542,6 @@ export function PRGrid({ currentUser }: PRGridProps) {
               >
                 <RepoCard
                   repo={repo}
-                  prs={prsByRepo[repo.full_name] || []}
                   className="h-full w-full"
                   isDraggable={!isLayoutLocked}
                   onClose={() => handleCloseRepo(repo.full_name)}
@@ -552,7 +552,6 @@ export function PRGrid({ currentUser }: PRGridProps) {
                   onMinimizeChange={(isMinimized) =>
                     handleMinimizeChange(repo.full_name, isMinimized)
                   }
-                  onReload={() => handleReload(repo.full_name)}
                 />
               </Rnd>
             )

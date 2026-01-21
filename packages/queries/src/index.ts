@@ -71,41 +71,108 @@ export function useRepos() {
 }
 
 /**
- * Fetch PRs for selected repositories
+ * Fetch PRs for a SINGLE repo (lazy loading).
+ * Each repo's PRs are cached separately.
  */
-export function usePRs(repoNames: string[] | null) {
+export function usePRsForRepo(repoFullName: string | null) {
   const queryClient = useQueryClient()
 
   return useQuery({
-    queryKey: repoNames ? queryKeys.prs(repoNames) : queryKeys.allPrs,
+    queryKey: repoFullName ? queryKeys.prs([repoFullName]) : ['prs', 'none'],
     queryFn: async () => {
-      if (!repoNames || repoNames.length === 0) {
-        // If no repos selected, fetch all repos first then their PRs
-        const reposResult = await window.electron.fetchContributedRepos()
-        if (!reposResult.success) throw new Error(reposResult.error || 'Failed to fetch repos')
-        const repos = (reposResult.data || []) as Array<{ full_name: string }>
-        const allRepoNames = repos.map((r) => r.full_name)
+      if (!repoFullName) return [] as PullRequest[]
 
-        if (allRepoNames.length === 0) return { prs: [] as PullRequest[], rateLimit: null }
-
-        const result = await window.electron.fetchAllPRsForRepos(allRepoNames)
-        if (!result.success) throw new Error(result.error || 'Failed to fetch PRs')
-        return { prs: (result.data || []) as PullRequest[], rateLimit: result.rateLimit || null }
-      }
-
-      const result = await window.electron.fetchAllPRsForRepos(repoNames)
+      const result = await window.electron.fetchAllPRsForRepos([repoFullName])
       if (!result.success) throw new Error(result.error || 'Failed to fetch PRs')
 
-      // Update rate limit in a separate query for easy access
       if (result.rateLimit) {
         queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
       }
 
-      return { prs: (result.data || []) as PullRequest[], rateLimit: result.rateLimit || null }
+      return (result.data || []) as PullRequest[]
     },
-    staleTime: 2 * 60 * 1000, // Fresh for 2 minutes (PRs change more often)
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    enabled: true // Always enabled, will fetch all if repoNames is null
+    enabled: !!repoFullName
+  })
+}
+
+/**
+ * Fetch PRs for SELECTED repos only (lazy loading).
+ * - null selection = NO PRs fetched (initial state, fast app load)
+ * - empty array = NO PRs (user deselected all)
+ * - array of repos = fetch PRs for ONLY those repos
+ * - Per-repo caching: already-fetched repos are instant
+ */
+export function usePRs() {
+  const { data: selectedRepos } = useSelectedRepos()
+  const queryClient = useQueryClient()
+
+  // Only fetch if user has explicitly selected repos
+  // null = initial state, don't fetch anything yet
+  const reposToFetch = selectedRepos || []
+
+  return useQuery({
+    queryKey:
+      reposToFetch.length > 0 ? ['prs', 'combined', ...reposToFetch.sort()] : ['prs', 'none'],
+    queryFn: async () => {
+      if (reposToFetch.length === 0) {
+        return { prs: [] as PullRequest[], rateLimit: null }
+      }
+
+      // Check which repos already have cached PRs
+      const cachedPRs: PullRequest[] = []
+      const uncachedRepos: string[] = []
+
+      for (const repoName of reposToFetch) {
+        const cached = queryClient.getQueryData<PullRequest[]>(queryKeys.prs([repoName]))
+        if (cached) {
+          cachedPRs.push(...cached)
+        } else {
+          uncachedRepos.push(repoName)
+        }
+      }
+
+      // If all repos are cached, return immediately (INSTANT)
+      if (uncachedRepos.length === 0) {
+        return { prs: cachedPRs, rateLimit: null }
+      }
+
+      // Fetch ONLY the repos we don't have cached
+      const result = await window.electron.fetchAllPRsForRepos(uncachedRepos)
+      if (!result.success) throw new Error(result.error || 'Failed to fetch PRs')
+
+      const fetchedPRs = (result.data || []) as PullRequest[]
+
+      // Cache each repo's PRs separately for future instant access
+      const prsByRepo = new Map<string, PullRequest[]>()
+      for (const pr of fetchedPRs) {
+        const repo = pr.base.repo.full_name
+        if (!prsByRepo.has(repo)) prsByRepo.set(repo, [])
+        prsByRepo.get(repo)?.push(pr)
+      }
+      for (const [repo, prs] of prsByRepo) {
+        queryClient.setQueryData(queryKeys.prs([repo]), prs)
+      }
+      // Cache empty array for repos with no PRs
+      for (const repo of uncachedRepos) {
+        if (!prsByRepo.has(repo)) {
+          queryClient.setQueryData(queryKeys.prs([repo]), [])
+        }
+      }
+
+      if (result.rateLimit) {
+        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+      }
+
+      return {
+        prs: [...cachedPRs, ...fetchedPRs],
+        rateLimit: result.rateLimit || null
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    enabled: reposToFetch.length > 0 // Don't run query if no repos selected
   })
 }
 
@@ -323,16 +390,27 @@ export function useActivePRChatId() {
 
 /**
  * Mutation to set selected repos
+ * - Optimistic update for instant UI response
+ * - Selection is UI-only filtering, no API calls
+ * - PRs are fetched once via usePRs(), TanStack Query handles caching
  */
 export function useSetSelectedRepos() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (repos: string[]) => window.electron.setSelectedRepos(repos),
-    onSuccess: (_, repos) => {
+    // Optimistic update: Update UI immediately (synchronous)
+    onMutate: (repos) => {
+      // Cancel queries is not needed - we're not refetching
+      const previousRepos = queryClient.getQueryData(queryKeys.selectedRepos)
       queryClient.setQueryData(queryKeys.selectedRepos, repos)
-      // Invalidate PRs to refetch for new selection
-      queryClient.invalidateQueries({ queryKey: queryKeys.allPrs })
+      return { previousRepos }
+    },
+    onError: (_err, _repos, context) => {
+      // Rollback on error
+      if (context?.previousRepos !== undefined) {
+        queryClient.setQueryData(queryKeys.selectedRepos, context.previousRepos)
+      }
     }
   })
 }
@@ -455,16 +533,32 @@ export function useSetPRDetailPanel() {
 /**
  * Mutation to refresh a specific repo's PRs
  */
+/**
+ * Mutation to refresh/fetch PRs for a specific repo.
+ * Updates the cached allPrs data without full refetch.
+ */
 export function useRefreshRepoPRs() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (repoFullName: string) => window.electron.refreshRepoPRs(repoFullName),
-    onSuccess: (result) => {
-      // Invalidate all PR queries to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.allPrs })
+    onSuccess: (result, repoFullName) => {
+      // Update the allPrs cache by replacing PRs for this specific repo
+      queryClient.setQueryData<{ prs: PullRequest[]; rateLimit: RateLimit | null }>(
+        queryKeys.allPrs,
+        (old) => {
+          if (!old) return old
+          const newPRs = (result.data || []) as PullRequest[]
+          // Remove old PRs for this repo, add new ones
+          const filteredPRs = old.prs.filter((pr) => pr.base.repo.full_name !== repoFullName)
+          return {
+            prs: [...filteredPRs, ...newPRs],
+            rateLimit: result.rateLimit || old.rateLimit
+          }
+        }
+      )
 
-      // Update rate limit if returned
+      // Update rate limit
       if (result.rateLimit) {
         queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
       }

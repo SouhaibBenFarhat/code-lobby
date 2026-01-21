@@ -1,6 +1,7 @@
 /**
  * RepoSelector - Repository filter dropdown.
  * Uses TanStack Query for data fetching with automatic caching.
+ * Selection state lives ONLY in query cache - optimistic updates make it instant.
  */
 
 import { useRepos, useSelectedRepos, useSetSelectedRepos } from '@codelobby/queries'
@@ -16,15 +17,16 @@ import {
   ScrollArea
 } from '@codelobby/ui-kit'
 import { Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 export function RepoSelector() {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set())
+  // Snapshot of selected repos when dropdown opens - used for stable sorting
+  const [sortSnapshot, setSortSnapshot] = useState<Set<string>>(new Set())
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERY - Data fetching with automatic caching
+  // TANSTACK QUERY - Single source of truth for selection
   // ═══════════════════════════════════════════════════════════════════════════
   const { data: allReposData } = useRepos()
   const { data: savedSelection } = useSelectedRepos()
@@ -32,41 +34,58 @@ export function RepoSelector() {
 
   const allRepos = (allReposData as Repository[]) || []
 
-  // Apply saved selection on load
-  // - null: No explicit selection → show all repos as visually checked
-  // - []: User explicitly selected "None" → show all repos as unchecked
-  // - [...]: User selected specific repos → check those
-  useEffect(() => {
-    if (savedSelection === null && allRepos.length > 0) {
-      // No explicit selection - visually check all (but don't save to store)
-      setSelectedRepos(new Set(allRepos.map((r) => r.full_name)))
-    } else if (savedSelection !== null) {
-      // Use saved selection (could be empty array or specific repos)
-      setSelectedRepos(new Set(savedSelection))
+  // Derive selected repos from query cache
+  // - null/undefined = no selection yet (show none selected)
+  // - [] = user explicitly deselected all
+  // - [...] = user selected specific repos
+  const selectedRepos = useMemo(() => {
+    return new Set(savedSelection || [])
+  }, [savedSelection])
+
+  // Handle dropdown open/close - snapshot selection for stable sorting
+  const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      // Take snapshot of current selection when opening
+      // This determines sort order while dropdown is open
+      setSortSnapshot(new Set(savedSelection || []))
     }
-  }, [savedSelection, allRepos])
-
-  // Filter repos by search
-  const filteredRepos = useMemo(() => {
-    if (!allRepos || allRepos.length === 0) return []
-    if (!search.trim()) return allRepos
-
-    const searchLower = search.toLowerCase()
-    return allRepos.filter(
-      (repo) =>
-        repo.full_name.toLowerCase().includes(searchLower) ||
-        repo.name.toLowerCase().includes(searchLower) ||
-        repo.owner.login.toLowerCase().includes(searchLower)
-    )
-  }, [allRepos, search])
-
-  // Save selection via mutation
-  const saveSelection = (newSelection: Set<string>) => {
-    const reposArray = Array.from(newSelection)
-    setSelectedReposMutation.mutate(reposArray)
+    setOpen(isOpen)
   }
 
-  // Toggle single repo
+  // Filter repos by search and sort: SELECTED FIRST, then alphabetically
+  // Uses sortSnapshot (captured on open) so list doesn't jump while selecting
+  const filteredRepos = useMemo(() => {
+    if (!allRepos || allRepos.length === 0) return []
+
+    let repos = [...allRepos]
+
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase()
+      repos = repos.filter(
+        (repo) =>
+          repo.full_name.toLowerCase().includes(searchLower) ||
+          repo.name.toLowerCase().includes(searchLower) ||
+          repo.owner.login.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Sort using snapshot (stable while dropdown is open)
+    // Selected repos (at time of opening) come first, then alphabetically
+    return repos.sort((a, b) => {
+      const aSelected = sortSnapshot.has(a.full_name)
+      const bSelected = sortSnapshot.has(b.full_name)
+
+      // Selected repos come first
+      if (aSelected && !bSelected) return -1
+      if (!aSelected && bSelected) return 1
+
+      // Within same group, sort alphabetically
+      return a.name.localeCompare(b.name)
+    })
+  }, [allRepos, search, sortSnapshot])
+
+  // Toggle single repo - mutation has optimistic update for instant UI
   const toggleRepo = (repoName: string) => {
     const newSelection = new Set(selectedRepos)
     if (newSelection.has(repoName)) {
@@ -74,30 +93,25 @@ export function RepoSelector() {
     } else {
       newSelection.add(repoName)
     }
-    setSelectedRepos(newSelection)
-    saveSelection(newSelection)
+    setSelectedReposMutation.mutate(Array.from(newSelection))
   }
 
   // Select all
   const selectAll = () => {
     if (!allRepos || allRepos.length === 0) return
-    const newSelection = new Set(allRepos.map((r) => r.full_name))
-    setSelectedRepos(newSelection)
-    saveSelection(newSelection)
+    setSelectedReposMutation.mutate(allRepos.map((r) => r.full_name))
   }
 
   // Deselect all
   const deselectAll = () => {
-    const newSelection = new Set<string>()
-    setSelectedRepos(newSelection)
-    saveSelection(newSelection)
+    setSelectedReposMutation.mutate([])
   }
 
   const totalCount = allRepos?.length || 0
   const selectedCount = selectedRepos.size
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 gap-2">
           <FolderGit2 className="w-3.5 h-3.5" />

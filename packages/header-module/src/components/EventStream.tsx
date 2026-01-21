@@ -3,7 +3,7 @@
  * Uses shared-store for ALL data (Buffet Pattern).
  */
 
-import { usePRs, useSelectedRepos } from '@codelobby/queries'
+import { usePRs } from '@codelobby/queries'
 import type { PREvent, PullRequest } from '@codelobby/shared-store'
 import {
   Avatar,
@@ -147,14 +147,9 @@ export function EventStream() {
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERY - Data fetching with automatic caching
   // ═══════════════════════════════════════════════════════════════════════════
-  const { data: selectedReposData } = useSelectedRepos()
-  const {
-    data: prsResult,
-    isLoading,
-    isFetching: prsFetching,
-    refetch
-  } = usePRs(selectedReposData || null)
+  const { data: prsResult, isLoading, isFetching: prsFetching, refetch } = usePRs()
 
+  // usePRs() already returns only PRs for selected repos
   const prs = (prsResult?.prs as PullRequest[]) || []
 
   // Extract events from PR data (comments, reviews already included)

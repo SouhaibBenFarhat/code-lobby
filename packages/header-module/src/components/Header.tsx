@@ -1,10 +1,4 @@
-import {
-  useClearCacheAndRefresh,
-  usePRs,
-  useRateLimit,
-  useRepos,
-  useSelectedRepos
-} from '@codelobby/queries'
+import { useClearCacheAndRefresh, usePRs, useRateLimit, useRepos } from '@codelobby/queries'
 import {
   Avatar,
   AvatarFallback,
@@ -94,8 +88,8 @@ export function Header({
   // ═══════════════════════════════════════════════════════════════════════════
   const { data: rateLimitData } = useRateLimit()
   const { isLoading: reposLoading, isFetching: reposFetching } = useRepos()
-  const { data: selectedReposData } = useSelectedRepos()
-  const { isLoading: prsLoading, isFetching: prsFetching } = usePRs(selectedReposData || null)
+  // Note: selectedReposData not used here, just loading states
+  const { isLoading: prsLoading, isFetching: prsFetching } = usePRs()
   const clearCacheMutation = useClearCacheAndRefresh()
 
   const isFetching = reposLoading || prsLoading || reposFetching || prsFetching

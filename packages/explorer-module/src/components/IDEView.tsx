@@ -277,7 +277,8 @@ export function IDEView({ currentUser }: IDEViewProps) {
   // ═══════════════════════════════════════════════════════════════════════════
   const { data: reposData, isLoading: reposLoading } = useRepos()
   const { data: selectedReposData } = useSelectedRepos()
-  const { data: prsResult, isLoading: prsLoading } = usePRs(selectedReposData || null)
+  // Always fetch ALL PRs - filtering happens client-side for instant selection changes
+  const { data: prsResult, isLoading: prsLoading } = usePRs()
   const refreshRepoPRsMutation = useRefreshRepoPRs()
 
   // Cast to proper types
@@ -307,19 +308,17 @@ export function IDEView({ currentUser }: IDEViewProps) {
   }, [])
 
   // Filter repos based on selection
+  // No selection (null) or empty selection = show nothing
   const filteredRepos = useMemo(() => {
     if (!repos || repos.length === 0) return []
-    if (selectedReposData === null || selectedReposData === undefined) {
-      return repos
-    }
-    if (selectedReposData.length === 0) {
-      return []
+    if (!selectedReposData || selectedReposData.length === 0) {
+      return [] // No repos selected = show nothing
     }
     const selectedSet = new Set(selectedReposData)
     return repos.filter((repo) => selectedSet.has(repo.full_name))
   }, [repos, selectedReposData])
 
-  // Group PRs by repo
+  // Group PRs by repo (usePRs already returns only selected repos' PRs)
   const prsByRepo = useMemo(() => {
     const grouped: Record<string, PullRequest[]> = {}
     for (const pr of prs) {
@@ -336,7 +335,10 @@ export function IDEView({ currentUser }: IDEViewProps) {
     return grouped
   }, [prs])
 
-  const totalPRCount = prs.length
+  // Count PRs from filtered repos only
+  const totalPRCount = useMemo(() => {
+    return Object.values(prsByRepo).reduce((sum, repoPRs) => sum + repoPRs.length, 0)
+  }, [prsByRepo])
 
   // Sort repos: those with PRs first, then alphabetically
   const sortedRepos = useMemo(() => {

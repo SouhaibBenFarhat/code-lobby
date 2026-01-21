@@ -20,8 +20,6 @@ import {
   sendMessageStreaming as sendClaudeMessageStreaming
 } from './claude-api'
 import {
-  extractEventsFromPRs,
-  fetchAllPRData,
   fetchAllPRsForRepos,
   fetchAllRepositories,
   fetchRateLimitOnly,
@@ -281,71 +279,20 @@ function setupIPCHandlers(): void {
     }
   })
 
-  // GitHub API - Now using GraphQL for efficiency!
-  // One query fetches everything: PRs, repos, checks, comments, reviews
+  // GitHub API - Lazy loading approach
+  // Repos fetched independently, PRs fetched only when repos are selected
   //
   // SINGLE SOURCE OF TRUTH: Main process just does I/O.
-  // Store in renderer is the only in-memory cache.
+  // TanStack Query in renderer handles caching.
 
-  async function fetchAndCacheData() {
-    const token = getToken()
-    if (!token) throw new Error('No token')
-
-    // Check persistent cache (30 min TTL, survives app restart)
-    const persistentCache = getPRDataCache()
-    if (persistentCache && isCacheValid(persistentCache.lastFetch, CACHE_TTL_PR_DATA)) {
-      const cacheAge = Math.round((Date.now() - persistentCache.lastFetch) / 1000 / 60)
-      logger.info(LogCategory.CACHE, 'Using persistent PR cache', {
-        ageMinutes: cacheAge,
-        prs: persistentCache.data.pullRequests?.length || 0,
-        expiresInMinutes: Math.round(
-          (CACHE_TTL_PR_DATA - (Date.now() - persistentCache.lastFetch)) / 1000 / 60
-        )
-      })
-
-      return {
-        pullRequests: persistentCache.data.pullRequests || [],
-        repositories: persistentCache.data.repositories || [],
-        rateLimit: persistentCache.data.rateLimit || {
-          limit: 5000,
-          remaining: 5000,
-          used: 0,
-          resetAt: '',
-          percentage: 0
-        },
-        fromCache: true
-      }
-    }
-
-    // Cache miss - fetch fresh data
-    logger.info(LogCategory.GRAPHQL, 'Cache miss - fetching all PR data via GraphQL')
-    const data = await fetchAllPRData(token)
-    logger.info(LogCategory.GRAPHQL, 'PR data fetched successfully', {
-      prs: data.pullRequests.length,
-      repos: data.repositories.length,
-      rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
-    })
-
-    // Save to persistent cache (for app restart)
-    setPRDataCache(data, [])
-
-    return { ...data, fromCache: false }
-  }
-
+  // DEPRECATED: Old handler that fetched ALL PRs at once
+  // Use fetch-all-prs-for-repos instead for lazy loading
   ipcMain.handle('fetch-prs', async () => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      const data = await fetchAndCacheData()
-      logger.debug(LogCategory.API, 'Returning PRs', { count: data.pullRequests.length })
-      return { success: true, data: data.pullRequests, fromCache: data.fromCache }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch PRs', { error: (error as Error).message })
-      return { success: false, error: (error as Error).message }
-    }
+    logger.warn(LogCategory.API, 'fetch-prs is deprecated - use fetch-all-prs-for-repos instead')
+    return { success: true, data: [], deprecated: true }
   })
 
-  // Fetch ALL open PRs for specific repos (not just user's PRs)
+  // Fetch PRs for specific repos only (lazy loading)
   ipcMain.handle('fetch-all-prs-for-repos', async (_, repoFullNames: string[]) => {
     const token = getToken()
     if (!token) return { success: false, error: 'No token' }
@@ -453,40 +400,23 @@ function setupIPCHandlers(): void {
     }
   })
 
+  // PR events - extracted from PR data when PRs are fetched for selected repos
+  // Events are embedded in PR data from fetchAllPRsForRepos, no separate fetch needed
   ipcMain.handle('fetch-pr-events', async () => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      const data = await fetchAndCacheData()
-      const events = extractEventsFromPRs(data.pullRequests)
-      logger.debug(LogCategory.API, 'Returning PR events', { count: events.length })
-      return { success: true, data: events }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch PR events', {
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
+    // Events are now extracted client-side from PR data
+    // This handler returns empty - UI should use PR data directly
+    logger.debug(LogCategory.API, 'fetch-pr-events called - events are embedded in PR data')
+    return { success: true, data: [] }
   })
 
+  // PR checks - already included in PR data from fetchAllPRsForRepos
   ipcMain.handle('fetch-pr-checks', async (_, _owner: string, _repo: string, _ref: string) => {
-    // With GraphQL, checks are already included in PR data
-    // This handler is kept for compatibility but data comes from fetch-prs
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      const data = await fetchAndCacheData()
-      // Find the PR by ref (sha)
-      const pr = data.pullRequests.find((p: { head: { sha: string } }) => p.head.sha === _ref)
-      return {
-        success: true,
-        data: pr?.checks || { state: 'pending', total_count: 0, check_runs: [] }
-      }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch PR checks', {
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
+    // Checks are embedded in PR data from lazy loading
+    // This handler returns stub - UI should use PR.checks from fetched PRs
+    logger.debug(LogCategory.API, 'fetch-pr-checks called - checks are embedded in PR data')
+    return {
+      success: true,
+      data: { state: 'pending', total_count: 0, check_runs: [] }
     }
   })
 

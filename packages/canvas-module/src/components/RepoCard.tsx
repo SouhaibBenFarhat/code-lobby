@@ -1,9 +1,10 @@
 /**
  * RepoCard - A draggable card displaying a repository and its PRs.
- * Uses shared-store instead of React Context.
+ * Each card fetches its OWN PRs independently for isolated loading states.
  */
 
-import type { PullRequest, Repository } from '@codelobby/shared-store'
+import { usePRsForRepo, useRefreshRepoPRs } from '@codelobby/queries'
+import type { Repository } from '@codelobby/shared-store'
 import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import {
   Avatar,
@@ -37,7 +38,7 @@ import {
   Users,
   X
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { PRCard } from './PRCard'
 
 // Preset color palette
@@ -57,7 +58,6 @@ const COLOR_PALETTE = [
 
 interface RepoCardProps {
   repo: Repository
-  prs: PullRequest[]
   className?: string
   style?: React.CSSProperties
   isDraggable?: boolean
@@ -67,12 +67,10 @@ interface RepoCardProps {
   currentUser?: string | null
   isMinimized?: boolean
   onMinimizeChange?: (isMinimized: boolean) => void
-  onReload?: () => void | Promise<void>
 }
 
 export function RepoCard({
   repo,
-  prs,
   className,
   style,
   isDraggable = true,
@@ -81,11 +79,16 @@ export function RepoCard({
   onColorChange,
   currentUser,
   isMinimized = false,
-  onMinimizeChange,
-  onReload
+  onMinimizeChange
 }: RepoCardProps) {
-  const [colorPickerOpen, setColorPickerOpen] = useState(false)
-  const [isReloading, setIsReloading] = useState(false)
+  const [colorPickerOpen, setColorPickerOpen] = React.useState(false)
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EACH CARD FETCHES ITS OWN PRs - Independent loading per card!
+  // ═══════════════════════════════════════════════════════════════════════════
+  const { data: prs = [], isLoading: isLoadingPRs } = usePRsForRepo(repo.full_name)
+  const refreshMutation = useRefreshRepoPRs()
+  const isReloading = refreshMutation.isPending
 
   // Use shared store instead of context
   const myPRsRepos = useSignal(Store.myPRsRepos)
@@ -93,6 +96,10 @@ export function RepoCard({
 
   const handleToggleMyPRsFilter = () => {
     Actions.toggleMyPRsFilter(repo.full_name)
+  }
+
+  const handleReload = () => {
+    refreshMutation.mutate(repo.full_name)
   }
 
   // Filter PRs based on toggle
@@ -187,34 +194,27 @@ export function RepoCard({
           )}
         </div>
         {/* Reload button */}
-        {onReload && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
-                disabled={isReloading}
-                onClick={async (e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setIsReloading(true)
-                  try {
-                    await onReload()
-                  } finally {
-                    setIsReloading(false)
-                  }
-                }}
-              >
-                {isReloading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Reload PRs for this repo</TooltipContent>
-          </Tooltip>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+              disabled={isReloading}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleReload()
+              }}
+            >
+              {isReloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Reload PRs for this repo</TooltipContent>
+        </Tooltip>
         {/* Minimize button */}
         {onMinimizeChange && (
           <Tooltip>
@@ -350,7 +350,14 @@ export function RepoCard({
       {!isMinimized && (
         <>
           <CardContent className="flex-1 overflow-auto pt-0 px-2 pb-1">
-            {hasPRs ? (
+            {isLoadingPRs ? (
+              <div className="h-full flex items-center justify-center text-center py-4">
+                <div className="space-y-2">
+                  <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto" />
+                  <p className="text-[10px] text-muted-foreground">Loading PRs...</p>
+                </div>
+              </div>
+            ) : hasPRs ? (
               <div className="space-y-1.5 p-0.5">
                 {filteredPRs.map((pr) => (
                   <PRCard key={pr.id} pr={pr} />

@@ -1,6 +1,7 @@
 /**
  * RepoCard Component Tests
  * Tests that RepoCard reads from the shared store (Buffet Pattern)
+ * RepoCard now fetches its own PRs via usePRsForRepo hook
  */
 
 import { resetStore, Store } from '@codelobby/shared-store'
@@ -20,6 +21,15 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RepoCard } from './RepoCard'
 
+// Mock the queries module - RepoCard now fetches its own PRs
+const mockUsePRsForRepo = vi.fn()
+const mockUseRefreshRepoPRs = vi.fn()
+
+vi.mock('@codelobby/queries', () => ({
+  usePRsForRepo: (repoFullName: string | null) => mockUsePRsForRepo(repoFullName),
+  useRefreshRepoPRs: () => mockUseRefreshRepoPRs()
+}))
+
 describe('RepoCard', () => {
   const defaultProps = {
     isDraggable: true,
@@ -31,21 +41,205 @@ describe('RepoCard', () => {
     onMinimizeChange: vi.fn()
   }
 
+  // Default mock data
+  let mockPRs: ReturnType<typeof createMockPullRequest>[] = []
+
   beforeEach(() => {
     resetIdCounter()
     resetStore()
     setupMockElectron()
     vi.clearAllMocks()
+
+    // Default: no PRs, not loading
+    mockPRs = []
+    mockUsePRsForRepo.mockReturnValue({
+      data: mockPRs,
+      isLoading: false
+    })
+    mockUseRefreshRepoPRs.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false
+    })
   })
 
   afterEach(() => {
     resetMockElectron()
   })
 
+  // Helper to set mock PRs for tests
+  const setMockPRs = (prs: ReturnType<typeof createMockPullRequest>[]) => {
+    mockPRs = prs
+    mockUsePRsForRepo.mockReturnValue({
+      data: mockPRs,
+      isLoading: false
+    })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INDEPENDENT DATA FETCHING TESTS
+  // Each RepoCard fetches its own PRs independently
+  // ═══════════════════════════════════════════════════════════════════════════
+  describe('Independent Data Fetching', () => {
+    it('should call usePRsForRepo with the repo full_name', () => {
+      const repo = createMockRepository({ full_name: 'org/my-repo' })
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      expect(mockUsePRsForRepo).toHaveBeenCalledWith('org/my-repo')
+    })
+
+    it('should show loading spinner when PRs are being fetched', () => {
+      const repo = createMockRepository()
+      mockUsePRsForRepo.mockReturnValue({
+        data: [],
+        isLoading: true
+      })
+
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // Should show loading text
+      expect(screen.getByText(/Loading PRs/i)).toBeInTheDocument()
+      // Should show spinner
+      const spinner = document.querySelector('svg.animate-spin')
+      expect(spinner).toBeInTheDocument()
+    })
+
+    it('should show PRs once loading completes', () => {
+      const repo = createMockRepository()
+      const pr = createMockPullRequest({
+        title: 'My Loaded PR',
+        base: { repo, ref: 'main', sha: 'a' }
+      })
+
+      // Start with loading
+      mockUsePRsForRepo.mockReturnValue({
+        data: [],
+        isLoading: true
+      })
+
+      const { rerender } = render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // Verify loading state
+      expect(screen.getByText(/Loading PRs/i)).toBeInTheDocument()
+
+      // Simulate loading complete
+      mockUsePRsForRepo.mockReturnValue({
+        data: [pr],
+        isLoading: false
+      })
+
+      rerender(<RepoCard repo={repo} {...defaultProps} />)
+
+      // PR should now be visible
+      expect(screen.queryByText(/Loading PRs/i)).not.toBeInTheDocument()
+      expect(screen.getByText('My Loaded PR')).toBeInTheDocument()
+    })
+
+    it('should show empty state when loading completes with no PRs', () => {
+      const repo = createMockRepository()
+      mockUsePRsForRepo.mockReturnValue({
+        data: [],
+        isLoading: false
+      })
+
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      expect(screen.getByText(/No open PRs/i)).toBeInTheDocument()
+    })
+
+    it('should not show loading state when PRs are already cached', () => {
+      const repo = createMockRepository()
+      const pr = createMockPullRequest({
+        title: 'Cached PR',
+        base: { repo, ref: 'main', sha: 'a' }
+      })
+
+      // Simulate cached data (not loading)
+      mockUsePRsForRepo.mockReturnValue({
+        data: [pr],
+        isLoading: false
+      })
+
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // Should NOT show loading
+      expect(screen.queryByText(/Loading PRs/i)).not.toBeInTheDocument()
+      // Should show PR directly
+      expect(screen.getByText('Cached PR')).toBeInTheDocument()
+    })
+
+    it('should show repo header even while loading', () => {
+      const repo = createMockRepository({ name: 'my-awesome-repo' })
+      mockUsePRsForRepo.mockReturnValue({
+        data: [],
+        isLoading: true
+      })
+
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // Header should be visible even during loading
+      expect(screen.getByText('my-awesome-repo')).toBeInTheDocument()
+    })
+
+    it('should allow reload while viewing PRs', async () => {
+      const repo = createMockRepository()
+      const pr = createMockPullRequest({
+        title: 'Existing PR',
+        base: { repo, ref: 'main', sha: 'a' }
+      })
+      const mockMutate = vi.fn()
+
+      mockUsePRsForRepo.mockReturnValue({
+        data: [pr],
+        isLoading: false
+      })
+      mockUseRefreshRepoPRs.mockReturnValue({
+        mutate: mockMutate,
+        isPending: false
+      })
+
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // PR should be visible
+      expect(screen.getByText('Existing PR')).toBeInTheDocument()
+
+      // Click reload button
+      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
+      if (reloadButton) {
+        fireEvent.click(reloadButton)
+        expect(mockMutate).toHaveBeenCalledWith(repo.full_name)
+      }
+    })
+
+    it('should show reload spinner while refreshing PRs', () => {
+      const repo = createMockRepository()
+      const pr = createMockPullRequest({
+        title: 'Existing PR',
+        base: { repo, ref: 'main', sha: 'a' }
+      })
+
+      mockUsePRsForRepo.mockReturnValue({
+        data: [pr],
+        isLoading: false
+      })
+      mockUseRefreshRepoPRs.mockReturnValue({
+        mutate: vi.fn(),
+        isPending: true // Refreshing!
+      })
+
+      render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // PR should still be visible (optimistic)
+      expect(screen.getByText('Existing PR')).toBeInTheDocument()
+      // Reload button should show spinner
+      const spinner = document.querySelector('button svg.animate-spin')
+      expect(spinner).toBeInTheDocument()
+    })
+  })
+
   describe('Rendering', () => {
     it('should render repo name', () => {
       const repo = createMockRepository({ name: 'frontend' })
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText('frontend')).toBeInTheDocument()
     })
@@ -54,22 +248,22 @@ describe('RepoCard', () => {
       const repo = createMockRepository({
         owner: { login: 'myorg', avatar_url: '' }
       })
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText(/myorg/)).toBeInTheDocument()
     })
 
     it('should render language badge', () => {
       const repo = createMockRepository({ language: 'TypeScript' })
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText(/TypeScript/)).toBeInTheDocument()
     })
 
     it('should render PR count', () => {
       const repo = createMockRepository()
-      const prs = [createMockPullRequest(), createMockPullRequest(), createMockPullRequest()]
-      render(<RepoCard repo={repo} prs={prs} {...defaultProps} />)
+      setMockPRs([createMockPullRequest(), createMockPullRequest(), createMockPullRequest()])
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText('3')).toBeInTheDocument()
     })
@@ -78,7 +272,7 @@ describe('RepoCard', () => {
       const repo = createMockRepository({
         updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
       })
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText(/ago/i)).toBeInTheDocument()
     })
@@ -87,11 +281,11 @@ describe('RepoCard', () => {
   describe('PRs List', () => {
     it('should render PR cards', () => {
       const repo = createMockRepository()
-      const prs = [
+      setMockPRs([
         createMockPullRequest({ title: 'Fix bug #1', base: { repo, ref: 'main', sha: 'a' } }),
         createMockPullRequest({ title: 'Add feature', base: { repo, ref: 'main', sha: 'b' } })
-      ]
-      render(<RepoCard repo={repo} prs={prs} {...defaultProps} />)
+      ])
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText('Fix bug #1')).toBeInTheDocument()
       expect(screen.getByText('Add feature')).toBeInTheDocument()
@@ -100,9 +294,10 @@ describe('RepoCard', () => {
     it('should emit select-pr action when PR is clicked (Buffet Pattern)', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
+      setMockPRs([pr])
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
 
-      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       fireEvent.click(screen.getByText('Test PR'))
 
@@ -117,7 +312,7 @@ describe('RepoCard', () => {
 
     it('should show empty state when no PRs', () => {
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       expect(screen.getByText(/No open PRs/i) || screen.getByText(/0/)).toBeInTheDocument()
     })
@@ -127,7 +322,7 @@ describe('RepoCard', () => {
     it('should render close button in header', () => {
       const repo = createMockRepository()
       const onClose = vi.fn()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onClose={onClose} />)
+      render(<RepoCard repo={repo} {...defaultProps} onClose={onClose} />)
 
       // Close button has X icon
       const closeButton = document.querySelector('[class*="hover:text-destructive"]')
@@ -137,7 +332,7 @@ describe('RepoCard', () => {
     it('should call onClose when close button clicked', () => {
       const onClose = vi.fn()
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onClose={onClose} />)
+      render(<RepoCard repo={repo} {...defaultProps} onClose={onClose} />)
 
       const closeButton = document.querySelector('[class*="hover:text-destructive"]')
       if (closeButton) {
@@ -150,8 +345,8 @@ describe('RepoCard', () => {
   describe('My PRs Toggle', () => {
     it('should render My PRs toggle button', () => {
       const repo = createMockRepository()
-      const prs = [createMockPullRequest({ base: { repo, ref: 'main', sha: 'a' } })]
-      render(<RepoCard repo={repo} prs={prs} {...defaultProps} />)
+      setMockPRs([createMockPullRequest({ base: { repo, ref: 'main', sha: 'a' } })])
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       // Look for toggle button (User/Users icon)
       const toggle =
@@ -176,9 +371,8 @@ describe('RepoCard', () => {
         base: { repo, ref: 'main', sha: 'b' }
       })
 
-      render(
-        <RepoCard repo={repo} prs={[myPR, otherPR]} {...defaultProps} currentUser="testuser" />
-      )
+      setMockPRs([myPR, otherPR])
+      render(<RepoCard repo={repo} {...defaultProps} currentUser="testuser" />)
 
       // Both should be visible initially (filter not enabled)
       expect(screen.getByText('My PR')).toBeInTheDocument()
@@ -220,9 +414,8 @@ describe('RepoCard', () => {
       // Enable filter for this repo via shared store BEFORE rendering
       Store.myPRsRepos.value = [repo.full_name]
 
-      render(
-        <RepoCard repo={repo} prs={[myPR, otherPR]} {...defaultProps} currentUser="testuser" />
-      )
+      setMockPRs([myPR, otherPR])
+      render(<RepoCard repo={repo} {...defaultProps} currentUser="testuser" />)
 
       // Both PRs are initially in props, filtering happens inside component
       // The component reads from Store.myPRsRepos via useSignal
@@ -238,7 +431,7 @@ describe('RepoCard', () => {
   describe('Color Picker', () => {
     it('should render color picker button', () => {
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       const colorButton =
         document.querySelector('button svg.lucide-palette')?.parentElement ||
@@ -248,9 +441,7 @@ describe('RepoCard', () => {
 
     it('should apply custom color when set', () => {
       const repo = createMockRepository()
-      const { container } = render(
-        <RepoCard repo={repo} prs={[]} {...defaultProps} color="#ff0000" />
-      )
+      const { container } = render(<RepoCard repo={repo} {...defaultProps} color="#ff0000" />)
 
       // Card should have custom color applied
       const _card =
@@ -263,7 +454,7 @@ describe('RepoCard', () => {
   describe('Footer', () => {
     it('should render footer with visual marker', () => {
       const repo = createMockRepository()
-      const { container } = render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      const { container } = render(<RepoCard repo={repo} {...defaultProps} />)
 
       // Look for drag handle area in the component
       const dragHandle = container.querySelector('.drag-handle')
@@ -274,9 +465,7 @@ describe('RepoCard', () => {
   describe('Drag Handle', () => {
     it('should render drag handle when draggable', () => {
       const repo = createMockRepository()
-      const { container } = render(
-        <RepoCard repo={repo} prs={[]} {...defaultProps} isDraggable={true} />
-      )
+      const { container } = render(<RepoCard repo={repo} {...defaultProps} isDraggable={true} />)
 
       // Drag handle should be present
       const dragHandle = container.querySelector('.drag-handle')
@@ -291,8 +480,9 @@ describe('RepoCard', () => {
 
       // Set selected PR via shared store
       Store.selectedPR.value = pr
+      setMockPRs([pr])
 
-      const { container } = render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} />)
+      const { container } = render(<RepoCard repo={repo} {...defaultProps} />)
 
       // Selected PR should have special styling
       const prCard = container.querySelector('.selected')
@@ -312,7 +502,8 @@ describe('RepoCard', () => {
         base: { repo, ref: 'main', sha: 'b' }
       })
 
-      render(<RepoCard repo={repo} prs={[firstPR, secondPR]} {...defaultProps} />)
+      setMockPRs([firstPR, secondPR])
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       // Both PRs should be rendered
       expect(screen.getByText('First PR')).toBeInTheDocument()
@@ -326,7 +517,8 @@ describe('RepoCard', () => {
       const pr = createMockPRWithChecks('success')
       pr.base = { repo, ref: 'main', sha: 'a' }
 
-      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} />)
+      setMockPRs([pr])
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       const successIcon = document.querySelector('.text-success')
       expect(successIcon).toBeInTheDocument()
@@ -337,9 +529,7 @@ describe('RepoCard', () => {
     it('should render minimize button when onMinimizeChange is provided', () => {
       const repo = createMockRepository()
       const onMinimizeChange = vi.fn()
-      render(
-        <RepoCard repo={repo} prs={[]} {...defaultProps} onMinimizeChange={onMinimizeChange} />
-      )
+      render(<RepoCard repo={repo} {...defaultProps} onMinimizeChange={onMinimizeChange} />)
 
       // Look for chevron icon (minimize button)
       const minimizeButton =
@@ -354,7 +544,6 @@ describe('RepoCard', () => {
       render(
         <RepoCard
           repo={repo}
-          prs={[]}
           {...defaultProps}
           isMinimized={false}
           onMinimizeChange={onMinimizeChange}
@@ -370,7 +559,7 @@ describe('RepoCard', () => {
 
     it('should show chevron-down icon when minimized', () => {
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} isMinimized={true} />)
+      render(<RepoCard repo={repo} {...defaultProps} isMinimized={true} />)
 
       const expandIcon = document.querySelector('button svg.lucide-chevron-down')
       expect(expandIcon).toBeInTheDocument()
@@ -378,7 +567,7 @@ describe('RepoCard', () => {
 
     it('should show chevron-up icon when not minimized', () => {
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} isMinimized={false} />)
+      render(<RepoCard repo={repo} {...defaultProps} isMinimized={false} />)
 
       const minimizeIcon = document.querySelector('button svg.lucide-chevron-up')
       expect(minimizeIcon).toBeInTheDocument()
@@ -387,7 +576,8 @@ describe('RepoCard', () => {
     it('should hide content when minimized', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
-      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} isMinimized={true} />)
+      setMockPRs([pr])
+      render(<RepoCard repo={repo} {...defaultProps} isMinimized={true} />)
 
       // PR title should not be visible when minimized
       expect(screen.queryByText('Test PR')).not.toBeInTheDocument()
@@ -396,7 +586,8 @@ describe('RepoCard', () => {
     it('should show content when not minimized', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ title: 'Test PR', base: { repo, ref: 'main', sha: 'a' } })
-      render(<RepoCard repo={repo} prs={[pr]} {...defaultProps} isMinimized={false} />)
+      setMockPRs([pr])
+      render(<RepoCard repo={repo} {...defaultProps} isMinimized={false} />)
 
       // PR title should be visible when not minimized
       expect(screen.getByText('Test PR')).toBeInTheDocument()
@@ -408,7 +599,6 @@ describe('RepoCard', () => {
       render(
         <RepoCard
           repo={repo}
-          prs={[]}
           {...defaultProps}
           isMinimized={true}
           onMinimizeChange={onMinimizeChange}
@@ -424,7 +614,7 @@ describe('RepoCard', () => {
 
     it('should still show header when minimized', () => {
       const repo = createMockRepository({ name: 'test-repo' })
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} isMinimized={true} />)
+      render(<RepoCard repo={repo} {...defaultProps} isMinimized={true} />)
 
       // Repo name should still be visible in header
       expect(screen.getByText('test-repo')).toBeInTheDocument()
@@ -432,54 +622,43 @@ describe('RepoCard', () => {
   })
 
   describe('Reload', () => {
-    it('should render reload button when onReload prop is provided', () => {
+    it('should render reload button (always present now)', () => {
       const repo = createMockRepository()
-      const onReload = vi.fn()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onReload={onReload} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
       expect(reloadButton).toBeInTheDocument()
     })
 
-    it('should not render reload button when onReload prop is not provided', () => {
+    it('should call refresh mutation when reload button is clicked', async () => {
       const repo = createMockRepository()
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} />)
+      const mockMutate = vi.fn()
+      mockUseRefreshRepoPRs.mockReturnValue({
+        mutate: mockMutate,
+        isPending: false
+      })
 
-      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')
-      expect(reloadButton).not.toBeInTheDocument()
-    })
-
-    it('should call onReload when reload button is clicked', async () => {
-      const repo = createMockRepository()
-      const onReload = vi.fn().mockResolvedValue(undefined)
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onReload={onReload} />)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
       const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
       if (reloadButton) {
         fireEvent.click(reloadButton)
-        expect(onReload).toHaveBeenCalled()
+        expect(mockMutate).toHaveBeenCalledWith(repo.full_name)
       }
     })
 
-    it('should call onReload and complete successfully', async () => {
+    it('should show loading spinner when reloading', async () => {
       const repo = createMockRepository()
-      const onReload = vi.fn().mockResolvedValue(undefined)
-      render(<RepoCard repo={repo} prs={[]} {...defaultProps} onReload={onReload} />)
+      mockUseRefreshRepoPRs.mockReturnValue({
+        mutate: vi.fn(),
+        isPending: true
+      })
 
-      const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
-      if (reloadButton) {
-        fireEvent.click(reloadButton)
+      render(<RepoCard repo={repo} {...defaultProps} />)
 
-        await waitFor(() => {
-          expect(onReload).toHaveBeenCalledTimes(1)
-        })
-
-        // After reload completes, button should be enabled again
-        await waitFor(() => {
-          const refreshIcon = document.querySelector('button svg.lucide-refresh-cw')
-          expect(refreshIcon).toBeInTheDocument()
-        })
-      }
+      // Should show loading spinner instead of refresh icon
+      const loadingSpinner = document.querySelector('svg.animate-spin')
+      expect(loadingSpinner).toBeInTheDocument()
     })
   })
 })

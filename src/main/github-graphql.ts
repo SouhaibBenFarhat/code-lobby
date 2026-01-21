@@ -935,32 +935,9 @@ export async function fetchAllRepositories(token: string): Promise<Repository[]>
     }
   }
 
-  // Also include repos from PRs (the user may have contributed to repos they don't own)
-  try {
-    const prData = await fetchAllPRData(token)
-    for (const pr of prData.pullRequests) {
-      const repoId = pr.base.repo.full_name
-      if (seenIds.has(repoId)) continue
-      seenIds.add(repoId)
-
-      allRepos.push({
-        id: repoId,
-        name: pr.base.repo.name,
-        full_name: pr.base.repo.full_name,
-        html_url: `https://github.com/${pr.base.repo.full_name}`,
-        description: null,
-        owner: pr.base.repo.owner,
-        stargazers_count: 0,
-        language: null,
-        updated_at: pr.updated_at
-      })
-    }
-  } catch (error) {
-    // Error fetching repos from PRs, continuing with what we have
-    logger.warn(LogCategory.API, 'Error fetching repos from PRs', {
-      error: error instanceof Error ? error.message : String(error)
-    })
-  }
+  logger.info(LogCategory.API, 'Repositories fetched (no PR data)', {
+    count: allRepos.length
+  })
 
   return allRepos
 }
