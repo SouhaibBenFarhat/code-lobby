@@ -1596,29 +1596,85 @@ export function AIChatPanel({
     loadAllPRChats()
   }, [loadAllPRChats, linkedPRChatId])
 
-  // Auto-switch to PR chat when selectedPR changes
-  useEffect(() => {
-    if (!selectedPR) return
+  // Compute selectedPRId once as a stable string for dependency arrays
+  const selectedPRId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
 
-    const selectedPRId = `${selectedPR.base.repo.full_name}#${selectedPR.number}`
+  // Track if context is valid for the current state
+  const isContextValid = useMemo(() => {
+    // If we're in a PR chat, context should match that PR
+    if (linkedPRChat) {
+      // Context should exist and we should be viewing the same PR
+      return prSystemContext !== undefined && linkedPRChat.prId === selectedPRId
+    }
+    // For general chat or PR empty state, context should be undefined
+    return prSystemContext === undefined
+  }, [linkedPRChat, prSystemContext, selectedPRId])
+
+  // Auto-switch to PR chat when selectedPR changes
+  // Uses cleanup function to handle race conditions
+  useEffect(() => {
+    if (!selectedPRId) return
 
     // If already showing this PR's chat, do nothing
     if (linkedPRChat?.prId === selectedPRId) return
 
+    let cancelled = false
+
     // Check if a chat exists for this PR
     const checkAndSwitch = async () => {
-      const existingChat = await window.electron.getPRChat(selectedPRId)
-      if (existingChat && onSwitchToPRChat) {
-        // Chat exists, switch to it
-        onSwitchToPRChat(selectedPRId)
+      try {
+        const existingChat = await window.electron.getPRChat(selectedPRId)
+
+        // If this effect was cancelled (user switched to another PR), abort
+        if (cancelled) return
+
+        if (existingChat && onSwitchToPRChat) {
+          // Chat exists, switch to it
+          onSwitchToPRChat(selectedPRId)
+        } else if (linkedPRChat && onClosePRChat) {
+          // No chat exists for this PR, but we have an old chat open
+          // Close the old chat to avoid stale context
+          onClosePRChat()
+        }
+      } catch (e) {
+        console.error('Error checking for PR chat:', e)
       }
-      // If no chat exists, do nothing - the empty state will show
     }
+
     checkAndSwitch()
-  }, [selectedPR, linkedPRChat?.prId, onSwitchToPRChat])
+
+    // Cleanup: cancel the async operation if effect re-runs
+    return () => {
+      cancelled = true
+    }
+  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClosePRChat, linkedPRChat])
+
+  // Clear stale prSystemContext when there's a mismatch
+  // This prevents sending messages with wrong context
+  useEffect(() => {
+    // If we're viewing a PR empty state (selectedPR set but no linkedPRChat),
+    // ensure prSystemContext is cleared
+    if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
+      console.warn(
+        '[AIChat] Clearing stale prSystemContext - selectedPR changed but no linkedPRChat'
+      )
+      setPrSystemContext(undefined)
+    }
+    // If linkedPRChat doesn't match selectedPR, clear context as well
+    if (
+      linkedPRChat &&
+      selectedPRId &&
+      linkedPRChat.prId !== selectedPRId &&
+      prSystemContext !== undefined
+    ) {
+      console.warn(
+        '[AIChat] Clearing stale prSystemContext - linkedPRChat does not match selectedPR'
+      )
+      setPrSystemContext(undefined)
+    }
+  }, [selectedPRId, linkedPRChat, prSystemContext])
 
   // Compute if we should show empty state for selected PR with no chat
-  const selectedPRId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
   const showPREmptyState = selectedPR && (!linkedPRChat || linkedPRChat.prId !== selectedPRId)
 
   const handleModelChange = async (modelId: string) => {
@@ -1980,6 +2036,21 @@ export function AIChatPanel({
     (messageText: string) => {
       if (!messageText.trim()) return
 
+      // Validate context before sending
+      // If in PR chat mode, ensure we have valid context for the current PR
+      if (linkedPRChat && !prSystemContext) {
+        console.warn('[AIChat] Attempted to send message without valid PR context')
+        setError('PR context not loaded. Please wait a moment and try again.')
+        return
+      }
+
+      // If linkedPRChat doesn't match selectedPRId, context is stale
+      if (linkedPRChat && selectedPRId && linkedPRChat.prId !== selectedPRId) {
+        console.warn('[AIChat] Context mismatch detected - linkedPRChat does not match selectedPR')
+        setError('PR context is out of sync. Please refresh the page.')
+        return
+      }
+
       const userMessage = messageText.trim()
       const msgId = `temp_${Date.now()}`
 
@@ -2005,7 +2076,7 @@ export function AIChatPanel({
       // Process immediately
       processMessage(userMessage, msgId)
     },
-    [isSending, processMessage]
+    [isSending, processMessage, linkedPRChat, prSystemContext, selectedPRId]
   )
 
   // Main send message handler (uses input state)
@@ -2509,6 +2580,16 @@ export function AIChatPanel({
         )}
       </div>
 
+      {/* Context sync warning */}
+      {linkedPRChat && !isContextValid && !error && (
+        <div className="px-3 py-2 bg-warning/10 border-t border-warning/20">
+          <div className="flex items-center gap-2 text-xs text-warning">
+            <Loader2 className="w-3.5 h-3.5 flex-shrink-0 animate-spin" />
+            <span className="truncate">Syncing PR context...</span>
+          </div>
+        </div>
+      )}
+
       {/* Error display */}
       {error && (
         <div className="px-3 py-2 bg-destructive/10 border-t border-destructive/20">
@@ -2580,7 +2661,7 @@ export function AIChatPanel({
               }}
               onAddCustomPrompt={handleAddCustomPrompt}
               onDeleteCustomPrompt={handleDeleteCustomPrompt}
-              disabled={isSending || streaming.isStreaming}
+              disabled={isSending || streaming.isStreaming || (!!linkedPRChat && !isContextValid)}
             />
 
             <div className="flex gap-2 items-end">

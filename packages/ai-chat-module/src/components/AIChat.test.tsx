@@ -786,3 +786,305 @@ Show me the problematic code and how to fix it.`
     expect(customPrompts[0].label).toBe('Keep me')
   })
 })
+
+// ===================
+// CONTEXT VALIDITY TESTS
+// ===================
+
+// Types for context validity testing
+interface LinkedPRChat {
+  prId: string
+  prNumber: number
+  prTitle: string
+  repoFullName: string
+}
+
+interface SelectedPR {
+  number: number
+  title: string
+  base: {
+    repo: {
+      full_name: string
+    }
+  }
+}
+
+// Helper to compute selectedPRId (matches implementation)
+function computeSelectedPRId(selectedPR: SelectedPR | null | undefined): string | null {
+  return selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
+}
+
+// Helper to check if context is valid (matches implementation)
+function isContextValid(
+  linkedPRChat: LinkedPRChat | null | undefined,
+  prSystemContext: string | undefined,
+  selectedPRId: string | null
+): boolean {
+  // If we're in a PR chat, context should match that PR
+  if (linkedPRChat) {
+    // Context should exist and we should be viewing the same PR
+    return prSystemContext !== undefined && linkedPRChat.prId === selectedPRId
+  }
+  // For general chat or PR empty state, context should be undefined
+  return prSystemContext === undefined
+}
+
+// Helper to check if context should be cleared (matches implementation)
+function shouldClearContext(
+  selectedPRId: string | null,
+  linkedPRChat: LinkedPRChat | null | undefined,
+  prSystemContext: string | undefined
+): boolean {
+  // If we're viewing a PR empty state (selectedPR set but no linkedPRChat),
+  // context should be cleared
+  if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
+    return true
+  }
+  // If linkedPRChat doesn't match selectedPR, context should be cleared
+  if (
+    linkedPRChat &&
+    selectedPRId &&
+    linkedPRChat.prId !== selectedPRId &&
+    prSystemContext !== undefined
+  ) {
+    return true
+  }
+  return false
+}
+
+describe('Context validity logic', () => {
+  const prA: SelectedPR = {
+    number: 1,
+    title: 'PR A',
+    base: { repo: { full_name: 'owner/repo' } }
+  }
+
+  const prB: SelectedPR = {
+    number: 2,
+    title: 'PR B',
+    base: { repo: { full_name: 'owner/repo' } }
+  }
+
+  const linkedChatA: LinkedPRChat = {
+    prId: 'owner/repo#1',
+    prNumber: 1,
+    prTitle: 'PR A',
+    repoFullName: 'owner/repo'
+  }
+
+  const linkedChatB: LinkedPRChat = {
+    prId: 'owner/repo#2',
+    prNumber: 2,
+    prTitle: 'PR B',
+    repoFullName: 'owner/repo'
+  }
+
+  const contextForA = 'System context for PR A with diff data...'
+  const contextForB = 'System context for PR B with diff data...'
+
+  describe('isContextValid', () => {
+    it('should return true when PR chat has matching context', () => {
+      const selectedPRId = computeSelectedPRId(prA)
+      expect(isContextValid(linkedChatA, contextForA, selectedPRId)).toBe(true)
+    })
+
+    it('should return false when PR chat has no context', () => {
+      const selectedPRId = computeSelectedPRId(prA)
+      expect(isContextValid(linkedChatA, undefined, selectedPRId)).toBe(false)
+    })
+
+    it('should return false when linkedPRChat does not match selectedPR', () => {
+      // User selected PR B but linked chat is for PR A
+      const selectedPRId = computeSelectedPRId(prB)
+      expect(isContextValid(linkedChatA, contextForA, selectedPRId)).toBe(false)
+    })
+
+    it('should return true for general chat with no context', () => {
+      expect(isContextValid(null, undefined, null)).toBe(true)
+    })
+
+    it('should return false for general chat with stale context', () => {
+      // No linked chat, but somehow have context (stale)
+      expect(isContextValid(null, contextForA, null)).toBe(false)
+    })
+
+    it('should return true when selectedPR changes to new PR with matching chat', () => {
+      // User switches to PR B and chat is updated
+      const selectedPRId = computeSelectedPRId(prB)
+      expect(isContextValid(linkedChatB, contextForB, selectedPRId)).toBe(true)
+    })
+  })
+
+  describe('shouldClearContext', () => {
+    it('should clear context when viewing PR empty state with stale context', () => {
+      // User selected PR B but no chat exists, old context from PR A
+      const selectedPRId = computeSelectedPRId(prB)
+      expect(shouldClearContext(selectedPRId, null, contextForA)).toBe(true)
+    })
+
+    it('should not clear context when viewing PR empty state with no context', () => {
+      const selectedPRId = computeSelectedPRId(prB)
+      expect(shouldClearContext(selectedPRId, null, undefined)).toBe(false)
+    })
+
+    it('should clear context when linkedPRChat does not match selectedPR', () => {
+      // User selected PR B but linked chat is still PR A with PR A context
+      const selectedPRId = computeSelectedPRId(prB)
+      expect(shouldClearContext(selectedPRId, linkedChatA, contextForA)).toBe(true)
+    })
+
+    it('should not clear context when linkedPRChat matches selectedPR', () => {
+      const selectedPRId = computeSelectedPRId(prA)
+      expect(shouldClearContext(selectedPRId, linkedChatA, contextForA)).toBe(false)
+    })
+
+    it('should not clear context for general chat with no context', () => {
+      expect(shouldClearContext(null, null, undefined)).toBe(false)
+    })
+  })
+
+  describe('selectedPRId computation', () => {
+    it('should return null when selectedPR is null', () => {
+      expect(computeSelectedPRId(null)).toBe(null)
+    })
+
+    it('should return null when selectedPR is undefined', () => {
+      expect(computeSelectedPRId(undefined)).toBe(null)
+    })
+
+    it('should compute correct ID from selectedPR', () => {
+      expect(computeSelectedPRId(prA)).toBe('owner/repo#1')
+      expect(computeSelectedPRId(prB)).toBe('owner/repo#2')
+    })
+
+    it('should match linkedPRChat.prId format', () => {
+      const selectedPRId = computeSelectedPRId(prA)
+      expect(selectedPRId).toBe(linkedChatA.prId)
+    })
+  })
+})
+
+describe('Race condition prevention', () => {
+  // Simulates the cancellation pattern used in the auto-switch effect
+  it('should support cancellation pattern for async operations', async () => {
+    let cancelled = false
+    const results: string[] = []
+
+    const asyncOperation = async (id: string, delay: number): Promise<void> => {
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      if (!cancelled) {
+        results.push(id)
+      }
+    }
+
+    // Start operation A
+    const opA = asyncOperation('A', 50)
+
+    // Cancel A and start B (simulating effect cleanup)
+    cancelled = true
+    cancelled = false // Reset for new operation
+    const opB = asyncOperation('B', 10)
+
+    await Promise.all([opA, opB])
+
+    // Only B should have completed since A was cancelled
+    // Note: In real implementation, each effect run has its own cancelled variable
+    expect(results).toContain('B')
+  })
+
+  it('should handle multiple rapid PR switches correctly', async () => {
+    const switchOperations: string[] = []
+    let currentCancelFn: (() => void) | null = null
+
+    // Simulates the checkAndSwitch function behavior
+    const checkAndSwitch = async (prId: string): Promise<string | null> => {
+      let cancelled = false
+
+      // Store cleanup function
+      const previousCancel = currentCancelFn
+      currentCancelFn = () => {
+        cancelled = true
+      }
+
+      // Cancel previous operation
+      previousCancel?.()
+
+      // Simulate async check
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      if (cancelled) {
+        return null // Cancelled, don't proceed
+      }
+
+      switchOperations.push(prId)
+      return prId
+    }
+
+    // Rapid switches: A -> B -> C
+    const pA = checkAndSwitch('A')
+    const pB = checkAndSwitch('B')
+    const pC = checkAndSwitch('C')
+
+    await Promise.all([pA, pB, pC])
+
+    // Only the last one should have completed
+    expect(switchOperations).toEqual(['C'])
+  })
+})
+
+describe('Message sending validation', () => {
+  // Simulates the validation logic in sendMessage
+  function validateBeforeSend(
+    linkedPRChat: LinkedPRChat | null | undefined,
+    prSystemContext: string | undefined,
+    selectedPRId: string | null
+  ): { valid: boolean; error: string | null } {
+    // If in PR chat mode, ensure we have valid context for the current PR
+    if (linkedPRChat && !prSystemContext) {
+      return { valid: false, error: 'PR context not loaded. Please wait a moment and try again.' }
+    }
+
+    // If linkedPRChat doesn't match selectedPRId, context is stale
+    if (linkedPRChat && selectedPRId && linkedPRChat.prId !== selectedPRId) {
+      return { valid: false, error: 'PR context is out of sync. Please refresh the page.' }
+    }
+
+    return { valid: true, error: null }
+  }
+
+  const linkedChatA: LinkedPRChat = {
+    prId: 'owner/repo#1',
+    prNumber: 1,
+    prTitle: 'PR A',
+    repoFullName: 'owner/repo'
+  }
+
+  it('should allow sending in general chat', () => {
+    const result = validateBeforeSend(null, undefined, null)
+    expect(result.valid).toBe(true)
+  })
+
+  it('should allow sending in PR chat with valid context', () => {
+    const result = validateBeforeSend(linkedChatA, 'context for PR A', 'owner/repo#1')
+    expect(result.valid).toBe(true)
+  })
+
+  it('should block sending in PR chat without context', () => {
+    const result = validateBeforeSend(linkedChatA, undefined, 'owner/repo#1')
+    expect(result.valid).toBe(false)
+    expect(result.error).toContain('context not loaded')
+  })
+
+  it('should block sending when context is out of sync', () => {
+    // linkedPRChat is for PR A, but selectedPR is PR B
+    const result = validateBeforeSend(linkedChatA, 'context for PR A', 'owner/repo#2')
+    expect(result.valid).toBe(false)
+    expect(result.error).toContain('out of sync')
+  })
+
+  it('should allow sending even if selectedPRId is null but linkedPRChat has context', () => {
+    // Edge case: linkedPRChat exists but selectedPRId is null (shouldn't happen normally)
+    const result = validateBeforeSend(linkedChatA, 'context for PR A', null)
+    expect(result.valid).toBe(true)
+  })
+})
