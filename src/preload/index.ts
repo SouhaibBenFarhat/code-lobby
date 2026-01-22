@@ -137,6 +137,11 @@ const electronAPI: ElectronAPI = {
   getDefaultModel: () => ipcRenderer.invoke('get-default-model'),
   getEnableThinking: () => ipcRenderer.invoke('get-enable-thinking'),
   setEnableThinking: (enabled: boolean) => ipcRenderer.invoke('set-enable-thinking', enabled),
+  // Web Search
+  getEnableWebSearch: () => ipcRenderer.invoke('get-enable-web-search'),
+  setEnableWebSearch: (enabled: boolean) => ipcRenderer.invoke('set-enable-web-search', enabled),
+  getTavilyApiKey: () => ipcRenderer.invoke('get-tavily-api-key'),
+  setTavilyApiKey: (key: string | null) => ipcRenderer.invoke('set-tavily-api-key', key),
   getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
   sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
   sendChatMessageStreaming: (message: string, systemContext?: string) =>
@@ -144,20 +149,24 @@ const electronAPI: ElectronAPI = {
   onChatStreamChunk: (
     callback: (chunk: {
       streamId: string
-      type: 'error' | 'thinking' | 'text' | 'done'
+      type: 'error' | 'thinking' | 'text' | 'tool_use' | 'tool_result' | 'done'
       content?: string
       thinking?: string
       error?: string
+      toolUse?: { id: string; name: string; input: Record<string, unknown> }
+      toolResult?: { toolName: string; result: string }
     }) => void
   ) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
       chunk: {
         streamId: string
-        type: 'error' | 'thinking' | 'text' | 'done'
+        type: 'error' | 'thinking' | 'text' | 'tool_use' | 'tool_result' | 'done'
         content?: string
         thinking?: string
         error?: string
+        toolUse?: { id: string; name: string; input: Record<string, unknown> }
+        toolResult?: { toolName: string; result: string }
       }
     ) => {
       callback(chunk)

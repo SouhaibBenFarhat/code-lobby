@@ -214,6 +214,11 @@ export interface ElectronAPI {
   getDefaultModel: () => Promise<string>
   getEnableThinking: () => Promise<boolean>
   setEnableThinking: (enabled: boolean) => Promise<{ success: boolean }>
+  // Web Search
+  getEnableWebSearch: () => Promise<boolean>
+  setEnableWebSearch: (enabled: boolean) => Promise<{ success: boolean }>
+  getTavilyApiKey: () => Promise<string | null>
+  setTavilyApiKey: (key: string | null) => Promise<{ success: boolean; error?: string }>
   getChatHistory: () => Promise<
     Array<{
       id: string
@@ -241,10 +246,12 @@ export interface ElectronAPI {
   onChatStreamChunk: (
     callback: (chunk: {
       streamId: string
-      type: 'thinking' | 'text' | 'done' | 'error'
+      type: 'thinking' | 'text' | 'tool_use' | 'tool_result' | 'done' | 'error'
       content?: string
       thinking?: string
       error?: string
+      toolUse?: { id: string; name: string; input: Record<string, unknown> }
+      toolResult?: { toolName: string; result: string }
     }) => void
   ) => () => void
   clearChatHistory: () => Promise<{ success: boolean }>

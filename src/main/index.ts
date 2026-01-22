@@ -17,7 +17,8 @@ import {
   fetchModels as fetchClaudeModels,
   getDefaultModel,
   sendMessage as sendClaudeMessage,
-  sendMessageStreaming as sendClaudeMessageStreaming
+  sendMessageStreaming as sendClaudeMessageStreaming,
+  sendMessageStreamingWithTools as sendClaudeMessageStreamingWithTools
 } from './claude-api'
 import {
   fetchAllPRsForRepos,
@@ -51,6 +52,7 @@ import {
   getClaudeApiKey,
   getCustomQuickPrompts,
   getEnableThinking,
+  getEnableWebSearch,
   getIDEViewSettings,
   getMinimizedRepos,
   getMyPRsRepos,
@@ -67,6 +69,7 @@ import {
   getSelectedModel,
   getSelectedRepos,
   getSettings,
+  getTavilyApiKey,
   getToken,
   getUser,
   getViewMode,
@@ -79,6 +82,7 @@ import {
   setCardLayouts,
   setClaudeApiKey,
   setEnableThinking,
+  setEnableWebSearch,
   setIDEViewSettings,
   setMyPRsRepos,
   setPRAnalysis,
@@ -92,11 +96,18 @@ import {
   setSelectedModel,
   setSelectedRepos,
   setSettings,
+  setTavilyApiKey,
   setToken,
   setUser,
   setViewMode,
   ViewMode
 } from './store'
+import {
+  executeWebSearch,
+  formatSearchResultsForClaude,
+  validateTavilyApiKey,
+  WEB_SEARCH_TOOL
+} from './web-search'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SINGLE SOURCE OF TRUTH ARCHITECTURE
@@ -795,6 +806,44 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
+  // Web Search settings
+  ipcMain.handle('get-enable-web-search', async () => {
+    return getEnableWebSearch()
+  })
+
+  ipcMain.handle('set-enable-web-search', async (_, enabled: boolean) => {
+    logger.info(LogCategory.API, 'Setting web search', { enabled })
+    setEnableWebSearch(enabled)
+    return { success: true }
+  })
+
+  ipcMain.handle('get-tavily-api-key', async () => {
+    return getTavilyApiKey()
+  })
+
+  ipcMain.handle('set-tavily-api-key', async (_, key: string | null) => {
+    logger.info(LogCategory.AUTH, 'Setting Tavily API key', {
+      action: key ? 'set' : 'clear',
+      keyLength: key?.length || 0
+    })
+
+    if (key) {
+      // Validate the key format (Tavily keys start with tvly-)
+      if (!key.startsWith('tvly-')) {
+        return { success: false, error: 'Invalid API key format. Key should start with tvly-' }
+      }
+
+      // Validate the key by making a test request
+      const isValid = await validateTavilyApiKey(key)
+      if (!isValid) {
+        return { success: false, error: 'Invalid Tavily API key. Please check your key.' }
+      }
+    }
+
+    setTavilyApiKey(key)
+    return { success: true }
+  })
+
   ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
@@ -929,43 +978,100 @@ function setupIPCHandlers(): void {
       // Get the sender's webContents to send stream updates
       const webContents = event.sender
 
-      // Start streaming
-      sendClaudeMessageStreaming(
-        apiKey,
-        claudeMessages,
-        (chunk) => {
-          // Send chunk to renderer
-          webContents.send('chat-stream-chunk', { streamId, ...chunk })
+      // Check if web search is enabled
+      const enableWebSearch = getEnableWebSearch()
+      const tavilyApiKey = getTavilyApiKey()
+      const canUseWebSearch = enableWebSearch && tavilyApiKey
 
-          // If done, save the assistant message to the correct chat
-          if (chunk.type === 'done' && chunk.fullResponse) {
-            const assistantMsg: ChatMessage = {
-              id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
-              role: 'assistant',
-              content: chunk.fullResponse.content,
-              thinking: chunk.fullResponse.thinking,
-              timestamp: new Date().toISOString()
-            }
-
-            // Save to the correct chat (PR-specific or general)
-            if (isInPRChat && activePRChatId) {
-              addMessageToPRChat(activePRChatId, assistantMsg)
-            } else {
-              addChatMessage(assistantMsg)
-            }
-
-            logger.info(LogCategory.API, 'Streaming chat message complete', {
-              model: chunk.fullResponse.model,
-              hasThinking: !!chunk.fullResponse.thinking,
-              usage: chunk.fullResponse.usage,
-              savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
-            })
+      // Common chunk handler for saving messages
+      const handleDoneChunk = (chunk: {
+        type: string
+        fullResponse?: {
+          id: string
+          content: string
+          thinking?: string
+          model: string
+        }
+      }) => {
+        if (chunk.type === 'done' && chunk.fullResponse) {
+          const assistantMsg: ChatMessage = {
+            id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
+            role: 'assistant',
+            content: chunk.fullResponse.content,
+            thinking: chunk.fullResponse.thinking,
+            timestamp: new Date().toISOString()
           }
-        },
-        selectedModel,
-        effectiveSystemPrompt,
-        enableThinking
-      )
+
+          // Save to the correct chat (PR-specific or general)
+          if (isInPRChat && activePRChatId) {
+            addMessageToPRChat(activePRChatId, assistantMsg)
+          } else {
+            addChatMessage(assistantMsg)
+          }
+
+          logger.info(LogCategory.API, 'Streaming chat message complete', {
+            model: chunk.fullResponse.model,
+            hasThinking: !!chunk.fullResponse.thinking,
+            savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
+          })
+        }
+      }
+
+      if (canUseWebSearch) {
+        // Use streaming with tools (web search enabled)
+        logger.info(LogCategory.API, 'Using streaming with web search tool')
+
+        // Tool executor function
+        const toolExecutor = async (
+          toolName: string,
+          toolInput: Record<string, unknown>
+        ): Promise<{ content: string; isError?: boolean }> => {
+          if (toolName === 'web_search') {
+            const query = toolInput.query as string
+            const searchDepth = (toolInput.search_depth as 'basic' | 'advanced') || 'basic'
+            const maxResults = (toolInput.max_results as number) || 5
+
+            const result = await executeWebSearch(tavilyApiKey, query, searchDepth, maxResults)
+            return {
+              content: formatSearchResultsForClaude(result),
+              isError: !result.success
+            }
+          }
+
+          return {
+            content: `Unknown tool: ${toolName}`,
+            isError: true
+          }
+        }
+
+        sendClaudeMessageStreamingWithTools(
+          apiKey,
+          claudeMessages,
+          (chunk) => {
+            // Send chunk to renderer (includes tool_use and tool_result events)
+            webContents.send('chat-stream-chunk', { streamId, ...chunk })
+            handleDoneChunk(chunk)
+          },
+          [WEB_SEARCH_TOOL],
+          toolExecutor,
+          selectedModel,
+          effectiveSystemPrompt,
+          enableThinking
+        )
+      } else {
+        // Use regular streaming (no tools)
+        sendClaudeMessageStreaming(
+          apiKey,
+          claudeMessages,
+          (chunk) => {
+            webContents.send('chat-stream-chunk', { streamId, ...chunk })
+            handleDoneChunk(chunk)
+          },
+          selectedModel,
+          effectiveSystemPrompt,
+          enableThinking
+        )
+      }
 
       return { success: true, streamId }
     }

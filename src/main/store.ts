@@ -45,6 +45,8 @@ export interface AIChatSettings {
   claudeApiKey: string | null
   selectedModel: string | null
   enableThinking: boolean
+  enableWebSearch: boolean // Toggle for web search tool
+  tavilyApiKey: string | null // Tavily API key for web search
   chatHistory: ChatMessage[]
 }
 
@@ -154,6 +156,8 @@ const store = new Store<StoreSchema>({
       claudeApiKey: null,
       selectedModel: null,
       enableThinking: true, // Show Claude's reasoning by default
+      enableWebSearch: false, // Web search disabled by default
+      tavilyApiKey: null, // Tavily API key for web search
       chatHistory: []
     },
     aiPanel: {
@@ -322,6 +326,25 @@ export function getEnableThinking(): boolean {
 export function setEnableThinking(enabled: boolean): void {
   const current = store.get('aiChat')
   store.set('aiChat', { ...current, enableThinking: enabled })
+}
+
+// Web search settings
+export function getEnableWebSearch(): boolean {
+  return store.get('aiChat').enableWebSearch ?? false
+}
+
+export function setEnableWebSearch(enabled: boolean): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { ...current, enableWebSearch: enabled })
+}
+
+export function getTavilyApiKey(): string | null {
+  return store.get('aiChat').tavilyApiKey ?? null
+}
+
+export function setTavilyApiKey(key: string | null): void {
+  const current = store.get('aiChat')
+  store.set('aiChat', { ...current, tavilyApiKey: key })
 }
 
 export function getChatHistory(): ChatMessage[] {
