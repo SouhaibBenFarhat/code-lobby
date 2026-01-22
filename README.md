@@ -368,7 +368,7 @@ codelobby/
 │   │   ├── github-graphql.ts      # GraphQL queries & data fetching
 │   │   ├── claude-api.ts          # Claude AI integration
 │   │   ├── store.ts               # Persistent storage (electron-store)
-│   │   ├── logger.ts              # Structured logging
+│   │   ├── http-client.ts         # Centralized HTTP logging
 │   │   └── *.test.ts              # Colocated tests
 │   │
 │   ├── preload/                   # Electron preload scripts
@@ -385,6 +385,8 @@ codelobby/
 │   ├── slot-system/               # Module registration system
 │   ├── queries/                   # TanStack Query definitions
 │   ├── data-module/               # Data fetching & store updates
+│   ├── api/                       # Centralized IPC client with logging
+│   ├── logger/                    # Structured logging (main/renderer)
 │   ├── ui-kit/                    # Shared UI components (shadcn/ui)
 │   ├── header-module/             # Header bar, settings, logs
 │   ├── canvas-module/             # Free-form PR card canvas

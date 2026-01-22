@@ -427,6 +427,44 @@ CodeLobby only asks for what it needs:
 
 ---
 
+## 📋 Activity Logs & Debugging
+
+### Comprehensive Logging System
+
+CodeLobby includes a full logging system for debugging and understanding app behavior:
+
+**What Gets Logged:**
+- API calls (IPC) with timing and response summaries
+- HTTP requests to external services (GitHub, Claude)
+- Store operations (read/write) with performance metrics
+- User interactions and navigation events
+
+**View Logs:**
+1. Click the "Logs" button in the header
+2. Browse logs in a timeline view (newest first)
+3. Filter by level (debug, info, warn, error) or category
+4. Search through log messages
+5. Copy all logs or last N logs to clipboard
+6. Export logs as JSON file
+
+**Log Categories:**
+| Category | What It Tracks |
+|----------|----------------|
+| App | General application events |
+| API | IPC calls between renderer and main process |
+| HTTP | External HTTP requests (GitHub API, Claude API) |
+| GraphQL | GitHub GraphQL queries |
+| Store | Local storage read/write operations |
+| Cache | TanStack Query cache persistence |
+
+**For Developers:**
+- Logs persist to disk and survive app restarts
+- 1000 log limit with automatic rotation
+- All timestamps include millisecond precision
+- Cache persistence uses throttling and change detection to minimize disk writes
+
+---
+
 ## 📊 Rate Limit Awareness
 
 GitHub has API limits. CodeLobby respects them:
@@ -510,6 +548,7 @@ We're actively building:
 | **Why Open Analysis** | Instant PR diagnostics |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |
 | **Persistent State** | Pick up where you left off |
+| **Activity Logs** | Full debugging capability |
 | **Dark Mode** | Easy on the eyes |
 | **Local & Private** | Your data stays yours |
 
