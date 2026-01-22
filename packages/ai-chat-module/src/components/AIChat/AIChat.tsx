@@ -65,8 +65,6 @@ export function AIChatPanel({
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [enableThinking, setEnableThinking] = useState(false)
-  const [enableWebSearch, setEnableWebSearch] = useState(false)
-  const [hasTavilyKey, setHasTavilyKey] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
   const [showConversations, setShowConversations] = useState(false)
@@ -148,19 +146,15 @@ export function AIChatPanel({
     scroll.resetScroll()
     setError(null)
     try {
-      const [key, model, thinking, webSearch, tavilyKey, prompts] = await Promise.all([
+      const [key, model, thinking, prompts] = await Promise.all([
         window.electron.getClaudeApiKey(),
         window.electron.getSelectedModel(),
         window.electron.getEnableThinking(),
-        window.electron.getEnableWebSearch(),
-        window.electron.getTavilyApiKey(),
         window.electron.getCustomPrompts()
       ])
       setApiKey(key)
       setSelectedModel(model)
       setEnableThinking(thinking)
-      setEnableWebSearch(webSearch)
-      setHasTavilyKey(!!tavilyKey)
       setCustomPrompts(prompts)
 
       if (linkedPRChat) {
@@ -477,8 +471,6 @@ export function AIChatPanel({
           models={models}
           selectedModel={selectedModel}
           enableThinking={enableThinking}
-          enableWebSearch={enableWebSearch}
-          hasTavilyKey={hasTavilyKey}
           isLoadingModels={isLoadingModels}
           onModelChange={async (id) => {
             setSelectedModel(id)
@@ -487,22 +479,6 @@ export function AIChatPanel({
           onThinkingChange={async (enabled) => {
             setEnableThinking(enabled)
             await window.electron.setEnableThinking(enabled)
-          }}
-          onWebSearchChange={async (enabled) => {
-            setEnableWebSearch(enabled)
-            await window.electron.setEnableWebSearch(enabled)
-          }}
-          onTavilyKeySubmit={async (key) => {
-            const result = await window.electron.setTavilyApiKey(key)
-            if (result.success) {
-              setHasTavilyKey(true)
-            }
-            return result
-          }}
-          onTavilyKeyRemove={async () => {
-            await window.electron.setTavilyApiKey(null)
-            setHasTavilyKey(false)
-            setEnableWebSearch(false)
           }}
           onLoadModels={loadModels}
           onRemoveApiKey={handleRemoveApiKey}
