@@ -3,6 +3,7 @@
  * Uses shared-store instead of React Context.
  */
 
+import { api } from '@codelobby/api'
 import { type PRFile, usePRFiles, useRefreshPRDetail } from '@codelobby/queries'
 import type { PullRequest, ReviewThread } from '@codelobby/shared-store'
 import { Actions } from '@codelobby/shared-store'
@@ -1375,11 +1376,11 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
       if (!window.electron) return
 
       // Load panel open state (default to false if not set)
-      const panelOpen = await window.electron.getPRAnalysisPanelOpen(prId)
+      const panelOpen = await api.ai.getPRAnalysisPanelOpen(prId)
       setShowAnalysis(panelOpen)
 
       // Load any persisted analysis
-      const saved = await window.electron.getPRAnalysis(prId)
+      const saved = await api.ai.getPRAnalysis(prId)
       if (saved) {
         setPrAnalysis({
           analysis: saved.analysis,
@@ -1396,7 +1397,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
   const handleTogglePanel = useCallback(
     (newState: boolean) => {
       setShowAnalysis(newState)
-      window.electron.setPRAnalysisPanelOpen(prId, newState)
+      api.ai.setPRAnalysisPanelOpen(prId, newState)
     },
     [prId]
   )
@@ -1406,7 +1407,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
     async (forceRefresh = false) => {
       if (forceRefresh) {
         // Delete existing analysis to force refresh
-        await window.electron.deletePRAnalysis(prId)
+        await api.ai.deletePRAnalysis(prId)
         setPrAnalysis(null)
       }
 
@@ -1490,7 +1491,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
         }
 
         // Set up stream listener
-        const unsubscribe = window.electron.onPRAnalysisStreamChunk((chunk) => {
+        const unsubscribe = api.ai.onPRAnalysisStreamChunk((chunk) => {
           if (chunk.type === 'thinking' && chunk.thinking) {
             setStreamingThinking((prev) => prev + chunk.thinking)
           } else if (chunk.type === 'text' && chunk.content) {
@@ -1512,7 +1513,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
         })
 
         // Start streaming analysis
-        const result = await window.electron.analyzePRStatusStreaming(context)
+        const result = await api.ai.analyzePRStatusStreaming(context)
 
         if (!result.success) {
           setAnalysisError(result.error || 'Failed to start analysis')
@@ -1770,7 +1771,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
         }
       }
 
-      const result = await window.electron.extractPreviewUrl({
+      const result = await api.ai.extractPreviewUrl({
         title: pr.title,
         body: pr.body,
         comments
@@ -1837,7 +1838,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
         }
       }
 
-      const result = await window.electron.extractJiraTicket({
+      const result = await api.ai.extractJiraTicket({
         title: pr.title,
         body: pr.body,
         branchName: pr.head.ref,

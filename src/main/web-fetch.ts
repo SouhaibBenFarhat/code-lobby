@@ -12,7 +12,8 @@
  * - Works for documentation, GitHub, wikis, blogs, etc.
  */
 
-import { LogCategory, logger } from './logger'
+import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { http } from './http-client'
 
 // Tool definition for Claude
 export const FETCH_URL_TOOL = {
@@ -124,8 +125,6 @@ function isMarkdown(url: string, content: string): boolean {
  * Execute the web fetch - fetches a URL and returns its content
  */
 export async function executeWebFetch(url: string): Promise<{ content: string; isError: boolean }> {
-  logger.info(LogCategory.API, 'Executing web fetch', { url })
-
   // Validate URL
   let parsedUrl: URL
   try {
@@ -141,12 +140,7 @@ export async function executeWebFetch(url: string): Promise<{ content: string; i
   }
 
   try {
-    // Create abort controller for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
-
-    const response = await fetch(url, {
-      method: 'GET',
+    const response = await http.get<string>(url, {
       headers: {
         // Pretend to be a browser to get better responses
         'User-Agent':
@@ -154,14 +148,11 @@ export async function executeWebFetch(url: string): Promise<{ content: string; i
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      signal: controller.signal,
-      redirect: 'follow'
+      timeout: FETCH_TIMEOUT,
+      operationName: `webFetch(${parsedUrl.hostname})`
     })
 
-    clearTimeout(timeoutId)
-
     if (!response.ok) {
-      logger.warn(LogCategory.API, 'Web fetch HTTP error', { url, status: response.status })
       return {
         content: `Error: HTTP ${response.status} ${response.statusText} when fetching ${url}`,
         isError: true
@@ -169,9 +160,9 @@ export async function executeWebFetch(url: string): Promise<{ content: string; i
     }
 
     const contentType = response.headers.get('content-type') || ''
-    let content = await response.text()
+    let content = typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
 
-    logger.debug(LogCategory.API, 'Web fetch response received', {
+    logger.debug(LogCategory.API, 'Web fetch processing', {
       url,
       contentType,
       originalLength: content.length
@@ -211,26 +202,18 @@ export async function executeWebFetch(url: string): Promise<{ content: string; i
 
     const result = `URL: ${url}\n${contentLabel} from page:\n\n${content}`
 
-    logger.info(LogCategory.API, 'Web fetch successful', {
-      url,
-      contentLength: content.length,
-      isMarkdown: isMarkdownContent
-    })
-
     return { content: result, isError: false }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
 
     // Handle specific error types
-    if (errorMessage.includes('abort')) {
-      logger.warn(LogCategory.API, 'Web fetch timeout', { url })
+    if (errorMessage.includes('timeout') || errorMessage.includes('abort')) {
       return {
         content: `Error: Request timed out after ${FETCH_TIMEOUT / 1000} seconds for ${url}`,
         isError: true
       }
     }
 
-    logger.error(LogCategory.API, 'Web fetch error', { url, error: errorMessage })
     return { content: `Error fetching ${url}: ${errorMessage}`, isError: true }
   }
 }

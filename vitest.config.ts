@@ -11,6 +11,7 @@ export default defineConfig({
     // Tests are colocated with their source files
     include: [
       'src/main/**/*.test.ts',
+      'src/renderer/**/*.test.ts',
       'packages/*/src/**/*.test.ts',
       'packages/*/src/**/*.test.tsx'
     ],
@@ -45,7 +46,10 @@ export default defineConfig({
       '@codelobby/ai-chat-module': resolve(__dirname, 'packages/ai-chat-module/src/index.tsx'),
       '@codelobby/app': resolve(__dirname, 'packages/app/src/index.ts'),
       '@codelobby/ui-kit': resolve(__dirname, 'packages/ui-kit/src/index.ts'),
-      '@codelobby/test-utils': resolve(__dirname, 'packages/test-utils/src/index.ts')
+      '@codelobby/test-utils': resolve(__dirname, 'packages/test-utils/src/index.ts'),
+      '@codelobby/api': resolve(__dirname, 'packages/api/src/index.ts'),
+      '@codelobby/logger/main': resolve(__dirname, 'packages/logger/src/main.ts'),
+      '@codelobby/logger': resolve(__dirname, 'packages/logger/src/index.ts')
     }
   }
 })

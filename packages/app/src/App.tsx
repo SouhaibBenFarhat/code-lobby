@@ -11,6 +11,7 @@
  * Modules register themselves to slots via the Slot System.
  */
 
+import { api } from '@codelobby/api'
 import { Store, useSignal } from '@codelobby/shared-store'
 import { Slot } from '@codelobby/slot-system'
 import { Button, Toaster, TokenInput, TooltipProvider } from '@codelobby/ui-kit'
@@ -125,11 +126,11 @@ export function App(): React.JSX.Element {
       // Sync final widths to store
       if (isPRResizing) {
         Store.prDetailWidth.value = prWidthRef.current
-        window.electron.setPRDetailPanel({ width: prWidthRef.current })
+        api.settings.setPRDetailPanel({ width: prWidthRef.current })
       }
       if (isAIResizing) {
         Store.aiPanelWidth.value = aiWidthRef.current
-        window.electron.setAIPanel({ width: aiWidthRef.current })
+        api.settings.setAIPanel({ width: aiWidthRef.current })
       }
 
       setIsPRResizing(false)
@@ -156,7 +157,7 @@ export function App(): React.JSX.Element {
   const togglePRPanel = () => {
     const newState = !Store.prDetailOpen.value
     Store.prDetailOpen.value = newState
-    window.electron.setPRDetailPanel({ isOpen: newState })
+    api.settings.setPRDetailPanel({ isOpen: newState })
   }
 
   // Handle authentication success

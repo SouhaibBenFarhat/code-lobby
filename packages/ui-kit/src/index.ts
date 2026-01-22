@@ -46,6 +46,17 @@ export {
 } from './select'
 export { Separator } from './separator'
 export {
+  Timeline,
+  TimelineConnector,
+  TimelineContent,
+  TimelineDescription,
+  TimelineDot,
+  TimelineHeader,
+  TimelineItem,
+  TimelineTime,
+  TimelineTitle
+} from './timeline'
+export {
   Toast,
   ToastAction,
   type ToastActionElement,

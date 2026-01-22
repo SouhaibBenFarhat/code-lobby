@@ -7,10 +7,11 @@
  * - Background refetching on window focus
  * - Automatic persistence to disk via electron persister
  * - Standardized error handling and loading states
+ *
+ * All API calls go through @codelobby/api for automatic logging.
  */
 
-/// <reference path="../../../src/preload/electron-api.d.ts" />
-
+import { api } from '@codelobby/api'
 import type { PullRequest, RateLimit, Repository } from '@codelobby/shared-store'
 import {
   QueryClient,
@@ -73,7 +74,7 @@ export function useRepos(): UseQueryResult<Repository[], Error> {
   return useQuery({
     queryKey: queryKeys.repos,
     queryFn: async () => {
-      const result = await window.electron.fetchContributedRepos()
+      const result = await api.github.fetchContributedRepos()
       if (!result.success) throw new Error(result.error || 'Failed to fetch repos')
       return (result.data || []) as Repository[]
     },
@@ -94,7 +95,7 @@ export function usePRsForRepo(repoFullName: string | null): UseQueryResult<PullR
     queryFn: async () => {
       if (!repoFullName) return [] as PullRequest[]
 
-      const result = await window.electron.fetchAllPRsForRepos([repoFullName])
+      const result = await api.github.fetchAllPRsForRepos([repoFullName])
       if (!result.success) throw new Error(result.error || 'Failed to fetch PRs')
 
       if (result.rateLimit) {
@@ -138,7 +139,7 @@ export function usePRFiles(
     queryFn: async () => {
       if (!owner || !repo || !prNumber) return [] as PRFile[]
 
-      const result = await window.electron.fetchPRFiles(owner, repo, prNumber)
+      const result = await api.github.fetchPRFiles(owner, repo, prNumber)
       if (!result.success) throw new Error(result.error || 'Failed to fetch PR files')
 
       if (result.rateLimit) {
@@ -198,7 +199,7 @@ export function usePRs(): UseQueryResult<
       }
 
       // Fetch ONLY the repos we don't have cached
-      const result = await window.electron.fetchAllPRsForRepos(uncachedRepos)
+      const result = await api.github.fetchAllPRsForRepos(uncachedRepos)
       if (!result.success) throw new Error(result.error || 'Failed to fetch PRs')
 
       const fetchedPRs = (result.data || []) as PullRequest[]
@@ -242,7 +243,7 @@ export function useRateLimit(): UseQueryResult<RateLimit | undefined, Error> {
   return useQuery({
     queryKey: queryKeys.rateLimit,
     queryFn: async () => {
-      const result = await window.electron.getRateLimit()
+      const result = await api.github.getRateLimit()
       if (!result.success) throw new Error(result.error || 'Failed to fetch rate limit')
       return result.data
     },
@@ -258,7 +259,7 @@ export function usePREvents(): UseQueryResult<unknown[], Error> {
   return useQuery({
     queryKey: queryKeys.prEvents,
     queryFn: async () => {
-      const result = await window.electron.fetchPREvents()
+      const result = await api.github.fetchPREvents()
       if (!result.success) throw new Error(result.error || 'Failed to fetch PR events')
       return result.data || []
     },
@@ -277,7 +278,7 @@ export function usePREvents(): UseQueryResult<unknown[], Error> {
 export function useSelectedRepos(): UseQueryResult<string[] | null, Error> {
   return useQuery({
     queryKey: queryKeys.selectedRepos,
-    queryFn: () => window.electron.getSelectedRepos(),
+    queryFn: () => api.settings.getSelectedRepos(),
     staleTime: Infinity, // Settings don't go stale
     gcTime: Infinity
   })
@@ -292,7 +293,7 @@ export function useCardLayouts(): UseQueryResult<
 > {
   return useQuery({
     queryKey: queryKeys.cardLayouts,
-    queryFn: () => window.electron.getCardLayouts(),
+    queryFn: () => api.settings.getCardLayouts(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -304,7 +305,7 @@ export function useCardLayouts(): UseQueryResult<
 export function useRepoColors(): UseQueryResult<Record<string, string>, Error> {
   return useQuery({
     queryKey: queryKeys.repoColors,
-    queryFn: () => window.electron.getRepoColors(),
+    queryFn: () => api.settings.getRepoColors(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -316,7 +317,7 @@ export function useRepoColors(): UseQueryResult<Record<string, string>, Error> {
 export function useMinimizedRepos(): UseQueryResult<string[], Error> {
   return useQuery({
     queryKey: queryKeys.minimizedRepos,
-    queryFn: () => window.electron.getMinimizedRepos(),
+    queryFn: () => api.settings.getMinimizedRepos(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -328,7 +329,7 @@ export function useMinimizedRepos(): UseQueryResult<string[], Error> {
 export function useViewMode(): UseQueryResult<'canvas' | 'ide', Error> {
   return useQuery({
     queryKey: queryKeys.viewMode,
-    queryFn: () => window.electron.getViewMode(),
+    queryFn: () => api.settings.getViewMode(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -343,7 +344,7 @@ export function useIDESettings(): UseQueryResult<
 > {
   return useQuery({
     queryKey: queryKeys.ideSettings,
-    queryFn: () => window.electron.getIDEViewSettings(),
+    queryFn: () => api.settings.getIDEViewSettings(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -355,7 +356,7 @@ export function useIDESettings(): UseQueryResult<
 export function useAIPanel(): UseQueryResult<{ isOpen: boolean; width: number } | null, Error> {
   return useQuery({
     queryKey: queryKeys.aiPanel,
-    queryFn: () => window.electron.getAIPanel(),
+    queryFn: () => api.settings.getAIPanel(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -370,7 +371,7 @@ export function usePRDetailPanel(): UseQueryResult<
 > {
   return useQuery({
     queryKey: queryKeys.prDetailPanel,
-    queryFn: () => window.electron.getPRDetailPanel(),
+    queryFn: () => api.settings.getPRDetailPanel(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -386,7 +387,7 @@ export function usePRDetailPanel(): UseQueryResult<
 export function useClaudeApiKey(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: queryKeys.claudeApiKey,
-    queryFn: () => window.electron.getClaudeApiKey(),
+    queryFn: () => api.ai.getClaudeApiKey(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -398,7 +399,7 @@ export function useClaudeApiKey(): UseQueryResult<string | null, Error> {
 export function useSelectedModel(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: queryKeys.selectedModel,
-    queryFn: () => window.electron.getSelectedModel(),
+    queryFn: () => api.ai.getSelectedModel(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -410,7 +411,7 @@ export function useSelectedModel(): UseQueryResult<string | null, Error> {
 export function useEnableThinking(): UseQueryResult<boolean, Error> {
   return useQuery({
     queryKey: queryKeys.enableThinking,
-    queryFn: () => window.electron.getEnableThinking(),
+    queryFn: () => api.ai.getEnableThinking(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -431,7 +432,7 @@ export function useChatHistory(): UseQueryResult<
 > {
   return useQuery({
     queryKey: queryKeys.chatHistory,
-    queryFn: () => window.electron.getChatHistory(),
+    queryFn: () => api.ai.getChatHistory(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -461,7 +462,7 @@ export function usePRChats(): UseQueryResult<
 > {
   return useQuery({
     queryKey: queryKeys.prChats,
-    queryFn: () => window.electron.getPRChats(),
+    queryFn: () => api.ai.getPRChats(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -473,7 +474,7 @@ export function usePRChats(): UseQueryResult<
 export function useActivePRChatId(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: queryKeys.activePrChatId,
-    queryFn: () => window.electron.getActivePRChatId(),
+    queryFn: () => api.ai.getActivePRChatId(),
     staleTime: Infinity,
     gcTime: Infinity
   })
@@ -498,7 +499,7 @@ export function useSetSelectedRepos(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (repos: string[]) => window.electron.setSelectedRepos(repos),
+    mutationFn: (repos: string[]) => api.settings.setSelectedRepos(repos),
     // Optimistic update: Update UI immediately (synchronous)
     onMutate: (repos) => {
       // Cancel queries is not needed - we're not refetching
@@ -530,7 +531,7 @@ export function useSetCardLayouts(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (layouts: CardLayout[]) => window.electron.setCardLayouts(layouts),
+    mutationFn: (layouts: CardLayout[]) => api.settings.setCardLayouts(layouts),
     // CRITICAL: Optimistic update to prevent "snap back" on drag & drop
     // Without this, the card snaps to old position while waiting for API
     onMutate: (layouts) => {
@@ -560,7 +561,7 @@ export function useSetRepoColor(): UseMutationResult<
 
   return useMutation({
     mutationFn: ({ repoFullName, color }: { repoFullName: string; color: string | null }) =>
-      window.electron.setRepoColor(repoFullName, color),
+      api.settings.setRepoColor(repoFullName, color),
     onSuccess: (_, { repoFullName, color }) => {
       queryClient.setQueryData(queryKeys.repoColors, (old: Record<string, string> | undefined) => {
         const newColors = { ...(old || {}) }
@@ -588,7 +589,7 @@ export function useSetRepoMinimized(): UseMutationResult<
 
   return useMutation({
     mutationFn: ({ repoFullName, isMinimized }: { repoFullName: string; isMinimized: boolean }) =>
-      window.electron.setRepoMinimized(repoFullName, isMinimized),
+      api.settings.setRepoMinimized(repoFullName, isMinimized),
     onSuccess: (_, { repoFullName, isMinimized }) => {
       queryClient.setQueryData(queryKeys.minimizedRepos, (old: string[] | undefined) => {
         const current = old || []
@@ -613,7 +614,7 @@ export function useSetViewMode(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (mode: 'canvas' | 'ide') => window.electron.setViewMode(mode),
+    mutationFn: (mode: 'canvas' | 'ide') => api.settings.setViewMode(mode),
     onSuccess: (_, mode) => {
       queryClient.setQueryData(queryKeys.viewMode, mode)
     }
@@ -633,7 +634,7 @@ export function useSetAIPanel(): UseMutationResult<
 
   return useMutation({
     mutationFn: (settings: { isOpen?: boolean; width?: number }) =>
-      window.electron.setAIPanel(settings),
+      api.settings.setAIPanel(settings),
     onSuccess: (_, settings) => {
       queryClient.setQueryData(
         queryKeys.aiPanel,
@@ -659,7 +660,7 @@ export function useSetPRDetailPanel(): UseMutationResult<
 
   return useMutation({
     mutationFn: (settings: { isOpen?: boolean; width?: number }) =>
-      window.electron.setPRDetailPanel(settings),
+      api.settings.setPRDetailPanel(settings),
     onSuccess: (_, settings) => {
       queryClient.setQueryData(
         queryKeys.prDetailPanel,
@@ -691,7 +692,7 @@ export function useRefreshRepoPRs(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (repoFullName: string) => window.electron.refreshRepoPRs(repoFullName),
+    mutationFn: (repoFullName: string) => api.github.refreshRepoPRs(repoFullName),
     onSuccess: (result, repoFullName) => {
       // Update the allPrs cache by replacing PRs for this specific repo
       queryClient.setQueryData<{ prs: PullRequest[]; rateLimit: RateLimit | null }>(
@@ -735,7 +736,7 @@ export function useRefreshPRDetail(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ repoFullName }) => window.electron.refreshRepoPRs(repoFullName),
+    mutationFn: ({ repoFullName }) => api.github.refreshRepoPRs(repoFullName),
     onSuccess: (result, { owner, repo, prNumber, repoFullName }) => {
       // Update the allPrs cache by replacing PRs for this specific repo
       queryClient.setQueryData<{ prs: PullRequest[]; rateLimit: RateLimit | null }>(
@@ -773,7 +774,7 @@ export function useClearCacheAndRefresh(): UseMutationResult<void, Error, void, 
 
   return useMutation({
     mutationFn: async () => {
-      await window.electron.clearAllData()
+      await api.settings.clearAllData()
     },
     onSuccess: () => {
       // Invalidate all queries to force refetch
@@ -786,7 +787,7 @@ export function useClearCacheAndRefresh(): UseMutationResult<void, Error, void, 
  * Mutation to set Claude API key
  */
 export function useSetClaudeApiKey(): UseMutationResult<
-  { success: boolean; user?: unknown; error?: string },
+  { success: boolean; error?: string },
   Error,
   string,
   unknown
@@ -794,7 +795,7 @@ export function useSetClaudeApiKey(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (apiKey: string) => window.electron.setClaudeApiKey(apiKey),
+    mutationFn: (apiKey: string) => api.ai.setClaudeApiKey(apiKey),
     onSuccess: (_, apiKey) => {
       queryClient.setQueryData(queryKeys.claudeApiKey, apiKey)
     }
@@ -813,7 +814,7 @@ export function useSetSelectedModel(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (model: string) => window.electron.setSelectedModel(model),
+    mutationFn: (model: string) => api.ai.setSelectedModel(model),
     onSuccess: (_, model) => {
       queryClient.setQueryData(queryKeys.selectedModel, model)
     }
@@ -832,7 +833,7 @@ export function useSetEnableThinking(): UseMutationResult<
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (enabled: boolean) => window.electron.setEnableThinking(enabled),
+    mutationFn: (enabled: boolean) => api.ai.setEnableThinking(enabled),
     onSuccess: (_, enabled) => {
       queryClient.setQueryData(queryKeys.enableThinking, enabled)
     }
@@ -845,7 +846,7 @@ export function useSetEnableThinking(): UseMutationResult<
 
 export async function prefetchInitialData(queryClient: QueryClient): Promise<void> {
   // Check if user is authenticated first
-  const token = await window.electron.getToken()
+  const token = await api.github.getToken()
   if (!token) return
 
   // Prefetch in parallel
@@ -853,26 +854,26 @@ export async function prefetchInitialData(queryClient: QueryClient): Promise<voi
     queryClient.prefetchQuery({
       queryKey: queryKeys.repos,
       queryFn: async () => {
-        const result = await window.electron.fetchContributedRepos()
+        const result = await api.github.fetchContributedRepos()
         if (!result.success) throw new Error(result.error)
         return result.data || []
       }
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.selectedRepos,
-      queryFn: () => window.electron.getSelectedRepos()
+      queryFn: () => api.settings.getSelectedRepos()
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.viewMode,
-      queryFn: () => window.electron.getViewMode()
+      queryFn: () => api.settings.getViewMode()
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.aiPanel,
-      queryFn: () => window.electron.getAIPanel()
+      queryFn: () => api.settings.getAIPanel()
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.prDetailPanel,
-      queryFn: () => window.electron.getPRDetailPanel()
+      queryFn: () => api.settings.getPRDetailPanel()
     })
   ])
 }

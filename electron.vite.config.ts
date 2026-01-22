@@ -4,16 +4,30 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@codelobby/logger/main': resolve('packages/logger/src/main.ts'),
+        '@codelobby/logger': resolve('packages/logger/src/index.ts')
+      }
+    }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@codelobby/logger/main': resolve('packages/logger/src/main.ts'),
+        '@codelobby/logger': resolve('packages/logger/src/index.ts')
+      }
+    }
   },
   renderer: {
     resolve: {
       alias: {
         '@': resolve('src/renderer'),
         // Workspace packages - resolved to source for hot reload
+        '@codelobby/logger': resolve('packages/logger/src/index.ts'),
+        '@codelobby/api': resolve('packages/api/src/index.ts'),
         '@codelobby/slot-system': resolve('packages/slot-system/src/index.tsx'),
         '@codelobby/shared-store': resolve('packages/shared-store/src/index.ts'),
         '@codelobby/queries': resolve('packages/queries/src/index.ts'),

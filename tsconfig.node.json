@@ -11,11 +11,16 @@
     "target": "ESNext",
     "outDir": "out",
     "declaration": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@codelobby/logger/main": ["./packages/logger/src/main.ts"],
+      "@codelobby/logger": ["./packages/logger/src/index.ts"]
+    }
   },
   "include": [
     "electron.vite.config.ts",
     "src/main/**/*",
-    "src/preload/**/*"
+    "src/preload/**/*",
+    "packages/logger/src/**/*"
   ]
 }

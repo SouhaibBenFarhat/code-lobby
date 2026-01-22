@@ -1,3 +1,4 @@
+import { api } from '@codelobby/api'
 import {
   Button,
   Dialog,
@@ -293,7 +294,7 @@ export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps): Reac
   const handleFactoryReset = useCallback(async () => {
     setIsResetting(true)
     try {
-      await window.electron.factoryReset()
+      await api.settings.factoryReset()
       setOpen(false)
       setShowResetConfirm(false)
       // Reload the app to apply the reset

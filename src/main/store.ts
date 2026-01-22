@@ -1,4 +1,62 @@
+import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 import Store from 'electron-store'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STORE OPERATION WRAPPERS WITH LOGGING
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Wrap a store GET operation with logging
+ */
+function storeGet<T>(key: string, getter: () => T): T {
+  const startTime = performance.now()
+  const result = getter()
+  const durationMs = performance.now() - startTime
+
+  // Only log if operation took more than 1ms (avoid noise for fast reads)
+  if (durationMs > 1) {
+    logger.debug(LogCategory.STORE, `GET ${key}`, {
+      durationMs: Math.round(durationMs * 100) / 100
+    })
+  }
+
+  return result
+}
+
+// Keys that are written frequently and should only log if slow (>100ms)
+const HIGH_FREQUENCY_KEYS = new Set(['tanstackQueryCache'])
+
+/**
+ * Wrap a store SET operation with logging
+ */
+function storeSet<_T>(key: string, setter: () => void, details?: Record<string, unknown>): void {
+  const startTime = performance.now()
+  setter()
+  const durationMs = performance.now() - startTime
+
+  // Skip logging for high-frequency keys unless they're slow
+  if (HIGH_FREQUENCY_KEYS.has(key) && durationMs < 100) {
+    return
+  }
+
+  logger.debug(LogCategory.STORE, `SET ${key}`, {
+    durationMs: Math.round(durationMs * 100) / 100,
+    ...details
+  })
+}
+
+/**
+ * Wrap a store DELETE operation with logging
+ */
+function storeDelete(key: string, deleter: () => void): void {
+  const startTime = performance.now()
+  deleter()
+  const durationMs = performance.now() - startTime
+
+  logger.debug(LogCategory.STORE, `DELETE ${key}`, {
+    durationMs: Math.round(durationMs * 100) / 100
+  })
+}
 
 interface GitHubUser {
   login: string
@@ -177,75 +235,82 @@ const store = new Store<StoreSchema>({
 })
 
 export function getToken(): string | null {
-  return store.get('token')
+  return storeGet('token', () => store.get('token'))
 }
 
 export function setToken(token: string): void {
-  store.set('token', token)
+  storeSet('token', () => store.set('token', token), { hasToken: !!token })
 }
 
 export function clearToken(): void {
-  store.delete('token')
-  store.delete('user')
+  storeDelete('token', () => {
+    store.delete('token')
+    store.delete('user')
+  })
+  logger.info(LogCategory.STORE, 'Cleared token and user data')
 }
 
 export function getUser(): GitHubUser | null {
-  return store.get('user')
+  return storeGet('user', () => store.get('user'))
 }
 
 export function setUser(user: GitHubUser): void {
-  store.set('user', user)
+  storeSet('user', () => store.set('user', user), { login: user.login })
 }
 
 export function getSettings(): StoreSchema['settings'] {
-  return store.get('settings')
+  return storeGet('settings', () => store.get('settings'))
 }
 
 export function setSettings(settings: Partial<StoreSchema['settings']>): void {
   const current = getSettings()
-  store.set('settings', { ...current, ...settings })
+  storeSet('settings', () => store.set('settings', { ...current, ...settings }), {
+    keys: Object.keys(settings)
+  })
 }
 
 export function getRepoOrder(): string[] {
-  return store.get('repoOrder')
+  return storeGet('repoOrder', () => store.get('repoOrder'))
 }
 
 export function setRepoOrder(order: string[]): void {
-  store.set('repoOrder', order)
+  storeSet('repoOrder', () => store.set('repoOrder', order), { count: order.length })
 }
 
 export function getCardLayouts(): LayoutItem[] {
-  return store.get('cardLayouts')
+  return storeGet('cardLayouts', () => store.get('cardLayouts'))
 }
 
 export function setCardLayouts(layouts: LayoutItem[]): void {
-  store.set('cardLayouts', layouts)
+  storeSet('cardLayouts', () => store.set('cardLayouts', layouts), { count: layouts.length })
 }
 
 export function getSelectedRepos(): string[] | null {
-  return store.get('selectedRepos')
+  return storeGet('selectedRepos', () => store.get('selectedRepos'))
 }
 
 export function setSelectedRepos(repos: string[]): void {
-  store.set('selectedRepos', repos)
+  storeSet('selectedRepos', () => store.set('selectedRepos', repos), { count: repos.length })
 }
 
 // My PRs filter (shared across all views)
 export function getMyPRsRepos(): string[] {
-  return store.get('myPRsRepos')
+  return storeGet('myPRsRepos', () => store.get('myPRsRepos'))
 }
 
 export function setMyPRsRepos(repos: string[]): void {
-  store.set('myPRsRepos', repos)
+  storeSet('myPRsRepos', () => store.set('myPRsRepos', repos), { count: repos.length })
 }
 
 export function getPRDetailPanel(): PanelSettings {
-  return store.get('prDetailPanel')
+  return storeGet('prDetailPanel', () => store.get('prDetailPanel'))
 }
 
 export function setPRDetailPanel(settings: Partial<PanelSettings>): void {
   const current = getPRDetailPanel()
-  store.set('prDetailPanel', { ...current, ...settings })
+  storeSet('prDetailPanel', () => store.set('prDetailPanel', { ...current, ...settings }), {
+    keys: Object.keys(settings)
+  })
 }
 
 export function getRepoColors(): Record<string, string> {
@@ -300,56 +365,78 @@ export function setIDEViewSettings(settings: Partial<IDEViewSettings>): void {
 
 // AI Chat
 export function getClaudeApiKey(): string | null {
-  return store.get('aiChat').claudeApiKey
+  return storeGet('aiChat.claudeApiKey', () => store.get('aiChat').claudeApiKey)
 }
 
 export function setClaudeApiKey(key: string | null): void {
   const current = store.get('aiChat')
-  store.set('aiChat', { ...current, claudeApiKey: key })
+  storeSet('aiChat.claudeApiKey', () => store.set('aiChat', { ...current, claudeApiKey: key }), {
+    hasKey: !!key
+  })
 }
 
 export function getSelectedModel(): string | null {
-  return store.get('aiChat').selectedModel
+  return storeGet('aiChat.selectedModel', () => store.get('aiChat').selectedModel)
 }
 
 export function setSelectedModel(model: string | null): void {
   const current = store.get('aiChat')
-  store.set('aiChat', { ...current, selectedModel: model })
+  storeSet(
+    'aiChat.selectedModel',
+    () => store.set('aiChat', { ...current, selectedModel: model }),
+    {
+      model
+    }
+  )
 }
 
 export function getEnableThinking(): boolean {
-  return store.get('aiChat').enableThinking ?? true
+  return storeGet('aiChat.enableThinking', () => store.get('aiChat').enableThinking ?? true)
 }
 
 export function setEnableThinking(enabled: boolean): void {
   const current = store.get('aiChat')
-  store.set('aiChat', { ...current, enableThinking: enabled })
+  storeSet(
+    'aiChat.enableThinking',
+    () => store.set('aiChat', { ...current, enableThinking: enabled }),
+    { enabled }
+  )
 }
 
 export function getEnableWebFetch(): boolean {
-  return store.get('aiChat').enableWebFetch ?? false
+  return storeGet('aiChat.enableWebFetch', () => store.get('aiChat').enableWebFetch ?? false)
 }
 
 export function setEnableWebFetch(enabled: boolean): void {
   const current = store.get('aiChat')
-  store.set('aiChat', { ...current, enableWebFetch: enabled })
+  storeSet(
+    'aiChat.enableWebFetch',
+    () => store.set('aiChat', { ...current, enableWebFetch: enabled }),
+    { enabled }
+  )
 }
 
 export function getChatHistory(): ChatMessage[] {
-  return store.get('aiChat').chatHistory
+  return storeGet('aiChat.chatHistory', () => store.get('aiChat').chatHistory)
 }
 
 export function addChatMessage(message: ChatMessage): void {
   const current = store.get('aiChat')
-  store.set('aiChat', {
-    ...current,
-    chatHistory: [...current.chatHistory, message]
-  })
+  storeSet(
+    'aiChat.chatHistory',
+    () =>
+      store.set('aiChat', {
+        ...current,
+        chatHistory: [...current.chatHistory, message]
+      }),
+    { role: message.role, messageCount: current.chatHistory.length + 1 }
+  )
 }
 
 export function clearChatHistory(): void {
   const current = store.get('aiChat')
-  store.set('aiChat', { ...current, chatHistory: [] })
+  storeSet('aiChat.chatHistory', () => store.set('aiChat', { ...current, chatHistory: [] }))
+  logger.info(LogCategory.STORE, 'Cleared chat history')
 }
 
 // AI Panel settings
@@ -364,42 +451,53 @@ export function setAIPanel(settings: Partial<AIPanelSettings>): void {
 
 // Data Cache (persistent across app restarts)
 export function getDataCache(): DataCache {
-  return store.get('dataCache')
+  return storeGet('dataCache', () => store.get('dataCache'))
 }
 
 export function getPRDataCache(): DataCache['prData'] {
-  return store.get('dataCache').prData
+  return storeGet('dataCache.prData', () => store.get('dataCache').prData)
 }
 
 export function setPRDataCache(data: any, selectedRepos: string[]): void {
   const current = getDataCache()
-  store.set('dataCache', {
-    ...current,
-    prData: {
-      data,
-      lastFetch: Date.now(),
-      selectedRepos
-    }
-  })
+  storeSet(
+    'dataCache.prData',
+    () =>
+      store.set('dataCache', {
+        ...current,
+        prData: {
+          data,
+          lastFetch: Date.now(),
+          selectedRepos
+        }
+      }),
+    { repoCount: selectedRepos.length }
+  )
 }
 
 export function getAllReposCache(): DataCache['allRepos'] {
-  return store.get('dataCache').allRepos
+  return storeGet('dataCache.allRepos', () => store.get('dataCache').allRepos)
 }
 
 export function setAllReposCache(data: any[]): void {
   const current = getDataCache()
-  store.set('dataCache', {
-    ...current,
-    allRepos: {
-      data,
-      lastFetch: Date.now()
-    }
-  })
+  storeSet(
+    'dataCache.allRepos',
+    () =>
+      store.set('dataCache', {
+        ...current,
+        allRepos: {
+          data,
+          lastFetch: Date.now()
+        }
+      }),
+    { repoCount: data.length }
+  )
 }
 
 export function clearDataCache(): void {
-  store.set('dataCache', { prData: null, allRepos: null })
+  storeSet('dataCache', () => store.set('dataCache', { prData: null, allRepos: null }))
+  logger.info(LogCategory.STORE, 'Cleared data cache')
 }
 
 /**
@@ -408,6 +506,8 @@ export function clearDataCache(): void {
  * Clears: all cached data, PR analyses, chat history, layouts, etc.
  */
 export function clearAllUserData(): void {
+  const startTime = performance.now()
+
   // Clear cached data
   store.set('dataCache', { prData: null, allRepos: null })
 
@@ -439,6 +539,15 @@ export function clearAllUserData(): void {
   store.set('ideViewSettings', {
     sidebarWidth: 280,
     expandedRepos: []
+  })
+
+  // Clear TanStack Query cache
+  store.delete('tanstackQueryCache')
+
+  const durationMs = performance.now() - startTime
+  logger.info(LogCategory.STORE, 'Cleared all user data', {
+    durationMs: Math.round(durationMs * 100) / 100,
+    preserved: ['settings', 'claudeApiKey', 'selectedModel']
   })
 }
 
@@ -519,7 +628,7 @@ export function clearPRAnalysisPanelStates(): void {
 const MAX_PR_CHATS = 50 // Limit to prevent unbounded growth
 
 export function getPRChats(): PRChat[] {
-  return store.get('prChats') || []
+  return storeGet('prChats', () => store.get('prChats') || [])
 }
 
 export function getPRChat(prId: string): PRChat | null {
@@ -539,6 +648,7 @@ export function createPRChat(
   // Check if chat already exists
   const existing = chats.find((c) => c.prId === prId)
   if (existing) {
+    logger.debug(LogCategory.STORE, 'PR chat already exists', { prId })
     return existing
   }
 
@@ -561,7 +671,11 @@ export function createPRChat(
     updatedChats.splice(MAX_PR_CHATS)
   }
 
-  store.set('prChats', updatedChats)
+  storeSet('prChats', () => store.set('prChats', updatedChats), {
+    prId,
+    totalChats: updatedChats.length
+  })
+
   return newChat
 }
 
@@ -572,7 +686,11 @@ export function addMessageToPRChat(prId: string, message: ChatMessage): void {
   if (index >= 0) {
     chats[index].messages.push(message)
     chats[index].updatedAt = new Date().toISOString()
-    store.set('prChats', chats)
+    storeSet('prChats.message', () => store.set('prChats', chats), {
+      prId,
+      role: message.role,
+      messageCount: chats[index].messages.length
+    })
   }
 }
 
@@ -586,16 +704,23 @@ export function clearPRChatMessages(prId: string): void {
   const index = chats.findIndex((c) => c.prId === prId)
 
   if (index >= 0) {
+    const oldCount = chats[index].messages.length
     chats[index].messages = []
     chats[index].updatedAt = new Date().toISOString()
-    store.set('prChats', chats)
+    storeSet('prChats.messages', () => store.set('prChats', chats), {
+      prId,
+      clearedMessages: oldCount
+    })
   }
 }
 
 export function deletePRChat(prId: string): void {
   const chats = getPRChats()
   const filtered = chats.filter((c) => c.prId !== prId)
-  store.set('prChats', filtered)
+  storeSet('prChats', () => store.set('prChats', filtered), {
+    deletedPrId: prId,
+    remainingChats: filtered.length
+  })
 
   // Clear activePRChatId if we deleted the active chat
   const activeChatId = getActivePRChatId()
@@ -605,15 +730,16 @@ export function deletePRChat(prId: string): void {
 }
 
 export function clearAllPRChats(): void {
-  store.set('prChats', [])
+  storeSet('prChats', () => store.set('prChats', []))
+  logger.info(LogCategory.STORE, 'Cleared all PR chats')
 }
 
 export function getActivePRChatId(): string | null {
-  return store.get('activePRChatId')
+  return storeGet('activePRChatId', () => store.get('activePRChatId'))
 }
 
 export function setActivePRChatId(prId: string | null): void {
-  store.set('activePRChatId', prId)
+  storeSet('activePRChatId', () => store.set('activePRChatId', prId), { prId })
 }
 
 /**
@@ -622,7 +748,13 @@ export function setActivePRChatId(prId: string | null): void {
  * Clears: EVERYTHING (token, settings, API keys, cache, history, layouts, etc.)
  */
 export function factoryReset(): void {
+  const startTime = performance.now()
   store.clear()
+  const durationMs = performance.now() - startTime
+
+  logger.info(LogCategory.STORE, '🔄 FACTORY RESET - All data wiped', {
+    durationMs: Math.round(durationMs * 100) / 100
+  })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -632,15 +764,19 @@ export function factoryReset(): void {
 // This is the STANDARDIZED way to handle query caching in React apps.
 
 export function getQueryCache(): string | null {
-  return store.get('tanstackQueryCache') || null
+  return storeGet('tanstackQueryCache', () => store.get('tanstackQueryCache') || null)
 }
 
 export function setQueryCache(cache: string): void {
-  store.set('tanstackQueryCache', cache)
+  const sizeKB = Math.round((new TextEncoder().encode(cache).length / 1024) * 10) / 10
+  storeSet('tanstackQueryCache', () => store.set('tanstackQueryCache', cache), {
+    sizeKB
+  })
 }
 
 export function clearQueryCache(): void {
-  store.delete('tanstackQueryCache')
+  storeDelete('tanstackQueryCache', () => store.delete('tanstackQueryCache'))
+  logger.info(LogCategory.STORE, 'Cleared TanStack Query cache')
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

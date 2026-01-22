@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
+    "@codelobby/api": "workspace:*",
     "@tanstack/react-query": "^5.56.2"
   }
 }

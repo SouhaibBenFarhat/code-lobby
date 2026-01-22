@@ -12,8 +12,7 @@
  * - components/    - UI components (split for better testing/extensibility)
  */
 
-/// <reference path="../../../src/preload/electron-api.d.ts" />
-
+import { api } from '@codelobby/api'
 import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import { registerToSlot } from '@codelobby/slot-system'
 import { AIChatPanel } from './components/AIChat'
@@ -112,14 +111,14 @@ function AIChatWrapper(): React.JSX.Element | null {
 
   const handleClosePRChat = async (): Promise<void> => {
     if (linkedPRChat) {
-      await window.electron.deletePRChat(linkedPRChat.prId)
+      await api.ai.deletePRChat(linkedPRChat.prId)
       Store.activePRChatId.value = null
       Store.linkedPRChat.value = null
     }
   }
 
   const handleSwitchToPRChat = async (prId: string): Promise<void> => {
-    const chat = await window.electron.getPRChat(prId)
+    const chat = await api.ai.getPRChat(prId)
     if (chat) {
       Store.activePRChatId.value = chat.prId
       Store.linkedPRChat.value = {

@@ -2,8 +2,7 @@
  * TokenInput - GitHub authentication form.
  */
 
-/// <reference path="../../../src/preload/electron-api.d.ts" />
-
+import { api } from '@codelobby/api'
 import { ChevronDown, ChevronUp, ExternalLink, Key, Loader2, Shield } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
@@ -40,7 +39,7 @@ export function TokenInput({ onAuthenticated }: TokenInputProps): JSX.Element {
 
     setIsLoading(true)
     try {
-      const result = await window.electron.setToken(token.trim())
+      const result = await api.github.setToken(token.trim())
       if (result.success && result.user) {
         toast({ title: 'Success', description: 'Connected to GitHub!' })
         onAuthenticated(result.user as User)

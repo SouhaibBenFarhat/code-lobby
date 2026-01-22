@@ -5,14 +5,13 @@
  *
  * This module:
  * - Listens for action events from UI modules
- * - Calls Electron IPC APIs
+ * - Calls Electron IPC APIs via @codelobby/api (with automatic logging)
  * - Updates the shared store with results
  *
  * UI Modules never call APIs directly - they emit actions, and this module handles them.
  */
 
-/// <reference path="../../../src/preload/electron-api.d.ts" />
-
+import { api } from '@codelobby/api'
 import type {
   ChatMessage,
   GitHubUser,
@@ -44,7 +43,7 @@ export function initDataModule(): void {
     onAction('action:validate-token', async () => {
       Store.loading.auth.value = true
       try {
-        const result = await window.electron.validateToken()
+        const result = await api.github.validateToken()
         if (result.valid && result.user) {
           Store.user.value = result.user as GitHubUser
           Store.isAuthenticated.value = true
@@ -65,8 +64,8 @@ export function initDataModule(): void {
     onAction('action:sign-in', async ({ token }) => {
       Store.loading.auth.value = true
       try {
-        await window.electron.setToken(token)
-        const result = await window.electron.validateToken()
+        await api.github.setToken(token)
+        const result = await api.github.validateToken()
         if (result.valid && result.user) {
           Store.user.value = result.user as GitHubUser
           Store.isAuthenticated.value = true
@@ -81,7 +80,7 @@ export function initDataModule(): void {
 
   cleanupFunctions.push(
     onAction('action:sign-out', async () => {
-      await window.electron.clearToken()
+      await api.github.clearToken()
       Store.user.value = null
       Store.isAuthenticated.value = false
       Store.repos.value = []
@@ -100,7 +99,7 @@ export function initDataModule(): void {
       Store.loading.repos.value = true
       Store.errors.github.value = null
       try {
-        const result = await window.electron.fetchContributedRepos()
+        const result = await api.github.fetchContributedRepos()
         if (result.success && result.data) {
           Store.repos.value = result.data as Repository[]
         } else {
@@ -119,7 +118,7 @@ export function initDataModule(): void {
       Store.loading.prs.value = true
       Store.errors.github.value = null
       try {
-        const result = await window.electron.fetchAllPRsForRepos(repos)
+        const result = await api.github.fetchAllPRsForRepos(repos)
         if (result.success && result.data) {
           Store.prs.value = result.data as PullRequest[]
           if (result.rateLimit) {
@@ -139,7 +138,7 @@ export function initDataModule(): void {
   cleanupFunctions.push(
     onAction('action:refresh-repo', async ({ repoFullName }) => {
       try {
-        const result = await window.electron.refreshRepoPRs(repoFullName)
+        const result = await api.github.refreshRepoPRs(repoFullName)
         if (result.success && result.data) {
           // Update PRs for this repo only
           const otherPRs = Store.prs.value.filter((pr) => pr.base.repo.full_name !== repoFullName)
@@ -164,7 +163,7 @@ export function initDataModule(): void {
   cleanupFunctions.push(
     onAction('action:select-repos', async ({ repos }) => {
       Store.selectedRepos.value = repos
-      await window.electron.setSelectedRepos(repos ?? [])
+      await api.settings.setSelectedRepos(repos ?? [])
     })
   )
 
@@ -188,7 +187,7 @@ export function initDataModule(): void {
       Store.chatHistory.value = [...Store.chatHistory.value, userMessage]
 
       try {
-        const result = await window.electron.sendChatMessageStreaming(message, systemContext)
+        const result = await api.ai.sendChatMessageStreaming(message, systemContext)
 
         if (!result.success || !result.streamId) {
           throw new Error(result.error || 'Failed to start chat stream')
@@ -198,7 +197,7 @@ export function initDataModule(): void {
         let thinkingContent = ''
 
         // Subscribe to stream chunks
-        const unsubscribe = window.electron.onChatStreamChunk((chunk) => {
+        const unsubscribe = api.ai.onChatStreamChunk((chunk) => {
           if (chunk.streamId !== result.streamId) return
 
           if (chunk.type === 'thinking' && chunk.thinking) {
@@ -263,7 +262,7 @@ export function initDataModule(): void {
         // Fetch changed files with diffs for richer AI context
         let changedFiles: ChangedFile[] | undefined
         try {
-          const filesResult = await window.electron.fetchPRFiles(
+          const filesResult = await api.github.fetchPRFiles(
             pr.base.repo.owner.login,
             pr.base.repo.name,
             pr.number
@@ -279,7 +278,7 @@ export function initDataModule(): void {
         const systemContext = buildPRSystemPrompt(pr, changedFiles)
 
         // Create the chat in storage with system context
-        const prChat = await window.electron.createPRChat(
+        const prChat = await api.ai.createPRChat(
           prId,
           pr.number,
           pr.title,
@@ -289,7 +288,7 @@ export function initDataModule(): void {
 
         // Update store with the created chat
         Store.prChats.value = [...Store.prChats.value, prChat as PRChat]
-        await window.electron.setActivePRChatId(prChat.prId)
+        await api.ai.setActivePRChatId(prChat.prId)
 
         // NOW switch UI to the chat AFTER it's fully created with systemContext
         // This prevents the race condition where AIChatPanel.loadData() runs
@@ -321,7 +320,7 @@ export function initDataModule(): void {
   cleanupFunctions.push(
     onAction('action:set-view-mode', async ({ mode }) => {
       Store.viewMode.value = mode
-      await window.electron.setViewMode(mode)
+      await api.settings.setViewMode(mode)
     })
   )
 
@@ -329,7 +328,7 @@ export function initDataModule(): void {
     onAction('action:toggle-pr-detail', async () => {
       const newState = !Store.prDetailOpen.value
       Store.prDetailOpen.value = newState
-      await window.electron.setPRDetailPanel({ isOpen: newState })
+      await api.settings.setPRDetailPanel({ isOpen: newState })
     })
   )
 
@@ -337,28 +336,28 @@ export function initDataModule(): void {
     onAction('action:toggle-ai-panel', async () => {
       const newState = !Store.aiPanelOpen.value
       Store.aiPanelOpen.value = newState
-      await window.electron.setAIPanel({ isOpen: newState })
+      await api.settings.setAIPanel({ isOpen: newState })
     })
   )
 
   cleanupFunctions.push(
     onAction('action:resize-pr-detail', async ({ width }) => {
       Store.prDetailWidth.value = width
-      await window.electron.setPRDetailPanel({ width })
+      await api.settings.setPRDetailPanel({ width })
     })
   )
 
   cleanupFunctions.push(
     onAction('action:resize-ai-panel', async ({ width }) => {
       Store.aiPanelWidth.value = width
-      await window.electron.setAIPanel({ width })
+      await api.settings.setAIPanel({ width })
     })
   )
 
   cleanupFunctions.push(
     onAction('action:resize-explorer', async ({ width }) => {
       Store.explorerWidth.value = width
-      await window.electron.setIDEViewSettings({ sidebarWidth: width })
+      await api.settings.setIDEViewSettings({ sidebarWidth: width })
     })
   )
 
@@ -370,14 +369,14 @@ export function initDataModule(): void {
         ? current.filter((r) => r !== repoFullName)
         : [...current, repoFullName]
       Store.expandedRepos.value = newExpanded
-      await window.electron.setIDEViewSettings({ expandedRepos: newExpanded })
+      await api.settings.setIDEViewSettings({ expandedRepos: newExpanded })
     })
   )
 
   cleanupFunctions.push(
     onAction('action:set-expanded-repos', async ({ repos }) => {
       Store.expandedRepos.value = repos
-      await window.electron.setIDEViewSettings({ expandedRepos: repos })
+      await api.settings.setIDEViewSettings({ expandedRepos: repos })
     })
   )
 
@@ -398,14 +397,14 @@ export function initDataModule(): void {
   cleanupFunctions.push(
     onAction('action:set-card-layouts', async ({ layouts }) => {
       Store.cardLayouts.value = layouts
-      await window.electron.setCardLayouts(layouts)
+      await api.settings.setCardLayouts(layouts)
     })
   )
 
   cleanupFunctions.push(
     onAction('action:set-repo-color', async ({ repoFullName, color }) => {
       Store.repoColors.value = { ...Store.repoColors.value, [repoFullName]: color }
-      await window.electron.setRepoColor(repoFullName, color)
+      await api.settings.setRepoColor(repoFullName, color)
     })
   )
 
@@ -419,7 +418,7 @@ export function initDataModule(): void {
       } else {
         Store.minimizedRepos.value = current.filter((r) => r !== repoFullName)
       }
-      await window.electron.setRepoMinimized(repoFullName, minimized)
+      await api.settings.setRepoMinimized(repoFullName, minimized)
     })
   )
 
@@ -429,7 +428,7 @@ export function initDataModule(): void {
 
   cleanupFunctions.push(
     onAction('action:clear-cache', async () => {
-      await window.electron.clearAllData()
+      await api.settings.clearAllData()
       Store.repos.value = []
       Store.prs.value = []
     })
@@ -437,7 +436,7 @@ export function initDataModule(): void {
 
   cleanupFunctions.push(
     onAction('action:factory-reset', async () => {
-      await window.electron.factoryReset()
+      await api.settings.factoryReset()
       // Reset all store values to defaults
       Store.user.value = null
       Store.isAuthenticated.value = false
@@ -488,57 +487,57 @@ async function loadInitialData(): Promise<void> {
     await waitForElectron()
 
     // Load view mode
-    const viewMode = await window.electron.getViewMode()
+    const viewMode = await api.settings.getViewMode()
     Store.viewMode.value = viewMode
 
     // Load panel states
-    const aiPanel = await window.electron.getAIPanel()
+    const aiPanel = await api.settings.getAIPanel()
     Store.aiPanelOpen.value = aiPanel.isOpen
     Store.aiPanelWidth.value = aiPanel.width
 
-    const prDetailPanel = await window.electron.getPRDetailPanel()
+    const prDetailPanel = await api.settings.getPRDetailPanel()
     Store.prDetailOpen.value = prDetailPanel.isOpen
     Store.prDetailWidth.value = prDetailPanel.width
 
     // Load IDE view settings
-    const ideSettings = await window.electron.getIDEViewSettings()
+    const ideSettings = await api.settings.getIDEViewSettings()
     Store.explorerWidth.value = ideSettings.sidebarWidth
     Store.expandedRepos.value = ideSettings.expandedRepos
 
     // Load selected repos
-    const selectedRepos = await window.electron.getSelectedRepos()
+    const selectedRepos = await api.settings.getSelectedRepos()
     Store.selectedRepos.value = selectedRepos
 
     // Load canvas settings
-    const cardLayouts = await window.electron.getCardLayouts()
+    const cardLayouts = await api.settings.getCardLayouts()
     Store.cardLayouts.value = cardLayouts || []
 
-    const repoColors = await window.electron.getRepoColors()
+    const repoColors = await api.settings.getRepoColors()
     Store.repoColors.value = repoColors || {}
 
-    const minimizedRepos = await window.electron.getMinimizedRepos()
+    const minimizedRepos = await api.settings.getMinimizedRepos()
     Store.minimizedRepos.value = minimizedRepos || []
 
     // Load PR chats
-    const prChats = await window.electron.getPRChats()
+    const prChats = await api.ai.getPRChats()
     Store.prChats.value = prChats
 
     // Load active chat ID
-    const activePRChatId = await window.electron.getActivePRChatId()
+    const activePRChatId = await api.ai.getActivePRChatId()
     Store.activePRChatId.value = activePRChatId
 
     // Load Claude API key and AI settings
-    const claudeApiKey = await window.electron.getClaudeApiKey()
+    const claudeApiKey = await api.ai.getClaudeApiKey()
     Store.claudeApiKey.value = claudeApiKey
 
-    const selectedModel = await window.electron.getSelectedModel()
+    const selectedModel = await api.ai.getSelectedModel()
     Store.selectedModel.value = selectedModel
 
-    const enableThinking = await window.electron.getEnableThinking()
+    const enableThinking = await api.ai.getEnableThinking()
     Store.enableThinking.value = enableThinking
 
     // Load general chat history
-    const chatHistory = await window.electron.getChatHistory()
+    const chatHistory = await api.ai.getChatHistory()
     Store.chatHistory.value = chatHistory
 
     // If authenticated, fetch repos and PRs
@@ -546,7 +545,7 @@ async function loadInitialData(): Promise<void> {
       console.log('[data-module] User authenticated, fetching repos...')
       Store.loading.repos.value = true
       try {
-        const reposResult = await window.electron.fetchContributedRepos()
+        const reposResult = await api.github.fetchContributedRepos()
         if (reposResult.success && reposResult.data) {
           const repos = reposResult.data as Repository[]
           Store.repos.value = repos
@@ -555,7 +554,7 @@ async function loadInitialData(): Promise<void> {
           const reposToFetch = selectedRepos || repos.map((r) => r.full_name)
           if (reposToFetch.length > 0) {
             Store.loading.prs.value = true
-            const prsResult = await window.electron.fetchAllPRsForRepos(reposToFetch)
+            const prsResult = await api.github.fetchAllPRsForRepos(reposToFetch)
             if (prsResult.success && prsResult.data) {
               Store.prs.value = prsResult.data as PullRequest[]
               if (prsResult.rateLimit) {

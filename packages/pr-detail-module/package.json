@@ -8,6 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@codelobby/api": "workspace:*",
+    "@codelobby/queries": "workspace:*",
     "@codelobby/slot-system": "*",
     "@codelobby/shared-store": "*",
     "@codelobby/ui-kit": "*",

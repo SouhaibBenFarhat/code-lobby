@@ -8,6 +8,7 @@ if (process.platform === 'darwin') {
   app.setName('CodeLobby')
 }
 
+import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 import {
   analyzePRStatus,
   analyzePRStatusStreaming,
@@ -26,7 +27,6 @@ import {
   fetchRateLimitOnly,
   validateToken
 } from './github-graphql'
-import { LogCategory, logger } from './logger'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   AIPanelSettings,

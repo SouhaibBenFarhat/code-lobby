@@ -1,5 +1,5 @@
 /**
- * Logger Tests
+ * Main Logger Tests
  *
  * Tests for the main process logging utility
  */
@@ -25,41 +25,41 @@ afterAll(() => {
 })
 
 // Import logger (will be mocked)
-import { LogCategory, logger } from './logger'
+import { LogCategory, mainLogger } from './main'
 
-describe('Logger', () => {
+describe('Main Logger', () => {
   beforeEach(() => {
-    logger.clearLogs()
+    mainLogger.clearLogs()
   })
 
   describe('Log Levels', () => {
     it('should log debug messages', () => {
-      logger.debug(LogCategory.APP, 'Debug message')
-      const logs = logger.getLogs()
+      mainLogger.debug(LogCategory.APP, 'Debug message')
+      const logs = mainLogger.getLogs()
       expect(logs).toHaveLength(1)
       expect(logs[0].level).toBe('debug')
       expect(logs[0].message).toBe('Debug message')
     })
 
     it('should log info messages', () => {
-      logger.info(LogCategory.APP, 'Info message')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.APP, 'Info message')
+      const logs = mainLogger.getLogs()
       expect(logs).toHaveLength(1)
       expect(logs[0].level).toBe('info')
       expect(logs[0].message).toBe('Info message')
     })
 
     it('should log warning messages', () => {
-      logger.warn(LogCategory.APP, 'Warning message')
-      const logs = logger.getLogs()
+      mainLogger.warn(LogCategory.APP, 'Warning message')
+      const logs = mainLogger.getLogs()
       expect(logs).toHaveLength(1)
       expect(logs[0].level).toBe('warn')
       expect(logs[0].message).toBe('Warning message')
     })
 
     it('should log error messages', () => {
-      logger.error(LogCategory.APP, 'Error message')
-      const logs = logger.getLogs()
+      mainLogger.error(LogCategory.APP, 'Error message')
+      const logs = mainLogger.getLogs()
       expect(logs).toHaveLength(1)
       expect(logs[0].level).toBe('error')
       expect(logs[0].message).toBe('Error message')
@@ -68,74 +68,80 @@ describe('Logger', () => {
 
   describe('Log Categories', () => {
     it('should log with APP category', () => {
-      logger.info(LogCategory.APP, 'App message')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.APP, 'App message')
+      const logs = mainLogger.getLogs()
       expect(logs[0].category).toBe('App')
     })
 
     it('should log with API category', () => {
-      logger.info(LogCategory.API, 'API message')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.API, 'API message')
+      const logs = mainLogger.getLogs()
       expect(logs[0].category).toBe('API')
     })
 
     it('should log with GraphQL category', () => {
-      logger.info(LogCategory.GRAPHQL, 'GraphQL message')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.GRAPHQL, 'GraphQL message')
+      const logs = mainLogger.getLogs()
       expect(logs[0].category).toBe('GraphQL')
     })
 
     it('should log with Auth category', () => {
-      logger.info(LogCategory.AUTH, 'Auth message')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.AUTH, 'Auth message')
+      const logs = mainLogger.getLogs()
       expect(logs[0].category).toBe('Auth')
     })
 
     it('should log with RateLimit category', () => {
-      logger.info(LogCategory.RATE_LIMIT, 'Rate limit message')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.RATE_LIMIT, 'Rate limit message')
+      const logs = mainLogger.getLogs()
       expect(logs[0].category).toBe('RateLimit')
+    })
+
+    it('should log with Store category', () => {
+      mainLogger.info(LogCategory.STORE, 'Store message')
+      const logs = mainLogger.getLogs()
+      expect(logs[0].category).toBe('Store')
     })
   })
 
   describe('Log Details', () => {
     it('should include details object', () => {
-      logger.info(LogCategory.APP, 'Message with details', { foo: 'bar', count: 42 })
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.APP, 'Message with details', { foo: 'bar', count: 42 })
+      const logs = mainLogger.getLogs()
       expect(logs[0].details).toEqual({ foo: 'bar', count: 42 })
     })
 
     it('should handle undefined details', () => {
-      logger.info(LogCategory.APP, 'Message without details')
-      const logs = logger.getLogs()
+      mainLogger.info(LogCategory.APP, 'Message without details')
+      const logs = mainLogger.getLogs()
       expect(logs[0].details).toBeUndefined()
     })
   })
 
   describe('Log Management', () => {
     it('should get all logs', () => {
-      logger.info(LogCategory.APP, 'Message 1')
-      logger.info(LogCategory.APP, 'Message 2')
-      logger.info(LogCategory.APP, 'Message 3')
+      mainLogger.info(LogCategory.APP, 'Message 1')
+      mainLogger.info(LogCategory.APP, 'Message 2')
+      mainLogger.info(LogCategory.APP, 'Message 3')
 
-      const logs = logger.getLogs()
+      const logs = mainLogger.getLogs()
       expect(logs).toHaveLength(3)
     })
 
     it('should clear logs', () => {
-      logger.info(LogCategory.APP, 'Message 1')
-      logger.info(LogCategory.APP, 'Message 2')
+      mainLogger.info(LogCategory.APP, 'Message 1')
+      mainLogger.info(LogCategory.APP, 'Message 2')
 
-      logger.clearLogs()
+      mainLogger.clearLogs()
 
-      const logs = logger.getLogs()
+      const logs = mainLogger.getLogs()
       expect(logs).toHaveLength(0)
     })
 
     it('should export logs as JSON', () => {
-      logger.info(LogCategory.APP, 'Test message')
+      mainLogger.info(LogCategory.APP, 'Test message')
 
-      const exported = logger.exportLogs()
+      const exported = mainLogger.exportLogs()
       const parsed = JSON.parse(exported)
 
       expect(Array.isArray(parsed)).toBe(true)
@@ -144,12 +150,12 @@ describe('Logger', () => {
     })
 
     it('should provide log summary', () => {
-      logger.info(LogCategory.APP, 'Info 1')
-      logger.info(LogCategory.API, 'Info 2')
-      logger.warn(LogCategory.APP, 'Warning')
-      logger.error(LogCategory.APP, 'Error')
+      mainLogger.info(LogCategory.APP, 'Info 1')
+      mainLogger.info(LogCategory.API, 'Info 2')
+      mainLogger.warn(LogCategory.APP, 'Warning')
+      mainLogger.error(LogCategory.APP, 'Error')
 
-      const summary = logger.getLogsSummary()
+      const summary = mainLogger.getLogsSummary()
 
       expect(summary.total).toBe(4)
       expect(summary.byLevel.info).toBe(2)
@@ -162,8 +168,8 @@ describe('Logger', () => {
 
   describe('Log Entry Structure', () => {
     it('should include id, timestamp, level, category, message', () => {
-      logger.info(LogCategory.APP, 'Test message')
-      const log = logger.getLogs()[0]
+      mainLogger.info(LogCategory.APP, 'Test message')
+      const log = mainLogger.getLogs()[0]
 
       expect(log).toHaveProperty('id')
       expect(log).toHaveProperty('timestamp')
@@ -173,16 +179,16 @@ describe('Logger', () => {
     })
 
     it('should generate unique ids', () => {
-      logger.info(LogCategory.APP, 'Message 1')
-      logger.info(LogCategory.APP, 'Message 2')
+      mainLogger.info(LogCategory.APP, 'Message 1')
+      mainLogger.info(LogCategory.APP, 'Message 2')
 
-      const logs = logger.getLogs()
+      const logs = mainLogger.getLogs()
       expect(logs[0].id).not.toBe(logs[1].id)
     })
 
     it('should include valid ISO timestamp', () => {
-      logger.info(LogCategory.APP, 'Test message')
-      const log = logger.getLogs()[0]
+      mainLogger.info(LogCategory.APP, 'Test message')
+      const log = mainLogger.getLogs()[0]
 
       const date = new Date(log.timestamp)
       expect(date.toString()).not.toBe('Invalid Date')
@@ -193,10 +199,10 @@ describe('Logger', () => {
     it('should limit stored logs to prevent memory issues', () => {
       // Add more logs than the limit
       for (let i = 0; i < 1500; i++) {
-        logger.info(LogCategory.APP, `Message ${i}`)
+        mainLogger.info(LogCategory.APP, `Message ${i}`)
       }
 
-      const logs = logger.getLogs()
+      const logs = mainLogger.getLogs()
       // Should be capped at 1000 (the default limit)
       expect(logs.length).toBeLessThanOrEqual(1000)
     })

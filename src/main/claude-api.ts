@@ -4,7 +4,8 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
-import { LogCategory, logger } from './logger'
+import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { wrapSdkCall, wrapSdkStreamCall } from './http-client'
 import { buildJiraTicketPrompt, buildPRAnalysisPrompt, buildPreviewURLPrompt } from './prompts'
 
 // Re-export types for use elsewhere
@@ -90,11 +91,11 @@ export function clearClientCache(): void {
  * Fetch available Claude models
  */
 export async function fetchModels(apiKey: string): Promise<ClaudeModel[]> {
-  logger.info(LogCategory.API, 'Fetching available Claude models (SDK)')
-
   try {
     const client = getClient(apiKey)
-    const response = await client.models.list()
+    const response = await wrapSdkCall('claude.models.list', () => client.models.list(), {
+      logCategory: LogCategory.API
+    })
 
     const models: ClaudeModel[] = response.data.map((model) => ({
       id: model.id,
@@ -102,11 +103,6 @@ export async function fetchModels(apiKey: string): Promise<ClaudeModel[]> {
       created_at: model.created_at,
       type: model.type
     }))
-
-    logger.info(LogCategory.API, 'Claude models fetched successfully', {
-      count: models.length,
-      models: models.map((m) => m.id)
-    })
 
     // Sort by created_at descending (newest first)
     return models.sort(
@@ -178,7 +174,14 @@ export async function sendMessage(
       ? { thinking: { type: 'enabled' as const, budget_tokens: THINKING_BUDGET } }
       : {}
 
-    const response = await client.messages.create({ ...requestParams, ...thinkingConfig })
+    const response = await wrapSdkCall(
+      'claude.messages.create',
+      () => client.messages.create({ ...requestParams, ...thinkingConfig }),
+      {
+        logCategory: LogCategory.API,
+        details: { model: selectedModel, messageCount: messages.length, thinking: useThinking }
+      }
+    )
 
     // Extract text and thinking content from the response
     let content = ''
@@ -191,15 +194,6 @@ export async function sendMessage(
         thinking = block.thinking
       }
     }
-
-    logger.info(LogCategory.API, 'Claude API response received', {
-      id: response.id,
-      model: response.model,
-      stopReason: response.stop_reason,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      hasThinking: !!thinking
-    })
 
     return {
       id: response.id,
@@ -249,8 +243,9 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
     const client = new Anthropic({ apiKey })
     // Use models.list as a lightweight validation (doesn't consume tokens)
-    await client.models.list({ limit: 1 })
-    logger.info(LogCategory.AUTH, 'Claude API key validated successfully')
+    await wrapSdkCall('claude.validateApiKey', () => client.models.list({ limit: 1 }), {
+      logCategory: LogCategory.AUTH
+    })
     return true
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
@@ -258,9 +253,6 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
       return false
     }
     // For other errors (network, etc.), we can't be sure
-    logger.error(LogCategory.AUTH, 'Error validating Claude API key', {
-      error: error instanceof Error ? error.message : String(error)
-    })
     return false
   }
 }
@@ -319,12 +311,17 @@ export async function analyzePRStatus(
     // Build prompt using centralized prompt builder
     const prompt = buildPRAnalysisPrompt(context)
 
-    const response = await client.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: 500,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false
-    })
+    const response = await wrapSdkCall(
+      'claude.analyzePRStatus',
+      () =>
+        client.messages.create({
+          model: DEFAULT_MODEL,
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }],
+          stream: false
+        }),
+      { logCategory: LogCategory.API, details: { prNumber: context.number } }
+    )
 
     // Extract the response text
     let responseText = ''
@@ -334,11 +331,6 @@ export async function analyzePRStatus(
         break
       }
     }
-
-    logger.info(LogCategory.API, 'PR status analysis complete', {
-      prNumber: context.number,
-      responseLength: responseText.length
-    })
 
     if (!responseText) {
       return {
@@ -442,7 +434,11 @@ export async function analyzePRStatusStreaming(
       }
     }
 
-    const stream = client.messages.stream(requestParams)
+    const stream = await wrapSdkStreamCall(
+      'claude.streamPRAnalysis',
+      () => client.messages.stream(requestParams),
+      { logCategory: LogCategory.API, details: { prNumber: context.number } }
+    )
 
     let fullContent = ''
     let fullThinking = ''
@@ -462,7 +458,7 @@ export async function analyzePRStatusStreaming(
     // Wait for completion
     await stream.finalMessage()
 
-    logger.info(LogCategory.API, 'Streaming PR analysis complete', {
+    logger.debug(LogCategory.API, 'Streaming PR analysis complete', {
       prNumber: context.number,
       hasThinking: !!fullThinking,
       analysisLength: fullContent.length
@@ -505,23 +501,23 @@ export async function extractPreviewUrl(
     comments: Array<{ author: string; body: string }>
   }
 ): Promise<{ success: boolean; url?: string; message?: string }> {
-  logger.info(LogCategory.API, 'Extracting preview URL from PR context', {
-    title: context.title,
-    commentsCount: context.comments.length
-  })
-
   try {
     const client = getClient(apiKey)
 
     // Build prompt using centralized prompt builder
     const prompt = buildPreviewURLPrompt(context)
 
-    const response = await client.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: 500,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false
-    })
+    const response = await wrapSdkCall(
+      'claude.extractPreviewURL',
+      () =>
+        client.messages.create({
+          model: DEFAULT_MODEL,
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }],
+          stream: false
+        }),
+      { logCategory: LogCategory.API, details: { title: context.title } }
+    )
 
     // Extract the response text
     let responseText = ''
@@ -531,10 +527,6 @@ export async function extractPreviewUrl(
         break
       }
     }
-
-    logger.info(LogCategory.API, 'Preview URL extraction result', {
-      response: responseText
-    })
 
     // Check if no URL was found
     if (responseText.includes('NO_PREVIEW_URL_FOUND') || !responseText) {
@@ -585,24 +577,26 @@ export async function extractJiraTicket(
     comments: Array<{ author: string; body: string }>
   }
 ): Promise<{ success: boolean; ticketKey?: string; ticketUrl?: string; message?: string }> {
-  logger.info(LogCategory.API, 'Extracting Jira ticket from PR context', {
-    title: context.title,
-    branchName: context.branchName,
-    commentsCount: context.comments.length
-  })
-
   try {
     const client = getClient(apiKey)
 
     // Build prompt using centralized prompt builder
     const prompt = buildJiraTicketPrompt(context)
 
-    const response = await client.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: 500,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false
-    })
+    const response = await wrapSdkCall(
+      'claude.extractJiraTicket',
+      () =>
+        client.messages.create({
+          model: DEFAULT_MODEL,
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }],
+          stream: false
+        }),
+      {
+        logCategory: LogCategory.API,
+        details: { title: context.title, branchName: context.branchName }
+      }
+    )
 
     // Extract the response text
     let responseText = ''
@@ -612,10 +606,6 @@ export async function extractJiraTicket(
         break
       }
     }
-
-    logger.info(LogCategory.API, 'Jira ticket extraction result', {
-      response: responseText
-    })
 
     // Check if no ticket was found
     if (responseText.includes('NO_JIRA_TICKET_FOUND') || !responseText) {
@@ -733,7 +723,11 @@ export async function sendMessageStreaming(
     }
 
     // Create streaming response
-    const stream = client.messages.stream(requestParams)
+    const stream = await wrapSdkStreamCall(
+      'claude.streamMessage',
+      () => client.messages.stream(requestParams),
+      { logCategory: LogCategory.API, details: { model: selectedModel, thinking: useThinking } }
+    )
 
     let fullContent = ''
     let fullThinking = ''
@@ -765,13 +759,12 @@ export async function sendMessageStreaming(
     inputTokens = finalMessage.usage.input_tokens
     outputTokens = finalMessage.usage.output_tokens
 
-    logger.info(LogCategory.API, 'Claude streaming response complete', {
+    logger.debug(LogCategory.API, 'Claude streaming response complete', {
       id: responseId,
       model: responseModel,
       stopReason,
       inputTokens,
-      outputTokens,
-      hasThinking: !!fullThinking
+      outputTokens
     })
 
     // Send done signal with full response
@@ -883,7 +876,14 @@ export async function sendMessageStreamingWithTools(
       }
 
       // Create streaming response
-      const stream = client.messages.stream(requestParams)
+      const stream = await wrapSdkStreamCall(
+        'claude.streamWithTools',
+        () => client.messages.stream(requestParams),
+        {
+          logCategory: LogCategory.API,
+          details: { model: selectedModel, hasTools: tools.length > 0 }
+        }
+      )
 
       let _currentToolUse: { id: string; name: string; input: string } | null = null
       let responseStopReason: string | null = null

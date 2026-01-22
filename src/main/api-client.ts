@@ -5,7 +5,7 @@
  * and detection of GitHub's HTML error responses (like the "Unicorn" 503 page).
  */
 
-import { LogCategory, logger } from './logger'
+import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 
 // Custom error types for GitHub API failures
 export class GitHubAPIError extends Error {

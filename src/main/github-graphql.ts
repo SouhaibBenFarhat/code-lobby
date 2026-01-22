@@ -1,6 +1,7 @@
+import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 import { graphql } from '@octokit/graphql'
 import { parseGitHubError, withRetryAndTimeout } from './api-client'
-import { LogCategory, logger } from './logger'
+import { http } from './http-client'
 
 export interface GitHubUser {
   login: string
@@ -162,22 +163,26 @@ export interface RateLimitInfo {
  * We check the GraphQL rate limit since that's what the app uses.
  */
 export async function fetchRateLimitOnly(token: string): Promise<RateLimitInfo> {
-  logger.info(LogCategory.API, 'Fetching rate limit from /rate_limit endpoint')
-
-  const response = await fetch('https://api.github.com/rate_limit', {
+  const response = await http.get<{
+    resources: {
+      core: { limit: number; remaining: number; reset: number }
+      graphql: { limit: number; remaining: number; reset: number }
+      search: { limit: number; remaining: number; reset: number }
+    }
+  }>('https://api.github.com/rate_limit', {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'CodeLobby-App'
-    }
+    },
+    operationName: 'github.rateLimit'
   })
 
   if (!response.ok) {
-    logger.error(LogCategory.API, 'Failed to fetch rate limit', { status: response.status })
     throw new Error(`Failed to fetch rate limit: ${response.status}`)
   }
 
-  const data = await response.json()
+  const data = response.data
 
   // Log all rate limit resources for debugging
   logger.debug(LogCategory.API, 'Rate limit response', {
@@ -1220,34 +1225,35 @@ export async function fetchPRFiles(
   repo: string,
   prNumber: number
 ): Promise<{ files: PRFile[]; rateLimit: RateLimitInfo }> {
-  logger.info(LogCategory.API, 'Fetching PR files via REST API', { owner, repo, prNumber })
-
   const allFiles: PRFile[] = []
   let page = 1
   const perPage = 100
+
+  type PRFileResponse = Array<{
+    filename: string
+    patch?: string
+    additions: number
+    deletions: number
+    status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged'
+  }>
 
   // Fetch all pages (REST API paginates at 100 files)
   while (true) {
     const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`
 
-    const response = await fetch(url, {
+    const response = await http.get<PRFileResponse>(url, {
       headers: {
         Authorization: `token ${token}`,
         Accept: 'application/vnd.github.v3+json'
-      }
+      },
+      operationName: `github.prFiles(${owner}/${repo}#${prNumber}, page=${page})`
     })
 
     if (!response.ok) {
       throw new Error(`REST API error: ${response.status} ${response.statusText}`)
     }
 
-    const files = (await response.json()) as Array<{
-      filename: string
-      patch?: string
-      additions: number
-      deletions: number
-      status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged'
-    }>
+    const files = response.data
 
     // Map REST status to our changeType enum
     const statusToChangeType = (status: string): PRFile['changeType'] => {
@@ -1317,17 +1323,8 @@ export async function postPRReviewComment(
 ): Promise<{ success: boolean; commentUrl?: string; error?: string }> {
   const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`
 
-  logger.info(LogCategory.API, 'Posting PR review comment', {
-    owner,
-    repo,
-    prNumber,
-    path,
-    line
-  })
-
   try {
-    const response = await fetch(url, {
-      method: 'POST',
+    const response = await http.post<{ html_url: string; message?: string }>(url, {
       headers: {
         Authorization: `token ${token}`,
         Accept: 'application/vnd.github.v3+json',
@@ -1339,35 +1336,22 @@ export async function postPRReviewComment(
         path,
         line,
         side: 'RIGHT' // Comment on the new version of the file
-      })
+      }),
+      operationName: `github.postComment(${owner}/${repo}#${prNumber})`
     })
 
     if (!response.ok) {
-      const errorData = (await response.json()) as { message?: string }
-      logger.error(LogCategory.API, 'Failed to post PR comment', {
-        status: response.status,
-        error: errorData.message
-      })
       return {
         success: false,
-        error: errorData.message || `HTTP ${response.status}: ${response.statusText}`
+        error: response.data.message || `HTTP ${response.status}: ${response.statusText}`
       }
     }
 
-    const data = (await response.json()) as { html_url: string }
-
-    logger.info(LogCategory.API, 'Posted PR review comment successfully', {
-      commentUrl: data.html_url
-    })
-
     return {
       success: true,
-      commentUrl: data.html_url
+      commentUrl: response.data.html_url
     }
   } catch (error) {
-    logger.error(LogCategory.API, 'Error posting PR comment', {
-      error: (error as Error).message
-    })
     return {
       success: false,
       error: (error as Error).message

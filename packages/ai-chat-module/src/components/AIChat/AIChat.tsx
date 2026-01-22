@@ -14,8 +14,7 @@
  * - useThrottledValue: Throttle streaming updates
  */
 
-/// <reference path="../../../../../src/preload/electron-api.d.ts" />
-
+import { api } from '@codelobby/api'
 import { ArrowDown } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
@@ -120,7 +119,7 @@ export function AIChatPanel({
   const loadModels = useCallback(async () => {
     setIsLoadingModels(true)
     try {
-      const result = await window.electron.fetchClaudeModels()
+      const result = await api.ai.fetchClaudeModels()
       if (result.success && result.models) setModels(result.models)
     } finally {
       setIsLoadingModels(false)
@@ -128,7 +127,7 @@ export function AIChatPanel({
   }, [])
 
   const loadAllPRChats = useCallback(async () => {
-    const chats = await window.electron.getPRChats()
+    const chats = await api.ai.getPRChats()
     const infos: PRChatInfo[] = chats.map((c) => ({
       prId: c.prId,
       prNumber: c.prNumber,
@@ -148,11 +147,11 @@ export function AIChatPanel({
     setError(null)
     try {
       const [key, model, thinking, webFetch, prompts] = await Promise.all([
-        window.electron.getClaudeApiKey(),
-        window.electron.getSelectedModel(),
-        window.electron.getEnableThinking(),
-        window.electron.getEnableWebFetch(),
-        window.electron.getCustomPrompts()
+        api.ai.getClaudeApiKey(),
+        api.ai.getSelectedModel(),
+        api.ai.getEnableThinking(),
+        api.ai.getEnableWebFetch(),
+        api.ai.getCustomPrompts()
       ])
       setApiKey(key)
       setSelectedModel(model)
@@ -161,7 +160,7 @@ export function AIChatPanel({
       setCustomPrompts(prompts)
 
       if (linkedPRChat) {
-        const prChat = await window.electron.getPRChat(linkedPRChat.prId)
+        const prChat = await api.ai.getPRChat(linkedPRChat.prId)
         if (prChat) {
           setMessages(prChat.messages)
           setPrSystemContext(prChat.systemContext)
@@ -172,7 +171,7 @@ export function AIChatPanel({
           setChatStarted(false)
         }
       } else {
-        const history = await window.electron.getChatHistory()
+        const history = await api.ai.getChatHistory()
         setMessages(history)
         setPrSystemContext(undefined)
         setChatStarted(history.length > 0)
@@ -209,7 +208,7 @@ export function AIChatPanel({
 
       try {
         streamCleanupRef.current?.()
-        const cleanup = window.electron.onChatStreamChunk((chunk) => {
+        const cleanup = api.ai.onChatStreamChunk((chunk) => {
           if (chunk.type === 'text' && chunk.content) {
             setStreaming((p) => ({ ...p, content: p.content + chunk.content }))
           } else if (chunk.type === 'thinking' && chunk.thinking) {
@@ -217,8 +216,8 @@ export function AIChatPanel({
           } else if (chunk.type === 'done') {
             setStreaming({ content: '', thinking: '', isStreaming: false })
             ;(linkedPRChat
-              ? window.electron.getPRChat(linkedPRChat.prId).then((c) => c?.messages || [])
-              : window.electron.getChatHistory()
+              ? api.ai.getPRChat(linkedPRChat.prId).then((c) => c?.messages || [])
+              : api.ai.getChatHistory()
             ).then(setMessages)
             setIsSending(false)
             isProcessingRef.current = false
@@ -238,7 +237,7 @@ export function AIChatPanel({
         })
         streamCleanupRef.current = cleanup
 
-        const result = await window.electron.sendChatMessageStreaming(userMessage, prSystemContext)
+        const result = await api.ai.sendChatMessageStreaming(userMessage, prSystemContext)
         if (!result.success) {
           setError(result.error || 'Failed to send message')
           setStreaming({ content: '', thinking: '', isStreaming: false })
@@ -302,11 +301,11 @@ export function AIChatPanel({
     setIsSettingKey(true)
     setError(null)
     try {
-      const result = await window.electron.setClaudeApiKey(apiKeyInput.trim())
+      const result = await api.ai.setClaudeApiKey(apiKeyInput.trim())
       if (result.success) {
         setApiKey(apiKeyInput.trim())
         setApiKeyInput('')
-        setSelectedModel(await window.electron.getSelectedModel())
+        setSelectedModel(await api.ai.getSelectedModel())
         loadModels()
       } else {
         setError(result.error || 'Invalid API key')
@@ -319,7 +318,7 @@ export function AIChatPanel({
   }, [apiKeyInput, loadModels])
 
   const handleRemoveApiKey = useCallback(async () => {
-    await window.electron.setClaudeApiKey(null)
+    await api.ai.setClaudeApiKey(null)
     setApiKey(null)
     setShowSettings(false)
     setMessages([])
@@ -328,14 +327,14 @@ export function AIChatPanel({
 
   const handleClearHistory = useCallback(async () => {
     linkedPRChat
-      ? await window.electron.clearPRChatMessages(linkedPRChat.prId)
-      : await window.electron.clearChatHistory()
+      ? await api.ai.clearPRChatMessages(linkedPRChat.prId)
+      : await api.ai.clearChatHistory()
     setMessages([])
   }, [linkedPRChat])
 
   const handleDeletePRChat = useCallback(
     async (prId: string) => {
-      await window.electron.deletePRChat(prId)
+      await api.ai.deletePRChat(prId)
       loadAllPRChats()
     },
     [loadAllPRChats]
@@ -345,7 +344,7 @@ export function AIChatPanel({
     async (file: string, line: number, body: string) => {
       if (!selectedPR || !linkedPRChat) return { success: false }
       try {
-        return await window.electron.postPRComment(
+        return await api.github.postPRComment(
           selectedPR.base.repo.owner.login,
           selectedPR.base.repo.name,
           selectedPR.number,
@@ -391,7 +390,7 @@ export function AIChatPanel({
     if (!selectedPRId || linkedPRChat?.prId === selectedPRId) return
     let cancelled = false
     ;(async () => {
-      const chat = await window.electron.getPRChat(selectedPRId)
+      const chat = await api.ai.getPRChat(selectedPRId)
       if (cancelled) return
       chat && onSwitchToPRChat ? onSwitchToPRChat(selectedPRId) : linkedPRChat && onClosePRChat?.()
     })()
@@ -477,11 +476,11 @@ export function AIChatPanel({
           isLoadingModels={isLoadingModels}
           onModelChange={async (id) => {
             setSelectedModel(id)
-            await window.electron.setSelectedModel(id)
+            await api.ai.setSelectedModel(id)
           }}
           onThinkingChange={async (enabled) => {
             setEnableThinking(enabled)
-            await window.electron.setEnableThinking(enabled)
+            await api.ai.setEnableThinking(enabled)
           }}
           onLoadModels={loadModels}
           onRemoveApiKey={handleRemoveApiKey}
@@ -555,7 +554,7 @@ export function AIChatPanel({
           enableWebFetch={enableWebFetch}
           onWebFetchChange={async (enabled) => {
             setEnableWebFetch(enabled)
-            await window.electron.setEnableWebFetch(enabled)
+            await api.ai.setEnableWebFetch(enabled)
           }}
           prompts={
             linkedPRChat
@@ -570,12 +569,12 @@ export function AIChatPanel({
           onSendMessage={handleSendMessage}
           onQuickActionSelect={sendMessage}
           onAddCustomPrompt={async (l, p) => {
-            const r = await window.electron.addCustomPrompt(l, p)
+            const r = await api.ai.addCustomPrompt(l, p)
             if (r.success && r.prompt)
               setCustomPrompts((prev) => [...prev, r.prompt as CustomPrompt])
           }}
           onDeleteCustomPrompt={async (id) => {
-            const r = await window.electron.deleteCustomPrompt(id)
+            const r = await api.ai.deleteCustomPrompt(id)
             if (r.success) setCustomPrompts((p) => p.filter((x) => x.id !== id))
           }}
         />

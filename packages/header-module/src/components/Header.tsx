@@ -1,3 +1,4 @@
+import { api } from '@codelobby/api'
 import { useClearCacheAndRefresh, usePRs, useRateLimit, useRepos } from '@codelobby/queries'
 import {
   Avatar,
@@ -101,10 +102,10 @@ export function Header({
   // Fetch initial fullscreen state and listen for changes
   useEffect(() => {
     // Get initial state
-    window.electron.isFullscreen().then(setIsFullscreen)
+    api.settings.isFullscreen().then(setIsFullscreen)
 
     // Listen for changes
-    const cleanup = window.electron.onFullscreenChange((fullscreen) => {
+    const cleanup = api.settings.onFullscreenChange((fullscreen) => {
       setIsFullscreen(fullscreen)
     })
     return cleanup

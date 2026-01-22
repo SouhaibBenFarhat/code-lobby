@@ -1,36 +1,45 @@
-// Logger utility for CodeLobby
-// Stores logs in memory and persists to disk
+/**
+ * Main Process Logger
+ *
+ * Logger for Electron main process with:
+ * - In-memory storage for quick access
+ * - Disk persistence (JSON files)
+ * - Session management
+ * - Console output for development
+ *
+ * Usage:
+ *   import { mainLogger, LogCategory } from '@codelobby/logger'
+ *   mainLogger.info(LogCategory.API, 'Request complete', { status: 200 })
+ */
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { app } from 'electron'
+import type { LogEntry, LogLevel, LogSession, LogSummary } from './types'
 
-export type LogLevel = 'info' | 'warn' | 'error' | 'debug'
-
-export interface LogEntry {
-  id: string
-  timestamp: string
-  level: LogLevel
-  category: string
-  message: string
-  details?: unknown
-}
-
-interface LogSession {
-  sessionId: string
-  startTime: string
-  logs: LogEntry[]
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
 
 const MAX_LOGS_PER_SESSION = 1000
 const MAX_SESSIONS = 5
+const SAVE_DEBOUNCE_MS = 1000
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+
 const logs: LogEntry[] = []
 let logIdCounter = 0
 const sessionId = `session_${Date.now()}`
 let logsDir: string | null = null
 let saveTimeout: NodeJS.Timeout | null = null
+let consoleDisabled = false
 
-// Initialize logs directory
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE SYSTEM HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
 function getLogsDir(): string {
   if (!logsDir) {
     logsDir = path.join(app.getPath('userData'), 'logs')
@@ -45,7 +54,6 @@ function getSessionFilePath(): string {
   return path.join(getLogsDir(), `${sessionId}.json`)
 }
 
-// Load previous sessions' logs
 function loadPreviousLogs(): LogEntry[] {
   try {
     const dir = getLogsDir()
@@ -53,11 +61,10 @@ function loadPreviousLogs(): LogEntry[] {
       .readdirSync(dir)
       .filter((f) => f.endsWith('.json') && f.startsWith('session_'))
       .sort()
-      .reverse() // Most recent first
+      .reverse()
 
     const allLogs: LogEntry[] = []
 
-    // Load logs from previous sessions (excluding current)
     for (const file of files.slice(0, MAX_SESSIONS)) {
       if (file === `${sessionId}.json`) continue
       try {
@@ -75,14 +82,13 @@ function loadPreviousLogs(): LogEntry[] {
   }
 }
 
-// Save current session logs to disk (debounced)
 function scheduleSave(): void {
   if (saveTimeout) {
     clearTimeout(saveTimeout)
   }
   saveTimeout = setTimeout(() => {
     saveLogs()
-  }, 1000) // Save after 1 second of inactivity
+  }, SAVE_DEBOUNCE_MS)
 }
 
 function saveLogs(): void {
@@ -90,15 +96,14 @@ function saveLogs(): void {
     const session: LogSession = {
       sessionId,
       startTime: logs[0]?.timestamp || new Date().toISOString(),
-      logs: logs.slice(-MAX_LOGS_PER_SESSION) // Keep last N logs
+      logs: logs.slice(-MAX_LOGS_PER_SESSION)
     }
     fs.writeFileSync(getSessionFilePath(), JSON.stringify(session, null, 2))
   } catch {
-    // Silently ignore save errors - file might be locked or disk full
+    // Silently ignore save errors
   }
 }
 
-// Cleanup old session files
 function cleanupOldSessions(): void {
   try {
     const dir = getLogsDir()
@@ -108,7 +113,6 @@ function cleanupOldSessions(): void {
       .sort()
       .reverse()
 
-    // Remove sessions older than MAX_SESSIONS
     for (const file of files.slice(MAX_SESSIONS)) {
       try {
         fs.unlinkSync(path.join(dir, file))
@@ -121,6 +125,10 @@ function cleanupOldSessions(): void {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// LOGGING HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
 function generateId(): string {
   return `log_${Date.now()}_${++logIdCounter}`
 }
@@ -129,21 +137,15 @@ function formatTimestamp(): string {
   return new Date().toISOString()
 }
 
-// Track if we should skip console output (during shutdown)
-let consoleDisabled = false
-
 function safeConsoleLog(method: 'log' | 'warn' | 'error' | 'debug', ...args: unknown[]): void {
   if (consoleDisabled) return
 
   try {
     console[method](...args)
   } catch (e) {
-    // EPIPE or other stream errors - disable console logging
-    // This happens during app shutdown when stdout is closed
     if ((e as NodeJS.ErrnoException).code === 'EPIPE') {
       consoleDisabled = true
     }
-    // Silently ignore - we still have disk logging
   }
 }
 
@@ -159,15 +161,13 @@ function addLog(level: LogLevel, category: string, message: string, details?: un
 
   logs.push(entry)
 
-  // Keep only the last MAX_LOGS_PER_SESSION entries in memory
   if (logs.length > MAX_LOGS_PER_SESSION) {
     logs.shift()
   }
 
-  // Schedule save to disk
   scheduleSave()
 
-  // Also log to console for development (with EPIPE protection)
+  // Console output for development
   const consoleMsg = `[${entry.timestamp}] [${level.toUpperCase()}] [${category}] ${message}`
   switch (level) {
     case 'error':
@@ -184,24 +184,29 @@ function addLog(level: LogLevel, category: string, message: string, details?: un
   }
 }
 
-export const logger = {
-  info: (category: string, message: string, details?: unknown) =>
+// ═══════════════════════════════════════════════════════════════════════════
+// PUBLIC API
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const mainLogger = {
+  // Log methods
+  info: (category: string, message: string, details?: unknown): void =>
     addLog('info', category, message, details),
-  warn: (category: string, message: string, details?: unknown) =>
+  warn: (category: string, message: string, details?: unknown): void =>
     addLog('warn', category, message, details),
-  error: (category: string, message: string, details?: unknown) =>
+  error: (category: string, message: string, details?: unknown): void =>
     addLog('error', category, message, details),
-  debug: (category: string, message: string, details?: unknown) =>
+  debug: (category: string, message: string, details?: unknown): void =>
     addLog('debug', category, message, details),
 
+  // Log retrieval
   getLogs: (): LogEntry[] => [...logs],
 
-  // Get logs including from previous sessions
   getAllLogs: (): LogEntry[] => {
     const previousLogs = loadPreviousLogs()
     return [...previousLogs, ...logs]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, MAX_LOGS_PER_SESSION * 2) // Limit total
+      .slice(0, MAX_LOGS_PER_SESSION * 2)
   },
 
   getLogsByLevel: (level: LogLevel): LogEntry[] => logs.filter((log) => log.level === level),
@@ -209,10 +214,10 @@ export const logger = {
   getLogsByCategory: (category: string): LogEntry[] =>
     logs.filter((log) => log.category === category),
 
+  // Log management
   clearLogs: (): void => {
     logs.length = 0
     logIdCounter = 0
-    // Also clear current session file
     try {
       const filePath = getSessionFilePath()
       if (fs.existsSync(filePath)) {
@@ -227,11 +232,7 @@ export const logger = {
     return JSON.stringify(logs, null, 2)
   },
 
-  getLogsSummary: (): {
-    total: number
-    byLevel: Record<LogLevel, number>
-    byCategory: Record<string, number>
-  } => {
+  getLogsSummary: (): LogSummary => {
     const byLevel: Record<LogLevel, number> = { info: 0, warn: 0, error: 0, debug: 0 }
     const byCategory: Record<string, number> = {}
 
@@ -243,10 +244,9 @@ export const logger = {
     return { total: logs.length, byLevel, byCategory }
   },
 
-  // Get logs directory path for user reference
+  // Utilities
   getLogsPath: (): string => getLogsDir(),
 
-  // Force save (call on app quit)
   forceSave: (): void => {
     if (saveTimeout) {
       clearTimeout(saveTimeout)
@@ -254,21 +254,18 @@ export const logger = {
     saveLogs()
   },
 
-  // Initialize (call on app start)
   init: (): void => {
     cleanupOldSessions()
     addLog('info', 'App', 'Logger initialized', { sessionId, logsDir: getLogsDir() })
+  },
+
+  // Handle logs from renderer process
+  logFromRenderer: (
+    level: string,
+    category: string,
+    message: string,
+    data?: Record<string, unknown>
+  ): void => {
+    addLog(level as LogLevel, category, `[Renderer] ${message}`, data)
   }
 }
-
-// Log categories for consistency
-export const LogCategory = {
-  AUTH: 'Auth',
-  API: 'API',
-  GRAPHQL: 'GraphQL',
-  CACHE: 'Cache',
-  IPC: 'IPC',
-  APP: 'App',
-  STORE: 'Store',
-  RATE_LIMIT: 'RateLimit'
-} as const

@@ -18,6 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/renderer/*"],
+      "@codelobby/logger": ["packages/logger/src/index.ts"],
+      "@codelobby/api": ["packages/api/src/index.ts"],
       "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
       "@codelobby/shared-store": ["packages/shared-store/src/index.ts"],
       "@codelobby/shared-store/*": ["packages/shared-store/src/*"],
