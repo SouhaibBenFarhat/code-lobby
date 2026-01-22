@@ -12,7 +12,6 @@
  * - components/    - UI components (split for better testing/extensibility)
  */
 
-import { api } from '@codelobby/api'
 import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import { registerToSlot } from '@codelobby/slot-system'
 import { AIChatPanel } from './components/AIChat'
@@ -109,25 +108,14 @@ function AIChatWrapper(): React.JSX.Element | null {
     Actions.toggleAIPanel()
   }
 
-  const handleClosePRChat = async (): Promise<void> => {
+  const handleClosePRChat = (): void => {
     if (linkedPRChat) {
-      await api.ai.deletePRChat(linkedPRChat.prId)
-      Store.activePRChatId.value = null
-      Store.linkedPRChat.value = null
+      Actions.closePRChat(linkedPRChat.prId)
     }
   }
 
-  const handleSwitchToPRChat = async (prId: string): Promise<void> => {
-    const chat = await api.ai.getPRChat(prId)
-    if (chat) {
-      Store.activePRChatId.value = chat.prId
-      Store.linkedPRChat.value = {
-        prId: chat.prId,
-        prNumber: chat.prNumber,
-        prTitle: chat.prTitle,
-        repoFullName: chat.repoFullName
-      }
-    }
+  const handleSwitchToPRChat = (prId: string): void => {
+    Actions.switchToPRChat(prId)
   }
 
   const handleStartPRChat = async (): Promise<void> => {

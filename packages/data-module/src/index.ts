@@ -154,6 +154,43 @@ export function initDataModule(): void {
   )
 
   cleanupFunctions.push(
+    onAction('action:refresh-pr-detail', async ({ repoFullName, prNumber }) => {
+      Store.loading.prDetail.value = true
+      try {
+        const result = await api.github.refreshRepoPRs(repoFullName)
+        if (result.success && result.data) {
+          const newPRs = result.data as PullRequest[]
+
+          // Update PRs for this repo
+          const otherPRs = Store.prs.value.filter((pr) => pr.base.repo.full_name !== repoFullName)
+          Store.prs.value = [...otherPRs, ...newPRs]
+
+          // Update selectedPR if it matches the refreshed PR
+          const currentSelectedPR = Store.selectedPR.value
+          if (
+            currentSelectedPR &&
+            currentSelectedPR.base.repo.full_name === repoFullName &&
+            currentSelectedPR.number === prNumber
+          ) {
+            const refreshedPR = newPRs.find((pr) => pr.number === prNumber)
+            if (refreshedPR) {
+              Store.selectedPR.value = refreshedPR
+            }
+          }
+
+          if (result.rateLimit) {
+            Store.rateLimit.value = result.rateLimit
+          }
+        }
+      } catch (error) {
+        console.error('[data-module] Failed to refresh PR detail:', error)
+      } finally {
+        Store.loading.prDetail.value = false
+      }
+    })
+  )
+
+  cleanupFunctions.push(
     onAction('action:select-pr', async ({ pr }) => {
       Store.selectedPR.value = pr
       Store.prDetailOpen.value = pr !== null
@@ -303,6 +340,34 @@ export function initDataModule(): void {
       } finally {
         // Always remove from in-progress set
         creatingChats.delete(prId)
+      }
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:close-pr-chat', async ({ prId }) => {
+      await api.ai.deletePRChat(prId)
+      // Remove from store
+      Store.prChats.value = Store.prChats.value.filter((c) => c.prId !== prId)
+      // Clear active if this was the active chat
+      if (Store.activePRChatId.value === prId) {
+        Store.activePRChatId.value = null
+        Store.linkedPRChat.value = null
+      }
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:switch-to-pr-chat', async ({ prId }) => {
+      const chat = await api.ai.getPRChat(prId)
+      if (chat) {
+        Store.activePRChatId.value = chat.prId
+        Store.linkedPRChat.value = {
+          prId: chat.prId,
+          prNumber: chat.prNumber,
+          prTitle: chat.prTitle,
+          repoFullName: chat.repoFullName
+        }
       }
     })
   )

@@ -4,9 +4,9 @@
  */
 
 import { api } from '@codelobby/api'
-import { type PRFile, usePRFiles, useRefreshPRDetail } from '@codelobby/queries'
+import { type PRFile, usePRFiles } from '@codelobby/queries'
 import type { PullRequest, ReviewThread } from '@codelobby/shared-store'
-import { Actions } from '@codelobby/shared-store'
+import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import {
   Avatar,
   AvatarFallback,
@@ -1331,24 +1331,12 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
   const [streamingAnalysis, setStreamingAnalysis] = useState<string>('')
   const thinkingContainerRef = useRef<HTMLDivElement>(null)
 
-  // Refresh PR detail mutation
-  const refreshPRDetailMutation = useRefreshPRDetail()
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  // Refresh PR detail - uses Actions pattern (proper architecture)
+  const isRefreshing = useSignal(Store.loading.prDetail)
 
-  const handleRefreshPR = useCallback(async () => {
-    setIsRefreshing(true)
-    try {
-      const [owner, repo] = pr.base.repo.full_name.split('/')
-      await refreshPRDetailMutation.mutateAsync({
-        owner,
-        repo,
-        prNumber: pr.number,
-        repoFullName: pr.base.repo.full_name
-      })
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [pr.base.repo.full_name, pr.number, refreshPRDetailMutation])
+  const handleRefreshPR = useCallback(() => {
+    Actions.refreshPRDetail(pr.base.repo.full_name, pr.number)
+  }, [pr.base.repo.full_name, pr.number])
 
   // Auto-scroll thinking container to bottom when new content arrives
   useLayoutEffect(() => {

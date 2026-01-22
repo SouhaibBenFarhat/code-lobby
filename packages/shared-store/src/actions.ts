@@ -19,6 +19,7 @@ export type ActionEvents = {
   'action:fetch-prs': { repos: string[] }
   'action:fetch-pr-details': { prId: string }
   'action:refresh-repo': { repoFullName: string }
+  'action:refresh-pr-detail': { repoFullName: string; prNumber: number }
   'action:select-pr': { pr: PullRequest | null }
   'action:select-repos': { repos: string[] | null }
 
@@ -28,6 +29,8 @@ export type ActionEvents = {
   'action:find-preview-url': { pr: PullRequest }
   'action:find-jira-ticket': { pr: PullRequest }
   'action:create-pr-chat': { pr: PullRequest }
+  'action:close-pr-chat': { prId: string }
+  'action:switch-to-pr-chat': { prId: string }
   'action:clear-chat-history': undefined
 
   // Auth Actions
@@ -98,6 +101,7 @@ export interface ActionsType {
   fetchPRs: (repos: string[]) => void
   fetchPRDetails: (prId: string) => void
   refreshRepo: (repoFullName: string) => void
+  refreshPRDetail: (repoFullName: string, prNumber: number) => void
   selectPR: (pr: PullRequest | null) => void
   selectRepos: (repos: string[] | null) => void
   // AI Actions
@@ -106,6 +110,8 @@ export interface ActionsType {
   findPreviewURL: (pr: PullRequest) => void
   findJiraTicket: (pr: PullRequest) => void
   createPRChat: (pr: PullRequest) => void
+  closePRChat: (prId: string) => void
+  switchToPRChat: (prId: string) => void
   clearChatHistory: () => void
   // Auth Actions
   signIn: (token: string) => void
@@ -147,6 +153,10 @@ export const Actions: ActionsType = {
   /** Refresh a single repository's PRs */
   refreshRepo: (repoFullName: string) => emit('action:refresh-repo', { repoFullName }),
 
+  /** Refresh a specific PR's detail (updates Store.selectedPR) */
+  refreshPRDetail: (repoFullName: string, prNumber: number) =>
+    emit('action:refresh-pr-detail', { repoFullName, prNumber }),
+
   /** Select a PR (opens detail panel) */
   selectPR: (pr: PullRequest | null) => emit('action:select-pr', { pr }),
 
@@ -172,6 +182,12 @@ export const Actions: ActionsType = {
 
   /** Create a new PR-specific chat */
   createPRChat: (pr: PullRequest) => emit('action:create-pr-chat', { pr }),
+
+  /** Close/delete a PR chat */
+  closePRChat: (prId: string) => emit('action:close-pr-chat', { prId }),
+
+  /** Switch to an existing PR chat */
+  switchToPRChat: (prId: string) => emit('action:switch-to-pr-chat', { prId }),
 
   /** Clear general chat history */
   clearChatHistory: () => emit('action:clear-chat-history'),

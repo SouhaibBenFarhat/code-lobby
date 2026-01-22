@@ -1167,6 +1167,41 @@ import { SomeComponent } from '@codelobby/canvas-module'
 import { AnotherComponent } from '@codelobby/header-module'
 ```
 
+### ❌ FORBIDDEN: Writing to Store Outside data-module
+
+**ONLY `data-module` is allowed to write to Store (set `Store.*.value = ...`)!**
+
+UI modules and `@codelobby/queries` should NEVER write to Store directly:
+
+```typescript
+// ❌ NEVER DO THIS in UI modules or queries
+import { Store } from '@codelobby/shared-store'
+Store.selectedPR.value = newPR  // FORBIDDEN!
+Store.prs.value = [...Store.prs.value, newPR]  // FORBIDDEN!
+
+// ✅ CORRECT - Emit an action, let data-module handle the store update
+import { Actions } from '@codelobby/shared-store'
+Actions.selectPR(newPR)  // data-module listens and updates Store
+Actions.refreshPRDetail(repoFullName, prNumber)  // data-module handles it
+```
+
+**Why this matters:**
+- Keeps data flow unidirectional and predictable
+- Prevents multiple sources of truth
+- Makes debugging easier (all writes in one place)
+- Ensures UI modules stay "dumb" and testable
+
+**Allowed in data-module only:**
+```typescript
+// packages/data-module/src/index.ts
+onAction('action:select-pr', async ({ pr }) => {
+  Store.selectedPR.value = pr  // ✅ OK - data-module is the only writer
+  Store.prDetailOpen.value = pr !== null
+})
+```
+
+**Exception:** Test files can write to Store for test setup (e.g., `Store.prs.value = mockPRs`)
+
 ### ⚠️ CRITICAL: Never Remove Slot Registration
 
 **When refactoring a module, ALWAYS preserve the slot registration code!**

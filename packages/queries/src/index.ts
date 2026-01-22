@@ -675,7 +675,8 @@ export function useSetPRDetailPanel(): UseMutationResult<
 
 /**
  * Mutation to refresh/fetch PRs for a specific repo.
- * Updates the cached allPrs data without full refetch.
+ * Updates TanStack Query cache only.
+ * NOTE: For full store updates, use Actions.refreshRepo() instead.
  */
 export function useRefreshRepoPRs(): UseMutationResult<
   {
@@ -694,20 +695,18 @@ export function useRefreshRepoPRs(): UseMutationResult<
   return useMutation({
     mutationFn: (repoFullName: string) => api.github.refreshRepoPRs(repoFullName),
     onSuccess: (result, repoFullName) => {
-      // Update the allPrs cache by replacing PRs for this specific repo
-      queryClient.setQueryData<{ prs: PullRequest[]; rateLimit: RateLimit | null }>(
-        queryKeys.allPrs,
-        (old) => {
-          if (!old) return old
-          const newPRs = (result.data || []) as PullRequest[]
-          // Remove old PRs for this repo, add new ones
-          const filteredPRs = old.prs.filter((pr) => pr.base.repo.full_name !== repoFullName)
-          return {
-            prs: [...filteredPRs, ...newPRs],
-            rateLimit: result.rateLimit || old.rateLimit
-          }
+      const newPRs = (result.data || []) as PullRequest[]
+
+      // Update the per-repo cache
+      queryClient.setQueryData(queryKeys.prs([repoFullName]), newPRs)
+
+      // Invalidate the combined PRs query to force refetch
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey
+          return Array.isArray(key) && key[0] === 'prs' && key[1] === 'combined'
         }
-      )
+      })
 
       // Update rate limit
       if (result.rateLimit) {
@@ -719,7 +718,13 @@ export function useRefreshRepoPRs(): UseMutationResult<
 
 /**
  * Mutation to refresh a specific PR's detail view.
- * Refreshes the PR data from the repo and invalidates PR files cache.
+ * Updates TanStack Query cache only.
+ * 
+ * IMPORTANT: This does NOT update Store.selectedPR!
+ * For refreshing the PR detail panel, use Actions.refreshPRDetail() instead,
+ * which properly updates both the cache and the store.
+ * 
+ * @deprecated Use Actions.refreshPRDetail() for UI-triggered refreshes
  */
 export function useRefreshPRDetail(): UseMutationResult<
   {
@@ -738,20 +743,18 @@ export function useRefreshPRDetail(): UseMutationResult<
   return useMutation({
     mutationFn: ({ repoFullName }) => api.github.refreshRepoPRs(repoFullName),
     onSuccess: (result, { owner, repo, prNumber, repoFullName }) => {
-      // Update the allPrs cache by replacing PRs for this specific repo
-      queryClient.setQueryData<{ prs: PullRequest[]; rateLimit: RateLimit | null }>(
-        queryKeys.allPrs,
-        (old) => {
-          if (!old) return old
-          const newPRs = (result.data || []) as PullRequest[]
-          // Remove old PRs for this repo, add new ones
-          const filteredPRs = old.prs.filter((pr) => pr.base.repo.full_name !== repoFullName)
-          return {
-            prs: [...filteredPRs, ...newPRs],
-            rateLimit: result.rateLimit || old.rateLimit
-          }
+      const newPRs = (result.data || []) as PullRequest[]
+
+      // Update the per-repo cache
+      queryClient.setQueryData(queryKeys.prs([repoFullName]), newPRs)
+
+      // Invalidate the combined PRs query to force refetch
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey
+          return Array.isArray(key) && key[0] === 'prs' && key[1] === 'combined'
         }
-      )
+      })
 
       // Invalidate PR files cache to force refetch of changed files
       queryClient.invalidateQueries({
