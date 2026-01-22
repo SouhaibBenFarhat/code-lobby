@@ -65,6 +65,7 @@ export function AIChatPanel({
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [enableThinking, setEnableThinking] = useState(false)
+  const [enableWebFetch, setEnableWebFetch] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
   const [showConversations, setShowConversations] = useState(false)
@@ -146,15 +147,17 @@ export function AIChatPanel({
     scroll.resetScroll()
     setError(null)
     try {
-      const [key, model, thinking, prompts] = await Promise.all([
+      const [key, model, thinking, webFetch, prompts] = await Promise.all([
         window.electron.getClaudeApiKey(),
         window.electron.getSelectedModel(),
         window.electron.getEnableThinking(),
+        window.electron.getEnableWebFetch(),
         window.electron.getCustomPrompts()
       ])
       setApiKey(key)
       setSelectedModel(model)
       setEnableThinking(thinking)
+      setEnableWebFetch(webFetch)
       setCustomPrompts(prompts)
 
       if (linkedPRChat) {
@@ -549,6 +552,11 @@ export function AIChatPanel({
           streaming={streaming}
           messages={messages}
           selectedModel={selectedModel}
+          enableWebFetch={enableWebFetch}
+          onWebFetchChange={async (enabled) => {
+            setEnableWebFetch(enabled)
+            await window.electron.setEnableWebFetch(enabled)
+          }}
           prompts={
             linkedPRChat
               ? getPRQuickPrompts({
@@ -585,6 +593,8 @@ export function AIChatPanel({
           streaming={{ content: '', thinking: '', isStreaming: false }}
           messages={[]}
           selectedModel=""
+          enableWebFetch={false}
+          onWebFetchChange={() => {}}
           prompts={[]}
           customPrompts={[]}
           onInputChange={() => {}}

@@ -214,6 +214,8 @@ export interface ElectronAPI {
   getDefaultModel: () => Promise<string>
   getEnableThinking: () => Promise<boolean>
   setEnableThinking: (enabled: boolean) => Promise<{ success: boolean }>
+  getEnableWebFetch: () => Promise<boolean>
+  setEnableWebFetch: (enabled: boolean) => Promise<{ success: boolean }>
   getChatHistory: () => Promise<
     Array<{
       id: string

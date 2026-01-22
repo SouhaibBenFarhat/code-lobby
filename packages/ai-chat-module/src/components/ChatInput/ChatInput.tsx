@@ -2,8 +2,8 @@
  * ChatInput - Input area with API key entry, textarea, and quick actions
  */
 
-import { Button, cn, Input } from '@codelobby/ui-kit'
-import { Key, Loader2, Send } from 'lucide-react'
+import { Button, cn, Input, Tooltip, TooltipContent, TooltipTrigger } from '@codelobby/ui-kit'
+import { Globe, Key, Loader2, Send } from 'lucide-react'
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../../types'
 import { ContextIndicator } from '../ContextIndicator'
@@ -24,6 +24,9 @@ export interface ChatInputProps {
   streaming: StreamingState
   messages: ChatMessage[]
   selectedModel: string
+  // Web fetch toggle
+  enableWebFetch: boolean
+  onWebFetchChange: (enabled: boolean) => void
   // Quick actions
   prompts: QuickPrompt[]
   customPrompts: CustomPrompt[]
@@ -48,6 +51,8 @@ export function ChatInput({
   streaming,
   messages,
   selectedModel,
+  enableWebFetch,
+  onWebFetchChange,
   prompts,
   customPrompts,
   onInputChange,
@@ -164,18 +169,51 @@ export function ChatInput({
             className="flex-1 min-h-[72px] max-h-[200px] px-3 py-2 text-sm rounded-[8px] border border-border bg-secondary/50 resize-none transition-colors duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] placeholder:text-muted-foreground/60 hover:border-border/80 hover:bg-secondary/70 focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_rgba(0,122,255,0.15)]"
             style={{ height: '72px' }}
           />
-          <Button
-            onClick={handleSendClick}
-            disabled={!input.trim()}
-            size="icon"
-            className={cn(
-              'h-9 w-9 flex-shrink-0 mb-1',
-              isSending && input.trim() && 'bg-primary/70'
-            )}
-            title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+          <div className="flex flex-col gap-1 mb-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={enableWebFetch ? 'default' : 'ghost'}
+                  size="icon"
+                  className={cn(
+                    'h-9 w-9 flex-shrink-0 transition-colors',
+                    enableWebFetch
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  )}
+                  onClick={() => onWebFetchChange(!enableWebFetch)}
+                >
+                  <Globe className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[200px]">
+                <p className="text-xs">
+                  {enableWebFetch ? (
+                    <>
+                      <span className="font-medium text-emerald-400">Web fetch enabled</span>
+                      <br />
+                      Claude can read web pages for current docs & info
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">Web fetch disabled</span>
+                      <br />
+                      Enable to let Claude read web pages
+                    </>
+                  )}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Button
+              onClick={handleSendClick}
+              disabled={!input.trim()}
+              size="icon"
+              className={cn('h-9 w-9 flex-shrink-0', isSending && input.trim() && 'bg-primary/70')}
+              title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex items-center justify-between">
           <ContextIndicator

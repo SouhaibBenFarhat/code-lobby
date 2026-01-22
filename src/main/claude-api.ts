@@ -42,12 +42,31 @@ const clientCache = new Map<string, Anthropic>()
 
 // Stream callback type
 export type StreamCallback = (chunk: {
-  type: 'thinking' | 'text' | 'done' | 'error'
+  type: 'thinking' | 'text' | 'done' | 'error' | 'tool_use' | 'tool_result'
   content?: string
   thinking?: string
   fullResponse?: ClaudeResponse
   error?: string
+  toolName?: string
+  toolInput?: Record<string, unknown>
 }) => void
+
+// Tool definition type
+export interface Tool {
+  name: string
+  description: string
+  input_schema: {
+    type: 'object'
+    properties: Record<string, unknown>
+    required?: string[]
+  }
+}
+
+// Tool executor function type
+export type ToolExecutor = (
+  toolName: string,
+  toolInput: Record<string, unknown>
+) => Promise<{ content: string; isError: boolean }>
 
 /**
  * Get or create an Anthropic client for the given API key
@@ -796,5 +815,229 @@ export async function sendMessageStreaming(
     }
 
     onChunk({ type: 'error', error: errorMessage })
+  }
+}
+
+/**
+ * Send a message to Claude API with streaming AND tool support
+ * Handles the tool use loop: Claude calls tool -> we execute -> return result -> Claude continues
+ */
+export async function sendMessageStreamingWithTools(
+  apiKey: string,
+  messages: ClaudeMessage[],
+  onChunk: StreamCallback,
+  tools: Tool[],
+  toolExecutor: ToolExecutor,
+  model?: string,
+  systemPrompt?: string,
+  enableThinking: boolean = false
+): Promise<void> {
+  const selectedModel = model || DEFAULT_MODEL
+  const useThinking = enableThinking && supportsThinking(selectedModel)
+
+  logger.info(LogCategory.API, 'Sending streaming message with tools to Claude API', {
+    messageCount: messages.length,
+    model: selectedModel,
+    thinking: useThinking,
+    toolCount: tools.length
+  })
+
+  // Convert our messages to Anthropic format, allowing for tool result content
+  type MessageContent = string | Array<{ type: string; tool_use_id?: string; content?: string }>
+  const conversationMessages: Array<{ role: 'user' | 'assistant'; content: MessageContent }> =
+    messages.map((m) => ({
+      role: m.role,
+      content: m.content
+    }))
+
+  let fullContent = ''
+  let fullThinking = ''
+  let inputTokens = 0
+  let outputTokens = 0
+
+  // Tool use loop - continue until Claude stops calling tools
+  let continueLoop = true
+
+  while (continueLoop) {
+    try {
+      const client = getClient(apiKey)
+
+      // Build request parameters
+      const requestParams: Parameters<typeof client.messages.stream>[0] = {
+        model: selectedModel,
+        max_tokens: useThinking ? MAX_TOKENS_WITH_THINKING : MAX_TOKENS,
+        system: systemPrompt,
+        messages: conversationMessages as Parameters<typeof client.messages.stream>[0]['messages'],
+        tools:
+          tools.length > 0
+            ? (tools as Parameters<typeof client.messages.stream>[0]['tools'])
+            : undefined
+      }
+
+      // Add thinking configuration if supported and enabled
+      if (useThinking) {
+        requestParams.thinking = {
+          type: 'enabled',
+          budget_tokens: THINKING_BUDGET
+        }
+      }
+
+      // Create streaming response
+      const stream = client.messages.stream(requestParams)
+
+      let _currentToolUse: { id: string; name: string; input: string } | null = null
+      let responseStopReason: string | null = null
+
+      // Handle stream events
+      stream.on('text', (text) => {
+        fullContent += text
+        onChunk({ type: 'text', content: text })
+      })
+
+      // Handle thinking events
+      stream.on('thinking', (thinkingDelta: string, _accumulated: string) => {
+        fullThinking += thinkingDelta
+        onChunk({ type: 'thinking', thinking: thinkingDelta })
+      })
+
+      // Wait for completion
+      const finalMessage = await stream.finalMessage()
+
+      // Process tool use blocks from final message (more reliable than streaming events)
+      const toolBlocks = finalMessage.content.filter(
+        (block): block is Anthropic.Messages.ToolUseBlock => block.type === 'tool_use'
+      )
+
+      if (toolBlocks.length > 0) {
+        _currentToolUse = {
+          id: toolBlocks[0].id,
+          name: toolBlocks[0].name,
+          input: JSON.stringify(toolBlocks[0].input)
+        }
+        onChunk({
+          type: 'tool_use',
+          toolName: toolBlocks[0].name,
+          content: `Using tool: ${toolBlocks[0].name}...`
+        })
+      }
+
+      responseStopReason = finalMessage.stop_reason
+      inputTokens += finalMessage.usage.input_tokens
+      outputTokens += finalMessage.usage.output_tokens
+
+      // Check if Claude wants to use a tool
+      if (responseStopReason === 'tool_use') {
+        // Find tool use blocks in the response
+        const toolUseBlocks = finalMessage.content.filter(
+          (block): block is Anthropic.Messages.ToolUseBlock => block.type === 'tool_use'
+        )
+
+        if (toolUseBlocks.length > 0) {
+          // Add assistant message with tool use to conversation
+          conversationMessages.push({
+            role: 'assistant',
+            content: finalMessage.content as unknown as MessageContent
+          })
+
+          // Execute each tool and collect results
+          const toolResults: Array<{
+            type: 'tool_result'
+            tool_use_id: string
+            content: string
+            is_error?: boolean
+          }> = []
+
+          for (const toolUse of toolUseBlocks) {
+            logger.info(LogCategory.API, 'Executing tool', {
+              name: toolUse.name,
+              input: toolUse.input
+            })
+
+            const result = await toolExecutor(
+              toolUse.name,
+              toolUse.input as Record<string, unknown>
+            )
+
+            onChunk({
+              type: 'tool_result',
+              toolName: toolUse.name,
+              content: result.isError
+                ? `Tool error: ${result.content}`
+                : 'Tool completed successfully'
+            })
+
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: toolUse.id,
+              content: result.content,
+              is_error: result.isError
+            })
+          }
+
+          // Add tool results as user message
+          conversationMessages.push({
+            role: 'user',
+            content: toolResults
+          })
+
+          // Continue the loop to get Claude's response with tool results
+          continue
+        }
+      }
+
+      // No more tool calls - we're done
+      continueLoop = false
+
+      logger.info(LogCategory.API, 'Claude streaming with tools complete', {
+        model: finalMessage.model,
+        stopReason: responseStopReason,
+        inputTokens,
+        outputTokens,
+        hasThinking: !!fullThinking
+      })
+
+      // Send done signal with full response
+      onChunk({
+        type: 'done',
+        fullResponse: {
+          id: finalMessage.id,
+          content: fullContent,
+          thinking: fullThinking || undefined,
+          model: finalMessage.model,
+          stop_reason: responseStopReason,
+          usage: {
+            input_tokens: inputTokens,
+            output_tokens: outputTokens
+          }
+        }
+      })
+    } catch (error) {
+      continueLoop = false
+
+      let errorMessage = 'Unknown error'
+      if (error instanceof Anthropic.APIError) {
+        logger.error(LogCategory.API, 'Claude streaming with tools API error', {
+          status: error.status,
+          message: error.message
+        })
+
+        if (error instanceof Anthropic.AuthenticationError) {
+          errorMessage = 'Invalid API key. Please check your Claude API key.'
+        } else if (error instanceof Anthropic.RateLimitError) {
+          errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+        } else if (error instanceof Anthropic.BadRequestError) {
+          errorMessage = `Invalid request: ${error.message}`
+        } else {
+          errorMessage = `Claude API error: ${error.message}`
+        }
+      } else {
+        errorMessage = error instanceof Error ? error.message : String(error)
+        logger.error(LogCategory.API, 'Failed to stream message with tools from Claude', {
+          error: errorMessage
+        })
+      }
+
+      onChunk({ type: 'error', error: errorMessage })
+    }
   }
 }

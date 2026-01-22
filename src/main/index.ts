@@ -17,7 +17,8 @@ import {
   fetchModels as fetchClaudeModels,
   getDefaultModel,
   sendMessage as sendClaudeMessage,
-  sendMessageStreaming as sendClaudeMessageStreaming
+  sendMessageStreaming as sendClaudeMessageStreaming,
+  sendMessageStreamingWithTools as sendClaudeMessageStreamingWithTools
 } from './claude-api'
 import {
   fetchAllPRsForRepos,
@@ -51,6 +52,7 @@ import {
   getClaudeApiKey,
   getCustomQuickPrompts,
   getEnableThinking,
+  getEnableWebFetch,
   getIDEViewSettings,
   getMinimizedRepos,
   getMyPRsRepos,
@@ -79,6 +81,7 @@ import {
   setCardLayouts,
   setClaudeApiKey,
   setEnableThinking,
+  setEnableWebFetch,
   setIDEViewSettings,
   setMyPRsRepos,
   setPRAnalysis,
@@ -97,6 +100,7 @@ import {
   setViewMode,
   ViewMode
 } from './store'
+import { executeWebFetch, FETCH_URL_TOOL } from './web-fetch'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SINGLE SOURCE OF TRUTH ARCHITECTURE
@@ -795,6 +799,17 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
+  // Web fetch toggle (free tool that allows Claude to fetch URLs)
+  ipcMain.handle('get-enable-web-fetch', async () => {
+    return getEnableWebFetch()
+  })
+
+  ipcMain.handle('set-enable-web-fetch', async (_, enabled: boolean) => {
+    logger.info(LogCategory.API, 'Setting web fetch tool', { enabled })
+    setEnableWebFetch(enabled)
+    return { success: true }
+  })
+
   ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
@@ -874,6 +889,7 @@ function setupIPCHandlers(): void {
 
       const selectedModel = getSelectedModel() || getDefaultModel()
       const enableThinking = getEnableThinking()
+      const enableWebFetch = getEnableWebFetch()
 
       // Check if there's an active PR chat
       const activePRChatId = getActivePRChatId()
@@ -882,6 +898,7 @@ function setupIPCHandlers(): void {
       logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
         model: selectedModel,
         thinking: enableThinking,
+        webFetch: enableWebFetch,
         hasSystemContext: !!systemContext,
         isInPRChat,
         activePRChatId
@@ -929,43 +946,86 @@ function setupIPCHandlers(): void {
       // Get the sender's webContents to send stream updates
       const webContents = event.sender
 
-      // Start streaming
-      sendClaudeMessageStreaming(
-        apiKey,
-        claudeMessages,
-        (chunk) => {
-          // Send chunk to renderer
-          webContents.send('chat-stream-chunk', { streamId, ...chunk })
+      // Chunk handler for both regular and tool-enabled streaming
+      const handleChunk = (chunk: {
+        type: string
+        content?: string
+        thinking?: string
+        error?: string
+        toolName?: string
+        fullResponse?: {
+          id: string
+          content: string
+          thinking?: string
+          model: string
+          stop_reason: string | null
+          usage?: { input_tokens: number; output_tokens: number }
+        }
+      }) => {
+        // Send chunk to renderer
+        webContents.send('chat-stream-chunk', { streamId, ...chunk })
 
-          // If done, save the assistant message to the correct chat
-          if (chunk.type === 'done' && chunk.fullResponse) {
-            const assistantMsg: ChatMessage = {
-              id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
-              role: 'assistant',
-              content: chunk.fullResponse.content,
-              thinking: chunk.fullResponse.thinking,
-              timestamp: new Date().toISOString()
-            }
-
-            // Save to the correct chat (PR-specific or general)
-            if (isInPRChat && activePRChatId) {
-              addMessageToPRChat(activePRChatId, assistantMsg)
-            } else {
-              addChatMessage(assistantMsg)
-            }
-
-            logger.info(LogCategory.API, 'Streaming chat message complete', {
-              model: chunk.fullResponse.model,
-              hasThinking: !!chunk.fullResponse.thinking,
-              usage: chunk.fullResponse.usage,
-              savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
-            })
+        // If done, save the assistant message to the correct chat
+        if (chunk.type === 'done' && chunk.fullResponse) {
+          const assistantMsg: ChatMessage = {
+            id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
+            role: 'assistant',
+            content: chunk.fullResponse.content,
+            thinking: chunk.fullResponse.thinking,
+            timestamp: new Date().toISOString()
           }
-        },
-        selectedModel,
-        effectiveSystemPrompt,
-        enableThinking
-      )
+
+          // Save to the correct chat (PR-specific or general)
+          if (isInPRChat && activePRChatId) {
+            addMessageToPRChat(activePRChatId, assistantMsg)
+          } else {
+            addChatMessage(assistantMsg)
+          }
+
+          logger.info(LogCategory.API, 'Streaming chat message complete', {
+            model: chunk.fullResponse.model,
+            hasThinking: !!chunk.fullResponse.thinking,
+            usage: chunk.fullResponse.usage,
+            savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
+          })
+        }
+      }
+
+      // Start streaming - use tool-enabled version if web fetch is enabled
+      if (enableWebFetch) {
+        // Tool executor that handles web fetch requests
+        const toolExecutor = async (
+          toolName: string,
+          toolInput: Record<string, unknown>
+        ): Promise<{ content: string; isError: boolean }> => {
+          if (toolName === 'fetch_url') {
+            const url = toolInput.url as string
+            return executeWebFetch(url)
+          }
+          return { content: `Unknown tool: ${toolName}`, isError: true }
+        }
+
+        sendClaudeMessageStreamingWithTools(
+          apiKey,
+          claudeMessages,
+          handleChunk,
+          [FETCH_URL_TOOL],
+          toolExecutor,
+          selectedModel,
+          effectiveSystemPrompt,
+          enableThinking
+        )
+      } else {
+        // Regular streaming without tools
+        sendClaudeMessageStreaming(
+          apiKey,
+          claudeMessages,
+          handleChunk,
+          selectedModel,
+          effectiveSystemPrompt,
+          enableThinking
+        )
+      }
 
       return { success: true, streamId }
     }
