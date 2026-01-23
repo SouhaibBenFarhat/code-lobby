@@ -47,7 +47,6 @@ export { AIChatPanel } from './components/AIChat'
 export {
   CONTEXT_WINDOWS,
   DEFAULT_CONTEXT_WINDOW,
-  GENERAL_QUICK_PROMPTS,
   getPRQuickPrompts,
   POSTABLE_END,
   POSTABLE_START
@@ -108,12 +107,6 @@ function AIChatWrapper(): React.JSX.Element | null {
     Actions.toggleAIPanel()
   }
 
-  const handleClosePRChat = (): void => {
-    if (linkedPRChat) {
-      Actions.closePRChat(linkedPRChat.prId)
-    }
-  }
-
   const handleSwitchToPRChat = (prId: string): void => {
     Actions.switchToPRChat(prId)
   }
@@ -129,7 +122,6 @@ function AIChatWrapper(): React.JSX.Element | null {
       onClose={handleClose}
       user={user}
       linkedPRChat={linkedPRChat}
-      onClosePRChat={handleClosePRChat}
       onSwitchToPRChat={handleSwitchToPRChat}
       selectedPR={selectedPR}
       onStartPRChat={handleStartPRChat}

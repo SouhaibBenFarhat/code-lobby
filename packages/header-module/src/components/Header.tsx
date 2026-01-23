@@ -176,8 +176,9 @@ export function Header({
       <div className="flex items-center gap-1 no-drag bg-muted/50 rounded-lg p-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               className={cn(
                 'p-1.5 rounded-md transition-all',
                 viewMode === 'canvas'
@@ -187,14 +188,15 @@ export function Header({
               onClick={() => onViewModeChange('canvas')}
             >
               <LayoutGrid className="w-4 h-4" />
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent>Canvas View</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               className={cn(
                 'p-1.5 rounded-md transition-all',
                 viewMode === 'ide'
@@ -204,7 +206,7 @@ export function Header({
               onClick={() => onViewModeChange('ide')}
             >
               <FolderTree className="w-4 h-4" />
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent>IDE View</TooltipContent>
         </Tooltip>

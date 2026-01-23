@@ -28,6 +28,15 @@ export {
   DialogTrigger
 } from './dialog'
 export { Input, type InputProps } from './input'
+// List Menu
+export {
+  ListMenu,
+  ListMenuContent,
+  ListMenuGroup,
+  ListMenuHeader,
+  ListMenuItem,
+  ListMenuSeparator
+} from './list-menu'
 // Markdown
 export { MarkdownContent } from './markdown-content'
 export { Popover, PopoverContent, PopoverTrigger } from './popover'

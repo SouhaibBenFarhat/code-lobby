@@ -407,6 +407,61 @@ export const ai = {
     )
   },
 
+  async analyzeCIFailure(params: {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+  }): Promise<{
+    success: boolean
+    summary?: string
+    failureReason?: string
+    suggestedFix?: string
+    thinking?: string
+    error?: string
+  }> {
+    return call(
+      'ai.analyzeCIFailure',
+      () => window.electron.analyzeCIFailure(params),
+      { checkName: params.checkName, owner: params.owner, repo: params.repo },
+      { category: LogCategory.AI_ACTION }
+    )
+  },
+
+  // Streaming CI failure analysis with real-time thinking
+  async streamCIFailureAnalysis(params: {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+  }): Promise<{ success: boolean; streamId?: string; error?: string }> {
+    return call(
+      'ai.streamCIFailureAnalysis',
+      () => window.electron.streamCIFailureAnalysis(params),
+      { checkName: params.checkName, owner: params.owner, repo: params.repo },
+      { category: LogCategory.AI_ACTION }
+    )
+  },
+
+  // Subscribe to CI analysis stream chunks
+  onCIAnalysisStreamChunk(
+    callback: (chunk: {
+      streamId: string
+      type: 'thinking' | 'text' | 'done' | 'error'
+      thinking?: string
+      content?: string
+      error?: string
+      fullResponse?: {
+        summary: string
+        failureReason?: string
+        suggestedFix?: string
+        thinking?: string
+      }
+    }) => void
+  ): () => void {
+    return window.electron.onCIAnalysisStreamChunk(callback)
+  },
+
   async analyzePRStatus(context: {
     prId: string
     number: number

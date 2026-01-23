@@ -2,7 +2,7 @@
  * ChatEmptyStates - Loading skeleton, PR empty state, and default empty state components
  */
 
-import { Button, ClaudeIcon, cn } from '@codelobby/ui-kit'
+import { Button, cn } from '@codelobby/ui-kit'
 import { GitPullRequest, Loader2, MessageSquare } from 'lucide-react'
 import React from 'react'
 import type { SelectedPR } from '../../types'
@@ -94,33 +94,26 @@ export function PREmptyState({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Default Empty State
+// No PR Selected State
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface DefaultEmptyStateProps {
+export interface NoPRSelectedStateProps {
   apiKey: string | null
-  chatStarted: boolean
-  onStartChat: () => void
 }
 
-export function DefaultEmptyState({
-  apiKey,
-  chatStarted,
-  onStartChat
-}: DefaultEmptyStateProps): React.JSX.Element {
+export function NoPRSelectedState({ apiKey }: NoPRSelectedStateProps): React.JSX.Element {
   return (
     <div className="h-full flex items-center justify-center min-h-[200px]">
-      <div className="text-center space-y-4">
-        <ClaudeIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">
-          {apiKey ? 'Start a conversation with Claude' : 'Enter your API key below to start'}
-        </p>
-        {apiKey && !chatStarted && (
-          <Button onClick={onStartChat} className="gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Start Chat
-          </Button>
-        )}
+      <div className="text-center space-y-4 px-6 max-w-md">
+        <GitPullRequest className="w-12 h-12 mx-auto text-muted-foreground/30" />
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">No PR Selected</p>
+          <p className="text-sm text-muted-foreground">
+            {apiKey
+              ? 'Select a pull request from the list to start chatting with AI about it'
+              : 'Enter your API key below, then select a PR to start chatting'}
+          </p>
+        </div>
       </div>
     </div>
   )

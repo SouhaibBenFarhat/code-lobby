@@ -1,15 +1,15 @@
 export type {
   ContextSyncBannerProps,
-  DefaultEmptyStateProps,
   ErrorBannerProps,
+  NoPRSelectedStateProps,
   PRContextBannerProps,
   PREmptyStateProps
 } from './ChatEmptyStates'
 export {
   ChatLoadingSkeleton,
   ContextSyncBanner,
-  DefaultEmptyState,
   ErrorBanner,
+  NoPRSelectedState,
   PRContextBanner,
   PREmptyState
 } from './ChatEmptyStates'

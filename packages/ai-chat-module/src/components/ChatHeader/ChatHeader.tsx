@@ -5,13 +5,16 @@
 import {
   Button,
   ClaudeIcon,
-  cn,
   formatRelativeTime,
+  ListMenu,
+  ListMenuContent,
+  ListMenuHeader,
+  ListMenuItem,
   Popover,
   PopoverContent,
   PopoverTrigger
 } from '@codelobby/ui-kit'
-import { ArrowLeft, GitPullRequest, List, MessageSquare, Settings, Trash2, X } from 'lucide-react'
+import { GitPullRequest, List, Settings, Trash2, X } from 'lucide-react'
 import React from 'react'
 import type { ClaudeModel, LinkedPRChat, PRChatInfo } from '../../types'
 
@@ -25,7 +28,6 @@ export interface ChatHeaderProps {
   showSettings: boolean
   onShowConversationsChange: (show: boolean) => void
   onShowSettingsChange: (show: boolean) => void
-  onClosePRChat?: () => void
   onSwitchToPRChat?: (prId: string) => void
   onClearHistory: () => void
   onClose: () => void
@@ -42,7 +44,6 @@ export function ChatHeader({
   showSettings,
   onShowConversationsChange,
   onShowSettingsChange,
-  onClosePRChat,
   onSwitchToPRChat,
   onClearHistory,
   onClose,
@@ -52,15 +53,13 @@ export function ChatHeader({
     <div className="flex items-center justify-between p-3 border-b border-border bg-muted/20">
       <div className="flex items-center gap-2 min-w-0">
         <ClaudeIcon className="w-5 h-5 text-primary flex-shrink-0" />
-        <h2 className="font-semibold text-sm flex-shrink-0">
-          {linkedPRChat ? 'PR Chat' : 'AI Assistant'}
-        </h2>
+        <h2 className="font-semibold text-sm flex-shrink-0">AI Assistant</h2>
         {linkedPRChat && (
           <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded truncate max-w-[120px]">
             #{linkedPRChat.prNumber}
           </span>
         )}
-        {!linkedPRChat && apiKey && selectedModel && (
+        {apiKey && selectedModel && (
           <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
             (
             {models.find((m) => m.id === selectedModel)?.display_name ||
@@ -86,102 +85,43 @@ export function ChatHeader({
                 </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-0" align="end" side="bottom" sideOffset={5}>
-              <div className="p-2 border-b border-border">
-                <h4 className="text-xs font-medium">Conversations</h4>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                <button
-                  type="button"
-                  className={cn(
-                    'w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2',
-                    !linkedPRChat && 'bg-primary/10'
-                  )}
-                  onClick={() => {
-                    onClosePRChat?.()
-                    onShowConversationsChange(false)
-                  }}
-                >
-                  <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">General Chat</div>
-                    <div className="text-[10px] text-muted-foreground">Main AI conversation</div>
-                  </div>
-                  {!linkedPRChat && (
-                    <span className="text-[10px] text-primary font-medium">Active</span>
-                  )}
-                </button>
-
-                {allPRChats.length > 0 && (
-                  <div className="px-3 py-1.5 text-[10px] text-muted-foreground font-medium bg-muted/30">
-                    PR Conversations ({allPRChats.length})
-                  </div>
-                )}
-
-                {allPRChats.map((chat) => (
-                  <div
-                    key={chat.prId}
-                    className={cn(
-                      'group w-full px-3 py-2 hover:bg-muted/50 transition-colors flex items-start gap-2',
-                      linkedPRChat?.prId === chat.prId && 'bg-primary/10'
-                    )}
-                  >
-                    <GitPullRequest className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <button
-                      type="button"
-                      className="flex-1 text-left min-w-0"
+            <PopoverContent className="w-80 p-0" align="end" side="bottom" sideOffset={5}>
+              <ListMenu>
+                <ListMenuHeader>
+                  <h4 className="text-xs font-medium">PR Conversations ({allPRChats.length})</h4>
+                </ListMenuHeader>
+                <ListMenuContent>
+                  {allPRChats.map((chat) => (
+                    <ListMenuItem
+                      key={chat.prId}
+                      icon={<GitPullRequest className="w-4 h-4 text-blue-500" />}
+                      title={`#${chat.prNumber} ${chat.prTitle}`}
+                      description={`${chat.repoFullName} • ${chat.messageCount} msgs • ${formatRelativeTime(chat.updatedAt)}`}
+                      active={linkedPRChat?.prId === chat.prId}
+                      trailing={
+                        linkedPRChat?.prId === chat.prId && (
+                          <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">
+                            Active
+                          </span>
+                        )
+                      }
+                      actionButton={<X className="w-3 h-3 text-destructive" />}
+                      actionTitle="Delete conversation"
+                      onAction={async () => {
+                        await onDeletePRChat(chat.prId)
+                      }}
                       onClick={() => {
                         onSwitchToPRChat?.(chat.prId)
                         onShowConversationsChange(false)
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate flex-1">
-                          #{chat.prNumber} {chat.prTitle}
-                        </span>
-                        {linkedPRChat?.prId === chat.prId && (
-                          <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium flex-shrink-0">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
-                        {chat.repoFullName} • {chat.messageCount} msgs •{' '}
-                        {formatRelativeTime(chat.updatedAt)}
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity flex-shrink-0"
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        if (linkedPRChat?.prId === chat.prId) {
-                          onClosePRChat?.()
-                        }
-                        await onDeletePRChat(chat.prId)
-                      }}
-                      title="Delete conversation"
-                    >
-                      <X className="w-3 h-3 text-destructive" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                    />
+                  ))}
+                </ListMenuContent>
+              </ListMenu>
             </PopoverContent>
           </Popover>
         )}
 
-        {linkedPRChat && onClosePRChat && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onClosePRChat}
-            title="Back to general chat"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        )}
         {apiKey && (
           <>
             <Button

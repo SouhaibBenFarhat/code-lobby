@@ -29,9 +29,14 @@ export type ActionEvents = {
   'action:find-preview-url': { pr: PullRequest }
   'action:find-jira-ticket': { pr: PullRequest }
   'action:create-pr-chat': { pr: PullRequest }
-  'action:close-pr-chat': { prId: string }
   'action:switch-to-pr-chat': { prId: string }
-  'action:clear-chat-history': undefined
+  'action:analyze-ci-failure': {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+    jobId?: number // GitHub Actions job ID for fetching logs
+  }
 
   // Auth Actions
   'action:sign-in': { token: string }
@@ -110,9 +115,14 @@ export interface ActionsType {
   findPreviewURL: (pr: PullRequest) => void
   findJiraTicket: (pr: PullRequest) => void
   createPRChat: (pr: PullRequest) => void
-  closePRChat: (prId: string) => void
   switchToPRChat: (prId: string) => void
-  clearChatHistory: () => void
+  analyzeCIFailure: (
+    owner: string,
+    repo: string,
+    checkRunId: string,
+    checkName: string,
+    jobId?: number
+  ) => void
   // Auth Actions
   signIn: (token: string) => void
   signOut: () => void
@@ -183,14 +193,17 @@ export const Actions: ActionsType = {
   /** Create a new PR-specific chat */
   createPRChat: (pr: PullRequest) => emit('action:create-pr-chat', { pr }),
 
-  /** Close/delete a PR chat */
-  closePRChat: (prId: string) => emit('action:close-pr-chat', { prId }),
-
   /** Switch to an existing PR chat */
   switchToPRChat: (prId: string) => emit('action:switch-to-pr-chat', { prId }),
 
-  /** Clear general chat history */
-  clearChatHistory: () => emit('action:clear-chat-history'),
+  /** Analyze a failed CI check using AI */
+  analyzeCIFailure: (
+    owner: string,
+    repo: string,
+    checkRunId: string,
+    checkName: string,
+    jobId?: number
+  ) => emit('action:analyze-ci-failure', { owner, repo, checkRunId, checkName, jobId }),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Auth Actions

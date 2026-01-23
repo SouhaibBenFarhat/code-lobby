@@ -105,8 +105,9 @@ export function ChatSettings({
           <Brain className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">Extended Thinking</span>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="unstyled"
+          size="none"
           onClick={() => onThinkingChange(!enableThinking)}
           className={cn(
             'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
@@ -119,7 +120,7 @@ export function ChatSettings({
               enableThinking ? 'translate-x-5' : 'translate-x-1'
             )}
           />
-        </button>
+        </Button>
       </div>
       {enableThinking && (
         <p className="text-[10px] text-muted-foreground">

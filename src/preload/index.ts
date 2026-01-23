@@ -186,6 +186,58 @@ const electronAPI: ElectronAPI = {
     comments: Array<{ author: string; body: string }>
   }) => ipcRenderer.invoke('extract-jira-ticket', context),
 
+  analyzeCIFailure: (params: {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+  }) => ipcRenderer.invoke('analyze-ci-failure', params),
+
+  // Streaming CI failure analysis (with real-time thinking)
+  streamCIFailureAnalysis: (params: {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+  }) => ipcRenderer.invoke('stream-ci-failure-analysis', params),
+
+  onCIAnalysisStreamChunk: (
+    callback: (chunk: {
+      streamId: string
+      type: 'thinking' | 'text' | 'done' | 'error'
+      thinking?: string
+      content?: string
+      error?: string
+      fullResponse?: {
+        summary: string
+        failureReason?: string
+        suggestedFix?: string
+        thinking?: string
+      }
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      chunk: {
+        streamId: string
+        type: 'thinking' | 'text' | 'done' | 'error'
+        thinking?: string
+        content?: string
+        error?: string
+        fullResponse?: {
+          summary: string
+          failureReason?: string
+          suggestedFix?: string
+          thinking?: string
+        }
+      }
+    ) => callback(chunk)
+    ipcRenderer.on('ci-analysis-stream-chunk', handler)
+    return () => {
+      ipcRenderer.removeListener('ci-analysis-stream-chunk', handler)
+    }
+  },
+
   analyzePRStatus: (context: {
     prId: string
     number: number

@@ -5,7 +5,7 @@
 
 import { api } from '@codelobby/api'
 import { type PRFile, usePRFiles } from '@codelobby/queries'
-import type { PullRequest, ReviewThread } from '@codelobby/shared-store'
+import type { CIFailureAnalysis, PullRequest, ReviewThread } from '@codelobby/shared-store'
 import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import {
   Avatar,
@@ -55,6 +55,7 @@ import {
   PlayCircle,
   RefreshCw,
   Search,
+  Sparkles,
   Ticket,
   User,
   Users,
@@ -69,10 +70,24 @@ interface PRDetailProps {
 }
 
 function CheckItem({
-  check
+  check,
+  owner,
+  repo
 }: {
-  check: { name: string; status: string; conclusion: string | null; html_url: string }
+  check: {
+    id: string
+    name: string
+    status: string
+    conclusion: string | null
+    html_url: string
+  }
+  owner: string
+  repo: string
 }) {
+  const ciFailureAnalyses = useSignal(Store.ciFailureAnalyses)
+  const analysis: CIFailureAnalysis | undefined = ciFailureAnalyses[check.id]
+  const [showAnalysis, setShowAnalysis] = useState(false)
+
   const getIcon = () => {
     if (check.status === 'in_progress' || check.status === 'queued') {
       return <Loader2 className="w-4 h-4 text-warning animate-spin" />
@@ -90,18 +105,168 @@ function CheckItem({
     }
   }
 
+  const handleAnalyze = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!analysis || analysis.error) {
+      Actions.analyzeCIFailure(owner, repo, check.id, check.name)
+    }
+    setShowAnalysis(true)
+  }
+
+  const isFailed = check.conclusion === 'failure'
+  const isLoading = analysis?.isLoading
+  const isStreaming = analysis?.isStreaming
+
   return (
-    <button
-      type="button"
-      className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors overflow-hidden w-full text-left"
-      onClick={() => window.open(check.html_url, '_blank')}
-    >
-      <span className="flex-shrink-0">{getIcon()}</span>
-      <span className="text-sm flex-1 truncate min-w-0">{check.name}</span>
-      <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">
-        {check.status === 'in_progress' ? 'Running' : check.conclusion || check.status}
-      </Badge>
-    </button>
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors overflow-hidden w-full">
+        <Button
+          variant="unstyled"
+          size="none"
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+          onClick={() => window.open(check.html_url, '_blank')}
+        >
+          <span className="flex-shrink-0">{getIcon()}</span>
+          <span className="text-sm flex-1 truncate min-w-0">{check.name}</span>
+        </Button>
+        <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">
+          {check.status === 'in_progress' ? 'Running' : check.conclusion || check.status}
+        </Badge>
+        {isFailed && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 flex-shrink-0"
+                onClick={handleAnalyze}
+                disabled={isLoading || isStreaming}
+              >
+                {isLoading || isStreaming ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p className="font-medium">Analyze with AI</p>
+              <p className="text-xs text-muted-foreground">
+                Get AI summary of why this check failed
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Streaming AI Analysis Panel - shows thinking in real-time */}
+      {isFailed && showAnalysis && analysis && isStreaming && (
+        <div className="mt-1 p-3 rounded-lg bg-background/60 border border-border/50 space-y-3">
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-4 h-4 text-amber-500 animate-spin flex-shrink-0" />
+            <span className="text-xs font-medium text-amber-500">Claude is thinking...</span>
+          </div>
+
+          {/* Real-time thinking display */}
+          {analysis.streamingThinking && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="text-[10px] font-medium uppercase tracking-wide">Reasoning</span>
+              </div>
+              <div className="pl-3 border-l-2 border-amber-500/40 max-h-48 overflow-y-auto">
+                <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground font-mono leading-relaxed">
+                  {analysis.streamingThinking}
+                  <span className="animate-pulse text-amber-500">▊</span>
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Real-time content display */}
+          {analysis.streamingContent && (
+            <div className="space-y-1.5 pt-2 border-t border-border/30">
+              <div className="flex items-center gap-1.5 text-foreground/80">
+                <span className="text-[10px] font-medium uppercase tracking-wide">Analysis</span>
+              </div>
+              <div className="text-xs text-foreground/70 leading-relaxed">
+                {analysis.streamingContent}
+                <span className="animate-pulse text-amber-500">▊</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Final AI Analysis Panel */}
+      {isFailed && showAnalysis && analysis && !analysis.isLoading && !analysis.isStreaming && (
+        <div className="mt-1 p-3 rounded-lg bg-background/60 border border-border/50 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <span className="text-xs font-medium text-foreground">AI Analysis</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 -mr-1"
+              onClick={() => setShowAnalysis(false)}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+
+          {analysis.error ? (
+            <div className="flex items-center gap-2 text-xs text-destructive">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{analysis.error}</span>
+            </div>
+          ) : (
+            <div className="space-y-2.5 text-xs">
+              {/* Thinking Section - collapsible */}
+              {analysis.thinking && (
+                <details className="group">
+                  <summary className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground/80 transition-colors">
+                    <ChevronRight className="w-3 h-3 transition-transform group-open:rotate-90 flex-shrink-0" />
+                    <span className="text-[10px] font-medium uppercase tracking-wide">
+                      Claude's Reasoning
+                    </span>
+                  </summary>
+                  <div className="mt-2 ml-4 pl-3 border-l-2 border-amber-500/40">
+                    <pre className="whitespace-pre-wrap text-[11px] text-muted-foreground font-mono leading-relaxed max-h-48 overflow-y-auto">
+                      {analysis.thinking}
+                    </pre>
+                  </div>
+                </details>
+              )}
+
+              {/* Summary */}
+              {analysis.summary && (
+                <div className="leading-relaxed">
+                  <span className="font-semibold text-foreground">Summary: </span>
+                  <span className="text-foreground/80">{analysis.summary}</span>
+                </div>
+              )}
+
+              {/* Root Cause */}
+              {analysis.failureReason && (
+                <div className="leading-relaxed">
+                  <span className="font-semibold text-foreground">Root Cause: </span>
+                  <span className="text-foreground/80">{analysis.failureReason}</span>
+                </div>
+              )}
+
+              {/* Suggested Fix */}
+              {analysis.suggestedFix && (
+                <div className="pt-2 mt-2 border-t border-border/30 leading-relaxed">
+                  <span className="font-semibold text-emerald-500">Fix: </span>
+                  <span className="text-foreground/80">{analysis.suggestedFix}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -348,8 +513,9 @@ function FileTreeNodeComponent({
     const file = node.file
     return (
       <div>
-        <button
-          type="button"
+        <Button
+          variant="unstyled"
+          size="none"
           onClick={() => toggleFile(node.path)}
           className="w-full flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors group text-left"
         >
@@ -375,7 +541,7 @@ function FileTreeNodeComponent({
               {getFileExtension(file.path)}
             </Badge>
           )}
-        </button>
+        </Button>
         {isExpanded && file.patch && (
           <div className="ml-4 mb-2">
             <DiffViewer patch={file.patch} fileName={file.path} />
@@ -389,8 +555,9 @@ function FileTreeNodeComponent({
   const actualExpanded = shouldAutoExpand || isExpanded
   return (
     <div>
-      <button
-        type="button"
+      <Button
+        variant="unstyled"
+        size="none"
         onClick={() => toggleDir(node.path)}
         className="w-full flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors text-left"
       >
@@ -408,7 +575,7 @@ function FileTreeNodeComponent({
         <Badge variant="outline" className="text-[9px] h-4 px-1 opacity-60">
           {children.length}
         </Badge>
-      </button>
+      </Button>
       {actualExpanded && children.length > 0 && (
         <div>
           {children.map((child, idx) => (
@@ -504,8 +671,9 @@ function ChangedFilesSection({
   return (
     <div className="space-y-3">
       {/* Header */}
-      <button
-        type="button"
+      <Button
+        variant="unstyled"
+        size="none"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center gap-2"
       >
@@ -521,7 +689,7 @@ function ChangedFilesSection({
             {totalChanged}
           </Badge>
         </h3>
-      </button>
+      </Button>
 
       {isExpanded && (
         <>
@@ -729,8 +897,9 @@ function CommentItem({ comment }: { comment: CommentData }) {
         </span>
         {/* Copy button - visible on hover */}
         {comment.body && (
-          <button
-            type="button"
+          <Button
+            variant="unstyled"
+            size="none"
             onClick={handleCopy}
             className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
             title="Copy comment"
@@ -740,7 +909,7 @@ function CommentItem({ comment }: { comment: CommentData }) {
             ) : (
               <Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" />
             )}
-          </button>
+          </Button>
         )}
       </div>
       {comment.body && (
@@ -755,8 +924,9 @@ function CommentItem({ comment }: { comment: CommentData }) {
             />
           </div>
           {shouldTruncate && (
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-[10px] text-primary hover:text-primary/80 font-medium flex items-center gap-0.5"
             >
@@ -771,7 +941,7 @@ function CommentItem({ comment }: { comment: CommentData }) {
                   Show more ({comment.body.length - TRUNCATE_LENGTH}+ chars)
                 </>
               )}
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -890,8 +1060,9 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
       )}
     >
       {/* Reviewer header */}
-      <button
-        type="button"
+      <Button
+        variant="unstyled"
+        size="none"
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           'w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors',
@@ -933,7 +1104,7 @@ function ReviewerCard({ reviewer, prUrl }: { reviewer: ReviewerFeedback; prUrl: 
           )}
           {reviewer.reviewDate && <span>{formatRelativeTime(reviewer.reviewDate)}</span>}
         </div>
-      </button>
+      </Button>
 
       {isExpanded && (
         <div className="border-t border-border">
@@ -1086,8 +1257,9 @@ function PRDescription({ body, prUrl }: { body: string | null; prUrl: string }) 
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
-      <button
-        type="button"
+      <Button
+        variant="unstyled"
+        size="none"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-2 p-3 hover:bg-muted/60 transition-colors bg-muted/40 dark:bg-muted/50"
       >
@@ -1130,7 +1302,7 @@ function PRDescription({ body, prUrl }: { body: string | null; prUrl: string }) 
             <Edit className="w-3 h-3 text-muted-foreground hover:text-foreground" />
           </Button>
         </div>
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="border-t border-border p-3">
@@ -1142,8 +1314,9 @@ function PRDescription({ body, prUrl }: { body: string | null; prUrl: string }) 
                 />
               </div>
               {shouldTruncate && (
-                <button
-                  type="button"
+                <Button
+                  variant="unstyled"
+                  size="none"
                   onClick={() => setIsFullyExpanded(!isFullyExpanded)}
                   className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                 >
@@ -1158,7 +1331,7 @@ function PRDescription({ body, prUrl }: { body: string | null; prUrl: string }) 
                       Read more
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
           ) : (
@@ -1201,8 +1374,9 @@ function _ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: str
       )}
     >
       {/* Thread header - file path and line */}
-      <button
-        type="button"
+      <Button
+        variant="unstyled"
+        size="none"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center gap-2 p-2 text-xs hover:bg-muted/60 transition-colors"
       >
@@ -1226,7 +1400,7 @@ function _ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: str
         <span className="text-muted-foreground ml-auto flex-shrink-0">
           {thread.comments.length} {thread.comments.length === 1 ? 'comment' : 'comments'}
         </span>
-      </button>
+      </Button>
 
       {isExpanded && (
         <div className="border-t border-border">
@@ -2222,8 +2396,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                       {/* Running */}
                       {groupedChecks.running.length > 0 && (
                         <div className="rounded-lg border border-warning/30 bg-warning/10 dark:bg-warning/15 overflow-hidden">
-                          <button
-                            type="button"
+                          <Button
+                            variant="unstyled"
+                            size="none"
                             onClick={() => toggleGroup('running')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-warning hover:bg-warning/20 transition-colors"
                           >
@@ -2234,11 +2409,16 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                             )}
                             <Loader2 className="w-4 h-4 animate-spin" />
                             <span>Running ({groupedChecks.running.length})</span>
-                          </button>
+                          </Button>
                           {!collapsedGroups.has('running') && (
                             <div className="border-t border-warning/20 p-1 space-y-0.5">
                               {groupedChecks.running.map((check) => (
-                                <CheckItem key={check.id} check={check} />
+                                <CheckItem
+                                  key={check.id}
+                                  check={check}
+                                  owner={pr.base.repo.owner.login}
+                                  repo={pr.base.repo.name}
+                                />
                               ))}
                             </div>
                           )}
@@ -2248,8 +2428,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                       {/* Failed */}
                       {groupedChecks.failed.length > 0 && (
                         <div className="rounded-lg border border-destructive/30 bg-destructive/10 dark:bg-destructive/15 overflow-hidden">
-                          <button
-                            type="button"
+                          <Button
+                            variant="unstyled"
+                            size="none"
                             onClick={() => toggleGroup('failed')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
                           >
@@ -2260,11 +2441,16 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                             )}
                             <XCircle className="w-4 h-4" />
                             <span>Failed ({groupedChecks.failed.length})</span>
-                          </button>
+                          </Button>
                           {!collapsedGroups.has('failed') && (
                             <div className="border-t border-destructive/20 p-1 space-y-0.5">
                               {groupedChecks.failed.map((check) => (
-                                <CheckItem key={check.id} check={check} />
+                                <CheckItem
+                                  key={check.id}
+                                  check={check}
+                                  owner={pr.base.repo.owner.login}
+                                  repo={pr.base.repo.name}
+                                />
                               ))}
                             </div>
                           )}
@@ -2274,8 +2460,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                       {/* Success */}
                       {groupedChecks.success.length > 0 && (
                         <div className="rounded-lg border border-success/30 bg-success/10 dark:bg-success/15 overflow-hidden">
-                          <button
-                            type="button"
+                          <Button
+                            variant="unstyled"
+                            size="none"
                             onClick={() => toggleGroup('success')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-success hover:bg-success/20 transition-colors"
                           >
@@ -2286,11 +2473,16 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                             )}
                             <CheckCircle2 className="w-4 h-4" />
                             <span>Passed ({groupedChecks.success.length})</span>
-                          </button>
+                          </Button>
                           {!collapsedGroups.has('success') && (
                             <div className="border-t border-success/20 p-1 space-y-0.5">
                               {groupedChecks.success.map((check) => (
-                                <CheckItem key={check.id} check={check} />
+                                <CheckItem
+                                  key={check.id}
+                                  check={check}
+                                  owner={pr.base.repo.owner.login}
+                                  repo={pr.base.repo.name}
+                                />
                               ))}
                             </div>
                           )}
@@ -2300,8 +2492,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                       {/* Other (skipped, cancelled, etc) */}
                       {groupedChecks.other.length > 0 && (
                         <div className="rounded-lg border border-border bg-muted/40 dark:bg-muted/50 overflow-hidden">
-                          <button
-                            type="button"
+                          <Button
+                            variant="unstyled"
+                            size="none"
                             onClick={() => toggleGroup('other')}
                             className="w-full flex items-center gap-2 p-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
                           >
@@ -2312,11 +2505,16 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                             )}
                             <Circle className="w-4 h-4" />
                             <span>Other ({groupedChecks.other.length})</span>
-                          </button>
+                          </Button>
                           {!collapsedGroups.has('other') && (
                             <div className="border-t border-border p-1 space-y-0.5">
                               {groupedChecks.other.map((check) => (
-                                <CheckItem key={check.id} check={check} />
+                                <CheckItem
+                                  key={check.id}
+                                  check={check}
+                                  owner={pr.base.repo.owner.login}
+                                  repo={pr.base.repo.name}
+                                />
                               ))}
                             </div>
                           )}
@@ -2327,7 +2525,12 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
                     // Flat list view
                     <div className="space-y-1">
                       {filteredChecks.map((check) => (
-                        <CheckItem key={check.id} check={check} />
+                        <CheckItem
+                          key={check.id}
+                          check={check}
+                          owner={pr.base.repo.owner.login}
+                          repo={pr.base.repo.name}
+                        />
                       ))}
                     </div>
                   )
@@ -2374,8 +2577,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
 
             {/* Tab filter - All, People, Bots, Reviews */}
             <div className="flex gap-1 mb-3 p-1 bg-muted/60 dark:bg-muted/70 rounded-lg">
-              <button
-                type="button"
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={() => setCommentTab('all')}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
@@ -2386,9 +2590,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
               >
                 <MessageSquare className="w-3 h-3" />
                 All ({allComments.length})
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={() => setCommentTab('humans')}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
@@ -2399,9 +2604,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
               >
                 <Users className="w-3 h-3" />
                 People ({humanComments})
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={() => setCommentTab('bots')}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
@@ -2412,9 +2618,10 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
               >
                 <Bot className="w-3 h-3" />
                 Bots ({botComments})
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={() => setCommentTab('reviews')}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
@@ -2425,7 +2632,7 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
               >
                 <FileCode className="w-3 h-3" />
                 Code ({pr.reviewThreads?.length || 0})
-              </button>
+              </Button>
             </div>
 
             {/* Comments content (All, People, Bots tabs) */}

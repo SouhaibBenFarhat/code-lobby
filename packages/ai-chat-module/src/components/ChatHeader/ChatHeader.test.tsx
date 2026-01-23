@@ -25,7 +25,6 @@ describe('ChatHeader', () => {
     showSettings: false,
     onShowConversationsChange: vi.fn(),
     onShowSettingsChange: vi.fn(),
-    onClosePRChat: vi.fn(),
     onSwitchToPRChat: vi.fn(),
     onClearHistory: vi.fn(),
     onClose: vi.fn(),
@@ -37,12 +36,12 @@ describe('ChatHeader', () => {
   })
 
   describe('title display', () => {
-    it('shows AI Assistant title when no PR chat', () => {
+    it('shows AI Assistant title', () => {
       render(<ChatHeader {...defaultProps} />)
       expect(screen.getByText('AI Assistant')).toBeInTheDocument()
     })
 
-    it('shows PR Chat title when linkedPRChat exists', () => {
+    it('shows PR number badge when linkedPRChat exists', () => {
       render(
         <ChatHeader
           {...defaultProps}
@@ -54,11 +53,11 @@ describe('ChatHeader', () => {
           }}
         />
       )
-      expect(screen.getByText('PR Chat')).toBeInTheDocument()
+      expect(screen.getByText('AI Assistant')).toBeInTheDocument()
       expect(screen.getByText('#42')).toBeInTheDocument()
     })
 
-    it('shows model name when no PR chat and API key exists', () => {
+    it('shows model name when API key exists', () => {
       render(<ChatHeader {...defaultProps} />)
       expect(screen.getByText('(Claude 3.5 Sonnet)')).toBeInTheDocument()
     })
@@ -113,40 +112,6 @@ describe('ChatHeader', () => {
     })
   })
 
-  describe('back to general chat button', () => {
-    it('shows back button when linkedPRChat exists', () => {
-      render(
-        <ChatHeader
-          {...defaultProps}
-          linkedPRChat={{
-            prId: 'owner/repo#42',
-            prNumber: 42,
-            prTitle: 'Test PR',
-            repoFullName: 'owner/repo'
-          }}
-        />
-      )
-      expect(screen.getByTitle('Back to general chat')).toBeInTheDocument()
-    })
-
-    it('calls onClosePRChat when back button clicked', async () => {
-      render(
-        <ChatHeader
-          {...defaultProps}
-          linkedPRChat={{
-            prId: 'owner/repo#42',
-            prNumber: 42,
-            prTitle: 'Test PR',
-            repoFullName: 'owner/repo'
-          }}
-        />
-      )
-      const backButton = screen.getByTitle('Back to general chat')
-      await userEvent.click(backButton)
-      expect(defaultProps.onClosePRChat).toHaveBeenCalled()
-    })
-  })
-
   describe('conversation navigator', () => {
     const prChats = [
       {
@@ -182,8 +147,7 @@ describe('ChatHeader', () => {
     it('opens popover when conversation button clicked', async () => {
       render(<ChatHeader {...defaultProps} allPRChats={prChats} showConversations={true} />)
 
-      expect(screen.getByText('Conversations')).toBeInTheDocument()
-      expect(screen.getByText('General Chat')).toBeInTheDocument()
+      expect(screen.getByText('PR Conversations (2)')).toBeInTheDocument()
     })
 
     it('shows all PR chats in popover', () => {
@@ -191,19 +155,6 @@ describe('ChatHeader', () => {
 
       expect(screen.getByText('#1 First PR')).toBeInTheDocument()
       expect(screen.getByText('#2 Second PR')).toBeInTheDocument()
-    })
-
-    it('highlights active general chat', () => {
-      render(
-        <ChatHeader
-          {...defaultProps}
-          allPRChats={prChats}
-          showConversations={true}
-          linkedPRChat={null}
-        />
-      )
-
-      expect(screen.getByText('Active')).toBeInTheDocument()
     })
 
     it('highlights active PR chat', () => {
@@ -233,27 +184,6 @@ describe('ChatHeader', () => {
       await userEvent.click(prChatButton)
 
       expect(defaultProps.onSwitchToPRChat).toHaveBeenCalledWith('owner/repo#1')
-    })
-
-    it('calls onClosePRChat when general chat selected', async () => {
-      render(
-        <ChatHeader
-          {...defaultProps}
-          allPRChats={prChats}
-          showConversations={true}
-          linkedPRChat={{
-            prId: 'owner/repo#1',
-            prNumber: 1,
-            prTitle: 'First PR',
-            repoFullName: 'owner/repo'
-          }}
-        />
-      )
-
-      const generalChatButton = screen.getByText('General Chat')
-      await userEvent.click(generalChatButton)
-
-      expect(defaultProps.onClosePRChat).toHaveBeenCalled()
     })
 
     it('shows delete button on hover and calls onDeletePRChat', async () => {

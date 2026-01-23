@@ -10,6 +10,7 @@ import {
   AvatarFallback,
   AvatarImage,
   Badge,
+  Button,
   cn,
   formatRelativeTime,
   Tooltip,
@@ -89,26 +90,30 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
   const totalComments = pr.comments + pr.review_comments
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="unstyled"
+      size="none"
       className={cn(
-        'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item text-left w-full',
+        'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item text-left w-full overflow-hidden',
         pr.draft && 'opacity-70',
         isSelected && 'selected'
       )}
       onClick={handleSelect}
     >
-      <div className="space-y-2">
+      <div className="space-y-2 overflow-hidden">
         {/* Title row */}
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2 overflow-hidden">
           <GitPullRequest
             className={cn(
               'w-4 h-4 mt-0.5 flex-shrink-0',
               pr.draft ? 'text-muted-foreground' : 'text-primary'
             )}
           />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p
+              className="text-sm font-medium leading-tight truncate group-hover:text-primary transition-colors"
+              title={pr.title}
+            >
               {pr.title}
             </p>
           </div>
@@ -229,6 +234,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
           </div>
         </div>
       </div>
-    </button>
+    </Button>
   )
 }

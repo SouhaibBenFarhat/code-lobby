@@ -73,25 +73,3 @@ export function getPRQuickPrompts(context: PRContext = {}): QuickPrompt[] {
 
   return prompts
 }
-
-// Pre-defined prompts for general chat
-export const GENERAL_QUICK_PROMPTS: QuickPrompt[] = [
-  {
-    id: 'explain-code',
-    label: 'Explain this code',
-    icon: React.createElement(MessageSquare, { className: 'w-3 h-3' }),
-    prompt: 'Can you explain how this codebase is organized and what the main components do?'
-  },
-  {
-    id: 'best-practices',
-    label: 'Best practices',
-    icon: React.createElement(MessageSquare, { className: 'w-3 h-3' }),
-    prompt: 'What are some best practices I should follow for this type of project?'
-  },
-  {
-    id: 'debug-help',
-    label: 'Help me debug',
-    icon: React.createElement(AlertCircle, { className: 'w-3 h-3' }),
-    prompt: "I'm having an issue with my code. Can you help me debug it?"
-  }
-]

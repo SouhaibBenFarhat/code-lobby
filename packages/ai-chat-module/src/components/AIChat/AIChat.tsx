@@ -15,10 +15,11 @@
  */
 
 import { api } from '@codelobby/api'
+import { Button } from '@codelobby/ui-kit'
 import { ArrowDown } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import { GENERAL_QUICK_PROMPTS, getPRQuickPrompts } from '../../constants'
+import { getPRQuickPrompts } from '../../constants'
 import { useScrollManagement, useThrottledValue } from '../../hooks'
 import type {
   AIChatPanelProps,
@@ -32,8 +33,8 @@ import type {
 import {
   ChatLoadingSkeleton,
   ContextSyncBanner,
-  DefaultEmptyState,
   ErrorBanner,
+  NoPRSelectedState,
   PRContextBanner,
   PREmptyState
 } from '../ChatEmptyStates'
@@ -48,7 +49,6 @@ export function AIChatPanel({
   onClose,
   user,
   linkedPRChat,
-  onClosePRChat,
   onSwitchToPRChat,
   selectedPR,
   onStartPRChat
@@ -68,7 +68,6 @@ export function AIChatPanel({
   const [isLoading, setIsLoading] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
   const [showConversations, setShowConversations] = useState(false)
-  const [chatStarted, setChatStarted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -106,11 +105,16 @@ export function AIChatPanel({
 
   const selectedPRId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
   const isContextValid = useMemo(
-    () => (linkedPRChat ? prSystemContext !== undefined : prSystemContext === undefined),
+    () => (linkedPRChat ? prSystemContext !== undefined : true),
     [linkedPRChat, prSystemContext]
   )
+  // Show PR empty state when a PR is selected but no chat exists for it yet
   const showPREmptyState = selectedPR && (!linkedPRChat || linkedPRChat.prId !== selectedPRId)
-  const showInput = chatStarted || messages.length > 0 || streaming.isStreaming || linkedPRChat
+  // Show "No PR Selected" when no PR is selected at all
+  const showNoPRSelected = !selectedPR && !linkedPRChat
+  // Only show input when we have an active PR chat
+  const showInput =
+    linkedPRChat && (messages.length > 0 || streaming.isStreaming || prSystemContext)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DATA LOADING
@@ -164,17 +168,14 @@ export function AIChatPanel({
         if (prChat) {
           setMessages(prChat.messages)
           setPrSystemContext(prChat.systemContext)
-          setChatStarted(prChat.messages.length > 0)
         } else {
           setMessages([])
           setPrSystemContext(undefined)
-          setChatStarted(false)
         }
       } else {
-        const history = await api.ai.getChatHistory()
-        setMessages(history)
+        // No PR chat linked - clear state
+        setMessages([])
         setPrSystemContext(undefined)
-        setChatStarted(history.length > 0)
       }
       if (key) loadModels()
     } finally {
@@ -215,10 +216,10 @@ export function AIChatPanel({
             setStreaming((p) => ({ ...p, thinking: p.thinking + chunk.thinking }))
           } else if (chunk.type === 'done') {
             setStreaming({ content: '', thinking: '', isStreaming: false })
-            ;(linkedPRChat
-              ? api.ai.getPRChat(linkedPRChat.prId).then((c) => c?.messages || [])
-              : api.ai.getChatHistory()
-            ).then(setMessages)
+            // Refresh messages from PR chat
+            if (linkedPRChat) {
+              api.ai.getPRChat(linkedPRChat.prId).then((c) => setMessages(c?.messages || []))
+            }
             setIsSending(false)
             isProcessingRef.current = false
             streamCleanupRef.current?.()
@@ -326,10 +327,10 @@ export function AIChatPanel({
   }, [])
 
   const handleClearHistory = useCallback(async () => {
-    linkedPRChat
-      ? await api.ai.clearPRChatMessages(linkedPRChat.prId)
-      : await api.ai.clearChatHistory()
-    setMessages([])
+    if (linkedPRChat) {
+      await api.ai.clearPRChatMessages(linkedPRChat.prId)
+      setMessages([])
+    }
   }, [linkedPRChat])
 
   const handleDeletePRChat = useCallback(
@@ -368,11 +369,6 @@ export function AIChatPanel({
     })
   }, [])
 
-  const handleStartChat = useCallback(() => {
-    setChatStarted(true)
-    setTimeout(() => textareaRef.current?.focus(), 50)
-  }, [])
-
   // ═══════════════════════════════════════════════════════════════════════════
   // EFFECTS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -386,18 +382,22 @@ export function AIChatPanel({
     loadAllPRChats()
   }, [loadAllPRChats, linkedPRChat?.prId])
 
+  // Auto-switch to existing PR chat when a PR is selected
   useEffect(() => {
     if (!selectedPRId || linkedPRChat?.prId === selectedPRId) return
     let cancelled = false
     ;(async () => {
       const chat = await api.ai.getPRChat(selectedPRId)
       if (cancelled) return
-      chat && onSwitchToPRChat ? onSwitchToPRChat(selectedPRId) : linkedPRChat && onClosePRChat?.()
+      // If a chat exists for this PR, switch to it
+      if (chat && onSwitchToPRChat) {
+        onSwitchToPRChat(selectedPRId)
+      }
     })()
     return () => {
       cancelled = true
     }
-  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClosePRChat, linkedPRChat])
+  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat])
 
   useEffect(() => {
     if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
@@ -453,7 +453,6 @@ export function AIChatPanel({
         showSettings={showSettings}
         onShowConversationsChange={setShowConversations}
         onShowSettingsChange={setShowSettings}
-        onClosePRChat={onClosePRChat}
         onSwitchToPRChat={onSwitchToPRChat}
         onClearHistory={handleClearHistory}
         onClose={onClose}
@@ -492,45 +491,43 @@ export function AIChatPanel({
           <ChatLoadingSkeleton />
         )}
 
+        {!isLoading && showNoPRSelected && <NoPRSelectedState apiKey={apiKey} />}
+
         {!isLoading && showPREmptyState && selectedPR && (
           <PREmptyState selectedPR={selectedPR} apiKey={apiKey} onStartPRChat={onStartPRChat} />
         )}
 
-        {!isLoading && !showPREmptyState && !messages.length && !streaming.isStreaming && (
-          <DefaultEmptyState
-            apiKey={apiKey}
-            chatStarted={chatStarted}
-            onStartChat={handleStartChat}
-          />
-        )}
-
-        {!isLoading && !showPREmptyState && (messages.length > 0 || streaming.isStreaming) && (
-          <VirtualizedMessageList
-            messages={messages}
-            streaming={streaming}
-            throttledStreaming={throttledStreaming}
-            messageQueue={messageQueue}
-            expandedThinking={expandedThinking}
-            toggleThinkingExpanded={toggleThinkingExpanded}
-            setMessageQueue={setMessageQueue}
-            scrollContainerRef={scroll.scrollContainerRef}
-            onScroll={scroll.handleScroll}
-            onVirtualizerReady={scroll.handleVirtualizerReady}
-            user={user}
-            linkedPRChat={linkedPRChat}
-            onPostComment={handlePostComment}
-          />
-        )}
+        {!isLoading &&
+          !showNoPRSelected &&
+          !showPREmptyState &&
+          (messages.length > 0 || streaming.isStreaming) && (
+            <VirtualizedMessageList
+              messages={messages}
+              streaming={streaming}
+              throttledStreaming={throttledStreaming}
+              messageQueue={messageQueue}
+              expandedThinking={expandedThinking}
+              toggleThinkingExpanded={toggleThinkingExpanded}
+              setMessageQueue={setMessageQueue}
+              scrollContainerRef={scroll.scrollContainerRef}
+              onScroll={scroll.handleScroll}
+              onVirtualizerReady={scroll.handleVirtualizerReady}
+              user={user}
+              linkedPRChat={linkedPRChat}
+              onPostComment={handlePostComment}
+            />
+          )}
 
         {scroll.isUserScrolledUp && messages.length > 0 && (
-          <button
-            type="button"
+          <Button
+            variant="unstyled"
+            size="none"
             onClick={() => scroll.scrollToBottom(true)}
             className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
             title="Scroll to bottom"
           >
             <ArrowDown className="w-4 h-4" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -556,14 +553,10 @@ export function AIChatPanel({
             setEnableWebFetch(enabled)
             await api.ai.setEnableWebFetch(enabled)
           }}
-          prompts={
-            linkedPRChat
-              ? getPRQuickPrompts({
-                  hasCIFailures:
-                    selectedPR?.checks?.state === 'failure' || selectedPR?.checks?.state === 'error'
-                })
-              : GENERAL_QUICK_PROMPTS
-          }
+          prompts={getPRQuickPrompts({
+            hasCIFailures:
+              selectedPR?.checks?.state === 'failure' || selectedPR?.checks?.state === 'error'
+          })}
           customPrompts={customPrompts}
           onInputChange={setInput}
           onSendMessage={handleSendMessage}

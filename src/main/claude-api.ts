@@ -6,7 +6,14 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 import { wrapSdkCall, wrapSdkStreamCall } from './http-client'
-import { buildJiraTicketPrompt, buildPRAnalysisPrompt, buildPreviewURLPrompt } from './prompts'
+import {
+  buildCIFailureAnalysisPrompt,
+  buildJiraTicketPrompt,
+  buildPRAnalysisPrompt,
+  buildPreviewURLPrompt,
+  CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
+  type CIFailureContext
+} from './prompts'
 
 // Re-export types for use elsewhere
 export interface ClaudeMessage {
@@ -675,6 +682,210 @@ export async function extractJiraTicket(
     }
 
     return { success: false, message: `Error: ${errorMessage}` }
+  }
+}
+
+/**
+ * Analyze a CI failure using Claude with extended thinking
+ * This is a specialized function for the "Analyze Failure" feature on failed CI checks
+ */
+export async function analyzeCIFailure(
+  apiKey: string,
+  context: CIFailureContext
+): Promise<{
+  success: boolean
+  summary?: string
+  failureReason?: string
+  suggestedFix?: string
+  thinking?: string
+  error?: string
+}> {
+  try {
+    const client = getClient(apiKey)
+
+    // Build prompt using centralized prompt builder
+    const prompt = buildCIFailureAnalysisPrompt(context)
+
+    logger.info(LogCategory.API, 'Analyzing CI failure with extended thinking', {
+      checkName: context.checkName,
+      conclusion: context.conclusion,
+      annotationsCount: context.annotations.length
+    })
+
+    // Use extended thinking for better analysis
+    const response = await wrapSdkCall(
+      'claude.analyzeCIFailure',
+      () =>
+        client.messages.create({
+          model: DEFAULT_MODEL,
+          max_tokens: MAX_TOKENS_WITH_THINKING,
+          system: CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: prompt }],
+          thinking: {
+            type: 'enabled',
+            budget_tokens: THINKING_BUDGET
+          }
+        }),
+      {
+        logCategory: LogCategory.API,
+        details: {
+          checkName: context.checkName,
+          conclusion: context.conclusion,
+          annotationsCount: context.annotations.length,
+          thinking: true
+        }
+      }
+    )
+
+    // Extract text and thinking content from the response
+    let responseText = ''
+    let thinking = ''
+
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        responseText = block.text.trim()
+      } else if (block.type === 'thinking' && 'thinking' in block) {
+        thinking = block.thinking
+      }
+    }
+
+    if (!responseText) {
+      return { success: false, error: 'Empty response from Claude' }
+    }
+
+    // Parse the structured response
+    // Expected format:
+    // **Summary:** [one-line what failed]
+    // **Root Cause:** [specific error]
+    // **Fix:** [actionable steps]
+
+    const summaryMatch = responseText.match(/\*\*Summary:\*\*\s*(.+?)(?=\n\*\*|$)/s)
+    const rootCauseMatch = responseText.match(/\*\*Root Cause:\*\*\s*(.+?)(?=\n\*\*|$)/s)
+    const fixMatch = responseText.match(/\*\*Fix:\*\*\s*(.+?)$/s)
+
+    return {
+      success: true,
+      summary: summaryMatch ? summaryMatch[1].trim() : responseText.split('\n')[0],
+      failureReason: rootCauseMatch ? rootCauseMatch[1].trim() : undefined,
+      suggestedFix: fixMatch ? fixMatch[1].trim() : undefined,
+      thinking: thinking || undefined
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error analyzing CI failure', { error: errorMessage })
+
+    if (error instanceof Anthropic.AuthenticationError) {
+      return { success: false, error: 'Invalid Claude API key' }
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return { success: false, error: 'Rate limit exceeded. Please try again.' }
+    }
+
+    return { success: false, error: errorMessage }
+  }
+}
+
+// CI Failure Analysis streaming chunk type
+export type CIFailureAnalysisChunk =
+  | { type: 'thinking'; thinking: string }
+  | { type: 'text'; content: string }
+  | {
+      type: 'done'
+      fullResponse: {
+        summary: string
+        failureReason?: string
+        suggestedFix?: string
+        thinking?: string
+      }
+    }
+  | { type: 'error'; error: string }
+
+/**
+ * Analyze a CI failure using Claude with streaming and extended thinking
+ * Shows Claude's reasoning process in real-time
+ */
+export async function analyzeCIFailureStreaming(
+  apiKey: string,
+  context: CIFailureContext,
+  onChunk: (chunk: CIFailureAnalysisChunk) => void
+): Promise<void> {
+  logger.info(LogCategory.API, 'Starting streaming CI failure analysis', {
+    checkName: context.checkName,
+    conclusion: context.conclusion,
+    annotationsCount: context.annotations.length
+  })
+
+  try {
+    const client = getClient(apiKey)
+
+    // Build prompt using centralized prompt builder
+    const prompt = buildCIFailureAnalysisPrompt(context)
+
+    // Enable extended thinking for better analysis
+    const requestParams: Parameters<typeof client.messages.stream>[0] = {
+      model: DEFAULT_MODEL,
+      max_tokens: MAX_TOKENS_WITH_THINKING,
+      system: CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: prompt }],
+      thinking: {
+        type: 'enabled',
+        budget_tokens: THINKING_BUDGET
+      }
+    }
+
+    const stream = await wrapSdkStreamCall(
+      'claude.streamCIFailureAnalysis',
+      () => client.messages.stream(requestParams),
+      { logCategory: LogCategory.API, details: { checkName: context.checkName } }
+    )
+
+    let fullContent = ''
+    let fullThinking = ''
+
+    // Handle text events
+    stream.on('text', (text: string) => {
+      fullContent += text
+      onChunk({ type: 'text', content: text })
+    })
+
+    // Handle thinking events - stream in real-time
+    stream.on('thinking', (thinkingDelta: string, _accumulated: string) => {
+      fullThinking += thinkingDelta
+      onChunk({ type: 'thinking', thinking: thinkingDelta })
+    })
+
+    // Wait for completion
+    await stream.finalMessage()
+
+    // Parse the final response
+    const summaryMatch = fullContent.match(/\*\*Summary:\*\*\s*(.+?)(?=\n\*\*|$)/s)
+    const rootCauseMatch = fullContent.match(/\*\*Root Cause:\*\*\s*(.+?)(?=\n\*\*|$)/s)
+    const fixMatch = fullContent.match(/\*\*Fix:\*\*\s*(.+?)$/s)
+
+    logger.info(LogCategory.API, 'Streaming CI failure analysis complete', {
+      checkName: context.checkName,
+      hasThinking: !!fullThinking,
+      thinkingLength: fullThinking.length,
+      contentLength: fullContent.length
+    })
+
+    // Send done event with parsed response
+    onChunk({
+      type: 'done',
+      fullResponse: {
+        summary: summaryMatch ? summaryMatch[1].trim() : fullContent.split('\n')[0],
+        failureReason: rootCauseMatch ? rootCauseMatch[1].trim() : undefined,
+        suggestedFix: fixMatch ? fixMatch[1].trim() : undefined,
+        thinking: fullThinking || undefined
+      }
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error in streaming CI failure analysis', {
+      error: errorMessage,
+      checkName: context.checkName
+    })
+    onChunk({ type: 'error', error: errorMessage })
   }
 }
 

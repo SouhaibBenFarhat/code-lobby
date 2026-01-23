@@ -11,6 +11,7 @@ import {
   AvatarFallback,
   AvatarImage,
   Badge,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -138,13 +139,14 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               <Tooltip>
                 <TooltipTrigger asChild>
                   <PopoverTrigger asChild>
-                    <button
-                      type="button"
+                    <Button
+                      variant="unstyled"
+                      size="none"
                       className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Palette className="w-3.5 h-3.5" style={color ? { color } : {}} />
-                    </button>
+                    </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
                 <TooltipContent>Change card color</TooltipContent>
@@ -156,8 +158,9 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               >
                 <div className="grid grid-cols-6 gap-1">
                   {COLOR_PALETTE.map((c) => (
-                    <button
-                      type="button"
+                    <Button
+                      variant="unstyled"
+                      size="none"
                       key={c || 'no-color'}
                       className={cn(
                         'w-6 h-6 rounded-md border-2 transition-all hover:scale-110',
@@ -172,7 +175,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                       title={c || 'No color'}
                     >
                       {!c && <X className="w-3 h-3 mx-auto text-muted-foreground/50" />}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </PopoverContent>
@@ -197,8 +200,9 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
           {/* Reload button */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <Button
+                variant="unstyled"
+                size="none"
                 className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
                 disabled={isReloading}
                 onClick={(e) => {
@@ -212,7 +216,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                 ) : (
                   <RefreshCw className="w-3.5 h-3.5" />
                 )}
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>Reload PRs for this repo</TooltipContent>
           </Tooltip>
@@ -220,8 +224,9 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
           {onMinimizeChange && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
+                <Button
+                  variant="unstyled"
+                  size="none"
                   className="px-2 py-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
                   onClick={(e) => {
                     e.preventDefault()
@@ -234,7 +239,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                   ) : (
                     <ChevronUp className="w-3.5 h-3.5" />
                   )}
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>{isMinimized ? 'Expand' : 'Minimize'}</TooltipContent>
             </Tooltip>
@@ -243,8 +248,9 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
           {onClose && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
+                <Button
+                  variant="unstyled"
+                  size="none"
                   className="px-2 py-1 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
                   onClick={(e) => {
                     e.preventDefault()
@@ -253,7 +259,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                   }}
                 >
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Hide this repo</TooltipContent>
             </Tooltip>
@@ -297,8 +303,9 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               {currentUser && totalPRs > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      type="button"
+                    <Button
+                      variant="unstyled"
+                      size="none"
                       className={cn(
                         'p-1 rounded transition-colors',
                         showOnlyMyPRs
@@ -316,7 +323,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                       ) : (
                         <Users className="w-3.5 h-3.5" />
                       )}
-                    </button>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {showOnlyMyPRs

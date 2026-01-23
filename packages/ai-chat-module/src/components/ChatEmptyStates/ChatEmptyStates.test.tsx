@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ChatLoadingSkeleton,
   ContextSyncBanner,
-  DefaultEmptyState,
   ErrorBanner,
+  NoPRSelectedState,
   PRContextBanner,
   PREmptyState
 } from './ChatEmptyStates'
@@ -102,50 +102,22 @@ describe('ChatEmptyStates', () => {
     })
   })
 
-  describe('DefaultEmptyState', () => {
-    const mockOnStartChat = vi.fn()
+  describe('NoPRSelectedState', () => {
+    it('shows No PR Selected title', () => {
+      render(<NoPRSelectedState apiKey="sk-ant-test" />)
+      expect(screen.getByText('No PR Selected')).toBeInTheDocument()
+    })
 
-    beforeEach(() => {
-      vi.clearAllMocks()
+    it('shows select PR message when API key exists', () => {
+      render(<NoPRSelectedState apiKey="sk-ant-test" />)
+      expect(
+        screen.getByText(/select a pull request from the list to start chatting/i)
+      ).toBeInTheDocument()
     })
 
     it('shows API key message when no API key', () => {
-      render(<DefaultEmptyState apiKey={null} chatStarted={false} onStartChat={mockOnStartChat} />)
-
+      render(<NoPRSelectedState apiKey={null} />)
       expect(screen.getByText(/enter your api key/i)).toBeInTheDocument()
-    })
-
-    it('shows start conversation message when API key exists', () => {
-      render(
-        <DefaultEmptyState apiKey="sk-ant-test" chatStarted={false} onStartChat={mockOnStartChat} />
-      )
-
-      expect(screen.getByText('Start a conversation with Claude')).toBeInTheDocument()
-    })
-
-    it('shows start chat button when API key exists and chat not started', () => {
-      render(
-        <DefaultEmptyState apiKey="sk-ant-test" chatStarted={false} onStartChat={mockOnStartChat} />
-      )
-
-      expect(screen.getByRole('button', { name: /start chat/i })).toBeInTheDocument()
-    })
-
-    it('hides start chat button when chat already started', () => {
-      render(
-        <DefaultEmptyState apiKey="sk-ant-test" chatStarted={true} onStartChat={mockOnStartChat} />
-      )
-
-      expect(screen.queryByRole('button', { name: /start chat/i })).not.toBeInTheDocument()
-    })
-
-    it('calls onStartChat when button is clicked', async () => {
-      render(
-        <DefaultEmptyState apiKey="sk-ant-test" chatStarted={false} onStartChat={mockOnStartChat} />
-      )
-
-      await userEvent.click(screen.getByRole('button', { name: /start chat/i }))
-      expect(mockOnStartChat).toHaveBeenCalled()
     })
   })
 

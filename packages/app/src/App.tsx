@@ -214,14 +214,15 @@ export function App(): React.JSX.Element {
 
           {/* Panel toggle button when collapsed (canvas mode only) */}
           {viewMode === 'canvas' && !prDetailOpen && (
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               onClick={togglePRPanel}
               className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
               title="Open PR details panel"
             >
               <PanelRight className="w-5 h-5" />
-            </button>
+            </Button>
           )}
 
           {/* Right Panel - PR Detail (canvas mode) */}

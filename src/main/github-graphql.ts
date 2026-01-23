@@ -287,6 +287,7 @@ const GET_ALL_DATA = `
                       __typename
                       ... on CheckRun {
                         id
+                        databaseId
                         name
                         status
                         conclusion
@@ -462,6 +463,7 @@ const GET_ALL_PRS_FOR_REPOS = `
                       __typename
                       ... on CheckRun {
                         id
+                        databaseId
                         name
                         status
                         conclusion
@@ -713,6 +715,7 @@ export async function fetchAllPRData(token: string): Promise<{
     const checkRuns = checkContexts.map((ctx: any) => {
       if (ctx.__typename === 'CheckRun') {
         return {
+          // Use GraphQL node ID - our fetchCheckRunDetails uses GraphQL which accepts node IDs
           id: ctx.id,
           name: ctx.name,
           status: ctx.status?.toLowerCase() || 'queued',
@@ -1065,6 +1068,7 @@ export async function fetchAllPRsForRepos(
       const checkRuns = checkContexts.map((ctx: any) => {
         if (ctx.__typename === 'CheckRun') {
           return {
+            // Use GraphQL node ID - our fetchCheckRunDetails uses GraphQL which accepts node IDs
             id: ctx.id,
             name: ctx.name,
             status: ctx.status?.toLowerCase() || 'completed',
@@ -1072,6 +1076,7 @@ export async function fetchAllPRsForRepos(
             html_url: ctx.detailsUrl || ''
           }
         } else {
+          // StatusContext (older status API)
           return {
             id: ctx.id,
             name: ctx.context,
@@ -1305,6 +1310,249 @@ export async function fetchPRFiles(
   })
 
   return { files: allFiles, rateLimit }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CI CHECK ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface CheckRunAnnotation {
+  path: string
+  startLine: number
+  endLine: number
+  annotationLevel: 'failure' | 'warning' | 'notice'
+  message: string
+  title: string | null
+  rawDetails: string | null
+}
+
+export interface CheckRunDetails {
+  id: string
+  databaseId: number | null // Numeric ID for REST API (GitHub Actions only)
+  name: string
+  status: string
+  conclusion: string | null
+  startedAt: string | null
+  completedAt: string | null
+  output: {
+    title: string | null
+    summary: string | null
+    text: string | null
+    annotationsCount: number
+    annotations: CheckRunAnnotation[]
+  }
+  htmlUrl: string
+  logs?: string | null // Actual CI logs (fetched separately for GitHub Actions)
+}
+
+/**
+ * Fetch detailed information about a check run including annotations (failure messages)
+ * Uses GraphQL API with node ID (works for all check types, not just GitHub Actions)
+ */
+export async function fetchCheckRunDetails(
+  token: string,
+  _owner: string,
+  _repo: string,
+  checkRunId: string
+): Promise<{ checkRun: CheckRunDetails; rateLimit: RateLimitInfo }> {
+  // Use GraphQL to fetch check run details by node ID
+  // This works for ALL check runs (GitHub Actions, third-party apps, etc.)
+  const query = `
+    query GetCheckRunDetails($nodeId: ID!) {
+      node(id: $nodeId) {
+        ... on CheckRun {
+          id
+          databaseId
+          name
+          status
+          conclusion
+          startedAt
+          completedAt
+          detailsUrl
+          summary
+          text
+          title
+          annotations(first: 50) {
+            nodes {
+              path
+              location {
+                start { line }
+                end { line }
+              }
+              annotationLevel
+              message
+              title
+              rawDetails
+            }
+          }
+        }
+      }
+      rateLimit {
+        limit
+        remaining
+        used
+        resetAt
+      }
+    }
+  `
+
+  const graphqlClient = graphql.defaults({
+    headers: {
+      authorization: `token ${token}`
+    }
+  })
+
+  interface CheckRunGraphQLResponse {
+    node: {
+      id: string
+      databaseId: number | null
+      name: string
+      status: string
+      conclusion: string | null
+      startedAt: string | null
+      completedAt: string | null
+      detailsUrl: string | null
+      summary: string | null
+      text: string | null
+      title: string | null
+      annotations: {
+        nodes: Array<{
+          path: string
+          location: {
+            start: { line: number }
+            end: { line: number }
+          } | null
+          annotationLevel: string
+          message: string
+          title: string | null
+          rawDetails: string | null
+        }>
+      }
+    } | null
+    rateLimit: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+    }
+  }
+
+  logger.info(LogCategory.API, 'Fetching check run details via GraphQL', { checkRunId })
+
+  const response = await withRetryAndTimeout<CheckRunGraphQLResponse>(
+    async () => graphqlClient<CheckRunGraphQLResponse>(query, { nodeId: checkRunId }),
+    { retry: { maxRetries: 2 }, timeoutMs: 15000, context: 'fetchCheckRunDetails' }
+  )
+
+  if (!response.node) {
+    throw new Error(`Check run not found: ${checkRunId}`)
+  }
+
+  const node = response.node
+  const annotations: CheckRunAnnotation[] = (node.annotations?.nodes || []).map((a) => ({
+    path: a.path,
+    startLine: a.location?.start?.line || 0,
+    endLine: a.location?.end?.line || 0,
+    annotationLevel: (a.annotationLevel?.toLowerCase() || 'notice') as
+      | 'failure'
+      | 'warning'
+      | 'notice',
+    message: a.message,
+    title: a.title,
+    rawDetails: a.rawDetails
+  }))
+
+  const checkRun: CheckRunDetails = {
+    id: node.id,
+    databaseId: node.databaseId,
+    name: node.name,
+    status: node.status?.toLowerCase() || 'completed',
+    conclusion: node.conclusion?.toLowerCase() || null,
+    startedAt: node.startedAt,
+    completedAt: node.completedAt,
+    output: {
+      title: node.title,
+      summary: node.summary,
+      text: node.text,
+      annotationsCount: annotations.length,
+      annotations
+    },
+    htmlUrl: node.detailsUrl || ''
+  }
+
+  logger.info(LogCategory.API, 'Fetched check run details via GraphQL', {
+    checkRunId,
+    name: checkRun.name,
+    conclusion: checkRun.conclusion,
+    annotationsCount: annotations.length
+  })
+
+  const rateLimit: RateLimitInfo = {
+    limit: response.rateLimit.limit,
+    remaining: response.rateLimit.remaining,
+    used: response.rateLimit.used,
+    resetAt: response.rateLimit.resetAt,
+    percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100)
+  }
+
+  return { checkRun, rateLimit }
+}
+
+/**
+ * Fetch the actual CI logs for a GitHub Actions job
+ * This only works for GitHub Actions, not third-party CI providers
+ *
+ * @param token - GitHub token
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param jobId - The numeric job ID (databaseId from GraphQL)
+ * @returns The log content as a string, or null if not available
+ */
+export async function fetchCheckRunLogs(
+  token: string,
+  owner: string,
+  repo: string,
+  jobId: number
+): Promise<string | null> {
+  const url = `https://api.github.com/repos/${owner}/${repo}/actions/jobs/${jobId}/logs`
+
+  logger.info(LogCategory.API, 'Fetching CI logs for job', { owner, repo, jobId })
+
+  try {
+    const response = await http.get<string>(url, {
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github.v3+json'
+      },
+      operationName: `github.getJobLogs(${owner}/${repo}/${jobId})`,
+      // Follow redirects - GitHub returns a 302 to the log URL
+      redirect: 'follow'
+    })
+
+    if (!response.ok) {
+      logger.warn(LogCategory.API, 'Failed to fetch CI logs', {
+        jobId,
+        status: response.status,
+        statusText: response.statusText
+      })
+      return null
+    }
+
+    // Logs can be very large - truncate to last 20KB to get the failure context
+    const logs = typeof response.data === 'string' ? response.data : String(response.data)
+    const maxSize = 20 * 1024 // 20KB - enough to capture most failure output
+    if (logs.length > maxSize) {
+      // Keep the last part which usually contains the failure
+      return `...(truncated)...\n${logs.slice(-maxSize)}`
+    }
+    return logs
+  } catch (error) {
+    logger.error(LogCategory.API, 'Error fetching CI logs', {
+      jobId,
+      error: (error as Error).message
+    })
+    return null
+  }
 }
 
 /**

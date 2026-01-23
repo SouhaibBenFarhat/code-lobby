@@ -6,6 +6,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Button,
   ClaudeIcon,
   cn,
   MarkdownContent
@@ -136,8 +137,9 @@ function MessageBubbleInner({
                 <span>Posting...</span>
               </span>
             ) : state === 'error' ? (
-              <button
-                type="button"
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={() => {
                   if (section.postable) {
                     // Use PR comment if available, otherwise fall back to section content
@@ -149,10 +151,11 @@ function MessageBubbleInner({
               >
                 <AlertCircle className="w-3 h-3" />
                 <span>Retry</span>
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={() => {
                   if (section.postable) {
                     // Use PR comment if available, otherwise fall back to section content
@@ -163,7 +166,7 @@ function MessageBubbleInner({
                 className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors font-medium"
               >
                 <span>Post to PR</span>
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -198,8 +201,9 @@ function MessageBubbleInner({
                     : 'border-border/50'
                 )}
               >
-                <button
-                  type="button"
+                <Button
+                  variant="unstyled"
+                  size="none"
                   onClick={() => toggleThinkingExpanded(message.id)}
                   className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -219,7 +223,7 @@ function MessageBubbleInner({
                   <span className="text-[10px] text-muted-foreground/60 ml-auto">
                     Click to {expandedThinking.has(message.id) ? 'hide' : 'show'}
                   </span>
-                </button>
+                </Button>
                 {expandedThinking.has(message.id) && (
                   <div className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded">
                     <pre className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed">

@@ -2,7 +2,7 @@
  * QuickActions - Quick action chips that users can click to send pre-defined prompts
  */
 
-import { cn } from '@codelobby/ui-kit'
+import { Button, cn } from '@codelobby/ui-kit'
 import { MessageSquare, MessageSquarePlus, X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import type { CustomPrompt, QuickPrompt } from '../../types'
@@ -82,8 +82,9 @@ export function QuickActions({
         style={getMaskStyle()}
       >
         {/* Add custom prompt button - at the start */}
-        <button
-          type="button"
+        <Button
+          variant="unstyled"
+          size="none"
           onClick={() => setIsModalOpen(true)}
           disabled={disabled}
           className={cn(
@@ -96,13 +97,14 @@ export function QuickActions({
           title="Add custom prompt"
         >
           <MessageSquarePlus className="w-3 h-3" />
-        </button>
+        </Button>
 
         {/* Custom prompts with delete button */}
         {customPrompts.map((prompt) => (
           <div key={prompt.id} className="relative group flex-shrink-0">
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               onClick={() => onSelect(prompt.prompt)}
               disabled={disabled}
               className={cn(
@@ -115,10 +117,11 @@ export function QuickActions({
             >
               <MessageSquare className="w-3 h-3" />
               <span>{prompt.label}</span>
-            </button>
+            </Button>
             {/* Delete button */}
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               onClick={(e) => {
                 e.stopPropagation()
                 onDeleteCustomPrompt(prompt.id)
@@ -127,15 +130,16 @@ export function QuickActions({
               title="Delete prompt"
             >
               <X className="w-3 h-3" />
-            </button>
+            </Button>
           </div>
         ))}
 
         {/* Built-in prompts */}
         {prompts.map((prompt) => (
-          <button
+          <Button
             key={prompt.id}
-            type="button"
+            variant="unstyled"
+            size="none"
             onClick={() => onSelect(prompt.prompt)}
             disabled={disabled}
             className={cn(
@@ -148,7 +152,7 @@ export function QuickActions({
           >
             {prompt.icon}
             <span>{prompt.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
     </div>

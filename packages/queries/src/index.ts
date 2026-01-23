@@ -719,11 +719,11 @@ export function useRefreshRepoPRs(): UseMutationResult<
 /**
  * Mutation to refresh a specific PR's detail view.
  * Updates TanStack Query cache only.
- * 
+ *
  * IMPORTANT: This does NOT update Store.selectedPR!
  * For refreshing the PR detail panel, use Actions.refreshPRDetail() instead,
  * which properly updates both the cache and the store.
- * 
+ *
  * @deprecated Use Actions.refreshPRDetail() for UI-triggered refreshes
  */
 export function useRefreshPRDetail(): UseMutationResult<

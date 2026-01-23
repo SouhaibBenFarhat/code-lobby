@@ -205,3 +205,22 @@ export interface RateLimit {
   resetAt: string
   percentage: number
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CI FAILURE ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface CIFailureAnalysis {
+  checkRunId: string
+  checkName: string
+  summary: string
+  failureReason: string
+  suggestedFix?: string
+  thinking?: string // Claude's final reasoning (complete)
+  streamingThinking?: string // Claude's reasoning as it streams in real-time
+  streamingContent?: string // Claude's response as it streams
+  analyzedAt: number
+  isLoading?: boolean
+  isStreaming?: boolean // Currently streaming response
+  error?: string
+}

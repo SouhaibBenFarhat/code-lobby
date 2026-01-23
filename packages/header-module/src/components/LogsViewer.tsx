@@ -397,8 +397,9 @@ export function LogsViewer(): React.JSX.Element {
                             </Badge>
                             <span className="font-mono truncate flex-1">{log.message}</span>
                             {/* Copy button */}
-                            <button
-                              type="button"
+                            <Button
+                              variant="unstyled"
+                              size="none"
                               onClick={(e) => handleCopyLog(log, e)}
                               className="p-0.5 rounded hover:bg-black/20 transition-colors shrink-0 opacity-50 hover:opacity-100"
                               title="Copy this log"
@@ -409,7 +410,7 @@ export function LogsViewer(): React.JSX.Element {
                               ) : (
                                 <Copy className="h-3 w-3" />
                               )}
-                            </button>
+                            </Button>
                             {hasDetails && (
                               <span className="text-muted-foreground shrink-0">
                                 {isExpanded ? (

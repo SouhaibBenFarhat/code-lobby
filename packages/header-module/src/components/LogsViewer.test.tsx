@@ -117,7 +117,7 @@ describe('LogsViewer', () => {
   })
 
   describe('Copy All Logs', () => {
-    it('should copy all logs to clipboard when Copy button is clicked', async () => {
+    it('should copy all logs to clipboard when Copy All is clicked', async () => {
       render(<LogsViewer />, { wrapper: createWrapper() })
 
       // Open the dialog
@@ -127,13 +127,23 @@ describe('LogsViewer', () => {
         expect(screen.getByText('Application Logs')).toBeInTheDocument()
       })
 
-      // Find and click the Copy button in toolbar
-      const copyButton = screen.getByRole('button', { name: /^copy$/i })
-      fireEvent.click(copyButton)
+      // Find and click the Copy dropdown trigger
+      const copyDropdownTrigger = screen.getByRole('button', { name: /^copy$/i })
+      fireEvent.click(copyDropdownTrigger)
+
+      // Wait for popover to open and click "Copy all" button
+      await waitFor(() => {
+        expect(screen.getByText(/copy all/i)).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText(/copy all/i))
 
       await waitFor(() => {
-        expect(window.electron.exportLogs).toHaveBeenCalled()
-        expect(mockWriteText).toHaveBeenCalledWith(JSON.stringify(mockLogs, null, 2))
+        expect(mockWriteText).toHaveBeenCalled()
+        // Should contain formatted logs (logs are sorted by timestamp desc, so "Cache miss" is first)
+        const copiedText = mockWriteText.mock.calls[0][0]
+        expect(copiedText).toContain('Cache miss')
+        expect(copiedText).toContain('Request failed')
+        expect(copiedText).toContain('Fetching data')
       })
     })
 
@@ -147,9 +157,15 @@ describe('LogsViewer', () => {
         expect(screen.getByText('Application Logs')).toBeInTheDocument()
       })
 
-      // Find and click the Copy button in toolbar
-      const copyButton = screen.getByRole('button', { name: /^copy$/i })
-      fireEvent.click(copyButton)
+      // Find and click the Copy dropdown trigger
+      const copyDropdownTrigger = screen.getByRole('button', { name: /^copy$/i })
+      fireEvent.click(copyDropdownTrigger)
+
+      // Wait for popover to open and click "Copy all" button
+      await waitFor(() => {
+        expect(screen.getByText(/copy all/i)).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText(/copy all/i))
 
       await waitFor(() => {
         expect(screen.getByText('Copied!')).toBeInTheDocument()
@@ -183,9 +199,10 @@ describe('LogsViewer', () => {
         expect(screen.getByText('Fetching data')).toBeInTheDocument()
       })
 
-      // Find the copy button for the first log (Fetching data)
+      // Logs are sorted by timestamp descending (newest first)
+      // Index 0 = "Cache miss" (newest), Index 2 = "Fetching data" (oldest)
       const copyLogButtons = screen.getAllByRole('button', { name: /copy log/i })
-      fireEvent.click(copyLogButtons[0])
+      fireEvent.click(copyLogButtons[2]) // Click the "Fetching data" log's copy button
 
       await waitFor(() => {
         expect(mockWriteText).toHaveBeenCalled()
@@ -208,9 +225,10 @@ describe('LogsViewer', () => {
         expect(screen.getByText('Fetching data')).toBeInTheDocument()
       })
 
-      // Find the copy button for the first log (has details)
+      // Logs are sorted by timestamp descending (newest first)
+      // "Fetching data" (with details) is at index 2 (oldest)
       const copyLogButtons = screen.getAllByRole('button', { name: /copy log/i })
-      fireEvent.click(copyLogButtons[0])
+      fireEvent.click(copyLogButtons[2])
 
       await waitFor(() => {
         expect(mockWriteText).toHaveBeenCalled()

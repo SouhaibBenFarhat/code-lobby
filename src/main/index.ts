@@ -10,6 +10,8 @@ if (process.platform === 'darwin') {
 
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 import {
+  analyzeCIFailure,
+  analyzeCIFailureStreaming,
   analyzePRStatus,
   analyzePRStatusStreaming,
   ClaudeMessage,
@@ -24,6 +26,8 @@ import {
 import {
   fetchAllPRsForRepos,
   fetchAllRepositories,
+  fetchCheckRunDetails,
+  fetchCheckRunLogs,
   fetchRateLimitOnly,
   validateToken
 } from './github-graphql'
@@ -1108,6 +1112,178 @@ function setupIPCHandlers(): void {
       }
 
       return result
+    }
+  )
+
+  // Analyze CI failure using AI
+  ipcMain.handle(
+    'analyze-ci-failure',
+    async (
+      _,
+      params: {
+        owner: string
+        repo: string
+        checkRunId: string
+        checkName: string
+      }
+    ) => {
+      const token = getToken()
+      if (!token) {
+        return { success: false, error: 'Not authenticated' }
+      }
+
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, error: 'Claude API key not configured' }
+      }
+
+      logger.info(LogCategory.APP, 'Analyzing CI failure', {
+        owner: params.owner,
+        repo: params.repo,
+        checkRunId: params.checkRunId,
+        checkName: params.checkName
+      })
+
+      try {
+        // 1. Fetch check run details from GitHub
+        const { checkRun } = await fetchCheckRunDetails(
+          token,
+          params.owner,
+          params.repo,
+          params.checkRunId
+        )
+
+        // 2. Try to fetch actual CI logs if this is a GitHub Actions job
+        let logs: string | null = null
+        if (checkRun.databaseId) {
+          logs = await fetchCheckRunLogs(token, params.owner, params.repo, checkRun.databaseId)
+          logger.info(LogCategory.APP, 'Fetched CI logs', {
+            checkName: params.checkName,
+            hasLogs: !!logs,
+            logSize: logs?.length || 0
+          })
+        } else {
+          logger.info(
+            LogCategory.APP,
+            'No databaseId available - third-party CI, skipping log fetch',
+            {
+              checkName: params.checkName
+            }
+          )
+        }
+
+        // 3. Analyze with Claude - include logs in the text output if available
+        const outputText = logs
+          ? `${checkRun.output.text || ''}\n\n--- CI LOGS ---\n${logs}`
+          : checkRun.output.text
+
+        const result = await analyzeCIFailure(apiKey, {
+          checkName: checkRun.name,
+          conclusion: checkRun.conclusion,
+          output: {
+            title: checkRun.output.title,
+            summary: checkRun.output.summary,
+            text: outputText
+          },
+          annotations: checkRun.output.annotations
+        })
+
+        if (result.success) {
+          logger.info(LogCategory.APP, 'CI failure analyzed', {
+            checkName: params.checkName,
+            hasSummary: !!result.summary,
+            hadLogs: !!logs
+          })
+        }
+
+        return result
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logger.error(LogCategory.APP, 'Failed to analyze CI failure', { error: errorMessage })
+        return { success: false, error: errorMessage }
+      }
+    }
+  )
+
+  // Streaming CI failure analysis (with real-time thinking)
+  ipcMain.handle(
+    'stream-ci-failure-analysis',
+    async (
+      event,
+      params: {
+        owner: string
+        repo: string
+        checkRunId: string
+        checkName: string
+      }
+    ) => {
+      const token = getToken()
+      if (!token) {
+        return { success: false, error: 'Not authenticated' }
+      }
+
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, error: 'Claude API key not configured' }
+      }
+
+      const streamId = `ci-analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const webContents = event.sender
+
+      logger.info(LogCategory.APP, 'Starting streaming CI failure analysis', {
+        owner: params.owner,
+        repo: params.repo,
+        checkRunId: params.checkRunId,
+        checkName: params.checkName,
+        streamId
+      })
+
+      try {
+        // 1. Fetch check run details from GitHub
+        const { checkRun } = await fetchCheckRunDetails(
+          token,
+          params.owner,
+          params.repo,
+          params.checkRunId
+        )
+
+        // 2. Try to fetch actual CI logs if this is a GitHub Actions job
+        let logs: string | null = null
+        if (checkRun.databaseId) {
+          logs = await fetchCheckRunLogs(token, params.owner, params.repo, checkRun.databaseId)
+        }
+
+        // 3. Stream the analysis with Claude
+        const outputText = logs
+          ? `${checkRun.output.text || ''}\n\n--- CI LOGS ---\n${logs}`
+          : checkRun.output.text
+
+        analyzeCIFailureStreaming(
+          apiKey,
+          {
+            checkName: checkRun.name,
+            conclusion: checkRun.conclusion,
+            output: {
+              title: checkRun.output.title,
+              summary: checkRun.output.summary,
+              text: outputText
+            },
+            annotations: checkRun.output.annotations
+          },
+          (chunk) => {
+            // Send chunk to renderer
+            webContents.send('ci-analysis-stream-chunk', { streamId, ...chunk })
+          }
+        )
+
+        return { success: true, streamId }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logger.error(LogCategory.APP, 'Failed to start streaming CI analysis', {
+          error: errorMessage
+        })
+        return { success: false, error: errorMessage }
+      }
     }
   )
 

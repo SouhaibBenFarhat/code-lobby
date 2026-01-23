@@ -13,6 +13,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Button,
   cn,
   formatRelativeTime,
   ScrollArea,
@@ -118,8 +119,9 @@ function TreeItem({
         {onReload && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <Button
+                variant="unstyled"
+                size="none"
                 disabled={isReloading}
                 onClick={async (e) => {
                   e.stopPropagation()
@@ -140,7 +142,7 @@ function TreeItem({
                 ) : (
                   <RefreshCw className="w-3 h-3" />
                 )}
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="right">Reload PRs</TooltipContent>
           </Tooltip>
@@ -150,8 +152,9 @@ function TreeItem({
         {hasPRs && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <Button
+                variant="unstyled"
+                size="none"
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleMyPRsFilter()
@@ -164,7 +167,7 @@ function TreeItem({
                 )}
               >
                 {showOnlyMyPRs ? <User className="w-3 h-3" /> : <Users className="w-3 h-3" />}
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="right">{showOnlyMyPRs ? 'My PRs' : 'All PRs'}</TooltipContent>
           </Tooltip>
@@ -233,8 +236,9 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="unstyled"
+      size="none"
       className={cn(
         'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors w-full text-left border-l-2',
         isSelected
@@ -267,7 +271,7 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
         </span>
         {getStatusIcon()}
       </div>
-    </button>
+    </Button>
   )
 }
 

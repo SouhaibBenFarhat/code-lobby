@@ -13,6 +13,11 @@
  * because it needs the PullRequest type from the renderer.
  */
 
+export {
+  buildCIFailureAnalysisPrompt,
+  CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
+  type CIFailureContext
+} from './ci-failure-analysis'
 export { GENERAL_CHAT_SYSTEM_PROMPT } from './general-chat'
 export { buildJiraTicketPrompt, type JiraTicketContext } from './jira-ticket'
 export {

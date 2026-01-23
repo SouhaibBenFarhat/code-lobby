@@ -21,13 +21,19 @@ const buttonVariants: (props?: Record<string, unknown>) => string = cva(
         // Ghost - Minimal, just hover state (like Apple's toolbar buttons)
         ghost: 'hover:bg-accent/80 rounded-[6px]',
         // Link - Text only with underline
-        link: 'text-primary underline-offset-4 hover:underline active:scale-100'
+        link: 'text-primary underline-offset-4 hover:underline active:scale-100',
+        // Unstyled - No visual styling, just semantic button with focus ring
+        // Use for custom clickable areas (collapsible headers, tree items, tabs)
+        unstyled:
+          'justify-start rounded-none font-normal text-inherit active:scale-100 focus-visible:ring-1 focus-visible:ring-offset-0'
       },
       size: {
         default: 'h-9 px-4 py-2',
         sm: 'h-8 px-3 text-xs rounded-[6px]',
         lg: 'h-11 px-6 text-base rounded-[10px]',
-        icon: 'h-9 w-9 rounded-[8px]'
+        icon: 'h-9 w-9 rounded-[8px]',
+        // No size constraints - for unstyled variant
+        none: ''
       }
     },
     defaultVariants: {

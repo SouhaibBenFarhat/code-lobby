@@ -265,6 +265,44 @@ export interface ElectronAPI {
     comments: Array<{ author: string; body: string }>
   }) => Promise<{ success: boolean; ticketKey?: string; ticketUrl?: string; message?: string }>
 
+  analyzeCIFailure: (params: {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+  }) => Promise<{
+    success: boolean
+    summary?: string
+    failureReason?: string
+    suggestedFix?: string
+    thinking?: string
+    error?: string
+  }>
+
+  // Streaming CI failure analysis (with real-time thinking)
+  streamCIFailureAnalysis: (params: {
+    owner: string
+    repo: string
+    checkRunId: string
+    checkName: string
+  }) => Promise<{ success: boolean; streamId?: string; error?: string }>
+
+  onCIAnalysisStreamChunk: (
+    callback: (chunk: {
+      streamId: string
+      type: 'thinking' | 'text' | 'done' | 'error'
+      thinking?: string
+      content?: string
+      error?: string
+      fullResponse?: {
+        summary: string
+        failureReason?: string
+        suggestedFix?: string
+        thinking?: string
+      }
+    }) => void
+  ) => () => void
+
   analyzePRStatus: (context: {
     prId: string
     number: number

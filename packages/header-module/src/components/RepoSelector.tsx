@@ -167,8 +167,9 @@ export function RepoSelector(): React.JSX.Element {
                 {filteredRepos.map((repo) => {
                   const isSelected = selectedRepos.has(repo.full_name)
                   return (
-                    <button
-                      type="button"
+                    <Button
+                      variant="unstyled"
+                      size="none"
                       key={repo.id}
                       onClick={() => toggleRepo(repo.full_name)}
                       className={cn(
@@ -198,7 +199,7 @@ export function RepoSelector(): React.JSX.Element {
                           {repo.language}
                         </Badge>
                       )}
-                    </button>
+                    </Button>
                   )
                 })}
               </div>

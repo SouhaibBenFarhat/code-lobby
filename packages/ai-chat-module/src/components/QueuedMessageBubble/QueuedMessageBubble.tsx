@@ -2,7 +2,7 @@
  * QueuedMessageBubble - Renders a queued user message (waiting to be sent)
  */
 
-import { Avatar, AvatarFallback, AvatarImage } from '@codelobby/ui-kit'
+import { Avatar, AvatarFallback, AvatarImage, Button } from '@codelobby/ui-kit'
 import { User, X } from 'lucide-react'
 import React from 'react'
 import type { GitHubUser, QueuedMessage } from '../../types'
@@ -24,14 +24,15 @@ function QueuedMessageBubbleInner({
     <div className="flex gap-2 justify-end opacity-60">
       <div className="max-w-[85%] rounded-lg bg-primary/50 text-primary-foreground px-3 py-2 relative group selection:bg-white/30 selection:text-white">
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        <button
-          type="button"
+        <Button
+          variant="unstyled"
+          size="none"
           onClick={onRemove}
           className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
           title="Remove from queue"
         >
           <X className="w-3 h-3" />
-        </button>
+        </Button>
         <span className="absolute -bottom-1 -left-1 text-[9px] bg-muted text-muted-foreground px-1 rounded">
           #{index + 1}
         </span>

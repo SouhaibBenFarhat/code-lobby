@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+import { Button } from './button'
 import { cn } from './utils'
 
 interface MarkdownContentProps {
@@ -89,8 +90,9 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
             // For GitHub authenticated images, show a clickable link instead of trying to load
             if (isGitHubUserAttachment) {
               return (
-                <button
-                  type="button"
+                <Button
+                  variant="unstyled"
+                  size="none"
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded border border-border cursor-pointer transition-colors my-1"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -100,7 +102,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
                 >
                   <span className="text-primary hover:underline">View image in browser</span>
                   <span className="text-muted-foreground">↗</span>
-                </button>
+                </Button>
               )
             }
 
@@ -132,8 +134,9 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
                     if (placeholder) placeholder.style.display = 'inline-flex'
                   }}
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="unstyled"
+                  size="none"
                   className="hidden items-center gap-1 px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded border border-border cursor-pointer transition-colors"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -142,7 +145,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
                 >
                   <span className="text-primary hover:underline">View image in browser</span>
                   <span className="text-muted-foreground">↗</span>
-                </button>
+                </Button>
                 {alt && alt !== 'image' && (
                   <span className="block text-[10px] text-muted-foreground mt-1">{alt}</span>
                 )}

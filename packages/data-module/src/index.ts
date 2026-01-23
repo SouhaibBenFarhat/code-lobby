@@ -345,19 +345,6 @@ export function initDataModule(): void {
   )
 
   cleanupFunctions.push(
-    onAction('action:close-pr-chat', async ({ prId }) => {
-      await api.ai.deletePRChat(prId)
-      // Remove from store
-      Store.prChats.value = Store.prChats.value.filter((c) => c.prId !== prId)
-      // Clear active if this was the active chat
-      if (Store.activePRChatId.value === prId) {
-        Store.activePRChatId.value = null
-        Store.linkedPRChat.value = null
-      }
-    })
-  )
-
-  cleanupFunctions.push(
     onAction('action:switch-to-pr-chat', async ({ prId }) => {
       const chat = await api.ai.getPRChat(prId)
       if (chat) {
@@ -372,11 +359,147 @@ export function initDataModule(): void {
     })
   )
 
+  // CI Failure Analysis Handler (with streaming)
+  // Track active stream subscriptions
+  let ciAnalysisUnsubscribe: (() => void) | null = null
+
   cleanupFunctions.push(
-    onAction('action:clear-chat-history', async () => {
-      Store.chatHistory.value = []
+    onAction('action:analyze-ci-failure', async ({ owner, repo, checkRunId, checkName }) => {
+      // Set streaming state for this check
+      Store.ciFailureAnalyses.value = {
+        ...Store.ciFailureAnalyses.value,
+        [checkRunId]: {
+          checkRunId,
+          checkName,
+          summary: '',
+          failureReason: '',
+          streamingThinking: '',
+          streamingContent: '',
+          analyzedAt: Date.now(),
+          isLoading: true,
+          isStreaming: true
+        }
+      }
+
+      // Unsubscribe from any previous stream
+      if (ciAnalysisUnsubscribe) {
+        ciAnalysisUnsubscribe()
+        ciAnalysisUnsubscribe = null
+      }
+
+      try {
+        // Start streaming analysis
+        const result = await api.ai.streamCIFailureAnalysis({
+          owner,
+          repo,
+          checkRunId,
+          checkName
+        })
+
+        if (!result.success || !result.streamId) {
+          Store.ciFailureAnalyses.value = {
+            ...Store.ciFailureAnalyses.value,
+            [checkRunId]: {
+              ...Store.ciFailureAnalyses.value[checkRunId],
+              isLoading: false,
+              isStreaming: false,
+              error: result.error || 'Failed to start analysis'
+            }
+          }
+          return
+        }
+
+        const streamId = result.streamId
+
+        // Subscribe to stream chunks
+        ciAnalysisUnsubscribe = api.ai.onCIAnalysisStreamChunk((chunk) => {
+          // Only process chunks for our stream
+          if (chunk.streamId !== streamId) return
+
+          const current = Store.ciFailureAnalyses.value[checkRunId]
+          if (!current) return
+
+          if (chunk.type === 'thinking' && chunk.thinking) {
+            // Update streaming thinking in real-time
+            Store.ciFailureAnalyses.value = {
+              ...Store.ciFailureAnalyses.value,
+              [checkRunId]: {
+                ...current,
+                streamingThinking: (current.streamingThinking || '') + chunk.thinking
+              }
+            }
+          } else if (chunk.type === 'text' && chunk.content) {
+            // Update streaming content
+            Store.ciFailureAnalyses.value = {
+              ...Store.ciFailureAnalyses.value,
+              [checkRunId]: {
+                ...current,
+                streamingContent: (current.streamingContent || '') + chunk.content
+              }
+            }
+          } else if (chunk.type === 'done' && chunk.fullResponse) {
+            // Finalize the analysis
+            Store.ciFailureAnalyses.value = {
+              ...Store.ciFailureAnalyses.value,
+              [checkRunId]: {
+                checkRunId,
+                checkName,
+                summary: chunk.fullResponse.summary || 'Analysis completed',
+                failureReason: chunk.fullResponse.failureReason || '',
+                suggestedFix: chunk.fullResponse.suggestedFix,
+                thinking: chunk.fullResponse.thinking,
+                analyzedAt: Date.now(),
+                isLoading: false,
+                isStreaming: false
+              }
+            }
+            // Cleanup subscription
+            if (ciAnalysisUnsubscribe) {
+              ciAnalysisUnsubscribe()
+              ciAnalysisUnsubscribe = null
+            }
+          } else if (chunk.type === 'error') {
+            Store.ciFailureAnalyses.value = {
+              ...Store.ciFailureAnalyses.value,
+              [checkRunId]: {
+                ...current,
+                isLoading: false,
+                isStreaming: false,
+                error: chunk.error || 'Analysis failed'
+              }
+            }
+            // Cleanup subscription
+            if (ciAnalysisUnsubscribe) {
+              ciAnalysisUnsubscribe()
+              ciAnalysisUnsubscribe = null
+            }
+          }
+        })
+      } catch (error) {
+        Store.ciFailureAnalyses.value = {
+          ...Store.ciFailureAnalyses.value,
+          [checkRunId]: {
+            checkRunId,
+            checkName,
+            summary: '',
+            failureReason: '',
+            analyzedAt: Date.now(),
+            isLoading: false,
+            isStreaming: false,
+            error: (error as Error).message || 'Failed to analyze CI failure'
+          }
+        }
+      }
     })
   )
+
+  // Cleanup CI analysis subscription on module cleanup
+  cleanupFunctions.push(() => {
+    if (ciAnalysisUnsubscribe) {
+      ciAnalysisUnsubscribe()
+      ciAnalysisUnsubscribe = null
+    }
+  })
 
   // ─────────────────────────────────────────────────────────────────────────
   // LAYOUT HANDLERS

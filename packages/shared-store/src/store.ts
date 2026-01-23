@@ -9,6 +9,7 @@ import { useSyncExternalStore } from 'react'
 import type {
   CardLayout,
   ChatMessage,
+  CIFailureAnalysis,
   GitHubUser,
   LinkedPRChat,
   PRChat,
@@ -108,6 +109,8 @@ export interface StoreType {
   // PR Analysis
   prAnalyses: Signal<Array<{ prId: string; analysis: string }>>
   prAnalysisPanelStates: Signal<Record<string, boolean>>
+  // CI Failure Analysis (keyed by checkRunId)
+  ciFailureAnalyses: Signal<Record<string, CIFailureAnalysis>>
   // Loading States
   loading: {
     repos: Signal<boolean>
@@ -172,6 +175,7 @@ export const Store: StoreType = {
   // ─────────────────────────────────────────────────────────────────────────
   prAnalyses: createSignal<Array<{ prId: string; analysis: string }>>([]),
   prAnalysisPanelStates: createSignal<Record<string, boolean>>({}),
+  ciFailureAnalyses: createSignal<Record<string, CIFailureAnalysis>>({}),
 
   // ─────────────────────────────────────────────────────────────────────────
   // Loading States
@@ -286,6 +290,7 @@ export function resetStore(): void {
   Store.myPRsRepos.value = []
   Store.prAnalyses.value = []
   Store.prAnalysisPanelStates.value = {}
+  Store.ciFailureAnalyses.value = {}
   Store.loading.repos.value = false
   Store.loading.prs.value = false
   Store.loading.prDetail.value = false

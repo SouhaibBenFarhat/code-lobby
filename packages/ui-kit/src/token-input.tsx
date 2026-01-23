@@ -131,8 +131,9 @@ export function TokenInput({ onAuthenticated }: TokenInputProps): JSX.Element {
             </Button>
 
             {/* Collapsible instructions */}
-            <button
-              type="button"
+            <Button
+              variant="unstyled"
+              size="none"
               onClick={() => setShowInstructions(!showInstructions)}
               className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
             >
@@ -142,7 +143,7 @@ export function TokenInput({ onAuthenticated }: TokenInputProps): JSX.Element {
               ) : (
                 <ChevronDown className="w-4 h-4" />
               )}
-            </button>
+            </Button>
 
             {showInstructions && (
               <div className="text-xs text-muted-foreground space-y-3 bg-muted/30 rounded-lg p-3 animate-slideUp">
@@ -150,13 +151,14 @@ export function TokenInput({ onAuthenticated }: TokenInputProps): JSX.Element {
                 <ol className="space-y-2 list-decimal list-inside">
                   <li>
                     Go to{' '}
-                    <button
-                      type="button"
+                    <Button
+                      variant="unstyled"
+                      size="none"
                       onClick={() => window.open('https://github.com/settings/tokens', '_blank')}
-                      className="text-primary hover:underline"
+                      className="text-primary hover:underline inline"
                     >
                       GitHub Settings → Developer settings → Personal access tokens
-                    </button>
+                    </Button>
                   </li>
                   <li>
                     Click <strong>"Generate new token"</strong> →{' '}
