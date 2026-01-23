@@ -1,7 +1,19 @@
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 import { graphql } from '@octokit/graphql'
 import { parseGitHubError, withRetryAndTimeout } from './api-client'
-import { http } from './http-client'
+import { http, type RateLimitUpdate } from './http-client'
+
+// Callback to notify about rate limit updates from GraphQL responses
+let rateLimitNotifier: ((rateLimit: RateLimitUpdate) => void) | null = null
+
+/**
+ * Set a callback to be notified when GraphQL responses include rate limit info
+ */
+export function setGraphQLRateLimitNotifier(
+  callback: ((rateLimit: RateLimitUpdate) => void) | null
+): void {
+  rateLimitNotifier = callback
+}
 
 export interface GitHubUser {
   login: string
@@ -9,6 +21,19 @@ export interface GitHubUser {
   name: string | null
   html_url: string
 }
+
+// Merge status types from GitHub GraphQL API
+export type MergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+export type MergeStateStatus =
+  | 'BEHIND'
+  | 'BLOCKED'
+  | 'CLEAN'
+  | 'DIRTY'
+  | 'DRAFT'
+  | 'HAS_HOOKS'
+  | 'UNKNOWN'
+  | 'UNSTABLE'
+export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
 
 export interface PullRequest {
   id: string
@@ -54,6 +79,10 @@ export interface PullRequest {
   commentsList: PRComment[]
   reviews: PRReview[]
   reviewThreads: ReviewThread[]
+  // Merge status
+  mergeable: MergeableState
+  mergeStateStatus: MergeStateStatus
+  reviewDecision: ReviewDecision
 }
 
 export interface ReviewThread {
@@ -245,6 +274,11 @@ const GET_ALL_DATA = `
           deletions
           changedFiles
           
+          # Merge status fields
+          mergeable
+          mergeStateStatus
+          reviewDecision
+          
           author {
             login
             avatarUrl
@@ -394,6 +428,7 @@ const GET_ALL_PRS_FOR_REPOS = `
       remaining
       used
       resetAt
+      cost
     }
     viewer {
       login
@@ -420,6 +455,11 @@ const GET_ALL_PRS_FOR_REPOS = `
           additions
           deletions
           changedFiles
+          
+          # Merge status fields
+          mergeable
+          mergeStateStatus
+          reviewDecision
           
           author {
             login
@@ -535,6 +575,16 @@ const GET_ALL_PRS_FOR_REPOS = `
               }
             }
           }
+          
+          reviewRequests(first: 10) {
+            nodes {
+              requestedReviewer {
+                ... on User {
+                  login
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -600,6 +650,7 @@ function createGraphQLClient(token: string) {
 /**
  * Execute a GraphQL query with retry logic and timeout
  * Handles GitHub's HTML error responses (Unicorn 503 pages) gracefully
+ * Also extracts rate limit from response and notifies if present
  */
 async function executeGraphQL<T>(
   client: ReturnType<typeof createGraphQLClient>,
@@ -607,7 +658,7 @@ async function executeGraphQL<T>(
   variables?: Record<string, unknown>,
   context?: string
 ): Promise<T> {
-  return withRetryAndTimeout<T>(
+  const result = await withRetryAndTimeout<T>(
     async () => {
       try {
         return (await client(query, variables)) as T
@@ -627,6 +678,35 @@ async function executeGraphQL<T>(
       context: context || 'GraphQL request'
     }
   )
+
+  // Extract rate limit from response if present and notify
+  if (result && typeof result === 'object') {
+    const response = result as {
+      rateLimit?: { limit: number; remaining: number; used: number; resetAt: string; cost?: number }
+    }
+    if (response.rateLimit) {
+      const rl = response.rateLimit
+      logger.debug(LogCategory.API, 'GraphQL rate limit extracted', {
+        used: rl.used,
+        remaining: rl.remaining,
+        limit: rl.limit,
+        cost: rl.cost, // How many points THIS query cost
+        hasNotifier: !!rateLimitNotifier
+      })
+      if (rateLimitNotifier) {
+        rateLimitNotifier({
+          limit: rl.limit,
+          remaining: rl.remaining,
+          used: rl.used,
+          resetAt: rl.resetAt,
+          percentage: Math.round((rl.used / rl.limit) * 100),
+          resource: 'graphql'
+        })
+      }
+    }
+  }
+
+  return result
 }
 
 export async function validateToken(token: string): Promise<GitHubUser | null> {
@@ -852,7 +932,11 @@ export async function fetchAllPRData(token: string): Promise<{
       },
       commentsList,
       reviews,
-      reviewThreads
+      reviewThreads,
+      // Merge status
+      mergeable: pr.mergeable || 'UNKNOWN',
+      mergeStateStatus: pr.mergeStateStatus || 'UNKNOWN',
+      reviewDecision: pr.reviewDecision || null
     })
   }
 
@@ -1204,7 +1288,11 @@ export async function fetchAllPRsForRepos(
         },
         commentsList,
         reviews,
-        reviewThreads
+        reviewThreads,
+        // Merge status
+        mergeable: pr.mergeable || 'UNKNOWN',
+        mergeStateStatus: pr.mergeStateStatus || 'UNKNOWN',
+        reviewDecision: pr.reviewDecision || null
       })
     }
 
@@ -1603,6 +1691,249 @@ export async function postPRReviewComment(
     return {
       success: false,
       error: (error as Error).message
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PR MERGE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type MergeMethod = 'MERGE' | 'SQUASH' | 'REBASE'
+
+export interface MergePRResult {
+  success: boolean
+  mergedAt?: string
+  sha?: string
+  error?: string
+}
+
+/**
+ * Merge a pull request using GitHub GraphQL API
+ * @param token - GitHub token
+ * @param prNodeId - The GraphQL node ID of the PR (not the PR number!)
+ * @param mergeMethod - MERGE, SQUASH, or REBASE
+ * @param commitHeadline - Optional custom commit title (for SQUASH/MERGE)
+ * @param commitBody - Optional custom commit body (for SQUASH/MERGE)
+ */
+export async function mergePullRequest(
+  token: string,
+  prNodeId: string,
+  mergeMethod: MergeMethod = 'SQUASH',
+  commitHeadline?: string,
+  commitBody?: string
+): Promise<MergePRResult> {
+  const mutation = `
+    mutation MergePullRequest($input: MergePullRequestInput!) {
+      mergePullRequest(input: $input) {
+        pullRequest {
+          id
+          merged
+          mergedAt
+          mergeCommit {
+            oid
+          }
+        }
+      }
+    }
+  `
+
+  const client = createGraphQLClient(token)
+
+  const input: {
+    pullRequestId: string
+    mergeMethod: MergeMethod
+    commitHeadline?: string
+    commitBody?: string
+  } = {
+    pullRequestId: prNodeId,
+    mergeMethod
+  }
+
+  if (commitHeadline) {
+    input.commitHeadline = commitHeadline
+  }
+  if (commitBody) {
+    input.commitBody = commitBody
+  }
+
+  try {
+    logger.info(LogCategory.API, 'Merging pull request', {
+      prNodeId,
+      mergeMethod
+    })
+
+    const response = await executeGraphQL<{
+      mergePullRequest: {
+        pullRequest: {
+          id: string
+          merged: boolean
+          mergedAt: string | null
+          mergeCommit: { oid: string } | null
+        }
+      }
+    }>(client, mutation, { input }, 'mergePullRequest')
+
+    const pr = response.mergePullRequest.pullRequest
+
+    if (pr.merged) {
+      logger.info(LogCategory.API, 'Pull request merged successfully', {
+        prNodeId,
+        mergedAt: pr.mergedAt,
+        sha: pr.mergeCommit?.oid
+      })
+
+      return {
+        success: true,
+        mergedAt: pr.mergedAt || undefined,
+        sha: pr.mergeCommit?.oid
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Merge completed but PR not marked as merged'
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Failed to merge pull request', {
+      prNodeId,
+      error: errorMessage
+    })
+
+    // Parse common GitHub merge errors
+    let friendlyError = errorMessage
+    if (errorMessage.includes('BLOCKED')) {
+      friendlyError = 'Merge blocked: Branch protection rules not satisfied'
+    } else if (errorMessage.includes('DIRTY')) {
+      friendlyError = 'Merge conflict: The PR has conflicts that must be resolved'
+    } else if (errorMessage.includes('BEHIND')) {
+      friendlyError = 'Branch is behind: Update from base branch required'
+    } else if (errorMessage.includes('UNSTABLE')) {
+      friendlyError = 'Required status checks are failing'
+    } else if (errorMessage.includes('not mergeable')) {
+      friendlyError = 'PR cannot be merged at this time'
+    }
+
+    return {
+      success: false,
+      error: friendlyError
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PR APPROVE / REQUEST CHANGES
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
+
+export interface SubmitReviewResult {
+  success: boolean
+  reviewId?: string
+  state?: string
+  error?: string
+}
+
+/**
+ * Submit a review on a pull request (approve, request changes, or comment)
+ * Uses GitHub GraphQL API addPullRequestReview mutation
+ *
+ * @param token - GitHub token
+ * @param prNodeId - The GraphQL node ID of the PR
+ * @param event - APPROVE, REQUEST_CHANGES, or COMMENT
+ * @param body - Optional review comment body (required for REQUEST_CHANGES)
+ */
+export async function submitPullRequestReview(
+  token: string,
+  prNodeId: string,
+  event: ReviewEvent,
+  body?: string
+): Promise<SubmitReviewResult> {
+  const mutation = `
+    mutation AddPullRequestReview($input: AddPullRequestReviewInput!) {
+      addPullRequestReview(input: $input) {
+        pullRequestReview {
+          id
+          state
+          createdAt
+          author {
+            login
+          }
+        }
+      }
+    }
+  `
+
+  const client = createGraphQLClient(token)
+
+  const input: {
+    pullRequestId: string
+    event: ReviewEvent
+    body?: string
+  } = {
+    pullRequestId: prNodeId,
+    event
+  }
+
+  // Body is required for REQUEST_CHANGES, optional for others
+  if (body) {
+    input.body = body
+  }
+
+  try {
+    logger.info(LogCategory.API, 'Submitting pull request review', {
+      prNodeId,
+      event,
+      hasBody: !!body
+    })
+
+    const response = await executeGraphQL<{
+      addPullRequestReview: {
+        pullRequestReview: {
+          id: string
+          state: string
+          createdAt: string
+          author: { login: string } | null
+        }
+      }
+    }>(client, mutation, { input }, 'submitPullRequestReview')
+
+    const review = response.addPullRequestReview.pullRequestReview
+
+    logger.info(LogCategory.API, 'Pull request review submitted successfully', {
+      prNodeId,
+      reviewId: review.id,
+      state: review.state,
+      author: review.author?.login
+    })
+
+    return {
+      success: true,
+      reviewId: review.id,
+      state: review.state
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Failed to submit pull request review', {
+      prNodeId,
+      event,
+      error: errorMessage
+    })
+
+    // Parse common errors
+    let friendlyError = errorMessage
+    if (errorMessage.includes('cannot review your own pull request')) {
+      friendlyError = 'You cannot approve your own pull request'
+    } else if (errorMessage.includes('not authorized')) {
+      friendlyError = 'You do not have permission to review this PR'
+    } else if (errorMessage.includes('already reviewed')) {
+      friendlyError = 'You have already submitted a review'
+    }
+
+    return {
+      success: false,
+      error: friendlyError
     }
   }
 }

@@ -80,6 +80,21 @@ export interface CheckStatus {
   }>
 }
 
+// Merge status types from GitHub GraphQL API
+export type MergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+export type MergeStateStatus =
+  | 'BEHIND'
+  | 'BLOCKED'
+  | 'CLEAN'
+  | 'DIRTY'
+  | 'DRAFT'
+  | 'HAS_HOOKS'
+  | 'UNKNOWN'
+  | 'UNSTABLE'
+export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
+export type MergeMethod = 'MERGE' | 'SQUASH' | 'REBASE'
+export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
+
 export interface PullRequest {
   id: string
   number: number
@@ -123,6 +138,10 @@ export interface PullRequest {
   commentsList?: PRComment[]
   reviews?: PRReview[]
   reviewThreads?: ReviewThread[]
+  // Merge status
+  mergeable?: MergeableState
+  mergeStateStatus?: MergeStateStatus
+  reviewDecision?: ReviewDecision
 }
 
 export interface PREvent {

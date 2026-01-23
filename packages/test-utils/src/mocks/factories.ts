@@ -34,6 +34,19 @@ export interface MockRepository {
   private: boolean
 }
 
+// Merge status types matching the actual types
+export type MockMergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+export type MockMergeStateStatus =
+  | 'BEHIND'
+  | 'BLOCKED'
+  | 'CLEAN'
+  | 'DIRTY'
+  | 'DRAFT'
+  | 'HAS_HOOKS'
+  | 'UNKNOWN'
+  | 'UNSTABLE'
+export type MockReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
+
 export interface MockPullRequest {
   id: string
   number: number
@@ -67,6 +80,10 @@ export interface MockPullRequest {
   reviews?: MockPRReview[]
   reviewThreads?: MockReviewThread[]
   checks?: MockCheckStatus
+  // Merge status fields
+  mergeable?: MockMergeableState
+  mergeStateStatus?: MockMergeStateStatus
+  reviewDecision?: MockReviewDecision
 }
 
 export interface MockPRComment {
@@ -258,12 +275,152 @@ export function createMockPullRequest(overrides: Partial<MockPullRequest> = {}):
     commentsList: [],
     reviews: [],
     reviewThreads: [],
+    // Default merge status - ready to merge
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'CLEAN',
+    reviewDecision: 'APPROVED',
     ...overrides
   }
 }
 
 export function createMockDraftPR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
-  return createMockPullRequest({ draft: true, ...overrides })
+  return createMockPullRequest({
+    draft: true,
+    mergeStateStatus: 'DRAFT',
+    ...overrides
+  })
+}
+
+// ============================================================================
+// Merge Status Factories
+// ============================================================================
+
+/** Create a PR that is ready to merge (all checks pass, approved) */
+export function createMockMergeablePR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'CLEAN',
+    reviewDecision: 'APPROVED',
+    checks: createMockCheckStatus(),
+    ...overrides
+  })
+}
+
+/** Create a PR with merge conflicts */
+export function createMockConflictingPR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'CONFLICTING',
+    mergeStateStatus: 'DIRTY',
+    reviewDecision: 'APPROVED',
+    ...overrides
+  })
+}
+
+/** Create a PR blocked by branch protection */
+export function createMockBlockedPR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'BLOCKED',
+    reviewDecision: null,
+    ...overrides
+  })
+}
+
+/** Create a PR that is behind the base branch */
+export function createMockBehindPR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'BEHIND',
+    reviewDecision: 'APPROVED',
+    ...overrides
+  })
+}
+
+/** Create a PR with failing required status checks */
+export function createMockUnstablePR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'UNSTABLE',
+    reviewDecision: 'APPROVED',
+    checks: createMockFailingChecks(),
+    ...overrides
+  })
+}
+
+/** Create a PR that requires review */
+export function createMockReviewRequiredPR(
+  overrides: Partial<MockPullRequest> = {}
+): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'BLOCKED',
+    reviewDecision: 'REVIEW_REQUIRED',
+    ...overrides
+  })
+}
+
+/** Create a PR with changes requested */
+export function createMockChangesRequestedPR(
+  overrides: Partial<MockPullRequest> = {}
+): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'MERGEABLE',
+    mergeStateStatus: 'BLOCKED',
+    reviewDecision: 'CHANGES_REQUESTED',
+    reviews: [createMockChangesRequested()],
+    ...overrides
+  })
+}
+
+/** Create a PR where merge status is still being computed */
+export function createMockComputingPR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    mergeable: 'UNKNOWN',
+    mergeStateStatus: 'UNKNOWN',
+    reviewDecision: null,
+    ...overrides
+  })
+}
+
+/** Create a PR that has been approved by a reviewer */
+export function createMockApprovedPR(
+  reviewerLogin = 'reviewer1',
+  overrides: Partial<MockPullRequest> = {}
+): MockPullRequest {
+  return createMockPullRequest({
+    reviewDecision: 'APPROVED',
+    reviews: [
+      createMockApproval({
+        author: {
+          login: reviewerLogin,
+          avatar_url: `https://github.com/${reviewerLogin}.png`,
+          isBot: false
+        }
+      })
+    ],
+    ...overrides
+  })
+}
+
+/** Create a PR owned by a specific user */
+export function createMockOwnPR(
+  ownerLogin = 'testuser',
+  overrides: Partial<MockPullRequest> = {}
+): MockPullRequest {
+  const user = createMockUser({ login: ownerLogin })
+  return createMockPullRequest({
+    user,
+    ...overrides
+  })
+}
+
+/** Create a PR that needs review (not yet approved) */
+export function createMockNeedsReviewPR(overrides: Partial<MockPullRequest> = {}): MockPullRequest {
+  return createMockPullRequest({
+    reviewDecision: 'REVIEW_REQUIRED',
+    reviews: [],
+    ...overrides
+  })
 }
 
 // ============================================================================

@@ -125,6 +125,7 @@ export interface AIChatPanelProps {
   user?: GitHubUser | null
   linkedPRChat?: LinkedPRChat | null
   onSwitchToPRChat?: (prId: string) => void
+  onClearLinkedPRChat?: () => void
   selectedPR?: SelectedPR | null
   onStartPRChat?: (pr: SelectedPR) => void
 }

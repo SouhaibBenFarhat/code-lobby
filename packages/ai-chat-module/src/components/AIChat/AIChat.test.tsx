@@ -1035,6 +1035,363 @@ describe('Race condition prevention', () => {
   })
 })
 
+// ===================
+// CHAT SWITCHING BEHAVIOR TESTS
+// ===================
+// These tests verify the correct behavior when switching between PR chats
+// and when selecting PRs with/without existing chats.
+// This prevents the bug where selecting a PR with no chat would still show the old chat.
+
+describe('Chat switching behavior', () => {
+  // Types needed for testing
+  interface LinkedPRChat {
+    prId: string
+    prNumber: number
+    prTitle: string
+    repoFullName: string
+  }
+
+  interface SelectedPR {
+    number: number
+    title: string
+    base: {
+      repo: {
+        full_name: string
+      }
+    }
+  }
+
+  // Test data
+  const prA: SelectedPR = {
+    number: 1,
+    title: 'PR A - Feature',
+    base: { repo: { full_name: 'owner/repo' } }
+  }
+
+  const prB: SelectedPR = {
+    number: 2,
+    title: 'PR B - Bugfix',
+    base: { repo: { full_name: 'owner/repo' } }
+  }
+
+  const prC: SelectedPR = {
+    number: 3,
+    title: 'PR C - No Chat',
+    base: { repo: { full_name: 'owner/repo' } }
+  }
+
+  const linkedChatA: LinkedPRChat = {
+    prId: 'owner/repo#1',
+    prNumber: 1,
+    prTitle: 'PR A - Feature',
+    repoFullName: 'owner/repo'
+  }
+
+  const linkedChatB: LinkedPRChat = {
+    prId: 'owner/repo#2',
+    prNumber: 2,
+    prTitle: 'PR B - Bugfix',
+    repoFullName: 'owner/repo'
+  }
+
+  // Simulates the showPREmptyState logic
+  // IMPORTANT: This should only show the empty state when:
+  // - selectedPR exists AND
+  // - linkedPRChat is null (no chat tab is open)
+  function computeShowPREmptyState(
+    selectedPR: SelectedPR | null | undefined,
+    linkedPRChat: LinkedPRChat | null | undefined
+  ): boolean {
+    return Boolean(selectedPR && !linkedPRChat)
+  }
+
+  // Simulates the isSwitchingChat logic
+  // This should be true when:
+  // - linkedPRChat exists (a tab is open) AND
+  // - loadedPRChatId doesn't match linkedPRChat.prId (we're loading new messages)
+  function computeIsSwitchingChat(
+    linkedPRChat: LinkedPRChat | null | undefined,
+    loadedPRChatId: string | null
+  ): boolean {
+    return (
+      linkedPRChat !== null && linkedPRChat !== undefined && linkedPRChat.prId !== loadedPRChatId
+    )
+  }
+
+  describe('showPREmptyState computation', () => {
+    it('should show empty state when PR selected but no chat exists', () => {
+      // User selected PR C (no chat exists for it)
+      const result = computeShowPREmptyState(prC, null)
+      expect(result).toBe(true)
+    })
+
+    it('should NOT show empty state when PR selected AND chat tab is open (same PR)', () => {
+      // User selected PR A and chat A is open
+      const result = computeShowPREmptyState(prA, linkedChatA)
+      expect(result).toBe(false)
+    })
+
+    it('should NOT show empty state when PR selected AND chat tab is open (different PR)', () => {
+      // User selected PR B but chat A tab is still open
+      // This is the KEY case - we should NOT show empty state
+      // Instead, we show the loading skeleton (via isSwitchingChat) or the existing chat
+      const result = computeShowPREmptyState(prB, linkedChatA)
+      expect(result).toBe(false)
+    })
+
+    it('should NOT show empty state when no PR selected', () => {
+      const result = computeShowPREmptyState(null, null)
+      expect(result).toBe(false)
+    })
+
+    it('should NOT show empty state when no PR selected but chat tab is open', () => {
+      const result = computeShowPREmptyState(null, linkedChatA)
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('isSwitchingChat computation', () => {
+    it('should detect switching when linkedPRChat changes to a new chat', () => {
+      // Chat A was loaded, now linkedPRChat changed to chat B
+      const loadedPRChatId = linkedChatA.prId
+      const result = computeIsSwitchingChat(linkedChatB, loadedPRChatId)
+      expect(result).toBe(true)
+    })
+
+    it('should NOT detect switching when linkedPRChat matches loaded chat', () => {
+      // Chat A is loaded and linkedPRChat is also chat A
+      const loadedPRChatId = linkedChatA.prId
+      const result = computeIsSwitchingChat(linkedChatA, loadedPRChatId)
+      expect(result).toBe(false)
+    })
+
+    it('should NOT detect switching when linkedPRChat is null', () => {
+      // No chat tab is open
+      const loadedPRChatId = linkedChatA.prId
+      const result = computeIsSwitchingChat(null, loadedPRChatId)
+      expect(result).toBe(false)
+    })
+
+    it('should detect switching when loadedPRChatId is null (first load)', () => {
+      // First time opening a chat, nothing loaded yet
+      const result = computeIsSwitchingChat(linkedChatA, null)
+      expect(result).toBe(true)
+    })
+  })
+
+  describe('Auto-switch behavior when selecting PR', () => {
+    // Simulates the auto-switch effect behavior
+    // Returns: { action: 'switch' | 'clear' | 'none', toPrId?: string }
+    async function simulateAutoSwitch(
+      selectedPRId: string | null,
+      linkedPRChat: LinkedPRChat | null | undefined,
+      existingChats: Map<string, LinkedPRChat>
+    ): Promise<{ action: 'switch' | 'clear' | 'none'; toPrId?: string }> {
+      // If no PR selected or already on the right chat, do nothing
+      if (!selectedPRId || linkedPRChat?.prId === selectedPRId) {
+        return { action: 'none' }
+      }
+
+      // Check if a chat exists for the selected PR
+      const chat = existingChats.get(selectedPRId)
+
+      if (chat) {
+        // Chat exists - switch to it
+        return { action: 'switch', toPrId: selectedPRId }
+      } else {
+        // No chat exists - clear linkedPRChat to show empty state
+        return { action: 'clear' }
+      }
+    }
+
+    // Mock existing chats
+    const existingChats = new Map<string, LinkedPRChat>([
+      [linkedChatA.prId, linkedChatA],
+      [linkedChatB.prId, linkedChatB]
+      // Note: No chat for PR C
+    ])
+
+    it('should switch to existing chat when selecting PR with chat', async () => {
+      // Currently on chat A, select PR B (which has a chat)
+      const result = await simulateAutoSwitch(
+        'owner/repo#2', // PR B
+        linkedChatA,
+        existingChats
+      )
+      expect(result.action).toBe('switch')
+      expect(result.toPrId).toBe('owner/repo#2')
+    })
+
+    it('should clear linkedPRChat when selecting PR without chat', async () => {
+      // Currently on chat A, select PR C (which has NO chat)
+      const result = await simulateAutoSwitch(
+        'owner/repo#3', // PR C - no chat
+        linkedChatA,
+        existingChats
+      )
+      expect(result.action).toBe('clear')
+    })
+
+    it('should do nothing when already on the correct chat', async () => {
+      // Currently on chat A, select PR A (same PR)
+      const result = await simulateAutoSwitch('owner/repo#1', linkedChatA, existingChats)
+      expect(result.action).toBe('none')
+    })
+
+    it('should do nothing when no PR is selected', async () => {
+      const result = await simulateAutoSwitch(null, linkedChatA, existingChats)
+      expect(result.action).toBe('none')
+    })
+
+    it('should clear when selecting PR without chat even when no chat was open', async () => {
+      // No chat open, select PR C (which has NO chat)
+      const result = await simulateAutoSwitch(
+        'owner/repo#3', // PR C - no chat
+        null,
+        existingChats
+      )
+      expect(result.action).toBe('clear')
+    })
+  })
+
+  describe('Complete chat switching scenarios', () => {
+    // End-to-end simulation of chat switching behavior
+    interface State {
+      selectedPR: SelectedPR | null
+      linkedPRChat: LinkedPRChat | null
+      loadedPRChatId: string | null
+      isSwitchingChat: boolean
+      showPREmptyState: boolean
+    }
+
+    function computeState(
+      selectedPR: SelectedPR | null,
+      linkedPRChat: LinkedPRChat | null,
+      loadedPRChatId: string | null
+    ): State {
+      return {
+        selectedPR,
+        linkedPRChat,
+        loadedPRChatId,
+        isSwitchingChat: computeIsSwitchingChat(linkedPRChat, loadedPRChatId),
+        showPREmptyState: computeShowPREmptyState(selectedPR, linkedPRChat)
+      }
+    }
+
+    it('Scenario 1: Select PR with existing chat - should show loading then chat', () => {
+      // Initial: Viewing chat A, messages for chat A loaded
+      const initial = computeState(prA, linkedChatA, linkedChatA.prId)
+      expect(initial.isSwitchingChat).toBe(false)
+      expect(initial.showPREmptyState).toBe(false)
+
+      // User clicks on PR B (which has a chat) - linkedPRChat changes
+      // Before messages load: should show loading skeleton
+      const afterClick = computeState(prB, linkedChatB, linkedChatA.prId) // loadedPRChatId still A
+      expect(afterClick.isSwitchingChat).toBe(true)
+      expect(afterClick.showPREmptyState).toBe(false)
+
+      // After messages load: should show chat B
+      const afterLoad = computeState(prB, linkedChatB, linkedChatB.prId)
+      expect(afterLoad.isSwitchingChat).toBe(false)
+      expect(afterLoad.showPREmptyState).toBe(false)
+    })
+
+    it('Scenario 2: Select PR without chat - should show empty state', () => {
+      // Initial: Viewing chat A
+      const initial = computeState(prA, linkedChatA, linkedChatA.prId)
+      expect(initial.showPREmptyState).toBe(false)
+
+      // User clicks on PR C (no chat) - linkedPRChat gets cleared
+      const afterClick = computeState(prC, null, linkedChatA.prId)
+      expect(afterClick.isSwitchingChat).toBe(false)
+      expect(afterClick.showPREmptyState).toBe(true)
+    })
+
+    it('Scenario 3: Click tab to switch chats - should show loading then new chat', () => {
+      // Initial: Viewing chat A
+      const initial = computeState(prA, linkedChatA, linkedChatA.prId)
+      expect(initial.isSwitchingChat).toBe(false)
+
+      // User clicks tab for chat B - linkedPRChat changes immediately
+      // Note: selectedPR might still be A (user just clicked tab, not the PR in main view)
+      const afterTabClick = computeState(prA, linkedChatB, linkedChatA.prId)
+      expect(afterTabClick.isSwitchingChat).toBe(true) // Show loading
+      expect(afterTabClick.showPREmptyState).toBe(false) // Never show empty state when a tab is active
+
+      // After messages load
+      const afterLoad = computeState(prA, linkedChatB, linkedChatB.prId)
+      expect(afterLoad.isSwitchingChat).toBe(false)
+      expect(afterLoad.showPREmptyState).toBe(false)
+    })
+
+    it('REGRESSION TEST: Should NOT show old chat when selecting PR without chat', () => {
+      // This is the specific bug we fixed:
+      // User is viewing chat A, selects PR C (no chat), old chat A was still showing
+
+      // Initial: Viewing chat A
+      const _initial = computeState(prA, linkedChatA, linkedChatA.prId)
+
+      // User selects PR C (no chat exists)
+      // The auto-switch effect should call onClearLinkedPRChat
+      // which sets linkedPRChat to null
+      const afterSelect = computeState(prC, null, linkedChatA.prId)
+
+      // Should show empty state, NOT the old chat A
+      expect(afterSelect.showPREmptyState).toBe(true)
+      expect(afterSelect.isSwitchingChat).toBe(false)
+      expect(afterSelect.linkedPRChat).toBeNull()
+    })
+
+    it('REGRESSION TEST: Should NOT flash empty state when switching between chats', () => {
+      // This was the original bug:
+      // When switching from chat A to chat B, empty state flashed briefly
+
+      // Initial: Viewing chat A
+      const _initial = computeState(prA, linkedChatA, linkedChatA.prId)
+
+      // User clicks tab for chat B (linkedPRChat changes, but loadedPRChatId still points to A)
+      const afterTabClick = computeState(prA, linkedChatB, linkedChatA.prId)
+
+      // CRITICAL: showPREmptyState should be FALSE
+      // because linkedPRChat exists (chat B is now the active tab)
+      expect(afterTabClick.showPREmptyState).toBe(false)
+
+      // isSwitchingChat should be TRUE (show loading skeleton)
+      expect(afterTabClick.isSwitchingChat).toBe(true)
+    })
+
+    it('Should handle rapid chat switching correctly', () => {
+      // User rapidly switches: A -> B -> C -> B
+      // Only the final state matters
+
+      // Start on chat A
+      let state = computeState(prA, linkedChatA, linkedChatA.prId)
+      expect(state.isSwitchingChat).toBe(false)
+
+      // Click B tab
+      state = computeState(prA, linkedChatB, linkedChatA.prId)
+      expect(state.isSwitchingChat).toBe(true)
+
+      // Click C tab (no chat exists, so this clears)
+      // But wait - clicking a tab for C doesn't make sense if C has no chat
+      // This scenario is: user selects PR C from main view
+      state = computeState(prC, null, linkedChatA.prId)
+      expect(state.showPREmptyState).toBe(true)
+      expect(state.isSwitchingChat).toBe(false)
+
+      // Click B tab again
+      state = computeState(prC, linkedChatB, linkedChatA.prId)
+      expect(state.showPREmptyState).toBe(false)
+      expect(state.isSwitchingChat).toBe(true)
+
+      // After B loads
+      state = computeState(prC, linkedChatB, linkedChatB.prId)
+      expect(state.showPREmptyState).toBe(false)
+      expect(state.isSwitchingChat).toBe(false)
+    })
+  })
+})
+
 describe('Message sending validation', () => {
   // Simulates the validation logic in sendMessage
   // Note: We only check that prSystemContext exists for PR chats

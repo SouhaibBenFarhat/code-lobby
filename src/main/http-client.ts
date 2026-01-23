@@ -27,6 +27,56 @@
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// RATE LIMIT CALLBACK
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface RateLimitUpdate {
+  limit: number
+  remaining: number
+  used: number
+  resetAt: string
+  percentage: number
+  resource: string
+}
+
+type RateLimitCallback = (rateLimit: RateLimitUpdate) => void
+let rateLimitCallback: RateLimitCallback | null = null
+
+/**
+ * Set a callback to be called whenever rate limit info is received from GitHub
+ */
+export function onRateLimitUpdate(callback: RateLimitCallback | null): void {
+  rateLimitCallback = callback
+}
+
+/**
+ * Extract rate limit info from GitHub API response headers
+ */
+function extractRateLimitFromHeaders(headers: Headers): RateLimitUpdate | null {
+  const limit = headers.get('x-ratelimit-limit')
+  const remaining = headers.get('x-ratelimit-remaining')
+  const reset = headers.get('x-ratelimit-reset')
+  const used = headers.get('x-ratelimit-used')
+  const resource = headers.get('x-ratelimit-resource')
+
+  if (!limit || !remaining || !reset) return null
+
+  const limitNum = parseInt(limit, 10)
+  const remainingNum = parseInt(remaining, 10)
+  const usedNum = used ? parseInt(used, 10) : limitNum - remainingNum
+  const resetTimestamp = parseInt(reset, 10) * 1000
+
+  return {
+    limit: limitNum,
+    remaining: remainingNum,
+    used: usedNum,
+    resetAt: new Date(resetTimestamp).toISOString(),
+    percentage: Math.round((usedNum / limitNum) * 100),
+    resource: resource || 'unknown'
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -198,6 +248,14 @@ async function httpFetch<T = unknown>(
     }
 
     const size = await getResponseSize(response, bodyText)
+
+    // Extract and notify about rate limit (for GitHub API responses)
+    if (url.includes('github.com') && rateLimitCallback) {
+      const rateLimit = extractRateLimitFromHeaders(response.headers)
+      if (rateLimit) {
+        rateLimitCallback(rateLimit)
+      }
+    }
 
     // Log response
     if (!skipLogging) {

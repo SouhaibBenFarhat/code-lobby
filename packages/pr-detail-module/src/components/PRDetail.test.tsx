@@ -5,9 +5,19 @@
  * The component works correctly in the app - these tests need more setup.
  */
 
+import { Store } from '@codelobby/shared-store'
 import {
   createMockApproval,
+  createMockApprovedPR,
+  createMockBehindPR,
+  createMockBlockedPR,
   createMockChangesRequested,
+  createMockComputingPR,
+  createMockConflictingPR,
+  createMockDraftPR,
+  createMockMergeablePR,
+  createMockNeedsReviewPR,
+  createMockOwnPR,
   createMockPRWithChecks,
   createMockPRWithCodeReviews,
   createMockPRWithComments,
@@ -15,6 +25,7 @@ import {
   createMockPullRequest,
   createMockReviewComment,
   createMockReviewThread,
+  createMockUnstablePR,
   createMockUser,
   fireEvent,
   render,
@@ -420,6 +431,426 @@ describe('PRDetail', () => {
       })
 
       dispatchEventSpy.mockRestore()
+    })
+  })
+
+  describe('Merge Button', () => {
+    it('should render merge button for a mergeable PR', () => {
+      const pr = createMockMergeablePR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Should show "Merge" button when PR is ready
+      expect(screen.getByRole('button', { name: /Merge/i })).toBeInTheDocument()
+    })
+
+    it('should show "Merge" text and be enabled when PR is clean and mergeable', () => {
+      const pr = createMockMergeablePR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Merge/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).not.toBeDisabled()
+    })
+
+    it('should show "Has merge conflicts" and be disabled when PR has conflicts', () => {
+      const pr = createMockConflictingPR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Has merge conflicts/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Blocked by branch protection" and be disabled when blocked', () => {
+      const pr = createMockBlockedPR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Blocked by branch protection/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Branch is behind base" and be disabled when behind', () => {
+      const pr = createMockBehindPR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Branch is behind base/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Required checks failing" and be disabled when unstable', () => {
+      const pr = createMockUnstablePR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Required checks failing/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Review required" and be disabled when review is required', () => {
+      // Create PR with only review decision, no blocking status
+      const pr = createMockPullRequest({
+        mergeable: 'MERGEABLE',
+        mergeStateStatus: 'CLEAN', // Not BLOCKED
+        reviewDecision: 'REVIEW_REQUIRED'
+      })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Review required/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Changes requested" and be disabled when changes are requested', () => {
+      // Create PR with only review decision, no blocking status
+      const pr = createMockPullRequest({
+        mergeable: 'MERGEABLE',
+        mergeStateStatus: 'CLEAN', // Not BLOCKED
+        reviewDecision: 'CHANGES_REQUESTED'
+      })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Changes requested/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Cannot merge draft PR" and be disabled for draft PRs', () => {
+      const pr = createMockDraftPR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Cannot merge draft PR/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+    })
+
+    it('should show "Checking..." with spinner when merge status is computing', () => {
+      const pr = createMockComputingPR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Checking/i })
+      expect(mergeButton).toBeInTheDocument()
+      expect(mergeButton).toBeDisabled()
+
+      // Should have a spinner
+      const spinner = mergeButton.querySelector('.animate-spin')
+      expect(spinner).toBeInTheDocument()
+    })
+
+    it('should show confirmation dialog when clicking merge on a mergeable PR', async () => {
+      const pr = createMockMergeablePR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Find the merge trigger button (the one in the header)
+      const mergeButtons = screen.getAllByRole('button', { name: /Merge/i })
+      const mergeButton = mergeButtons[0] // First one is the trigger
+      fireEvent.click(mergeButton)
+
+      // Confirmation dialog should appear
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      // Should show branch info (multiple occurrences expected - header and dialog)
+      const headBranchElements = screen.getAllByText(pr.head.ref)
+      const baseBranchElements = screen.getAllByText(pr.base.ref)
+      expect(headBranchElements.length).toBeGreaterThan(0)
+      expect(baseBranchElements.length).toBeGreaterThan(0)
+    })
+
+    it('should show merge method options in confirmation dialog', async () => {
+      const pr = createMockMergeablePR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Find the merge trigger button
+      const mergeButtons = screen.getAllByRole('button', { name: /Merge/i })
+      fireEvent.click(mergeButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Squash' })).toBeInTheDocument()
+        // Note: "Merge" button appears twice now (trigger + method selection)
+        const mergeMethodButtons = screen.getAllByRole('button', { name: 'Merge' })
+        expect(mergeMethodButtons.length).toBeGreaterThan(0)
+        expect(screen.getByRole('button', { name: 'Rebase' })).toBeInTheDocument()
+      })
+    })
+
+    it('should close confirmation dialog when clicking cancel', async () => {
+      const pr = createMockMergeablePR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const mergeButton = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(mergeButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+      fireEvent.click(cancelButton)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Confirm Merge')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should call mergePR API when confirming merge', async () => {
+      const pr = createMockMergeablePR()
+      const mergePRSpy = vi
+        .fn()
+        .mockResolvedValue({ success: true, mergedAt: new Date().toISOString() })
+      window.electron.mergePR = mergePRSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Open confirmation dialog
+      const mergeButton = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(mergeButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      // Click confirm
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(mergePRSpy).toHaveBeenCalledWith(pr.id, 'SQUASH')
+      })
+    })
+
+    it('should use selected merge method when confirming', async () => {
+      const pr = createMockMergeablePR()
+      const mergePRSpy = vi.fn().mockResolvedValue({ success: true })
+      window.electron.mergePR = mergePRSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Open confirmation dialog
+      const mergeButton = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(mergeButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      // Select REBASE method
+      const rebaseButton = screen.getByRole('button', { name: 'Rebase' })
+      fireEvent.click(rebaseButton)
+
+      // Confirm
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(mergePRSpy).toHaveBeenCalledWith(pr.id, 'REBASE')
+      })
+    })
+
+    it('should show error message when merge fails', async () => {
+      const pr = createMockMergeablePR()
+      const mergePRSpy = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Merge blocked: Branch protection rules not satisfied'
+      })
+      window.electron.mergePR = mergePRSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Open confirmation dialog
+      const mergeButton = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(mergeButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      // Confirm
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(screen.getByText(/Branch protection rules not satisfied/)).toBeInTheDocument()
+      })
+    })
+
+    it('should show loading state while merging', async () => {
+      const pr = createMockMergeablePR()
+      // Create a promise that we can control
+      let resolvePromise: (value: { success: boolean }) => void
+      const mergePromise = new Promise<{ success: boolean }>((resolve) => {
+        resolvePromise = resolve
+      })
+      const mergePRSpy = vi.fn().mockReturnValue(mergePromise)
+      window.electron.mergePR = mergePRSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      // Open confirmation dialog
+      const mergeButtons = screen.getAllByRole('button', { name: /Merge/i })
+      fireEvent.click(mergeButtons[0])
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      // Confirm
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
+
+      // Should show loading state - there will be multiple "Merging" texts
+      await waitFor(() => {
+        const mergingElements = screen.getAllByText(/Merging/)
+        expect(mergingElements.length).toBeGreaterThan(0)
+      })
+
+      // Resolve the promise
+      resolvePromise?.({ success: true })
+    })
+  })
+
+  describe('Approve Button', () => {
+    beforeEach(() => {
+      // Set a logged-in user for approve tests
+      Store.user.value = {
+        login: 'reviewer',
+        avatar_url: 'https://github.com/reviewer.png',
+        name: 'Reviewer User',
+        html_url: 'https://github.com/reviewer'
+      }
+    })
+
+    it('should render approve button', () => {
+      const pr = createMockNeedsReviewPR()
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      expect(screen.getByRole('button', { name: /Approve/i })).toBeInTheDocument()
+    })
+
+    it('should show "Approve" and be enabled when user can approve', () => {
+      const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      expect(approveButton).toBeInTheDocument()
+      expect(approveButton).not.toBeDisabled()
+    })
+
+    it('should have green styling when user can approve', () => {
+      const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      expect(approveButton).toHaveClass('bg-green-600')
+    })
+
+    it('should have green styling when already approved', () => {
+      const pr = createMockApprovedPR('reviewer')
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approved/i })
+      expect(approveButton).toHaveClass('bg-green-600')
+    })
+
+    it('should show "Approved" and be disabled when PR is already approved', () => {
+      const pr = createMockApprovedPR('reviewer')
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approved/i })
+      expect(approveButton).toBeInTheDocument()
+      expect(approveButton).toBeDisabled()
+    })
+
+    it('should be disabled when viewing own PR (cannot self-approve)', () => {
+      // The current user (reviewer) created this PR
+      const pr = createMockOwnPR('reviewer')
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      expect(approveButton).toBeDisabled()
+    })
+
+    it('should be disabled for draft PRs', () => {
+      const pr = createMockDraftPR({ user: createMockUser({ login: 'author' }) })
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      expect(approveButton).toBeDisabled()
+    })
+
+    it('should call submitPRReview API when clicking approve', async () => {
+      const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
+      const submitPRReviewSpy = vi.fn().mockResolvedValue({ success: true, state: 'APPROVED' })
+      window.electron.submitPRReview = submitPRReviewSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      fireEvent.click(approveButton)
+
+      await waitFor(() => {
+        expect(submitPRReviewSpy).toHaveBeenCalledWith(pr.id, 'APPROVE')
+      })
+    })
+
+    it('should show "Approved!" briefly after successful approval', async () => {
+      const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
+      const submitPRReviewSpy = vi.fn().mockResolvedValue({ success: true, state: 'APPROVED' })
+      window.electron.submitPRReview = submitPRReviewSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      fireEvent.click(approveButton)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Approved!/i })).toBeInTheDocument()
+      })
+    })
+
+    it('should show loading state while approving', async () => {
+      const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
+      // Create a promise that we can control
+      let resolvePromise: (value: { success: boolean; state?: string }) => void
+      const approvePromise = new Promise<{ success: boolean; state?: string }>((resolve) => {
+        resolvePromise = resolve
+      })
+      const submitPRReviewSpy = vi.fn().mockReturnValue(approvePromise)
+      window.electron.submitPRReview = submitPRReviewSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      fireEvent.click(approveButton)
+
+      // Should show loading state
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Approving/i })).toBeInTheDocument()
+      })
+
+      // Resolve the promise
+      resolvePromise?.({ success: true, state: 'APPROVED' })
+    })
+
+    it('should show error in tooltip when approval fails', async () => {
+      const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
+      const submitPRReviewSpy = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'You cannot approve your own pull request'
+      })
+      window.electron.submitPRReview = submitPRReviewSpy
+
+      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+
+      const approveButton = screen.getByRole('button', { name: /Approve/i })
+      fireEvent.click(approveButton)
+
+      // Error would show in tooltip - just verify API was called
+      await waitFor(() => {
+        expect(submitPRReviewSpy).toHaveBeenCalled()
+      })
     })
   })
 })

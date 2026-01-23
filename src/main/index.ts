@@ -29,8 +29,14 @@ import {
   fetchCheckRunDetails,
   fetchCheckRunLogs,
   fetchRateLimitOnly,
+  type MergeMethod,
+  mergePullRequest,
+  type ReviewEvent,
+  setGraphQLRateLimitNotifier,
+  submitPullRequestReview,
   validateToken
 } from './github-graphql'
+import { onRateLimitUpdate, type RateLimitUpdate } from './http-client'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   AIPanelSettings,
@@ -150,6 +156,36 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
+
+  // Shared function to send rate limit updates to renderer
+  const sendRateLimitUpdate = (rateLimit: RateLimitUpdate) => {
+    logger.debug(LogCategory.RATE_LIMIT, 'Rate limit update received', {
+      resource: rateLimit.resource,
+      used: rateLimit.used,
+      remaining: rateLimit.remaining
+    })
+    // Only send graphql rate limit updates (that's what the app uses)
+    if (rateLimit.resource === 'graphql') {
+      logger.debug(LogCategory.RATE_LIMIT, 'Sending rate limit to renderer', {
+        used: rateLimit.used,
+        remaining: rateLimit.remaining
+      })
+      mainWindow?.webContents.send('rate-limit-update', {
+        limit: rateLimit.limit,
+        remaining: rateLimit.remaining,
+        used: rateLimit.used,
+        resetAt: rateLimit.resetAt,
+        percentage: rateLimit.percentage
+      })
+    }
+  }
+
+  // Set up rate limit callback for REST API calls (via http-client)
+  onRateLimitUpdate(sendRateLimitUpdate)
+
+  // Set up rate limit callback for GraphQL API calls (via @octokit/graphql)
+  setGraphQLRateLimitNotifier(sendRateLimitUpdate)
+  logger.info(LogCategory.RATE_LIMIT, 'Rate limit notifiers configured')
 
   // Notify renderer of fullscreen changes
   mainWindow.on('enter-full-screen', () => {
@@ -555,6 +591,60 @@ function setupIPCHandlers(): void {
           prNumber,
           path,
           line,
+          error: (error as Error).message
+        })
+        return { success: false, error: (error as Error).message }
+      }
+    }
+  )
+
+  // Merge PR
+  ipcMain.handle(
+    'merge-pr',
+    async (
+      _,
+      prNodeId: string,
+      mergeMethod?: MergeMethod,
+      commitHeadline?: string,
+      commitBody?: string
+    ) => {
+      const token = getToken()
+      if (!token) return { success: false, error: 'No GitHub token configured' }
+
+      try {
+        const result = await mergePullRequest(
+          token,
+          prNodeId,
+          mergeMethod || 'SQUASH',
+          commitHeadline,
+          commitBody
+        )
+        return result
+      } catch (error) {
+        logger.error(LogCategory.GRAPHQL, 'Failed to merge PR', {
+          prNodeId,
+          mergeMethod,
+          error: (error as Error).message
+        })
+        return { success: false, error: (error as Error).message }
+      }
+    }
+  )
+
+  // Submit PR Review (approve, request changes, or comment)
+  ipcMain.handle(
+    'submit-pr-review',
+    async (_, prNodeId: string, event: ReviewEvent, body?: string) => {
+      const token = getToken()
+      if (!token) return { success: false, error: 'No GitHub token configured' }
+
+      try {
+        const result = await submitPullRequestReview(token, prNodeId, event, body)
+        return result
+      } catch (error) {
+        logger.error(LogCategory.GRAPHQL, 'Failed to submit PR review', {
+          prNodeId,
+          event,
           error: (error as Error).message
         })
         return { success: false, error: (error as Error).message }

@@ -50,6 +50,7 @@ export function AIChatPanel({
   user,
   linkedPRChat,
   onSwitchToPRChat,
+  onClearLinkedPRChat,
   selectedPR,
   onStartPRChat
 }: AIChatPanelProps): React.JSX.Element {
@@ -67,7 +68,6 @@ export function AIChatPanel({
   const [enableWebFetch, setEnableWebFetch] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
-  const [showConversations, setShowConversations] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -82,6 +82,8 @@ export function AIChatPanel({
   const [customPrompts, setCustomPrompts] = useState<CustomPrompt[]>([])
   const [allPRChats, setAllPRChats] = useState<PRChatInfo[]>([])
   const [prSystemContext, setPrSystemContext] = useState<string | undefined>(undefined)
+  // Track which PR chat ID the current messages belong to
+  const [loadedPRChatId, setLoadedPRChatId] = useState<string | null>(null)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // REFS
@@ -108,9 +110,14 @@ export function AIChatPanel({
     () => (linkedPRChat ? prSystemContext !== undefined : true),
     [linkedPRChat, prSystemContext]
   )
-  // Show PR empty state when a PR is selected but no chat exists for it yet
-  const showPREmptyState = selectedPR && (!linkedPRChat || linkedPRChat.prId !== selectedPRId)
-  // Show "No PR Selected" when no PR is selected at all
+  // Detect if we're switching chats - linkedPRChat changed but messages haven't loaded yet
+  // This is computed synchronously so it takes effect immediately during render
+  const isSwitchingChat =
+    linkedPRChat !== null && linkedPRChat !== undefined && linkedPRChat.prId !== loadedPRChatId
+  // Show PR empty state when a PR is selected but NO chat tab is open
+  // If linkedPRChat exists (for ANY PR), show that chat instead
+  const showPREmptyState = selectedPR && !linkedPRChat
+  // Show "No PR Selected" when no PR is selected at all AND no chat tab is open
   const showNoPRSelected = !selectedPR && !linkedPRChat
   // Only show input when we have an active PR chat
   const showInput =
@@ -172,10 +179,13 @@ export function AIChatPanel({
           setMessages([])
           setPrSystemContext(undefined)
         }
+        // Mark that we've loaded data for this PR chat
+        setLoadedPRChatId(linkedPRChat.prId)
       } else {
         // No PR chat linked - clear state
         setMessages([])
         setPrSystemContext(undefined)
+        setLoadedPRChatId(null)
       }
       if (key) loadModels()
     } finally {
@@ -382,22 +392,25 @@ export function AIChatPanel({
     loadAllPRChats()
   }, [loadAllPRChats, linkedPRChat?.prId])
 
-  // Auto-switch to existing PR chat when a PR is selected
+  // Auto-switch to existing PR chat when a PR is selected, or clear if no chat exists
   useEffect(() => {
     if (!selectedPRId || linkedPRChat?.prId === selectedPRId) return
     let cancelled = false
     ;(async () => {
       const chat = await api.ai.getPRChat(selectedPRId)
       if (cancelled) return
-      // If a chat exists for this PR, switch to it
       if (chat && onSwitchToPRChat) {
+        // Chat exists for this PR - switch to it
         onSwitchToPRChat(selectedPRId)
+      } else if (onClearLinkedPRChat) {
+        // No chat exists for this PR - clear linkedPRChat to show empty state
+        onClearLinkedPRChat()
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat])
+  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClearLinkedPRChat])
 
   useEffect(() => {
     if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
@@ -449,9 +462,7 @@ export function AIChatPanel({
         selectedModel={selectedModel}
         models={models}
         allPRChats={allPRChats}
-        showConversations={showConversations}
         showSettings={showSettings}
-        onShowConversationsChange={setShowConversations}
         onShowSettingsChange={setShowSettings}
         onSwitchToPRChat={onSwitchToPRChat}
         onClearHistory={handleClearHistory}
@@ -487,17 +498,20 @@ export function AIChatPanel({
       )}
 
       <div className="flex-1 relative overflow-hidden">
-        {(isLoading || (!scroll.isConversationReady && messages.length > 0)) && (
+        {(isLoading || isSwitchingChat || (!scroll.isConversationReady && messages.length > 0)) && (
           <ChatLoadingSkeleton />
         )}
 
-        {!isLoading && showNoPRSelected && <NoPRSelectedState apiKey={apiKey} />}
+        {!isLoading && !isSwitchingChat && showNoPRSelected && (
+          <NoPRSelectedState apiKey={apiKey} />
+        )}
 
-        {!isLoading && showPREmptyState && selectedPR && (
+        {!isLoading && !isSwitchingChat && showPREmptyState && selectedPR && (
           <PREmptyState selectedPR={selectedPR} apiKey={apiKey} onStartPRChat={onStartPRChat} />
         )}
 
         {!isLoading &&
+          !isSwitchingChat &&
           !showNoPRSelected &&
           !showPREmptyState &&
           (messages.length > 0 || streaming.isStreaming) && (

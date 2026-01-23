@@ -5,7 +5,12 @@
 
 import { api } from '@codelobby/api'
 import { type PRFile, usePRFiles } from '@codelobby/queries'
-import type { CIFailureAnalysis, PullRequest, ReviewThread } from '@codelobby/shared-store'
+import type {
+  CIFailureAnalysis,
+  MergeMethod,
+  PullRequest,
+  ReviewThread
+} from '@codelobby/shared-store'
 import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import {
   Avatar,
@@ -267,6 +272,416 @@ function CheckItem({
         </div>
       )}
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MERGE BUTTON COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface MergeButtonProps {
+  pr: PullRequest
+  onMergeComplete?: () => void
+}
+
+function MergeButton({ pr, onMergeComplete }: MergeButtonProps): React.JSX.Element {
+  const [isMerging, setIsMerging] = useState(false)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [mergeMethod, setMergeMethod] = useState<MergeMethod>('SQUASH')
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  const mergeable = pr.mergeable
+  const mergeState = pr.mergeStateStatus
+  const reviewDecision = pr.reviewDecision
+
+  // Determine if merge is possible and why not
+  const getMergeStatus = useMemo(() => {
+    // Computing state
+    if (mergeable === 'UNKNOWN' || mergeState === 'UNKNOWN') {
+      return {
+        canMerge: false,
+        isComputing: true,
+        reason: 'Checking merge status...',
+        variant: 'secondary' as const
+      }
+    }
+
+    // Draft PRs cannot be merged
+    if (pr.draft || mergeState === 'DRAFT') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Cannot merge draft PR',
+        variant: 'secondary' as const
+      }
+    }
+
+    // Has conflicts
+    if (mergeable === 'CONFLICTING' || mergeState === 'DIRTY') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Has merge conflicts',
+        variant: 'destructive' as const
+      }
+    }
+
+    // Branch protection blocking
+    if (mergeState === 'BLOCKED') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Blocked by branch protection',
+        variant: 'secondary' as const
+      }
+    }
+
+    // Behind base branch
+    if (mergeState === 'BEHIND') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Branch is behind base',
+        variant: 'secondary' as const
+      }
+    }
+
+    // Failing required status checks
+    if (mergeState === 'UNSTABLE') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Required checks failing',
+        variant: 'destructive' as const
+      }
+    }
+
+    // Review requirements
+    if (reviewDecision === 'CHANGES_REQUESTED') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Changes requested',
+        variant: 'secondary' as const
+      }
+    }
+
+    if (reviewDecision === 'REVIEW_REQUIRED') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Review required',
+        variant: 'secondary' as const
+      }
+    }
+
+    // Pre-receive hooks pending
+    if (mergeState === 'HAS_HOOKS') {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'Waiting for hooks...',
+        variant: 'secondary' as const
+      }
+    }
+
+    // All checks passed - can merge
+    if (mergeState === 'CLEAN' && mergeable === 'MERGEABLE') {
+      return {
+        canMerge: true,
+        isComputing: false,
+        reason: reviewDecision === 'APPROVED' ? 'Approved' : 'Ready to merge',
+        variant: 'default' as const
+      }
+    }
+
+    // Default case
+    return {
+      canMerge: mergeable === 'MERGEABLE',
+      isComputing: false,
+      reason: mergeable === 'MERGEABLE' ? 'Ready to merge' : 'Cannot merge',
+      variant: mergeable === 'MERGEABLE' ? ('default' as const) : ('secondary' as const)
+    }
+  }, [mergeable, mergeState, reviewDecision, pr.draft])
+
+  const handleMerge = useCallback(async () => {
+    setIsMerging(true)
+    setMergeError(null)
+
+    try {
+      const result = await window.electron.mergePR(
+        pr.id, // GraphQL node ID
+        mergeMethod
+      )
+
+      if (result.success) {
+        setShowConfirm(false)
+        onMergeComplete?.()
+        // TODO: Could show a success toast here
+      } else {
+        setMergeError(result.error || 'Failed to merge PR')
+      }
+    } catch (error) {
+      setMergeError((error as Error).message)
+    } finally {
+      setIsMerging(false)
+    }
+  }, [pr.id, mergeMethod, onMergeComplete])
+
+  const { canMerge, isComputing, reason, variant } = getMergeStatus
+
+  // Button states
+  const isDisabled = !canMerge || isMerging || isComputing
+
+  return (
+    <div className="relative">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={canMerge ? 'default' : variant}
+            size="sm"
+            className={cn(
+              'h-7 px-3 gap-1.5 font-medium',
+              canMerge && 'bg-success hover:bg-success/90 text-success-foreground',
+              isComputing && 'animate-pulse'
+            )}
+            onClick={() => canMerge && setShowConfirm(true)}
+            disabled={isDisabled}
+          >
+            {isMerging ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : isComputing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : canMerge ? (
+              <Check className="w-3.5 h-3.5" />
+            ) : mergeable === 'CONFLICTING' ? (
+              <XCircle className="w-3.5 h-3.5" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5" />
+            )}
+            <span className="text-xs">
+              {isMerging ? 'Merging...' : canMerge ? 'Merge' : isComputing ? 'Checking...' : reason}
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[240px]">
+          <p className="font-medium">{canMerge ? 'Merge Pull Request' : 'Cannot Merge'}</p>
+          <p className="text-xs text-muted-foreground">{reason}</p>
+          {mergeState && (
+            <p className="text-[10px] text-muted-foreground/70 mt-1">Status: {mergeState}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Merge confirmation popover */}
+      {showConfirm && (
+        <div className="absolute right-0 top-full mt-2 z-50 w-72 p-3 bg-popover border border-border rounded-lg shadow-lg">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Confirm Merge</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setShowConfirm(false)}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              This will merge <span className="font-mono">{pr.head.ref}</span> into{' '}
+              <span className="font-mono">{pr.base.ref}</span>
+            </p>
+
+            {/* Merge method selection */}
+            <fieldset className="space-y-1.5 border-0 p-0 m-0">
+              <legend className="text-xs font-medium">Merge method</legend>
+              <div className="flex gap-1">
+                {(['SQUASH', 'MERGE', 'REBASE'] as MergeMethod[]).map((method) => (
+                  <Button
+                    key={method}
+                    variant={mergeMethod === method ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => setMergeMethod(method)}
+                  >
+                    {method === 'SQUASH' ? 'Squash' : method === 'MERGE' ? 'Merge' : 'Rebase'}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+
+            {mergeError && (
+              <div className="flex items-start gap-2 p-2 bg-destructive/10 rounded text-xs text-destructive">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>{mergeError}</span>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => setShowConfirm(false)}
+                disabled={isMerging}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1 bg-success hover:bg-success/90"
+                onClick={handleMerge}
+                disabled={isMerging}
+              >
+                {isMerging ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    Merging...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5 mr-1.5" />
+                    Confirm
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// APPROVE BUTTON COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ApproveButtonProps {
+  pr: PullRequest
+  currentUser: string | null
+  onApproveComplete?: () => void
+}
+
+function ApproveButton({
+  pr,
+  currentUser,
+  onApproveComplete
+}: ApproveButtonProps): React.JSX.Element {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+
+  const reviewDecision = pr.reviewDecision
+  const isOwnPR = currentUser === pr.user.login
+  const isAlreadyApproved = reviewDecision === 'APPROVED'
+  const isDraft = pr.draft
+
+  // Check if user has already approved (from reviews array)
+  const userHasApproved = useMemo(() => {
+    if (!currentUser || !pr.reviews) return false
+    return pr.reviews.some(
+      (review) => review.author.login === currentUser && review.state === 'approved'
+    )
+  }, [currentUser, pr.reviews])
+
+  // Determine button state
+  const getButtonState = useMemo(() => {
+    if (isDraft) {
+      return {
+        canApprove: false,
+        reason: 'Cannot approve draft PR',
+        variant: 'secondary' as const
+      }
+    }
+
+    if (isOwnPR) {
+      return {
+        canApprove: false,
+        reason: 'Cannot approve your own PR',
+        variant: 'secondary' as const
+      }
+    }
+
+    if (userHasApproved || isAlreadyApproved) {
+      return {
+        canApprove: false,
+        reason: 'Already approved',
+        variant: 'outline' as const,
+        isApproved: true
+      }
+    }
+
+    return {
+      canApprove: true,
+      reason: 'Approve this PR',
+      variant: 'outline' as const
+    }
+  }, [isDraft, isOwnPR, userHasApproved, isAlreadyApproved])
+
+  const handleApprove = useCallback(async () => {
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const result = await window.electron.submitPRReview(pr.id, 'APPROVE')
+
+      if (result.success) {
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 2000)
+        onApproveComplete?.()
+      } else {
+        setError(result.error || 'Failed to approve PR')
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [pr.id, onApproveComplete])
+
+  const { canApprove, reason, variant, isApproved } = getButtonState
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={canApprove || isApproved || showSuccess ? 'default' : variant}
+          size="sm"
+          className={cn(
+            'h-7 px-3 gap-1.5 font-medium',
+            canApprove && 'bg-green-600 hover:bg-green-700 text-white',
+            (isApproved || showSuccess) && 'bg-green-600 hover:bg-green-600 text-white'
+          )}
+          onClick={handleApprove}
+          disabled={!canApprove || isSubmitting}
+        >
+          {isSubmitting ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : isApproved || showSuccess ? (
+            <CheckCheck className="w-3.5 h-3.5" />
+          ) : (
+            <Check className="w-3.5 h-3.5" />
+          )}
+          <span className="text-xs">
+            {isSubmitting
+              ? 'Approving...'
+              : showSuccess
+                ? 'Approved!'
+                : isApproved
+                  ? 'Approved'
+                  : 'Approve'}
+          </span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-[240px]">
+        <p className="font-medium">{canApprove ? 'Approve Pull Request' : reason}</p>
+        {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -1476,6 +1891,10 @@ function _ReviewThreadItem({ thread, prUrl }: { thread: ReviewThread; prUrl: str
 }
 
 export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
+  // Get current user from store for approve button
+  const user = useSignal(Store.user)
+  const currentUser = user?.login || null
+
   // Use Actions instead of context for opening PR in chat
   const openPRInChat = useCallback((pr: PullRequest) => {
     Actions.createPRChat(pr)
@@ -2188,6 +2607,9 @@ export function PRDetail({ pr, onClose }: PRDetailProps): React.JSX.Element {
               </TooltipTrigger>
               <TooltipContent>Open in GitHub</TooltipContent>
             </Tooltip>
+            <Separator orientation="vertical" className="h-5 mx-1" />
+            <ApproveButton pr={pr} currentUser={currentUser} onApproveComplete={handleRefreshPR} />
+            <MergeButton pr={pr} onMergeComplete={handleRefreshPR} />
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>

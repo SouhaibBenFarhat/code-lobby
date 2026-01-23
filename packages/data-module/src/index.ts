@@ -359,6 +359,13 @@ export function initDataModule(): void {
     })
   )
 
+  cleanupFunctions.push(
+    onAction('action:clear-linked-pr-chat', () => {
+      Store.activePRChatId.value = null
+      Store.linkedPRChat.value = null
+    })
+  )
+
   // CI Failure Analysis Handler (with streaming)
   // Track active stream subscriptions
   let ciAnalysisUnsubscribe: (() => void) | null = null

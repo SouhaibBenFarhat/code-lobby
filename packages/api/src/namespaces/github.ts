@@ -199,5 +199,20 @@ export const github = {
     return call('github.getRateLimit', () => window.electron.getRateLimit(), undefined, {
       category: LogCategory.RATE_LIMIT
     })
+  },
+
+  /**
+   * Subscribe to rate limit updates (pushed from main process after every GitHub API call)
+   */
+  onRateLimitUpdate(
+    callback: (rateLimit: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+    }) => void
+  ): () => void {
+    return window.electron.onRateLimitUpdate(callback)
   }
 }

@@ -30,6 +30,7 @@ export type ActionEvents = {
   'action:find-jira-ticket': { pr: PullRequest }
   'action:create-pr-chat': { pr: PullRequest }
   'action:switch-to-pr-chat': { prId: string }
+  'action:clear-linked-pr-chat': undefined
   'action:analyze-ci-failure': {
     owner: string
     repo: string
@@ -116,6 +117,7 @@ export interface ActionsType {
   findJiraTicket: (pr: PullRequest) => void
   createPRChat: (pr: PullRequest) => void
   switchToPRChat: (prId: string) => void
+  clearLinkedPRChat: () => void
   analyzeCIFailure: (
     owner: string,
     repo: string,
@@ -195,6 +197,9 @@ export const Actions: ActionsType = {
 
   /** Switch to an existing PR chat */
   switchToPRChat: (prId: string) => emit('action:switch-to-pr-chat', { prId }),
+
+  /** Clear the linked PR chat (when selecting a PR with no existing chat) */
+  clearLinkedPRChat: () => emit('action:clear-linked-pr-chat'),
 
   /** Analyze a failed CI check using AI */
   analyzeCIFailure: (

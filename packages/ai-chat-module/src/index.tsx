@@ -111,6 +111,10 @@ function AIChatWrapper(): React.JSX.Element | null {
     Actions.switchToPRChat(prId)
   }
 
+  const handleClearLinkedPRChat = (): void => {
+    Actions.clearLinkedPRChat()
+  }
+
   const handleStartPRChat = async (): Promise<void> => {
     if (selectedPR) {
       Actions.createPRChat(selectedPR)
@@ -123,6 +127,7 @@ function AIChatWrapper(): React.JSX.Element | null {
       user={user}
       linkedPRChat={linkedPRChat}
       onSwitchToPRChat={handleSwitchToPRChat}
+      onClearLinkedPRChat={handleClearLinkedPRChat}
       selectedPR={selectedPR}
       onStartPRChat={handleStartPRChat}
     />

@@ -57,6 +57,7 @@ interface MockElectronAPI {
 
   // Rate limit
   getRateLimit: ReturnType<typeof vi.fn>
+  onRateLimitUpdate: ReturnType<typeof vi.fn>
 
   // Card layouts
   getCardLayouts: ReturnType<typeof vi.fn>
@@ -140,6 +141,12 @@ interface MockElectronAPI {
   // Post PR comments
   postPRComment: ReturnType<typeof vi.fn>
 
+  // Merge PR
+  mergePR: ReturnType<typeof vi.fn>
+
+  // Submit PR Review (approve, request changes, comment)
+  submitPRReview: ReturnType<typeof vi.fn>
+
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
@@ -200,6 +207,7 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
 
     // Rate limit
     getRateLimit: vi.fn().mockResolvedValue({ success: true, data: defaultRateLimit }),
+    onRateLimitUpdate: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
 
     // Card layouts
     getCardLayouts: vi.fn().mockResolvedValue([]),
@@ -340,6 +348,20 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     postPRComment: vi.fn().mockResolvedValue({
       success: true,
       commentUrl: 'https://github.com/owner/repo/pull/1#discussion_r1234567890'
+    }),
+
+    // Merge PR
+    mergePR: vi.fn().mockResolvedValue({
+      success: true,
+      mergedAt: new Date().toISOString(),
+      sha: 'abc123def456'
+    }),
+
+    // Submit PR Review (approve, request changes, comment)
+    submitPRReview: vi.fn().mockResolvedValue({
+      success: true,
+      reviewId: 'PRR_123456',
+      state: 'APPROVED'
     }),
 
     // Fullscreen

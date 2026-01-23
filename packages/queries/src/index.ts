@@ -13,6 +13,7 @@
 
 import { api } from '@codelobby/api'
 import type { PullRequest, RateLimit, Repository } from '@codelobby/shared-store'
+import { Store, useSignal } from '@codelobby/shared-store'
 import {
   QueryClient,
   type UseMutationResult,
@@ -21,6 +22,7 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
+import { useEffect } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
@@ -88,7 +90,7 @@ export function useRepos(): UseQueryResult<Repository[], Error> {
  * Each repo's PRs are cached separately.
  */
 export function usePRsForRepo(repoFullName: string | null): UseQueryResult<PullRequest[], Error> {
-  const queryClient = useQueryClient()
+  const _queryClient = useQueryClient()
 
   return useQuery({
     queryKey: repoFullName ? queryKeys.prs([repoFullName]) : ['prs', 'none'],
@@ -99,7 +101,7 @@ export function usePRsForRepo(repoFullName: string | null): UseQueryResult<PullR
       if (!result.success) throw new Error(result.error || 'Failed to fetch PRs')
 
       if (result.rateLimit) {
-        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+        Store.rateLimit.value = result.rateLimit
       }
 
       return (result.data || []) as PullRequest[]
@@ -131,7 +133,7 @@ export function usePRFiles(
   repo: string | null,
   prNumber: number | null
 ): UseQueryResult<PRFile[], Error> {
-  const queryClient = useQueryClient()
+  const _queryClient = useQueryClient()
 
   return useQuery({
     queryKey:
@@ -143,7 +145,7 @@ export function usePRFiles(
       if (!result.success) throw new Error(result.error || 'Failed to fetch PR files')
 
       if (result.rateLimit) {
-        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+        Store.rateLimit.value = result.rateLimit
       }
 
       return (result.data || []) as PRFile[]
@@ -222,7 +224,7 @@ export function usePRs(): UseQueryResult<
       }
 
       if (result.rateLimit) {
-        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+        Store.rateLimit.value = result.rateLimit
       }
 
       return {
@@ -237,19 +239,32 @@ export function usePRs(): UseQueryResult<
 }
 
 /**
- * Fetch rate limit information
+ * Hook to get real-time rate limit information.
+ *
+ * Rate limit is NOT cached - it's updated in real-time from every GitHub API response.
+ * The main process extracts rate limit headers and pushes updates via IPC.
  */
-export function useRateLimit(): UseQueryResult<RateLimit | undefined, Error> {
-  return useQuery({
-    queryKey: queryKeys.rateLimit,
-    queryFn: async () => {
-      const result = await api.github.getRateLimit()
-      if (!result.success) throw new Error(result.error || 'Failed to fetch rate limit')
-      return result.data
-    },
-    staleTime: 30 * 1000, // Fresh for 30 seconds
-    gcTime: 5 * 60 * 1000
-  })
+export function useRateLimit(): { data: RateLimit | null } {
+  // Use the signal hook to automatically re-render when Store.rateLimit changes
+  const rateLimit = useSignal(Store.rateLimit)
+
+  useEffect(() => {
+    // Subscribe to real-time updates from main process (every API call)
+    const unsubscribeIPC = api.github.onRateLimitUpdate((newRateLimit) => {
+      Store.rateLimit.value = newRateLimit
+    })
+
+    // Fetch initial rate limit on mount
+    api.github.getRateLimit().then((result) => {
+      if (result.success && result.data) {
+        Store.rateLimit.value = result.data
+      }
+    })
+
+    return unsubscribeIPC
+  }, [])
+
+  return { data: rateLimit }
 }
 
 /**
@@ -710,7 +725,7 @@ export function useRefreshRepoPRs(): UseMutationResult<
 
       // Update rate limit
       if (result.rateLimit) {
-        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+        Store.rateLimit.value = result.rateLimit
       }
     }
   })
@@ -763,7 +778,7 @@ export function useRefreshPRDetail(): UseMutationResult<
 
       // Update rate limit
       if (result.rateLimit) {
-        queryClient.setQueryData(queryKeys.rateLimit, result.rateLimit)
+        Store.rateLimit.value = result.rateLimit
       }
     }
   })

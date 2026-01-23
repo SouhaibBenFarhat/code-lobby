@@ -50,6 +50,21 @@ const electronAPI: ElectronAPI = {
     body: string
   ) => ipcRenderer.invoke('post-pr-comment', owner, repo, prNumber, commitId, path, line, body),
 
+  // Merge PR
+  mergePR: (
+    prNodeId: string,
+    mergeMethod?: 'MERGE' | 'SQUASH' | 'REBASE',
+    commitHeadline?: string,
+    commitBody?: string
+  ) => ipcRenderer.invoke('merge-pr', prNodeId, mergeMethod, commitHeadline, commitBody),
+
+  // Submit PR Review (approve, request changes, or comment)
+  submitPRReview: (
+    prNodeId: string,
+    event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT',
+    body?: string
+  ) => ipcRenderer.invoke('submit-pr-review', prNodeId, event, body),
+
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
   setSettings: (settings: Record<string, unknown>) => ipcRenderer.invoke('set-settings', settings),
@@ -64,6 +79,32 @@ const electronAPI: ElectronAPI = {
 
   // Rate limit
   getRateLimit: () => ipcRenderer.invoke('get-rate-limit'),
+  onRateLimitUpdate: (
+    callback: (rateLimit: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      rateLimit: {
+        limit: number
+        remaining: number
+        used: number
+        resetAt: string
+        percentage: number
+      }
+    ) => {
+      callback(rateLimit)
+    }
+    ipcRenderer.on('rate-limit-update', handler)
+    return () => {
+      ipcRenderer.removeListener('rate-limit-update', handler)
+    }
+  },
 
   // Card layouts (free-form positioning and sizing)
   getCardLayouts: () => ipcRenderer.invoke('get-card-layouts'),

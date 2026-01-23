@@ -111,6 +111,31 @@ export interface ElectronAPI {
     error?: string
   }>
 
+  // Merge PR
+  mergePR: (
+    prNodeId: string,
+    mergeMethod?: 'MERGE' | 'SQUASH' | 'REBASE',
+    commitHeadline?: string,
+    commitBody?: string
+  ) => Promise<{
+    success: boolean
+    mergedAt?: string
+    sha?: string
+    error?: string
+  }>
+
+  // Submit PR Review (approve, request changes, or comment)
+  submitPRReview: (
+    prNodeId: string,
+    event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT',
+    body?: string
+  ) => Promise<{
+    success: boolean
+    reviewId?: string
+    state?: string
+    error?: string
+  }>
+
   // Settings
   getSettings: () => Promise<{ notifications: boolean; pollInterval: number; theme: string }>
   setSettings: (settings: Record<string, unknown>) => Promise<{ success: boolean }>
@@ -128,6 +153,15 @@ export interface ElectronAPI {
     data?: { limit: number; remaining: number; used: number; resetAt: string; percentage: number }
     error?: string
   }>
+  onRateLimitUpdate: (
+    callback: (rateLimit: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+    }) => void
+  ) => () => void
 
   // Card layouts (free-form positioning and sizing in pixels)
   getCardLayouts: () => Promise<Array<{ i: string; x: number; y: number; w: number; h: number }>>
