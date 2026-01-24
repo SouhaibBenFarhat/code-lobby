@@ -1,7 +1,9 @@
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
-import { graphql } from '@octokit/graphql'
 import { parseGitHubError, withRetryAndTimeout } from './api-client'
 import { http, type RateLimitUpdate } from './http-client'
+
+// Note: We use our own http.post() for GraphQL instead of @octokit/graphql
+// This ensures ALL API calls go through httpFetch() for unified tracking
 
 // Callback to notify about rate limit updates from GraphQL responses
 let rateLimitNotifier: ((rateLimit: RateLimitUpdate) => void) | null = null
@@ -14,6 +16,9 @@ export function setGraphQLRateLimitNotifier(
 ): void {
   rateLimitNotifier = callback
 }
+
+// NOTE: Network request tracking is now handled by httpFetch() in http-client.ts
+// ALL API calls (GraphQL and REST) go through that single function
 
 export interface GitHubUser {
   login: string
@@ -184,6 +189,7 @@ export interface RateLimitInfo {
   used: number
   resetAt: string
   percentage: number
+  cost?: number // Points this query cost (from GraphQL)
 }
 
 /**
@@ -250,6 +256,7 @@ const GET_ALL_DATA = `
       remaining
       used
       resetAt
+      cost
     }
     viewer {
       login
@@ -421,6 +428,10 @@ const GET_USER = `
 `
 
 // Query to fetch ALL open PRs from specific repositories using search
+// OPTIMIZED: Only fetches data needed for PR card display (reduced API cost ~50-70%)
+// - Removed: body, comments.nodes, reviews.nodes, reviewThreads.nodes, reviewRequests
+// - Reduced: labels (5 vs 10), contexts (15 vs 30)
+// - Kept: totalCount for comments/reviewThreads (needed for UI badges)
 const GET_ALL_PRS_FOR_REPOS = `
   query GetAllPRsForRepos($searchQuery: String!, $cursor: String) {
     rateLimit {
@@ -444,7 +455,6 @@ const GET_ALL_PRS_FOR_REPOS = `
           id
           number
           title
-          body
           url
           state
           createdAt
@@ -473,20 +483,14 @@ const GET_ALL_PRS_FOR_REPOS = `
           repository {
             name
             nameWithOwner
-            url
-            description
-            stargazerCount
-            primaryLanguage {
-              name
-            }
-            updatedAt
             owner {
               login
               avatarUrl
             }
           }
           
-          labels(first: 10) {
+          # Reduced from 10 to 5 (UI only shows first 3)
+          labels(first: 5) {
             nodes {
               name
               color
@@ -498,7 +502,8 @@ const GET_ALL_PRS_FOR_REPOS = `
               commit {
                 statusCheckRollup {
                   state
-                  contexts(first: 30) {
+                  # Reduced from 30 to 15 (enough to show status)
+                  contexts(first: 15) {
                     nodes {
                       __typename
                       ... on CheckRun {
@@ -522,68 +527,14 @@ const GET_ALL_PRS_FOR_REPOS = `
             }
           }
           
-          comments(first: 30, orderBy: {field: UPDATED_AT, direction: DESC}) {
+          # Only fetch count, not content (for badge display)
+          comments {
             totalCount
-            nodes {
-              id
-              body
-              createdAt
-              author {
-                __typename
-                login
-                avatarUrl
-              }
-            }
           }
           
-          reviews(first: 20) {
+          # Only fetch count, not content (for badge display)
+          reviewThreads {
             totalCount
-            nodes {
-              id
-              state
-              createdAt
-              body
-              author {
-                __typename
-                login
-                avatarUrl
-              }
-            }
-          }
-          
-          reviewThreads(first: 50) {
-            totalCount
-            nodes {
-              id
-              isResolved
-              path
-              line
-              comments(first: 10) {
-                nodes {
-                  id
-                  body
-                  createdAt
-                  author {
-                    __typename
-                    login
-                    avatarUrl
-                  }
-                  path
-                  line
-                  diffHunk
-                }
-              }
-            }
-          }
-          
-          reviewRequests(first: 10) {
-            nodes {
-              requestedReviewer {
-                ... on User {
-                  login
-                }
-              }
-            }
           }
         }
       }
@@ -598,6 +549,168 @@ const GET_USER_ORGS = `
       organizations(first: 100) {
         nodes {
           login
+        }
+      }
+    }
+  }
+`
+
+// Query to fetch a SINGLE PR by owner, repo, and number (efficient for detail refresh)
+// Cost: ~1 point vs 5-10 points for fetching all PRs
+const GET_SINGLE_PR = `
+  query GetSinglePR($owner: String!, $name: String!, $number: Int!) {
+    rateLimit {
+      limit
+      remaining
+      used
+      resetAt
+      cost
+    }
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        id
+        number
+        title
+        body
+        url
+        state
+        createdAt
+        updatedAt
+        isDraft
+        merged
+        mergedAt
+        additions
+        deletions
+        changedFiles
+        
+        # Merge status fields
+        mergeable
+        mergeStateStatus
+        reviewDecision
+        
+        author {
+          login
+          avatarUrl
+        }
+        
+        headRefName
+        headRefOid
+        baseRefName
+        
+        repository {
+          name
+          nameWithOwner
+          url
+          description
+          stargazerCount
+          primaryLanguage {
+            name
+          }
+          updatedAt
+          owner {
+            login
+            avatarUrl
+          }
+        }
+        
+        labels(first: 10) {
+          nodes {
+            name
+            color
+          }
+        }
+        
+        commits(last: 1) {
+          nodes {
+            commit {
+              statusCheckRollup {
+                state
+                contexts(first: 30) {
+                  nodes {
+                    __typename
+                    ... on CheckRun {
+                      id
+                      databaseId
+                      name
+                      status
+                      conclusion
+                      detailsUrl
+                    }
+                    ... on StatusContext {
+                      id
+                      context
+                      state
+                      targetUrl
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        comments(first: 30, orderBy: {field: UPDATED_AT, direction: DESC}) {
+          totalCount
+          nodes {
+            id
+            body
+            createdAt
+            author {
+              __typename
+              login
+              avatarUrl
+            }
+          }
+        }
+        
+        reviews(first: 20) {
+          totalCount
+          nodes {
+            id
+            state
+            createdAt
+            body
+            author {
+              __typename
+              login
+              avatarUrl
+            }
+          }
+        }
+        
+        reviewThreads(first: 50) {
+          totalCount
+          nodes {
+            id
+            isResolved
+            path
+            line
+            comments(first: 10) {
+              nodes {
+                id
+                body
+                createdAt
+                author {
+                  __typename
+                  login
+                  avatarUrl
+                }
+                path
+                line
+                diffHunk
+              }
+            }
+          }
+        }
+        
+        reviewRequests(first: 10) {
+          nodes {
+            requestedReviewer {
+              ... on User {
+                login
+              }
+            }
+          }
         }
       }
     }
@@ -639,18 +752,45 @@ const GET_REPOS_BY_SEARCH = `
 
 // Note: PR files with patches are fetched via REST API (GraphQL doesn't provide patch content)
 
+/**
+ * Create a GraphQL client function that uses our http.post()
+ * This ensures ALL API calls go through httpFetch() for unified tracking
+ */
 function createGraphQLClient(token: string) {
-  return graphql.defaults({
-    headers: {
-      authorization: `token ${token}`
+  return async <T>(query: string, variables?: Record<string, unknown>): Promise<T> => {
+    const response = await http.post<{ data?: T; errors?: Array<{ message: string }> }>(
+      'https://api.github.com/graphql',
+      {
+        headers: {
+          Authorization: `token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query, variables })
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`)
     }
-  })
+
+    if (response.data.errors && response.data.errors.length > 0) {
+      throw new Error(response.data.errors.map((e) => e.message).join(', '))
+    }
+
+    if (!response.data.data) {
+      throw new Error('GraphQL response missing data')
+    }
+
+    return response.data.data
+  }
 }
 
 /**
  * Execute a GraphQL query with retry logic and timeout
  * Handles GitHub's HTML error responses (Unicorn 503 pages) gracefully
  * Also extracts rate limit from response and notifies if present
+ *
+ * NOTE: Network request tracking is handled by httpFetch() - ALL calls go through there
  */
 async function executeGraphQL<T>(
   client: ReturnType<typeof createGraphQLClient>,
@@ -679,20 +819,22 @@ async function executeGraphQL<T>(
     }
   )
 
-  // Extract rate limit from response if present and notify
+  // Extract rate limit from GraphQL response (includes cost - REST headers don't have this)
   if (result && typeof result === 'object') {
     const response = result as {
       rateLimit?: { limit: number; remaining: number; used: number; resetAt: string; cost?: number }
     }
     if (response.rateLimit) {
       const rl = response.rateLimit
+
       logger.debug(LogCategory.API, 'GraphQL rate limit extracted', {
         used: rl.used,
         remaining: rl.remaining,
         limit: rl.limit,
-        cost: rl.cost, // How many points THIS query cost
+        cost: rl.cost,
         hasNotifier: !!rateLimitNotifier
       })
+
       if (rateLimitNotifier) {
         rateLimitNotifier({
           limit: rl.limit,
@@ -707,6 +849,247 @@ async function executeGraphQL<T>(
   }
 
   return result
+}
+
+// Type for GraphQL PR response (used by both bulk and single PR queries)
+interface GraphQLPullRequest {
+  id: string
+  number: number
+  title: string
+  body?: string | null
+  url: string
+  state: string
+  createdAt: string
+  updatedAt: string
+  isDraft: boolean
+  merged: boolean
+  mergedAt: string | null
+  additions: number
+  deletions: number
+  changedFiles: number
+  mergeable: MergeableState
+  mergeStateStatus: MergeStateStatus
+  reviewDecision: ReviewDecision
+  author: { login: string; avatarUrl: string } | null
+  headRefName: string
+  headRefOid: string
+  baseRefName: string
+  repository: {
+    name: string
+    nameWithOwner: string
+    url?: string
+    description?: string | null
+    stargazerCount?: number
+    primaryLanguage?: { name: string } | null
+    updatedAt?: string
+    owner: { login: string; avatarUrl: string }
+  }
+  labels?: { nodes: Array<{ name: string; color: string }> }
+  commits?: {
+    nodes: Array<{
+      commit: {
+        statusCheckRollup?: {
+          state: string
+          contexts?: {
+            nodes: Array<{
+              __typename: string
+              id: string
+              databaseId?: number
+              name?: string
+              context?: string
+              status?: string
+              conclusion?: string | null
+              state?: string
+              detailsUrl?: string
+              targetUrl?: string
+            }>
+          }
+        }
+      }
+    }>
+  }
+  comments?: {
+    totalCount: number
+    nodes?: Array<{
+      id: string
+      body: string
+      createdAt: string
+      author: { __typename?: string; login: string; avatarUrl: string } | null
+    }>
+  }
+  reviews?: {
+    totalCount: number
+    nodes?: Array<{
+      id: string
+      state: string
+      createdAt: string
+      body: string | null
+      author: { __typename?: string; login: string; avatarUrl: string } | null
+    }>
+  }
+  reviewThreads?: {
+    totalCount: number
+    nodes?: Array<{
+      id: string
+      isResolved: boolean
+      path: string
+      line: number | null
+      comments?: {
+        nodes: Array<{
+          id: string
+          body: string
+          createdAt: string
+          author: { __typename?: string; login: string; avatarUrl: string } | null
+          path: string
+          line: number | null
+          diffHunk: string | null
+        }>
+      }
+    }>
+  }
+  reviewRequests?: {
+    nodes: Array<{
+      requestedReviewer: { login: string } | null
+    }>
+  }
+}
+
+/**
+ * Transform a GraphQL PR response to our internal PullRequest format
+ * Used by both fetchAllPRData, fetchAllPRsForRepos, and fetchSinglePR
+ */
+function transformGraphQLPR(pr: GraphQLPullRequest, includeDetails = true): PullRequest {
+  const repo = pr.repository
+  const repoFullName = repo.nameWithOwner
+
+  // Parse check runs
+  const statusRollup = pr.commits?.nodes?.[0]?.commit?.statusCheckRollup
+  const checkContexts = statusRollup?.contexts?.nodes || []
+  const checkState = statusRollup?.state?.toLowerCase() || 'pending'
+
+  const checkRuns = checkContexts.map((ctx) => {
+    if (ctx.__typename === 'CheckRun') {
+      return {
+        id: ctx.id,
+        name: ctx.name || '',
+        status: ctx.status?.toLowerCase() || 'completed',
+        conclusion: ctx.conclusion?.toLowerCase() || null,
+        html_url: ctx.detailsUrl || ''
+      }
+    } else {
+      // StatusContext (older status API)
+      return {
+        id: ctx.id,
+        name: ctx.context || '',
+        status: ctx.state === 'PENDING' ? 'in_progress' : 'completed',
+        conclusion: ctx.state?.toLowerCase() || null,
+        html_url: ctx.targetUrl || ''
+      }
+    }
+  })
+
+  // Parse comments, reviews, and review threads if available (for detail view)
+  let commentsList: PRComment[] = []
+  let reviews: PRReview[] = []
+  let reviewThreads: ReviewThread[] = []
+
+  if (includeDetails) {
+    commentsList = (pr.comments?.nodes || []).map((c) => ({
+      id: c.id,
+      body: c.body,
+      created_at: c.createdAt,
+      author: {
+        login: c.author?.login || 'ghost',
+        avatar_url: c.author?.avatarUrl || '',
+        isBot: c.author?.__typename === 'Bot'
+      }
+    }))
+
+    reviews = (pr.reviews?.nodes || []).map((r) => ({
+      id: r.id,
+      state: r.state,
+      created_at: r.createdAt,
+      body: r.body,
+      author: {
+        login: r.author?.login || 'ghost',
+        avatar_url: r.author?.avatarUrl || '',
+        isBot: r.author?.__typename === 'Bot'
+      }
+    }))
+
+    reviewThreads = (pr.reviewThreads?.nodes || []).map((t) => ({
+      id: t.id,
+      isResolved: t.isResolved,
+      path: t.path,
+      line: t.line,
+      comments: (t.comments?.nodes || []).map((c) => ({
+        id: c.id,
+        body: c.body,
+        created_at: c.createdAt, // Map GraphQL camelCase to our snake_case
+        author: {
+          login: c.author?.login || 'ghost',
+          avatar_url: c.author?.avatarUrl || '',
+          isBot: c.author?.__typename === 'Bot'
+        },
+        path: c.path,
+        line: c.line,
+        diffHunk: c.diffHunk ?? undefined // Convert null to undefined
+      }))
+    }))
+  }
+
+  return {
+    id: pr.id,
+    number: pr.number,
+    title: pr.title,
+    body: pr.body ?? null,
+    html_url: pr.url,
+    state: pr.state.toLowerCase(),
+    created_at: pr.createdAt,
+    updated_at: pr.updatedAt,
+    draft: pr.isDraft,
+    merged_at: pr.mergedAt,
+    user: {
+      login: pr.author?.login || 'ghost',
+      avatar_url: pr.author?.avatarUrl || ''
+    },
+    head: {
+      ref: pr.headRefName,
+      sha: pr.headRefOid
+    },
+    base: {
+      ref: pr.baseRefName,
+      repo: {
+        name: repo.name,
+        full_name: repoFullName,
+        owner: {
+          login: repo.owner.login,
+          avatar_url: repo.owner.avatarUrl
+        }
+      }
+    },
+    labels: (pr.labels?.nodes || []).map((l) => ({
+      name: l.name,
+      color: l.color
+    })),
+    comments: pr.comments?.totalCount || 0,
+    review_comments: pr.reviewThreads?.totalCount || 0,
+    additions: pr.additions,
+    deletions: pr.deletions,
+    changed_files: pr.changedFiles,
+    checks: {
+      state: checkState as CheckStatus['state'],
+      total_count: checkRuns.length,
+      check_runs: checkRuns
+    },
+    commentsList,
+    reviews,
+    reviewThreads,
+    // Merge status
+    mergeable: pr.mergeable || 'UNKNOWN',
+    mergeStateStatus: pr.mergeStateStatus || 'UNKNOWN',
+    reviewDecision: pr.reviewDecision || null
+  }
 }
 
 export async function validateToken(token: string): Promise<GitHubUser | null> {
@@ -749,7 +1132,8 @@ export async function fetchAllPRData(token: string): Promise<{
     remaining: response.rateLimit.remaining,
     used: response.rateLimit.used,
     resetAt: response.rateLimit.resetAt,
-    percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100)
+    percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100),
+    cost: response.rateLimit.cost
   }
 
   const user: GitHubUser = {
@@ -1133,7 +1517,8 @@ export async function fetchAllPRsForRepos(
       remaining: response.rateLimit.remaining,
       used: response.rateLimit.used,
       resetAt: response.rateLimit.resetAt,
-      percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100)
+      percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100),
+      cost: response.rateLimit.cost // Include the actual query cost
     }
 
     const searchResults = response.search
@@ -1171,82 +1556,18 @@ export async function fetchAllPRsForRepos(
         }
       })
 
-      // Parse comments
-      const commentsList: PRComment[] = (pr.comments?.nodes || []).map((c: any) => {
-        const login = c.author?.login || 'ghost'
-        const isBot =
-          c.author?.__typename === 'Bot' ||
-          login.endsWith('[bot]') ||
-          (login.includes('bot') && login.includes('-'))
-        return {
-          id: c.id,
-          body: c.body,
-          created_at: c.createdAt,
-          author: {
-            login,
-            avatar_url: c.author?.avatarUrl || '',
-            isBot
-          }
-        }
-      })
-
-      // Parse reviews
-      const reviews: PRReview[] = (pr.reviews?.nodes || []).map((r: any) => {
-        const login = r.author?.login || 'ghost'
-        const isBot =
-          r.author?.__typename === 'Bot' ||
-          login.endsWith('[bot]') ||
-          (login.includes('bot') && login.includes('-'))
-        return {
-          id: r.id,
-          state: r.state?.toLowerCase() || 'commented',
-          created_at: r.createdAt,
-          author: {
-            login,
-            avatar_url: r.author?.avatarUrl || '',
-            isBot
-          },
-          body: r.body
-        }
-      })
-
-      // Parse review threads
-      const reviewThreads: ReviewThread[] = (pr.reviewThreads?.nodes || []).map((thread: any) => {
-        const comments: ReviewComment[] = (thread.comments?.nodes || []).map((c: any) => {
-          const login = c.author?.login || 'ghost'
-          const isBot =
-            c.author?.__typename === 'Bot' ||
-            login.endsWith('[bot]') ||
-            (login.includes('bot') && login.includes('-'))
-          return {
-            id: c.id,
-            body: c.body,
-            created_at: c.createdAt,
-            author: {
-              login,
-              avatar_url: c.author?.avatarUrl || '',
-              isBot
-            },
-            path: c.path,
-            line: c.line,
-            diffHunk: c.diffHunk
-          }
-        })
-
-        return {
-          id: thread.id,
-          isResolved: thread.isResolved,
-          path: thread.path,
-          line: thread.line,
-          comments
-        }
-      })
+      // OPTIMIZED: Comments, reviews, and reviewThreads content not fetched
+      // Only totalCount is available (used for badge display)
+      // Full content is fetched on-demand when PR detail is opened
+      const commentsList: PRComment[] = []
+      const reviews: PRReview[] = []
+      const reviewThreads: ReviewThread[] = []
 
       allPRs.push({
         id: pr.id,
         number: pr.number,
         title: pr.title,
-        body: pr.body || null,
+        body: null, // OPTIMIZED: Not fetched in list view (fetched on-demand for detail/AI)
         html_url: pr.url,
         state: pr.state.toLowerCase(),
         created_at: pr.createdAt,
@@ -1305,6 +1626,82 @@ export async function fetchAllPRsForRepos(
   })
 
   return { pullRequests: allPRs, currentUser, rateLimit }
+}
+
+/**
+ * Fetch a SINGLE PR by owner, repo, and number
+ * Much more efficient than fetching all PRs when only one is needed
+ * Cost: ~1 point vs 5-10 points for bulk fetch
+ */
+export async function fetchSinglePR(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<{ pullRequest: PullRequest | null; rateLimit: RateLimitInfo }> {
+  const client = createGraphQLClient(token)
+
+  interface SinglePRResponse {
+    rateLimit: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      cost: number
+    }
+    repository: {
+      pullRequest: GraphQLPullRequest | null
+    } | null
+  }
+
+  logger.info('GraphQL', `Fetching single PR: ${owner}/${repo}#${prNumber}`)
+
+  const response = await executeGraphQL<SinglePRResponse>(
+    client,
+    GET_SINGLE_PR,
+    { owner, name: repo, number: prNumber },
+    `fetchSinglePR(${owner}/${repo}#${prNumber})`
+  )
+
+  const rateLimit: RateLimitInfo = {
+    limit: response.rateLimit.limit,
+    remaining: response.rateLimit.remaining,
+    used: response.rateLimit.used,
+    resetAt: response.rateLimit.resetAt,
+    percentage: Math.round(
+      ((response.rateLimit.limit - response.rateLimit.remaining) / response.rateLimit.limit) * 100
+    ),
+    cost: response.rateLimit.cost
+  }
+
+  // Notify about rate limit
+  if (rateLimitNotifier) {
+    rateLimitNotifier({
+      limit: rateLimit.limit,
+      remaining: rateLimit.remaining,
+      used: rateLimit.used,
+      resetAt: rateLimit.resetAt,
+      percentage: rateLimit.percentage,
+      resource: 'graphql'
+    })
+  }
+
+  const graphqlPR = response.repository?.pullRequest
+  if (!graphqlPR) {
+    logger.warn('GraphQL', `PR not found: ${owner}/${repo}#${prNumber}`)
+    return { pullRequest: null, rateLimit }
+  }
+
+  // Transform GraphQL PR to our format (same as in fetchAllPRsForRepos)
+  const pullRequest = transformGraphQLPR(graphqlPR)
+
+  logger.info('GraphQL', `Fetched single PR: ${owner}/${repo}#${prNumber}`, {
+    title: pullRequest.title,
+    cost: rateLimit.cost,
+    remaining: rateLimit.remaining
+  })
+
+  return { pullRequest, rateLimit }
 }
 
 /**
@@ -1480,15 +1877,12 @@ export async function fetchCheckRunDetails(
         remaining
         used
         resetAt
+        cost
       }
     }
   `
 
-  const graphqlClient = graphql.defaults({
-    headers: {
-      authorization: `token ${token}`
-    }
-  })
+  const client = createGraphQLClient(token)
 
   interface CheckRunGraphQLResponse {
     node: {
@@ -1522,14 +1916,17 @@ export async function fetchCheckRunDetails(
       remaining: number
       used: number
       resetAt: string
+      cost?: number
     }
   }
 
   logger.info(LogCategory.API, 'Fetching check run details via GraphQL', { checkRunId })
 
-  const response = await withRetryAndTimeout<CheckRunGraphQLResponse>(
-    async () => graphqlClient<CheckRunGraphQLResponse>(query, { nodeId: checkRunId }),
-    { retry: { maxRetries: 2 }, timeoutMs: 15000, context: 'fetchCheckRunDetails' }
+  const response = await executeGraphQL<CheckRunGraphQLResponse>(
+    client,
+    query,
+    { nodeId: checkRunId },
+    'fetchCheckRunDetails'
   )
 
   if (!response.node) {
@@ -1580,7 +1977,8 @@ export async function fetchCheckRunDetails(
     remaining: response.rateLimit.remaining,
     used: response.rateLimit.used,
     resetAt: response.rateLimit.resetAt,
-    percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100)
+    percentage: Math.round((response.rateLimit.used / response.rateLimit.limit) * 100),
+    cost: response.rateLimit.cost
   }
 
   return { checkRun, rateLimit }

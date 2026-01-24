@@ -234,6 +234,92 @@ For complex state-based styling (like `.pr-card-item.selected`), define in `glob
 
 ## 🧩 UI Component Patterns
 
+### Always Use UI-Kit Components
+
+**NEVER create raw HTML elements when a component exists in `@codelobby/ui-kit`.**
+
+```tsx
+// ❌ BAD - Raw HTML input
+<input
+  type="text"
+  placeholder="Search..."
+  className="w-full h-7 pl-7 pr-7 text-xs bg-muted/50 border..."
+/>
+
+// ✅ GOOD - Use the Input component from ui-kit
+import { Input } from '@codelobby/ui-kit'
+
+<Input
+  type="text"
+  placeholder="Search..."
+  className="h-7 pl-7 pr-7 text-xs"
+/>
+```
+
+**Available UI-Kit components (check `packages/ui-kit/src/index.ts` for full list):**
+- `Input` - Text inputs with Apple-style styling
+- `Button` - All button variants
+- `Badge` - Status badges and labels
+- `Tooltip`, `TooltipTrigger`, `TooltipContent` - Hover tooltips
+- `Popover`, `PopoverTrigger`, `PopoverContent` - Click-triggered popovers
+- `Sheet`, `SheetContent`, `SheetHeader` - Slide-out panels
+- `ScrollArea` - Custom scrollable containers
+- `Separator` - Divider lines
+- `Avatar`, `AvatarImage`, `AvatarFallback` - User avatars
+- `Dialog`, `DialogContent`, `DialogHeader` - Modal dialogs
+- `DropdownMenu`, `DropdownMenuItem` - Context menus
+- And more...
+
+**Why this matters:**
+- Consistent styling across the app
+- Apple-style design language maintained
+- Accessibility features built-in
+- Easier to update styling globally
+
+### Use the Built-in Grid System
+
+**For any UI requiring grid layouts, use the built-in 12-column grid system from `@codelobby/ui-kit`.**
+
+```tsx
+import { Container, Row, Col } from '@codelobby/ui-kit'
+
+// Responsive card grid (full on mobile, 2 cols on tablet, 4 cols on desktop)
+<Container>
+  <Row gutter="lg">
+    {items.map(item => (
+      <Col key={item.id} span={{ default: 12, sm: 6, lg: 3 }}>
+        <Card>{item.content}</Card>
+      </Col>
+    ))}
+  </Row>
+</Container>
+
+// Sidebar layout
+<Row gutter="md">
+  <Col span={{ default: 12, md: 3 }}>
+    <Sidebar />
+  </Col>
+  <Col span={{ default: 12, md: 9 }}>
+    <MainContent />
+  </Col>
+</Row>
+
+// Centered content using offset
+<Row>
+  <Col span={6} offset={3}>
+    Centered column
+  </Col>
+</Row>
+```
+
+**Grid System Features:**
+- **Container**: Centered wrapper with responsive max-width or `fluid` for full-width
+- **Row**: Flex container with `gutter` (none/xs/sm/md/lg/xl), `justify`, `align`
+- **Col**: Columns with `span` (1-12, 'auto', 'full'), `offset` (0-11), `order`
+- **Responsive**: All props accept `{ default, sm, md, lg, xl, '2xl' }` objects
+
+**❌ Don't** manually create grid layouts with raw flexbox/CSS grid when the built-in system works.
+
 ### Tooltip Pattern
 Single `TooltipProvider` at app root. Components use:
 ```tsx
@@ -1440,6 +1526,59 @@ packages/ai-chat-module/src/
 |------|---------|
 | `useScrollManagement` | Scroll state, auto-scroll, user scroll detection, virtualizer integration |
 | `useThrottledValue` | Throttle streaming content to 30fps |
+
+### 📁 Component Organization Rules
+
+#### Rule 1: Every Component Lives in Its Own Folder
+
+**Always create components inside their own contained folder with an index.ts barrel file.**
+
+```
+components/
+└── MyNewComponent/
+    ├── index.ts              # Barrel export: export { MyNewComponent } from './MyNewComponent'
+    ├── MyNewComponent.tsx    # Component code
+    └── MyNewComponent.test.tsx  # Tests
+```
+
+This applies to ALL components:
+- UI-Kit components (`packages/ui-kit/src/button/Button.tsx`)
+- Module components (`packages/ai-chat-module/src/components/ChatInput/ChatInput.tsx`)
+- App-level components
+
+#### Rule 2: Never Create Multiple Components in One File
+
+**One `.tsx` file = One component. No exceptions.**
+
+```typescript
+// ❌ BAD - Multiple components in one file
+// NetworkRequestList.tsx
+function ListFooter() { ... }  // ❌ Should be in its own file
+function ListHeader() { ... }  // ❌ Should be in its own file
+
+export function NetworkRequestList() { ... }
+```
+
+```typescript
+// ✅ GOOD - Each component in its own folder
+// components/ListFooter/ListFooter.tsx
+export function ListFooter() { ... }
+
+// components/ListHeader/ListHeader.tsx
+export function ListHeader() { ... }
+
+// components/NetworkRequestList/NetworkRequestList.tsx
+import { ListFooter } from '../ListFooter'
+import { ListHeader } from '../ListHeader'
+export function NetworkRequestList() { ... }
+```
+
+**Why this matters:**
+- Every component is testable in isolation
+- Easy to find and maintain
+- Consistent codebase structure
+- Tests live next to the code they test
+- Clear ownership and responsibility per file
 
 ### ⚠️ Critical Pattern: Memoize Hook Returns
 

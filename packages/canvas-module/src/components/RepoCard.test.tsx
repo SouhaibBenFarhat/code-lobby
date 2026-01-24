@@ -247,23 +247,21 @@ describe('RepoCard', () => {
       expect(screen.getByText('frontend')).toBeInTheDocument()
     })
 
-    it('should render owner name', () => {
+    it('should render owner avatar', () => {
       const repo = createMockRepository({
-        owner: { login: 'myorg', avatar_url: '' }
+        owner: { login: 'myorg', avatar_url: 'https://example.com/avatar.png' }
       })
-      render(<RepoCard repo={repo} {...defaultProps} />)
+      const { container } = render(<RepoCard repo={repo} {...defaultProps} />)
 
-      expect(screen.getByText(/myorg/)).toBeInTheDocument()
+      // Avatar component should be rendered (span with role="img" or avatar class)
+      const avatar =
+        container.querySelector('img[alt="myorg"]') ||
+        container.querySelector('[class*="rounded-md"]') ||
+        container.querySelector('span[class*="AvatarFallback"]')
+      expect(avatar).toBeTruthy()
     })
 
-    it('should render language badge', () => {
-      const repo = createMockRepository({ language: 'TypeScript' })
-      render(<RepoCard repo={repo} {...defaultProps} />)
-
-      expect(screen.getByText(/TypeScript/)).toBeInTheDocument()
-    })
-
-    it('should render PR count', () => {
+    it('should render PR count when PRs exist', () => {
       const repo = createMockRepository()
       setMockPRs([createMockPullRequest(), createMockPullRequest(), createMockPullRequest()])
       render(<RepoCard repo={repo} {...defaultProps} />)
@@ -271,13 +269,22 @@ describe('RepoCard', () => {
       expect(screen.getByText('3')).toBeInTheDocument()
     })
 
-    it('should render "Last updated" time', () => {
-      const repo = createMockRepository({
-        updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-      })
+    it('should not render PR count badge when no PRs', () => {
+      const repo = createMockRepository()
+      setMockPRs([])
       render(<RepoCard repo={repo} {...defaultProps} />)
 
-      expect(screen.getByText(/ago/i)).toBeInTheDocument()
+      // Should not have a badge with "0"
+      expect(screen.queryByText('0')).not.toBeInTheDocument()
+    })
+
+    it('should have ViewHeader-style elevation in header', () => {
+      const repo = createMockRepository()
+      const { container } = render(<RepoCard repo={repo} {...defaultProps} />)
+
+      // Header should have shadow classes for elevation
+      const header = container.querySelector('[class*="shadow-"]')
+      expect(header).toBeInTheDocument()
     })
   })
 

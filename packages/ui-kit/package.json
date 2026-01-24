@@ -20,7 +20,8 @@
     "./toaster": "./src/toaster.tsx",
     "./tooltip": "./src/tooltip.tsx",
     "./codelobby-logo": "./src/codelobby-logo.tsx",
-    "./claude-icon": "./src/claude-icon.tsx"
+    "./claude-icon": "./src/claude-icon.tsx",
+    "./view-header": "./src/view-header.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

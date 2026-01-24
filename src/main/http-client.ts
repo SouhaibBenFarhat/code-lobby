@@ -49,6 +49,43 @@ export function onRateLimitUpdate(callback: RateLimitCallback | null): void {
   rateLimitCallback = callback
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NETWORK REQUEST TRACKING (for Network Panel)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface NetworkRequestEvent {
+  id: string
+  method: string
+  status: 'pending' | 'success' | 'error'
+  startTime: number
+  endTime?: number
+  durationMs?: number
+  httpMethod?: string
+  url?: string
+  statusCode?: number
+  cost?: number // GraphQL query cost (from response body)
+  rateLimit?: {
+    limit: number
+    remaining: number
+    used: number
+    resetAt: string
+  }
+  error?: string
+  requestBody?: string // GraphQL query or POST body (truncated)
+  responseBody?: string // Response data (truncated)
+}
+
+type NetworkRequestCallback = (event: NetworkRequestEvent) => void
+let networkRequestCallback: NetworkRequestCallback | null = null
+
+/**
+ * Set a callback to track HTTP requests (for Network Panel)
+ * This tracks ALL REST API calls that go through this http client
+ */
+export function onNetworkRequest(callback: NetworkRequestCallback | null): void {
+  networkRequestCallback = callback
+}
+
 /**
  * Extract rate limit info from GitHub API response headers
  */
@@ -189,6 +226,8 @@ async function getResponseSize(
 
 /**
  * Make an HTTP request with automatic logging
+ *
+ * THIS IS THE SINGLE PLACE WHERE ALL REST API CALLS ARE TRACKED
  */
 async function httpFetch<T = unknown>(
   url: string,
@@ -204,6 +243,16 @@ async function httpFetch<T = unknown>(
 
   const method = fetchOptions.method || 'GET'
   const startTime = performance.now()
+  const startTimestamp = Date.now()
+
+  // Generate unique request ID for tracking
+  const requestId = `http_${startTimestamp}_${Math.random().toString(36).substring(2, 9)}`
+  const isGitHubApi = url.includes('github.com')
+  const isGraphQL = url.includes('api.github.com/graphql')
+
+  // Extract RAW request body for tracking (no formatting/modification)
+  const requestBody: string | undefined =
+    fetchOptions.body && typeof fetchOptions.body === 'string' ? fetchOptions.body : undefined
 
   // Create abort controller for timeout
   const controller = new AbortController()
@@ -219,6 +268,19 @@ async function httpFetch<T = unknown>(
     })
   }
 
+  // Track request start (for GitHub REST API calls only)
+  if (isGitHubApi && networkRequestCallback) {
+    networkRequestCallback({
+      id: requestId,
+      method: `rest.${operationName}`,
+      status: 'pending',
+      startTime: startTimestamp,
+      httpMethod: method,
+      url,
+      requestBody
+    })
+  }
+
   try {
     const response = await fetch(url, {
       ...fetchOptions,
@@ -229,6 +291,7 @@ async function httpFetch<T = unknown>(
     clearTimeout(timeoutId)
 
     const durationMs = performance.now() - startTime
+    const endTimestamp = Date.now()
 
     // Parse response body
     const contentType = response.headers.get('content-type') || ''
@@ -250,11 +313,73 @@ async function httpFetch<T = unknown>(
     const size = await getResponseSize(response, bodyText)
 
     // Extract and notify about rate limit (for GitHub API responses)
-    if (url.includes('github.com') && rateLimitCallback) {
+    if (isGitHubApi && rateLimitCallback) {
       const rateLimit = extractRateLimitFromHeaders(response.headers)
       if (rateLimit) {
         rateLimitCallback(rateLimit)
       }
+    }
+
+    // Track request success (for GitHub REST API calls only)
+    if (isGitHubApi && networkRequestCallback) {
+      // RAW response body (no formatting/modification - exactly what GitHub returns)
+      const responseBody: string | undefined = bodyText || undefined
+
+      // Extract GraphQL cost from response (if this is a GraphQL request)
+      let cost: number | undefined
+      let rateLimitFromBody: NetworkRequestEvent['rateLimit'] | undefined
+      if (isGraphQL && data && typeof data === 'object') {
+        const graphqlData = data as {
+          rateLimit?: {
+            cost?: number
+            limit?: number
+            remaining?: number
+            used?: number
+            resetAt?: string
+          }
+        }
+        if (graphqlData.rateLimit) {
+          cost = graphqlData.rateLimit.cost
+          if (graphqlData.rateLimit.limit && graphqlData.rateLimit.remaining !== undefined) {
+            rateLimitFromBody = {
+              limit: graphqlData.rateLimit.limit,
+              remaining: graphqlData.rateLimit.remaining,
+              used: graphqlData.rateLimit.used || 0,
+              resetAt: graphqlData.rateLimit.resetAt || ''
+            }
+          }
+        }
+      }
+
+      // Get rate limit from headers (for REST API calls)
+      const rateLimit = extractRateLimitFromHeaders(response.headers)
+      const rateLimitForEvent =
+        rateLimitFromBody ||
+        (rateLimit
+          ? {
+              limit: rateLimit.limit,
+              remaining: rateLimit.remaining,
+              used: rateLimit.used,
+              resetAt: rateLimit.resetAt
+            }
+          : undefined)
+
+      networkRequestCallback({
+        id: requestId,
+        method: `rest.${operationName}`,
+        status: response.ok ? 'success' : 'error',
+        startTime: startTimestamp,
+        endTime: endTimestamp,
+        durationMs: Math.round(durationMs * 100) / 100,
+        httpMethod: method,
+        url,
+        statusCode: response.status,
+        cost, // GraphQL query cost (only for GraphQL requests)
+        rateLimit: rateLimitForEvent,
+        error: response.ok ? undefined : `${response.status} ${response.statusText}`,
+        requestBody, // RAW request body (exactly what we sent to GitHub)
+        responseBody // RAW response body (exactly what GitHub returned)
+      })
     }
 
     // Log response
@@ -286,6 +411,7 @@ async function httpFetch<T = unknown>(
   } catch (error) {
     clearTimeout(timeoutId)
     const durationMs = performance.now() - startTime
+    const endTimestamp = Date.now()
 
     // Determine error type
     const isTimeout = error instanceof Error && error.name === 'AbortError'
@@ -294,6 +420,21 @@ async function httpFetch<T = unknown>(
       : error instanceof Error
         ? error.message
         : 'Unknown error'
+
+    // Track request error (for GitHub REST API calls only)
+    if (isGitHubApi && networkRequestCallback) {
+      networkRequestCallback({
+        id: requestId,
+        method: `rest.${operationName}`,
+        status: 'error',
+        startTime: startTimestamp,
+        endTime: endTimestamp,
+        durationMs: Math.round(durationMs * 100) / 100,
+        httpMethod: method,
+        url,
+        error: errorMessage
+      })
+    }
 
     // Log error
     if (!skipLogging) {

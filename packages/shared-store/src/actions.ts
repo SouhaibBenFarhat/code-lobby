@@ -7,7 +7,7 @@
  * UI Modules → emit Actions → Data Module listens → Updates Store → UI reacts
  */
 
-import type { CardLayout, PullRequest, ViewMode } from './types'
+import type { CardLayout, NetworkRequest, PullRequest, ViewMode } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ACTION EVENT TYPES
@@ -63,6 +63,12 @@ export type ActionEvents = {
   // Data Actions
   'action:clear-cache': undefined
   'action:factory-reset': undefined
+
+  // Network Tracking Actions
+  'action:toggle-network-panel': undefined
+  'action:add-network-request': { request: NetworkRequest }
+  'action:update-network-request': { id: string; updates: Partial<NetworkRequest> }
+  'action:clear-network-requests': undefined
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -146,6 +152,11 @@ export interface ActionsType {
   // Data Actions
   clearCache: () => void
   factoryReset: () => void
+  // Network Tracking Actions
+  toggleNetworkPanel: () => void
+  addNetworkRequest: (request: NetworkRequest) => void
+  updateNetworkRequest: (id: string, updates: Partial<NetworkRequest>) => void
+  clearNetworkRequests: () => void
 }
 
 export const Actions: ActionsType = {
@@ -279,5 +290,22 @@ export const Actions: ActionsType = {
   clearCache: () => emit('action:clear-cache'),
 
   /** Factory reset - clear ALL data */
-  factoryReset: () => emit('action:factory-reset')
+  factoryReset: () => emit('action:factory-reset'),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Network Tracking Actions
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Toggle the network panel sidebar */
+  toggleNetworkPanel: () => emit('action:toggle-network-panel'),
+
+  /** Add a new network request to tracking */
+  addNetworkRequest: (request: NetworkRequest) => emit('action:add-network-request', { request }),
+
+  /** Update an existing network request (e.g., when completed) */
+  updateNetworkRequest: (id: string, updates: Partial<NetworkRequest>) =>
+    emit('action:update-network-request', { id, updates }),
+
+  /** Clear all tracked network requests */
+  clearNetworkRequests: () => emit('action:clear-network-requests')
 }

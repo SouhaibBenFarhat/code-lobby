@@ -1,7 +1,7 @@
 # CodeLobby Work Plan
 
-> **Last Updated**: January 22, 2026  
-> **Last Reviewed**: January 22, 2026  
+> **Last Updated**: January 24, 2026  
+> **Last Reviewed**: January 24, 2026  
 > **Status**: Active Development (v1.0.0)
 
 ---
@@ -55,6 +55,20 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Error handling | ✅ Complete |
 | | Test coverage (~80%) | ✅ Complete |
 | | Persistent data cache (30 min) | ✅ Complete |
+| **PR Actions** | Merge PR (squash/merge/rebase methods) | ✅ Complete |
+| | Approve PR | ✅ Complete |
+| **Advanced AI** | CI Failure Analysis (streaming) | ✅ Complete |
+| | Web Fetch Tool (Claude can fetch URLs) | ✅ Complete |
+| | Post AI findings to PR as comments | ✅ Complete |
+| | Context Load Indicator | ✅ Complete |
+| | AI Chat Navigation (general & PR chats) | ✅ Complete |
+| | Custom Quick Prompts | ✅ Complete |
+| **Network Panel** | HTTP request tracking | ✅ Complete |
+| | Request/response inspection | ✅ Complete |
+| | Real-time rate limit monitoring | ✅ Complete |
+| **Architecture** | PR Detail modular components | ✅ Complete |
+| | ViewHeader reusable component | ✅ Complete |
+| | Consistent header styling across views | ✅ Complete |
 
 ---
 
@@ -512,15 +526,23 @@ Show all files changed in a PR with their change status (added, modified, delete
 
 ---
 
-### 1.2 PR Actions 🔴 Not Started
+### 1.2 PR Actions ✅ Partially Complete
 > Allow users to take action on PRs directly from CodeLobby
 
-- [ ] **Approve PR** - Submit approval review
-- [ ] **Request Changes** - Submit review requesting changes
-- [ ] **Merge PR** - Merge with configurable strategies (merge, squash, rebase)
+- [x] **Approve PR** - Submit approval review via `submitPullRequestReview` GraphQL mutation
+- [x] **Merge PR** - Merge with configurable strategies (MERGE, SQUASH, REBASE) via `mergePullRequest` mutation
+- [ ] **Request Changes** - Submit review requesting changes (GraphQL ready, needs UI)
 - [ ] **Close PR** - Close without merging
 - [ ] **Add Label** - Apply labels to PR
 - [ ] **Assign Reviewers** - Request reviews from team members
+
+**Completed (January 2026):**
+- `MergeButton` component with merge method dropdown (Squash, Merge, Rebase)
+- `ApproveButton` component with state-aware UI
+- Confirmation dialogs for merge action
+- Loading states and error handling
+- Auto-refresh PR data after action
+- GraphQL mutations in `github-graphql.ts`
 
 **Technical Notes:**
 - Requires GitHub GraphQL mutations
@@ -679,6 +701,34 @@ interface Workspace {
 ---
 
 ## 📋 Phase 2: AI-Powered Features
+
+### 1.8 Network Panel ✅ Complete
+> Real-time HTTP request monitoring and debugging
+
+**Implementation Summary:**
+- Full `@codelobby/network-module` package with components
+- Tracks all HTTP requests (GitHub API, Claude API)
+- Shows request/response timing, status codes, and payloads
+- Integrates into right sidebar (stacked with AI panel)
+- Vertical resizable split between AI and Network panels
+
+**Components:**
+- `NetworkPanel` - Main container
+- `NetworkRequestList` - Virtualized list of requests
+- `NetworkRequestItem` - Individual request display
+- `NetworkPanelHeader` - Search and filter controls
+- `NetworkStats` - Summary statistics
+- `CopyButton` - Copy request/response data
+
+**Completed Features:**
+- [x] HTTP request interception and logging
+- [x] Real-time request streaming
+- [x] Request/response body inspection
+- [x] Rate limit integration
+- [x] Search and filter functionality
+- [x] Copy to clipboard
+
+---
 
 ### 2.0 Context Load Indicator ✅ Complete
 > Show users how much of the AI context window is being used
@@ -971,45 +1021,39 @@ interface ChatMessage {
 **Estimated Time:** ~3 hours
 
 ### 2.3 Multi-Chat Sessions ✅ Complete
-> Support multiple named AI conversations with full history persistence
+> Support multiple AI conversations with full history persistence
 
 **Concept:**
-Users can create multiple AI chat sessions, name them, and switch between them. Each chat maintains its own conversation history and context.
+Users have a general AI chat and can create PR-specific chat sessions. Each chat maintains its own conversation history and context.
 
 **Implementation Summary:**
-- **Conversation Navigator**: A popover dropdown in the AI chat header showing all conversations
-- **General Chat**: Main AI conversation accessible from the navigator
-- **PR-Specific Chats**: Chats linked to specific PRs, created via "Start Chat" button on PRs
-- **Switch Between Chats**: Click on any conversation to switch to it instantly
-- **Delete Conversations**: Hover over a PR chat to reveal delete button
-- **Message Count & Time**: Each PR chat shows message count and last updated time
-- **Sorted by Recency**: Conversations sorted by most recently updated
+- **General Chat**: Main AI conversation, always available in the AI panel
+- **PR-Specific Chats**: Chats linked to specific PRs, created via dog icon button on PRs
+- **Auto-Switch**: Selecting a PR with an existing chat shows that conversation automatically
+- **Back Button**: Return to general chat from any PR conversation
+- **Persistent**: All conversations survive app restarts
 
 **UI:**
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  🐕 AI Assistant   [📋] [←] [⚙️] [🗑️] [×]                    │
+│  🐕 AI Assistant   [←] [⚙️] [🗑️] [×]                         │
+│                     ↑                                        │
+│               Back to general chat (visible in PR chat mode) │
 ├──────────────────────────────────────────────────────────────┤
-│  Conversation Popover (on [📋] click):                       │
+│  [PR context banner - shown when in PR chat mode]            │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │ Conversations                                          │  │
-│  │ ─────────────────────────────────────────────────────  │  │
-│  │ 💬 General Chat ────────────────────────── Active      │  │
-│  │    Main AI conversation                                │  │
-│  │ ─────────────────────────────────────────────────────  │  │
-│  │ PR Conversations (2)                                   │  │
-│  │ 🔀 #123 Fix auth bug ─────────── 2 msgs • 5m ago  [×]  │  │
-│  │    owner/repo                                          │  │
-│  │ 🔀 #456 Add feature ──────────── 0 msgs • 1h ago  [×]  │  │
+│  │ 🔀 PR #123: Fix authentication bug                     │  │
 │  │    owner/repo                                          │  │
 │  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  [Chat messages...]                                          │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 **Files Changed:**
-- `src/renderer/components/AIChat.tsx` - Added PRChatInfo interface, allPRChats state, conversation navigator UI
-- `src/renderer/App.tsx` - Added switchToPRChat function, passed to AIChatPanel
-- `tests/renderer/components/AIChat.test.tsx` - Added 6 tests for conversation navigation
+- `packages/ai-chat-module/src/components/AIChat/AIChat.tsx` - PR chat state management
+- `packages/ai-chat-module/src/components/ChatHeader/ChatHeader.tsx` - Simplified header UI
+- `packages/app/src/App.tsx` - PR chat context and navigation
 
 **Data Model:**
 ```typescript
@@ -1368,13 +1412,71 @@ for managing GitHub Pull Requests.
 
 **Completed:** January 18, 2026
 
-### 2.5 PR Context for AI 🟡 In Progress
+### 2.5.1 PR Context for AI ✅ Complete
 > Provide PR context to the AI assistant
 
-- [ ] **Auto-inject PR context** - When user asks about "this PR", inject PR data
-- [ ] **CI log analysis** - Fetch and analyze CI failure logs
-- [ ] **Code diff context** - Include relevant code changes
-- [ ] **Comment history** - Include review feedback for context
+- [x] **Auto-inject PR context** - PR-specific chats automatically include full context
+- [x] **CI log analysis** - `fetchCheckRunLogs()` fetches actual CI logs from GitHub Actions
+- [x] **Code diff context** - Full file diffs included in PR chat system prompt
+- [x] **Comment history** - All comments and review threads included in context
+
+**Implementation Summary (January 2026):**
+- `buildPRSystemPrompt()` in `data-module/prompts/pr-system-prompt.ts`
+- Full PR metadata (title, description, author, branches, stats)
+- Complete file diff tree with additions/deletions per file
+- Review comments and threads included
+- CI check status with detailed failure info
+- GitHub Actions logs fetched via REST API for failed checks
+
+---
+
+### 2.5.2 Web Fetch Tool ✅ Complete
+> Allow Claude to fetch web URLs during conversation
+
+**Implementation Summary:**
+- `FETCH_URL_TOOL` tool definition in `web-fetch.ts`
+- `executeWebFetch()` function to fetch and extract content
+- Toggle in AI chat settings (`enableWebFetch`)
+- Uses `sendMessageStreamingWithTools()` for tool execution loop
+
+**How It Works:**
+1. User enables "Web Fetch" in AI settings
+2. Claude can call `fetch_url` tool during conversation
+3. App fetches URL content server-side (respects rate limits)
+4. Content returned to Claude for processing
+5. Claude continues response with fetched data
+
+**Completed Features:**
+- [x] Tool definition with URL parameter
+- [x] Server-side URL fetching (avoids CORS)
+- [x] Content extraction (HTML to text)
+- [x] Settings toggle for feature
+- [x] Integration with streaming tool executor
+
+---
+
+### 2.5.3 CI Failure Analysis (Streaming) ✅ Complete
+> AI-powered analysis of CI failures with real-time thinking display
+
+**Implementation Summary:**
+- `analyzeCIFailure()` and `analyzeCIFailureStreaming()` in `claude-api.ts`
+- Sparkles button on failed CI checks in PR detail
+- Fetches check run details and actual CI logs from GitHub
+- Extended thinking for deeper analysis
+- Real-time streaming of thinking + analysis
+
+**UI:**
+- Sparkles (✨) icon button appears on failed checks
+- Click to trigger AI analysis
+- Shows "Claude is thinking..." with real-time reasoning
+- Displays analysis with failure reason and suggested fix
+
+**Completed Features:**
+- [x] `fetchCheckRunDetails()` - Get check metadata
+- [x] `fetchCheckRunLogs()` - Get actual CI logs (GitHub Actions)
+- [x] Streaming analysis with extended thinking
+- [x] Real-time thinking display in UI
+- [x] Persisted analysis per check
 
 **Technical Notes:**
 - Create structured PR context formatter
@@ -1881,7 +1983,7 @@ interface AIFeatureSettings {
 
 ---
 
-### 2.11 Post Comment to PR from AI Chat 🔴 Not Started
+### 2.11 Post Comment to PR from AI Chat ✅ Complete
 > Allow users to post AI-drafted comments directly to PRs from the conversation
 
 **Concept:**
@@ -2000,14 +2102,21 @@ interface PostCommentParams {
 ```
 
 **Implementation Steps:**
-- [ ] Add `postPRComment()` function in `github.ts` using REST API
-- [ ] Add IPC handler `post-pr-comment` in main process
-- [ ] Expose `postPRComment` to renderer via preload
-- [ ] Add "Post to PR" item to message bubble menu
-- [ ] Create `PostCommentDialog` component with edit textarea
-- [ ] Add confirmation step with preview
-- [ ] Add success toast with link to comment
-- [ ] Cache update on success: Add comment to react-query cache after API confirms
+- [x] Add `postPRReviewComment()` function in `github-graphql.ts` using GraphQL API
+- [x] Add IPC handler `post-pr-comment` in main process
+- [x] Expose `postPRComment` to renderer via preload
+- [x] Add "Post to PR" button in MessageBubble component
+- [x] Postable detection logic in `postable.ts` (extracts file/line from AI responses)
+- [x] Success feedback with link to posted comment
+- [ ] Create `PostCommentDialog` component with edit textarea (optional)
+- [ ] Add confirmation step with preview (optional)
+
+**Completed (January 2026):**
+- `postPRReviewComment()` function in `github-graphql.ts`
+- IPC handler and preload exposure
+- `extractPostable()` utility to detect file/line references in AI responses
+- Auto-shows "Post to PR" button when AI mentions specific file:line
+- Opens posted comment URL on success
 
 **Instant Update Flow (Safe):**
 ```

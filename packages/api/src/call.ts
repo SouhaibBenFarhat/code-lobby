@@ -2,6 +2,9 @@
  * Core API call wrapper with automatic logging
  *
  * This is the heart of the API client - every call goes through here.
+ *
+ * NOTE: Network request tracking is done in the main process (executeGraphQL)
+ * where ACTUAL API calls happen, not here at the IPC layer.
  */
 
 import { LogCategory, logger } from './logger'

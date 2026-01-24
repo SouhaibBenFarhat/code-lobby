@@ -79,6 +79,7 @@ export const github = {
       used: number
       resetAt: string
       percentage: number
+      cost?: number
     }
     error?: string
   }> {
@@ -100,6 +101,7 @@ export const github = {
       used: number
       resetAt: string
       percentage: number
+      cost?: number
     }
     error?: string
   }> {
@@ -107,6 +109,34 @@ export const github = {
       'github.refreshRepoPRs',
       () => window.electron.refreshRepoPRs(repoFullName),
       { repo: repoFullName },
+      { category: LogCategory.GRAPHQL }
+    )
+  },
+
+  /**
+   * Refresh a single PR (much more efficient than refreshing all PRs)
+   * Cost: ~1 point vs 5-10 points for bulk refresh
+   */
+  async refreshSinglePR(
+    repoFullName: string,
+    prNumber: number
+  ): Promise<{
+    success: boolean
+    data?: unknown
+    rateLimit?: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+      cost?: number
+    }
+    error?: string
+  }> {
+    return call(
+      'github.refreshSinglePR',
+      () => window.electron.refreshSinglePR(repoFullName, prNumber),
+      { repo: repoFullName, prNumber },
       { category: LogCategory.GRAPHQL }
     )
   },
@@ -149,6 +179,7 @@ export const github = {
       used: number
       resetAt: string
       percentage: number
+      cost?: number
     }
     error?: string
   }> {

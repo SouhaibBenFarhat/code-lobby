@@ -1,8 +1,8 @@
 // Utilities
 
+// Components
 export { Avatar, AvatarFallback, AvatarImage } from './avatar'
 export { Badge, type BadgeProps, badgeVariants } from './badge'
-// Components
 export { Button, type ButtonProps, buttonVariants } from './button'
 export {
   Card,
@@ -13,7 +13,6 @@ export {
   CardTitle
 } from './card'
 export { ClaudeIcon, ClaudeLogoIcon } from './claude-icon'
-// Logo and Icons
 export { CodeLobbyIcon, CodeLobbyLogo, CodeLobbyLogoAnimated } from './codelobby-logo'
 export {
   Dialog,
@@ -27,8 +26,20 @@ export {
   DialogTitle,
   DialogTrigger
 } from './dialog'
+export {
+  Col,
+  type ColOffset,
+  type ColOrder,
+  type ColProps,
+  type ColSpan,
+  Container,
+  type ContainerProps,
+  type GutterSize,
+  type ResponsiveValue,
+  Row,
+  type RowProps
+} from './grid'
 export { Input, type InputProps } from './input'
-// List Menu
 export {
   ListMenu,
   ListMenuContent,
@@ -37,7 +48,6 @@ export {
   ListMenuItem,
   ListMenuSeparator
 } from './list-menu'
-// Markdown
 export { MarkdownContent } from './markdown-content'
 export { Popover, PopoverContent, PopoverTrigger } from './popover'
 export { ScrollArea, ScrollBar } from './scroll-area'
@@ -54,6 +64,18 @@ export {
   SelectValue
 } from './select'
 export { Separator } from './separator'
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetOverlay,
+  SheetPortal,
+  SheetTitle,
+  SheetTrigger
+} from './sheet'
 export {
   Timeline,
   TimelineConnector,
@@ -78,7 +100,14 @@ export {
   ToastViewport,
   toast
 } from './toaster'
-// Auth
 export { TokenInput } from './token-input'
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
 export { cn, formatRelativeTime, groupBy, truncate } from './utils'
+export {
+  ViewHeader,
+  ViewHeaderActions,
+  type ViewHeaderActionsProps,
+  ViewHeaderDivider,
+  type ViewHeaderDividerProps,
+  type ViewHeaderProps
+} from './view-header'

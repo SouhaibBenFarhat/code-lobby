@@ -454,14 +454,15 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
         contain: 'layout style'
       }}
     >
-      <div className="p-2 border-b border-border bg-muted/20">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <FileText className="w-3.5 h-3.5" />
-          Explorer
-          <span className="text-[10px] font-normal bg-muted px-1.5 py-0.5 rounded">
+      {/* Header with ViewHeader-style elevation */}
+      <div className="flex items-center h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="font-semibold text-sm">Explorer</span>
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {totalPRCount} PR{totalPRCount !== 1 ? 's' : ''}
           </span>
-        </h3>
+        </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-1">

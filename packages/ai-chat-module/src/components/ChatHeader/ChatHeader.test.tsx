@@ -1,5 +1,5 @@
 import { TooltipProvider } from '@codelobby/ui-kit'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,6 @@ const renderWithProviders = (ui: ReactNode) => render(ui, { wrapper: Wrapper })
 
 describe('ChatHeader', () => {
   const defaultProps = {
-    linkedPRChat: null,
     apiKey: 'sk-ant-test',
     selectedModel: 'claude-3-5-sonnet-20241022',
     models: [
@@ -28,13 +27,10 @@ describe('ChatHeader', () => {
         created_at: '2024-02-29T00:00:00Z'
       }
     ],
-    allPRChats: [],
     showSettings: false,
     onShowSettingsChange: vi.fn(),
-    onSwitchToPRChat: vi.fn(),
     onClearHistory: vi.fn(),
-    onClose: vi.fn(),
-    onDeletePRChat: vi.fn()
+    onClose: vi.fn()
   }
 
   beforeEach(() => {
@@ -50,6 +46,11 @@ describe('ChatHeader', () => {
     it('shows model name when API key exists', () => {
       renderWithProviders(<ChatHeader {...defaultProps} />)
       expect(screen.getByText(/Claude 3.5 Sonnet/)).toBeInTheDocument()
+    })
+
+    it('does not show model name when no API key', () => {
+      renderWithProviders(<ChatHeader {...defaultProps} apiKey={null} />)
+      expect(screen.queryByText(/Claude 3.5 Sonnet/)).not.toBeInTheDocument()
     })
   })
 
@@ -96,81 +97,17 @@ describe('ChatHeader', () => {
     })
   })
 
-  describe('tab navigation', () => {
-    const prChats = [
-      {
-        prId: 'owner/repo#1',
-        prNumber: 1,
-        prTitle: 'First PR',
-        repoFullName: 'owner/repo',
-        updatedAt: '2024-01-02T00:00:00Z',
-        messageCount: 5
-      },
-      {
-        prId: 'owner/repo#2',
-        prNumber: 2,
-        prTitle: 'Second PR',
-        repoFullName: 'owner/repo',
-        updatedAt: '2024-01-01T00:00:00Z',
-        messageCount: 3
-      }
-    ]
-
-    it('shows tabs when PR chats exist', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} allPRChats={prChats} />)
-      expect(screen.getByText('#1')).toBeInTheDocument()
-      expect(screen.getByText('#2')).toBeInTheDocument()
+  describe('styling', () => {
+    it('has elevation effect classes', () => {
+      const { container } = renderWithProviders(<ChatHeader {...defaultProps} />)
+      const header = container.firstChild as HTMLElement
+      expect(header).toHaveClass('shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)]')
     })
 
-    it('hides tabs when no PR chats', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} allPRChats={[]} />)
-      expect(screen.queryByText('#1')).not.toBeInTheDocument()
-    })
-
-    it('highlights active tab', () => {
-      renderWithProviders(
-        <ChatHeader
-          {...defaultProps}
-          allPRChats={prChats}
-          linkedPRChat={{
-            prId: 'owner/repo#1',
-            prNumber: 1,
-            prTitle: 'First PR',
-            repoFullName: 'owner/repo'
-          }}
-        />
-      )
-
-      // Active tab should have font-medium class (checked via text being visible)
-      expect(screen.getByText('#1')).toBeInTheDocument()
-    })
-
-    it('calls onSwitchToPRChat when tab clicked', async () => {
-      renderWithProviders(<ChatHeader {...defaultProps} allPRChats={prChats} />)
-
-      const tab = screen.getByText('#1')
-      await userEvent.click(tab)
-
-      expect(defaultProps.onSwitchToPRChat).toHaveBeenCalledWith('owner/repo#1')
-    })
-
-    it('shows close button on tabs and calls onDeletePRChat', async () => {
-      renderWithProviders(<ChatHeader {...defaultProps} allPRChats={prChats} />)
-
-      // Find and click the close button for a tab
-      const closeButtons = screen.getAllByTitle('Close chat')
-      await userEvent.click(closeButtons[0])
-
-      await waitFor(() => {
-        expect(defaultProps.onDeletePRChat).toHaveBeenCalledWith('owner/repo#1')
-      })
-    })
-
-    it('shows tooltip on PR number with full title', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} allPRChats={prChats} />)
-
-      const tab = screen.getByText('#1')
-      expect(tab).toHaveAttribute('title', '#1 First PR')
+    it('has consistent background styling', () => {
+      const { container } = renderWithProviders(<ChatHeader {...defaultProps} />)
+      const header = container.firstChild as HTMLElement
+      expect(header).toHaveClass('bg-card/80', 'backdrop-blur-sm')
     })
   })
 })
