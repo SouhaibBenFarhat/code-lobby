@@ -3,7 +3,7 @@
  * Main component that orchestrates the chat experience.
  *
  * UI Components:
- * - ChatHeader: Title, conversation navigator, settings buttons
+ * - ChatHeader: Title, settings buttons
  * - ChatSettings: Model selector, thinking toggle, API key management
  * - ChatInput: Message input, quick actions, context indicator
  * - ChatEmptyStates: Loading skeleton, PR empty state, default empty state
@@ -26,7 +26,6 @@ import type {
   ChatMessage,
   ClaudeModel,
   CustomPrompt,
-  PRChatInfo,
   QueuedMessage,
   StreamingState
 } from '../../types'
@@ -49,7 +48,6 @@ export function AIChatPanel({
   onClose,
   user,
   linkedPRChat,
-  onSwitchToPRChat,
   onClearLinkedPRChat,
   selectedPR,
   onStartPRChat
@@ -80,7 +78,6 @@ export function AIChatPanel({
   })
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
   const [customPrompts, setCustomPrompts] = useState<CustomPrompt[]>([])
-  const [allPRChats, setAllPRChats] = useState<PRChatInfo[]>([])
   const [prSystemContext, setPrSystemContext] = useState<string | undefined>(undefined)
   // Track which PR chat ID the current messages belong to
   const [loadedPRChatId, setLoadedPRChatId] = useState<string | null>(null)
@@ -114,10 +111,10 @@ export function AIChatPanel({
   // This is computed synchronously so it takes effect immediately during render
   const isSwitchingChat =
     linkedPRChat !== null && linkedPRChat !== undefined && linkedPRChat.prId !== loadedPRChatId
-  // Show PR empty state when a PR is selected but NO chat tab is open
+  // Show PR empty state when a PR is selected but NO chat is linked
   // If linkedPRChat exists (for ANY PR), show that chat instead
   const showPREmptyState = selectedPR && !linkedPRChat
-  // Show "No PR Selected" when no PR is selected at all AND no chat tab is open
+  // Show "No PR Selected" when no PR is selected at all AND no chat is linked
   const showNoPRSelected = !selectedPR && !linkedPRChat
   // Only show input when we have an active PR chat
   const showInput =
@@ -135,20 +132,6 @@ export function AIChatPanel({
     } finally {
       setIsLoadingModels(false)
     }
-  }, [])
-
-  const loadAllPRChats = useCallback(async () => {
-    const chats = await api.ai.getPRChats()
-    const infos: PRChatInfo[] = chats.map((c) => ({
-      prId: c.prId,
-      prNumber: c.prNumber,
-      prTitle: c.prTitle,
-      repoFullName: c.repoFullName,
-      updatedAt: c.updatedAt,
-      messageCount: c.messages.length
-    }))
-    infos.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    setAllPRChats(infos)
   }, [])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll.resetScroll is stable (empty deps)
@@ -343,14 +326,6 @@ export function AIChatPanel({
     }
   }, [linkedPRChat])
 
-  const handleDeletePRChat = useCallback(
-    async (prId: string) => {
-      await api.ai.deletePRChat(prId)
-      loadAllPRChats()
-    },
-    [loadAllPRChats]
-  )
-
   const handlePostComment = useCallback(
     async (file: string, line: number, body: string) => {
       if (!selectedPR || !linkedPRChat) return { success: false }
@@ -387,11 +362,6 @@ export function AIChatPanel({
     loadData()
   }, [loadData])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: linkedPRChat?.prId triggers reload when chat changes
-  useEffect(() => {
-    loadAllPRChats()
-  }, [loadAllPRChats, linkedPRChat?.prId])
-
   // Auto-switch to existing PR chat when a PR is selected, or clear if no chat exists
   useEffect(() => {
     if (!selectedPRId || linkedPRChat?.prId === selectedPRId) return
@@ -399,10 +369,7 @@ export function AIChatPanel({
     ;(async () => {
       const chat = await api.ai.getPRChat(selectedPRId)
       if (cancelled) return
-      if (chat && onSwitchToPRChat) {
-        // Chat exists for this PR - switch to it
-        onSwitchToPRChat(selectedPRId)
-      } else if (onClearLinkedPRChat) {
+      if (!chat && onClearLinkedPRChat) {
         // No chat exists for this PR - clear linkedPRChat to show empty state
         onClearLinkedPRChat()
       }
@@ -410,7 +377,7 @@ export function AIChatPanel({
     return () => {
       cancelled = true
     }
-  }, [selectedPRId, linkedPRChat?.prId, onSwitchToPRChat, onClearLinkedPRChat])
+  }, [selectedPRId, linkedPRChat?.prId, onClearLinkedPRChat])
 
   useEffect(() => {
     if (selectedPRId && !linkedPRChat && prSystemContext !== undefined) {
@@ -457,17 +424,13 @@ export function AIChatPanel({
   return (
     <div className="h-full flex flex-col">
       <ChatHeader
-        linkedPRChat={linkedPRChat}
         apiKey={apiKey}
         selectedModel={selectedModel}
         models={models}
-        allPRChats={allPRChats}
         showSettings={showSettings}
         onShowSettingsChange={setShowSettings}
-        onSwitchToPRChat={onSwitchToPRChat}
         onClearHistory={handleClearHistory}
         onClose={onClose}
-        onDeletePRChat={handleDeletePRChat}
       />
 
       {linkedPRChat && (

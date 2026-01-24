@@ -1,0 +1,15 @@
+{
+  "name": "@codelobby/network-module",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "dependencies": {
+    "@codelobby/shared-store": "*",
+    "@codelobby/slot-system": "*",
+    "@codelobby/ui-kit": "*",
+    "lucide-react": "^0.454.0",
+    "react": "^18.2.0"
+  }
+}

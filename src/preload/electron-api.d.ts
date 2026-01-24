@@ -50,6 +50,7 @@ export interface ElectronAPI {
       used: number
       resetAt: string
       percentage: number
+      cost?: number
     }
     error?: string
   }>
@@ -63,6 +64,24 @@ export interface ElectronAPI {
       used: number
       resetAt: string
       percentage: number
+      cost?: number
+    }
+    error?: string
+  }>
+  /** Refresh a single PR (much more efficient - ~1 point vs 5-10 for bulk) */
+  refreshSinglePR: (
+    repoFullName: string,
+    prNumber: number
+  ) => Promise<{
+    success: boolean
+    data?: unknown
+    rateLimit?: {
+      limit: number
+      remaining: number
+      used: number
+      resetAt: string
+      percentage: number
+      cost?: number
     }
     error?: string
   }>
@@ -160,6 +179,31 @@ export interface ElectronAPI {
       used: number
       resetAt: string
       percentage: number
+    }) => void
+  ) => () => void
+
+  // Network request tracking (for Network Panel - tracks ACTUAL API calls)
+  onNetworkRequest: (
+    callback: (event: {
+      id: string
+      method: string
+      status: 'pending' | 'success' | 'error'
+      startTime: number
+      endTime?: number
+      durationMs?: number
+      httpMethod?: string
+      url?: string
+      statusCode?: number
+      cost?: number
+      rateLimit?: {
+        limit: number
+        remaining: number
+        used: number
+        resetAt: string
+      }
+      error?: string
+      requestBody?: string
+      responseBody?: string
     }) => void
   ) => () => void
 

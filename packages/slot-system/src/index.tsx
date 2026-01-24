@@ -23,6 +23,7 @@ export type SlotName =
   | 'right-panel'
   | 'pr-detail-panel'
   | 'ai-panel'
+  | 'network-panel'
   | 'footer'
   | 'modal'
   | 'toast'

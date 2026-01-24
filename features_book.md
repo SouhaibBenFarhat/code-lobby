@@ -74,6 +74,25 @@ Stop hunting through GitHub Actions logs:
 
 When CI fails, you'll know exactly where to look.
 
+### ✨ AI CI Failure Analysis
+
+When a CI check fails, get instant AI analysis:
+
+**One Click:**
+1. Click the sparkles (✨) icon on any failed check
+2. AI fetches the actual CI logs and analyzes them
+3. Get a summary of what failed and why
+
+**What You See:**
+- **Claude's Reasoning** — Watch the AI think through the logs in real-time
+- **Failure Summary** — Clear explanation of what went wrong
+- **Suggested Fix** — Actionable recommendations to resolve the issue
+
+**Example:**
+> "The test `auth.spec.ts` failed because `process.env.API_KEY` is undefined. The test expects this environment variable but it's not set in the CI environment. Add `API_KEY` to your GitHub Actions secrets."
+
+Works with GitHub Actions logs. Third-party CI shows available metadata.
+
 ---
 
 ## 🤖 AI-Powered Features
@@ -323,28 +342,122 @@ Start AI conversations faster with pre-defined quick actions. Plus, create your 
 
 ---
 
-### 📋 Conversation Navigator
+### 💬 AI Chat Navigation
 
-Managing multiple AI conversations? The conversation navigator makes switching instant.
+Switch between general AI chat and PR-specific conversations seamlessly.
 
-**Access:**
-1. Click the list icon (📋) in the AI chat header
-2. See all your conversations at a glance
-3. Click to switch instantly
+**How It Works:**
+- **General Chat** — Open the AI panel to access your main conversation
+- **PR Chat** — Click the dog icon on any PR to start or continue that PR's chat
+- **Auto-Switch** — When you select a PR with an existing chat, the AI panel automatically shows that conversation
 
 **Features:**
-- **General Chat** — Your main AI conversation, always at the top
-- **PR Conversations** — All your PR-specific chats, sorted by recency
-- **Badge Counter** — See how many PR chats you have open
-- **Delete Option** — Hover to reveal delete button on PR chats
-- **Context Preview** — See PR number, title, repo, message count, and last updated time
-
-**Organized by:**
-- Most recently updated conversations appear first
-- PR conversations grouped separately from general chat
-- Active conversation clearly marked
+- **Separate Histories** — Each PR has its own conversation history
+- **Persistent** — Conversations survive app restarts
+- **Context-Aware** — PR chats include full PR context (diff, comments, CI status)
+- **Back Button** — Return to general chat from any PR conversation
 
 Perfect for code reviews, understanding complex changes, or getting a second opinion.
+
+---
+
+### 🌐 Web Fetch Tool
+
+Enable Claude to fetch web pages during your conversation:
+
+**How to Enable:**
+1. Open AI Chat settings (gear icon)
+2. Toggle "Web Fetch" on
+3. Now Claude can retrieve URL content on demand
+
+**Use Cases:**
+- "Fetch the README from this GitHub repo and summarize it"
+- "Get the documentation from this URL and explain the API"
+- "Look up the latest release notes for React"
+
+**How It Works:**
+- Claude decides when it needs to fetch a URL
+- CodeLobby fetches the content server-side (no CORS issues)
+- Content is extracted and returned to Claude
+- Claude continues its response with the fetched data
+
+**Privacy:** All fetching happens through your local machine. URLs are not logged or stored.
+
+---
+
+## 🔧 PR Actions
+
+Take action on PRs directly from CodeLobby — no need to switch to GitHub.
+
+### ✅ Approve PR
+
+One-click approval for PRs you've reviewed:
+
+**How It Works:**
+1. Review the PR details, changes, and CI status
+2. Click the **Approve** button (checkmark icon)
+3. Your approval is submitted to GitHub
+
+**Smart States:**
+- **Can Approve** — Green button, ready to click
+- **Already Approved** — Shows "Approved" with checkmark
+- **Author's Own PR** — Button disabled (can't self-approve)
+
+### 🔀 Merge PR
+
+Merge PRs when they're ready:
+
+**Merge Methods:**
+| Method | Description |
+|--------|-------------|
+| **Squash** | Combine all commits into one (default) |
+| **Merge** | Create a merge commit |
+| **Rebase** | Rebase and merge |
+
+**How It Works:**
+1. Click the **Merge** button (when PR is mergeable)
+2. Select your preferred merge method
+3. Click **Confirm Merge**
+4. PR is merged and data refreshes
+
+**Safety Features:**
+- Shows merge status (blocked, conflicts, ready)
+- Confirmation dialog before merge
+- Error handling with clear messages
+
+---
+
+## 📡 Network Panel
+
+Debug and monitor all HTTP requests in real-time:
+
+**Access:**
+1. Click the network icon in the header
+2. Network panel opens in the right sidebar
+3. Watch requests stream in as they happen
+
+**What You See:**
+| Column | Information |
+|--------|-------------|
+| **Method** | GET, POST, etc. |
+| **URL** | Request endpoint |
+| **Status** | HTTP status code (200, 404, etc.) |
+| **Time** | Request duration in ms |
+| **Size** | Response size |
+
+**Features:**
+- **Search** — Filter requests by URL or method
+- **Copy** — Copy request/response data to clipboard
+- **Inspect** — View full request and response bodies
+- **Rate Limit** — See API usage in real-time
+
+**Useful For:**
+- Debugging API issues
+- Understanding rate limit usage
+- Monitoring Claude API calls
+- Troubleshooting GitHub API errors
+
+The panel can be resized vertically when both AI and Network panels are open.
 
 ---
 
@@ -540,12 +653,17 @@ We're actively building:
 | **AI Assistant** | Intelligent help on demand |
 | **Context-Aware AI** | AI knows about CodeLobby |
 | **PR-Specific AI Chat** | Context-aware conversations |
-| **Conversation Navigator** | Switch between chats instantly |
+| **AI Chat Navigation** | Switch between general and PR chats |
 | **Quick Actions** | Start AI chats with one click |
 | **Custom Prompts** | Save your own quick prompts |
 | **Post AI to PR** | Post AI findings as PR comments |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
+| **CI Failure Analysis** | AI explains why CI failed |
+| **Web Fetch Tool** | Claude can fetch URLs for context |
+| **Approve PR** | One-click PR approval |
+| **Merge PR** | Merge with squash/merge/rebase |
+| **Network Panel** | Debug HTTP requests in real-time |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |
 | **Persistent State** | Pick up where you left off |
 | **Activity Logs** | Full debugging capability |

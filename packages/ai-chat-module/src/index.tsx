@@ -66,7 +66,6 @@ export type {
   LinkedPRChat,
   PostableComment,
   PostingState,
-  PRChatInfo,
   PRContext,
   QueuedMessage,
   QuickPrompt,
@@ -107,10 +106,6 @@ function AIChatWrapper(): React.JSX.Element | null {
     Actions.toggleAIPanel()
   }
 
-  const handleSwitchToPRChat = (prId: string): void => {
-    Actions.switchToPRChat(prId)
-  }
-
   const handleClearLinkedPRChat = (): void => {
     Actions.clearLinkedPRChat()
   }
@@ -126,7 +121,6 @@ function AIChatWrapper(): React.JSX.Element | null {
       onClose={handleClose}
       user={user}
       linkedPRChat={linkedPRChat}
-      onSwitchToPRChat={handleSwitchToPRChat}
       onClearLinkedPRChat={handleClearLinkedPRChat}
       selectedPR={selectedPR}
       onStartPRChat={handleStartPRChat}

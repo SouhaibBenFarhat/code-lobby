@@ -36,7 +36,12 @@ import {
   submitPullRequestReview,
   validateToken
 } from './github-graphql'
-import { onRateLimitUpdate, type RateLimitUpdate } from './http-client'
+import {
+  type NetworkRequestEvent as HttpNetworkRequestEvent,
+  onNetworkRequest as onHttpNetworkRequest,
+  onRateLimitUpdate,
+  type RateLimitUpdate
+} from './http-client'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   AIPanelSettings,
@@ -140,6 +145,7 @@ function createWindow(): void {
     minWidth: 1000,
     minHeight: 700,
     show: false,
+    fullscreen: true, // Open in fullscreen mode by default
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 12, y: 18 }, // Position traffic lights vertically centered in header
@@ -186,6 +192,14 @@ function createWindow(): void {
   // Set up rate limit callback for GraphQL API calls (via @octokit/graphql)
   setGraphQLRateLimitNotifier(sendRateLimitUpdate)
   logger.info(LogCategory.RATE_LIMIT, 'Rate limit notifiers configured')
+
+  // Set up network request tracking (for Network Panel)
+  // ALL API calls (GraphQL + REST) go through httpFetch() in http-client.ts
+  onHttpNetworkRequest((event: HttpNetworkRequestEvent) => {
+    mainWindow?.webContents.send('network-request', event)
+  })
+
+  logger.info(LogCategory.API, 'Network request notifier configured (all calls via httpFetch)')
 
   // Notify renderer of fullscreen changes
   mainWindow.on('enter-full-screen', () => {
@@ -474,6 +488,53 @@ function setupIPCHandlers(): void {
     } catch (error) {
       logger.error(LogCategory.API, 'Failed to refresh repo PRs', {
         repo: repoFullName,
+        error: (error as Error).message
+      })
+      return { success: false, error: (error as Error).message }
+    }
+  })
+
+  // Refresh a SINGLE PR by number (much more efficient than refreshing all PRs)
+  // Cost: ~1 point vs 5-10 points for bulk refresh
+  ipcMain.handle('refresh-single-pr', async (_, repoFullName: string, prNumber: number) => {
+    const token = getToken()
+    if (!token) return { success: false, error: 'No token' }
+
+    try {
+      const [owner, repo] = repoFullName.split('/')
+      if (!owner || !repo) {
+        return { success: false, error: 'Invalid repository name' }
+      }
+
+      logger.info(LogCategory.API, '🔄 Refreshing single PR', {
+        repo: repoFullName,
+        prNumber
+      })
+
+      const { fetchSinglePR } = await import('./github-graphql')
+      const { pullRequest, rateLimit } = await fetchSinglePR(token, owner, repo, prNumber)
+
+      if (!pullRequest) {
+        return { success: false, error: `PR #${prNumber} not found` }
+      }
+
+      logger.info(LogCategory.API, 'Single PR refreshed', {
+        repo: repoFullName,
+        prNumber,
+        title: pullRequest.title,
+        cost: rateLimit.cost,
+        remaining: rateLimit.remaining
+      })
+
+      return {
+        success: true,
+        data: pullRequest,
+        rateLimit
+      }
+    } catch (error) {
+      logger.error(LogCategory.API, 'Failed to refresh single PR', {
+        repo: repoFullName,
+        prNumber,
         error: (error as Error).message
       })
       return { success: false, error: (error as Error).message }

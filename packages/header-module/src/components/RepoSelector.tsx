@@ -123,18 +123,23 @@ export function RepoSelector(): React.JSX.Element {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-0" align="end">
-        <div className="p-3 border-b border-border">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold">Select Repositories</h4>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={selectAll}>
-                All
-              </Button>
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={deselectAll}>
-                None
-              </Button>
-            </div>
+        {/* Header with ViewHeader-style elevation */}
+        <div className="flex items-center justify-between h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+          <div className="flex items-center gap-2">
+            <FolderGit2 className="w-4 h-4 text-primary flex-shrink-0" />
+            <span className="font-semibold text-sm">Repositories</span>
           </div>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={selectAll}>
+              All
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={deselectAll}>
+              None
+            </Button>
+          </div>
+        </div>
+        {/* Search input */}
+        <div className="p-3 border-b border-border/50">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input

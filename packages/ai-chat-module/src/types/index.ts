@@ -46,16 +46,6 @@ export interface LinkedPRChat {
   repoFullName: string
 }
 
-// PR Chat from store
-export interface PRChatInfo {
-  prId: string
-  prNumber: number
-  prTitle: string
-  repoFullName: string
-  updatedAt: string
-  messageCount: number
-}
-
 // Selected PR details
 export interface SelectedPR {
   number: number
@@ -124,7 +114,6 @@ export interface AIChatPanelProps {
   onClose: () => void
   user?: GitHubUser | null
   linkedPRChat?: LinkedPRChat | null
-  onSwitchToPRChat?: (prId: string) => void
   onClearLinkedPRChat?: () => void
   selectedPR?: SelectedPR | null
   onStartPRChat?: (pr: SelectedPR) => void

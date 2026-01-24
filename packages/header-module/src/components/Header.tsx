@@ -1,5 +1,6 @@
 import { api } from '@codelobby/api'
 import { useClearCacheAndRefresh, usePRs, useRateLimit, useRepos } from '@codelobby/queries'
+import { Actions, Store, useSignal } from '@codelobby/shared-store'
 import {
   Avatar,
   AvatarFallback,
@@ -22,6 +23,7 @@ import {
   Clock,
   FolderTree,
   Gauge,
+  Globe,
   LayoutGrid,
   Loader2,
   LogOut,
@@ -95,6 +97,9 @@ export function Header({
 
   const isFetching = reposLoading || prsLoading || reposFetching || prsFetching
 
+  // Network panel state
+  const isNetworkPanelOpen = useSignal(Store.networkPanelOpen)
+
   const [isDark, setIsDark] = useState(true)
   const [, setTick] = useState(0) // Force re-render for countdown
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -151,7 +156,7 @@ export function Header({
   }
 
   return (
-    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-4 pr-4 drag-region header-bar">
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-4 pr-4 drag-region header-bar shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-20">
       {/* Left section with window controls area + logo */}
       <div className="flex items-center h-full">
         {/* Window controls spacer (traffic lights) - hidden in fullscreen */}
@@ -371,6 +376,20 @@ export function Header({
             <EventStream />
           </PopoverContent>
         </Popover>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={isNetworkPanelOpen ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => Actions.toggleNetworkPanel()}
+            >
+              <Globe className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Network requests</TooltipContent>
+        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>

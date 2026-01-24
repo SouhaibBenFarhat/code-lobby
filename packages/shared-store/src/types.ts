@@ -223,6 +223,7 @@ export interface RateLimit {
   used: number
   resetAt: string
   percentage: number
+  cost?: number // Points this query cost (from GraphQL)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -242,4 +243,36 @@ export interface CIFailureAnalysis {
   isLoading?: boolean
   isStreaming?: boolean // Currently streaming response
   error?: string
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NETWORK REQUEST TRACKING
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface NetworkRequest {
+  id: string
+  method: string // e.g., 'rest.graphql', 'rest.user'
+  status: 'pending' | 'success' | 'error'
+  startTime: number // timestamp
+  endTime?: number // timestamp
+  durationMs?: number
+  // HTTP details
+  httpMethod?: string // GET, POST, etc.
+  url?: string // Full URL of the request
+  statusCode?: number // HTTP status code (200, 404, etc.)
+  // API cost info (from GitHub GraphQL rate limit)
+  cost?: number // Points this request cost
+  rateLimit?: {
+    remaining: number
+    limit: number
+    used: number
+    resetAt: string
+  }
+  // Request details
+  params?: unknown
+  error?: string
+  requestBody?: string // Raw request body
+  responseBody?: string // Raw response body
+  // Response summary
+  responseSize?: number // items count for arrays
 }

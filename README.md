@@ -391,6 +391,7 @@ codelobby/
 │   ├── header-module/             # Header bar, settings, logs
 │   ├── canvas-module/             # Free-form PR card canvas
 │   ├── explorer-module/           # IDE-style tree view
+│   ├── network-module/            # HTTP request monitoring panel
 │   ├── pr-detail-module/          # PR detail side panel
 │   ├── ai-chat-module/            # Claude AI chat panel
 │   └── test-utils/                # Shared test utilities & mocks
@@ -693,18 +694,25 @@ MIT License - See [LICENSE](LICENSE) for details.
 ### Now ✅
 - PR monitoring dashboard
 - Full context display (CI, comments, reviews)
-- Customizable spatial layout
+- Customizable spatial layout (Canvas & IDE views)
 - All PRs view (not just yours)
 - AI-powered PR analysis ("Why is this PR still open?")
 - PR-specific AI chat with full code diff context
 - Post AI findings as PR review comments
+- **PR Actions** — Approve and Merge PRs directly
+- **AI CI Failure Analysis** — Understand why CI failed with AI
+- **Web Fetch Tool** — Claude can fetch URLs for context
+- **Network Panel** — Debug HTTP requests in real-time
+- **Custom Quick Prompts** — Save your own AI prompts
 
 ### Next 🔜
 - Smart suggestions ("This comment is asking for X")
 - Natural language search ("Show me PRs touching the auth module")
+- Request Changes review action
 
 ### Future 🔮
 - AI command center ("Fix this CI failure")
+- Deep AI Code Review with full codebase access
 - Automated actions with human approval
 - Cross-repo orchestration
 - Intent-to-code execution

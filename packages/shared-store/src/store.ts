@@ -12,6 +12,7 @@ import type {
   CIFailureAnalysis,
   GitHubUser,
   LinkedPRChat,
+  NetworkRequest,
   PRChat,
   PullRequest,
   RateLimit,
@@ -111,6 +112,10 @@ export interface StoreType {
   prAnalysisPanelStates: Signal<Record<string, boolean>>
   // CI Failure Analysis (keyed by checkRunId)
   ciFailureAnalyses: Signal<Record<string, CIFailureAnalysis>>
+  // Network Request Tracking
+  networkRequests: Signal<NetworkRequest[]>
+  networkPanelOpen: Signal<boolean>
+  networkPanelHeight: Signal<number> // Height percentage (0-100) when sharing with AI panel
   // Loading States
   loading: {
     repos: Signal<boolean>
@@ -176,6 +181,13 @@ export const Store: StoreType = {
   prAnalyses: createSignal<Array<{ prId: string; analysis: string }>>([]),
   prAnalysisPanelStates: createSignal<Record<string, boolean>>({}),
   ciFailureAnalyses: createSignal<Record<string, CIFailureAnalysis>>({}),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Network Request Tracking
+  // ─────────────────────────────────────────────────────────────────────────
+  networkRequests: createSignal<NetworkRequest[]>([]),
+  networkPanelOpen: createSignal<boolean>(false),
+  networkPanelHeight: createSignal<number>(40), // 40% of the sidebar height by default
 
   // ─────────────────────────────────────────────────────────────────────────
   // Loading States
@@ -291,6 +303,8 @@ export function resetStore(): void {
   Store.prAnalyses.value = []
   Store.prAnalysisPanelStates.value = {}
   Store.ciFailureAnalyses.value = {}
+  Store.networkRequests.value = []
+  Store.networkPanelOpen.value = false
   Store.loading.repos.value = false
   Store.loading.prs.value = false
   Store.loading.prDetail.value = false

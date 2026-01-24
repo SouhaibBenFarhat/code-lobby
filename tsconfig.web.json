@@ -30,6 +30,7 @@
       "@codelobby/canvas-module": ["packages/canvas-module/src/index.tsx"],
       "@codelobby/pr-detail-module": ["packages/pr-detail-module/src/index.tsx"],
       "@codelobby/ai-chat-module": ["packages/ai-chat-module/src/index.tsx"],
+      "@codelobby/network-module": ["packages/network-module/src/index.tsx"],
       "@codelobby/app": ["packages/app/src/index.ts"],
       "@codelobby/app/bootstrap": ["packages/app/src/bootstrap.ts"],
       "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"],

@@ -32,6 +32,8 @@ const electronAPI: ElectronAPI = {
   fetchAllPRsForRepos: (repoFullNames: string[]) =>
     ipcRenderer.invoke('fetch-all-prs-for-repos', repoFullNames),
   refreshRepoPRs: (repoFullName: string) => ipcRenderer.invoke('refresh-repo-prs', repoFullName),
+  refreshSinglePR: (repoFullName: string, prNumber: number) =>
+    ipcRenderer.invoke('refresh-single-pr', repoFullName, prNumber),
   fetchPREvents: () => ipcRenderer.invoke('fetch-pr-events'),
   fetchPRChecks: (owner: string, repo: string, ref: string) =>
     ipcRenderer.invoke('fetch-pr-checks', owner, repo, ref),
@@ -103,6 +105,62 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('rate-limit-update', handler)
     return () => {
       ipcRenderer.removeListener('rate-limit-update', handler)
+    }
+  },
+
+  // Network request tracking (for Network Panel - tracks ACTUAL API calls)
+  onNetworkRequest: (
+    callback: (event: {
+      id: string
+      method: string
+      status: 'pending' | 'success' | 'error'
+      startTime: number
+      endTime?: number
+      durationMs?: number
+      httpMethod?: string
+      url?: string
+      statusCode?: number
+      cost?: number
+      rateLimit?: {
+        limit: number
+        remaining: number
+        used: number
+        resetAt: string
+      }
+      error?: string
+      requestBody?: string
+      responseBody?: string
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      networkEvent: {
+        id: string
+        method: string
+        status: 'pending' | 'success' | 'error'
+        startTime: number
+        endTime?: number
+        durationMs?: number
+        httpMethod?: string
+        url?: string
+        statusCode?: number
+        cost?: number
+        rateLimit?: {
+          limit: number
+          remaining: number
+          used: number
+          resetAt: string
+        }
+        error?: string
+        requestBody?: string
+        responseBody?: string
+      }
+    ) => {
+      callback(networkEvent)
+    }
+    ipcRenderer.on('network-request', handler)
+    return () => {
+      ipcRenderer.removeListener('network-request', handler)
     }
   },
 

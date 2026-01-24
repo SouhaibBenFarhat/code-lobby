@@ -153,17 +153,32 @@ export function initDataModule(): void {
     })
   )
 
+  // Refresh single PR detail (efficient - ~1 point vs 5-10 for bulk)
   cleanupFunctions.push(
     onAction('action:refresh-pr-detail', async ({ repoFullName, prNumber }) => {
       Store.loading.prDetail.value = true
       try {
-        const result = await api.github.refreshRepoPRs(repoFullName)
-        if (result.success && result.data) {
-          const newPRs = result.data as PullRequest[]
+        // Use efficient single PR fetch instead of fetching all PRs
+        const result = await api.github.refreshSinglePR(repoFullName, prNumber)
 
-          // Update PRs for this repo
-          const otherPRs = Store.prs.value.filter((pr) => pr.base.repo.full_name !== repoFullName)
-          Store.prs.value = [...otherPRs, ...newPRs]
+        if (result.success && result.data) {
+          const refreshedPR = result.data as PullRequest
+
+          // Update the PR in the store
+          const existingPRs = Store.prs.value
+          const prIndex = existingPRs.findIndex(
+            (pr) => pr.base.repo.full_name === repoFullName && pr.number === prNumber
+          )
+
+          if (prIndex >= 0) {
+            // Replace existing PR with refreshed data
+            const updatedPRs = [...existingPRs]
+            updatedPRs[prIndex] = refreshedPR
+            Store.prs.value = updatedPRs
+          } else {
+            // PR not in list, add it
+            Store.prs.value = [...existingPRs, refreshedPR]
+          }
 
           // Update selectedPR if it matches the refreshed PR
           const currentSelectedPR = Store.selectedPR.value
@@ -172,10 +187,7 @@ export function initDataModule(): void {
             currentSelectedPR.base.repo.full_name === repoFullName &&
             currentSelectedPR.number === prNumber
           ) {
-            const refreshedPR = newPRs.find((pr) => pr.number === prNumber)
-            if (refreshedPR) {
-              Store.selectedPR.value = refreshedPR
-            }
+            Store.selectedPR.value = refreshedPR
           }
 
           if (result.rateLimit) {
@@ -645,6 +657,43 @@ export function initDataModule(): void {
       Store.viewMode.value = 'canvas'
       Store.prDetailOpen.value = false
       Store.aiPanelOpen.value = false
+    })
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // NETWORK TRACKING HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  cleanupFunctions.push(
+    onAction('action:toggle-network-panel', () => {
+      Store.networkPanelOpen.value = !Store.networkPanelOpen.value
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:add-network-request', ({ request }) => {
+      // Keep last 100 requests to avoid memory issues
+      const MAX_REQUESTS = 100
+      const current = Store.networkRequests.value
+      const newRequests =
+        current.length >= MAX_REQUESTS
+          ? [...current.slice(-MAX_REQUESTS + 1), request]
+          : [...current, request]
+      Store.networkRequests.value = newRequests
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:update-network-request', ({ id, updates }) => {
+      Store.networkRequests.value = Store.networkRequests.value.map((req) =>
+        req.id === id ? { ...req, ...updates } : req
+      )
+    })
+  )
+
+  cleanupFunctions.push(
+    onAction('action:clear-network-requests', () => {
+      Store.networkRequests.value = []
     })
   )
 
