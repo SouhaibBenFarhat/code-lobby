@@ -6,7 +6,7 @@
 import type { PullRequest } from '@codelobby/shared-store'
 import { Button, Col, cn, Row, ScrollArea, Separator } from '@codelobby/ui-kit'
 import { Bot, CheckCircle2, FileCode, Loader2, MessageSquare, Users, XCircle } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 
 // Import extracted components
 import { ChangedFilesSection } from '../ChangedFilesSection'

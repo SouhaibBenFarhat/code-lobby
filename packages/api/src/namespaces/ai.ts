@@ -613,5 +613,40 @@ export const ai = {
       { prId, isOpen },
       { category: LogCategory.AI_ACTION }
     )
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AI USAGE & COST TRACKING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async getAIUsage(): Promise<{
+    totalInputTokens: number
+    totalOutputTokens: number
+    totalCostUsd: number
+    sessionStartedAt: string
+    lastUpdatedAt: string
+  }> {
+    return call('ai.getAIUsage', () => window.electron.getAIUsage(), undefined, {
+      category: LogCategory.AI_CHAT
+    })
+  },
+
+  async resetAIUsage(): Promise<{ success: boolean; error?: string }> {
+    return call('ai.resetAIUsage', () => window.electron.resetAIUsage(), undefined, {
+      category: LogCategory.AI_CHAT
+    })
+  },
+
+  async getAIPricing(): Promise<
+    Array<{
+      modelPrefix: string
+      inputPerMillion: number
+      outputPerMillion: number
+      displayName: string
+    }>
+  > {
+    return call('ai.getAIPricing', () => window.electron.getAIPricing(), undefined, {
+      category: LogCategory.AI_CHAT
+    })
   }
 }

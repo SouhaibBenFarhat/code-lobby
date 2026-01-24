@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AboutDialog } from './AboutDialog'
+import { AICostIndicator } from './AICostIndicator'
 import { EventStream } from './EventStream'
 import { LogsViewer } from './LogsViewer'
 import { RepoSelector } from './RepoSelector'
@@ -312,6 +313,9 @@ export function Header({
           </Tooltip>
         </>
       )}
+
+      {/* AI Cost Indicator - next to rate limit */}
+      <AICostIndicator />
 
       <div className="flex-1" />
 

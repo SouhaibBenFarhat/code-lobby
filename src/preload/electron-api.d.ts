@@ -551,6 +551,24 @@ export interface ElectronAPI {
   getActivePRChatId: () => Promise<string | null>
   setActivePRChatId: (prId: string | null) => Promise<{ success: boolean }>
 
+  // AI Usage tracking
+  getAIUsage: () => Promise<{
+    totalInputTokens: number
+    totalOutputTokens: number
+    totalCostUsd: number
+    sessionStartedAt: string
+    lastUpdatedAt: string
+  }>
+  resetAIUsage: () => Promise<{ success: boolean; error?: string }>
+  getAIPricing: () => Promise<
+    Array<{
+      modelPrefix: string
+      inputPerMillion: number
+      outputPerMillion: number
+      displayName: string
+    }>
+  >
+
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void

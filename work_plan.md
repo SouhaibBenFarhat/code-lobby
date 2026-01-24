@@ -69,6 +69,10 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | **Architecture** | PR Detail modular components | ✅ Complete |
 | | ViewHeader reusable component | ✅ Complete |
 | | Consistent header styling across views | ✅ Complete |
+| **Cost Tracking** | AI usage tracking (input/output tokens) | ✅ Complete |
+| | Model pricing config (per-model USD rates) | ✅ Complete |
+| | Cost indicator UI in header | ✅ Complete |
+| | Reset tracking functionality | ✅ Complete |
 
 ---
 
@@ -2147,6 +2151,75 @@ interface PostCommentParams {
 - Allow editing to remove any hallucinated content
 
 **Estimated Time:** ~4 hours
+
+---
+
+### 2.13 AI Cost Tracking ✅ Complete
+> Real-time tracking of Claude API usage and costs in the header
+
+**Concept:**
+Track AI token usage (input/output) across all Claude API calls and display the running cost in Euros directly in the header next to the rate limit indicator. Users can see their AI spending at a glance and reset tracking per session.
+
+**Why This Matters:**
+- **Cost Awareness** — Know exactly what AI features cost
+- **Budget Control** — Track spending in real-time
+- **Session Tracking** — Reset to track costs per work session
+- **Model Comparison** — Understand cost differences between models
+
+**Implementation Summary:**
+
+**Backend:**
+- `ai-pricing.ts` — Model pricing configuration with USD rates per million tokens
+- `store.ts` — AIUsage tracking (totalInputTokens, totalOutputTokens, totalCostUsd)
+- Token tracking integrated into all Claude API functions (streaming and non-streaming)
+- Costs calculated automatically based on model used
+
+**IPC Handlers:**
+- `get-ai-usage` — Returns current usage stats
+- `reset-ai-usage` — Resets tracking to zero
+- `get-ai-pricing` — Returns all model pricing data
+
+**API Client:**
+- `ai.getAIUsage()` — Fetch current usage
+- `ai.resetAIUsage()` — Reset tracking
+- `ai.getAIPricing()` — Get model pricing info
+
+**UI Component:**
+- `AICostIndicator.tsx` — Header component showing cost in EUR
+- Popover with detailed breakdown (input/output tokens, USD equivalent)
+- Visual indicators for cost thresholds (normal, medium €0.10+, high €1.00+)
+- Reset button to start fresh tracking
+
+**Model Pricing (January 2026):**
+| Model | Input/1M | Output/1M |
+|-------|----------|-----------|
+| Claude Opus 4 | $15.00 | $75.00 |
+| Claude Sonnet 4 | $3.00 | $15.00 |
+| Claude 3.7 Sonnet | $3.00 | $15.00 |
+| Claude 3.5 Sonnet | $3.00 | $15.00 |
+| Claude 3.5 Haiku | $0.25 | $1.25 |
+| Claude 3 Opus | $15.00 | $75.00 |
+| Claude 3 Sonnet | $3.00 | $15.00 |
+| Claude 3 Haiku | $0.25 | $1.25 |
+
+**Files Changed:**
+- `src/main/ai-pricing.ts` — New file with pricing config and calculation functions
+- `src/main/store.ts` — Added AIUsage interface and tracking functions
+- `src/main/claude-api.ts` — Integrated cost tracking into all API calls
+- `src/main/index.ts` — Added IPC handlers
+- `src/preload/index.ts` — Exposed new methods
+- `src/preload/electron-api.d.ts` — Type definitions
+- `packages/api/src/namespaces/ai.ts` — Client methods
+- `packages/header-module/src/components/AICostIndicator.tsx` — UI component
+- `packages/header-module/src/components/Header.tsx` — Integrated indicator
+
+**Tests:**
+- `src/main/ai-pricing.test.ts` — 18 tests for pricing calculations
+- `src/main/store.test.ts` — 6 tests for AI usage tracking
+
+**Completed:** January 24, 2026
+
+---
 
 ### 2.12 Deep AI Code Review with Local Branch Access 🔴 Not Started
 > Pull branch locally and give AI full codebase access for extensive analysis

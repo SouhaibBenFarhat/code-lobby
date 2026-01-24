@@ -16,7 +16,7 @@ import {
   X,
   XCircle
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 
 import { CheckItem } from '../CheckItem'
 import type { CheckRun, GroupedChecks } from '../types'

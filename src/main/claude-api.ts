@@ -5,6 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { calculateCost } from './ai-pricing'
 import { wrapSdkCall, wrapSdkStreamCall } from './http-client'
 import {
   buildCIFailureAnalysisPrompt,
@@ -14,6 +15,7 @@ import {
   CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
   type CIFailureContext
 } from './prompts'
+import { addAIUsage } from './store'
 
 // Re-export types for use elsewhere
 export interface ClaudeMessage {
@@ -201,6 +203,14 @@ export async function sendMessage(
         thinking = block.thinking
       }
     }
+
+    // Track AI usage for cost calculation
+    const cost = calculateCost(
+      response.model,
+      response.usage.input_tokens,
+      response.usage.output_tokens
+    )
+    addAIUsage(response.usage.input_tokens, response.usage.output_tokens, cost)
 
     return {
       id: response.id,
@@ -970,12 +980,17 @@ export async function sendMessageStreaming(
     inputTokens = finalMessage.usage.input_tokens
     outputTokens = finalMessage.usage.output_tokens
 
+    // Track AI usage for cost calculation
+    const cost = calculateCost(responseModel, inputTokens, outputTokens)
+    addAIUsage(inputTokens, outputTokens, cost)
+
     logger.debug(LogCategory.API, 'Claude streaming response complete', {
       id: responseId,
       model: responseModel,
       stopReason,
       inputTokens,
-      outputTokens
+      outputTokens,
+      costUsd: Math.round(cost * 10000) / 10000
     })
 
     // Send done signal with full response
@@ -1199,12 +1214,17 @@ export async function sendMessageStreamingWithTools(
       // No more tool calls - we're done
       continueLoop = false
 
+      // Track AI usage for cost calculation
+      const cost = calculateCost(finalMessage.model, inputTokens, outputTokens)
+      addAIUsage(inputTokens, outputTokens, cost)
+
       logger.info(LogCategory.API, 'Claude streaming with tools complete', {
         model: finalMessage.model,
         stopReason: responseStopReason,
         inputTokens,
         outputTokens,
-        hasThinking: !!fullThinking
+        hasThinking: !!fullThinking,
+        costUsd: Math.round(cost * 10000) / 10000
       })
 
       // Send done signal with full response

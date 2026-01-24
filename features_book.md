@@ -591,6 +591,52 @@ Never wonder why data isn't loading.
 
 ---
 
+## 💰 AI Cost Tracking
+
+Keep track of your Claude API usage and costs in real-time:
+
+**What You See:**
+- **Cost in Euros** — Live display in the header (next to rate limit)
+- **Token Usage** — Input and output tokens tracked separately
+- **Session Tracking** — See when tracking started and last usage
+
+**How It Works:**
+- Every AI request (chat, PR analysis, CI analysis) is tracked
+- Costs are calculated based on Anthropic's official pricing
+- USD costs are converted to EUR (approximate rate)
+
+**Detailed View:**
+Click the cost indicator to see the full breakdown:
+
+| Metric | Description |
+|--------|-------------|
+| **Total Cost** | Running cost in EUR and USD |
+| **Input Tokens** | Tokens sent to Claude |
+| **Output Tokens** | Tokens received from Claude |
+| **Session Start** | When tracking began |
+| **Last Update** | Most recent AI usage |
+
+**Visual Indicators:**
+- **Normal** — Subtle display when costs are low
+- **Medium** — Slightly highlighted when costs reach €0.10+
+- **High** — Warning style when costs reach €1.00+
+
+**Reset Tracking:**
+- Click the reset button in the popover
+- Starts fresh tracking from current timestamp
+- Useful for tracking costs per work session
+
+**Supported Models:**
+- Claude Opus 4
+- Claude Sonnet 4
+- Claude 3.7 Sonnet
+- Claude 3.5 Sonnet / Haiku
+- Claude 3 Opus / Sonnet / Haiku
+
+All tracking happens locally — no data leaves your machine.
+
+---
+
 ## 🚀 Perfect For
 
 ### Individual Developers
@@ -664,6 +710,7 @@ We're actively building:
 | **Approve PR** | One-click PR approval |
 | **Merge PR** | Merge with squash/merge/rebase |
 | **Network Panel** | Debug HTTP requests in real-time |
+| **AI Cost Tracking** | Monitor Claude API costs in real-time |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |
 | **Persistent State** | Pick up where you left off |
 | **Activity Logs** | Full debugging capability |

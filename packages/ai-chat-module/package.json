@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@codelobby/api": "workspace:*",
+    "@codelobby/api": "*",
     "@codelobby/slot-system": "*",
     "@codelobby/shared-store": "*",
     "@codelobby/ui-kit": "*",

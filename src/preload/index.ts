@@ -469,6 +469,11 @@ const electronAPI: ElectronAPI = {
   getActivePRChatId: () => ipcRenderer.invoke('get-active-pr-chat-id'),
   setActivePRChatId: (prId: string | null) => ipcRenderer.invoke('set-active-pr-chat-id', prId),
 
+  // AI Usage tracking
+  getAIUsage: () => ipcRenderer.invoke('get-ai-usage'),
+  resetAIUsage: () => ipcRenderer.invoke('reset-ai-usage'),
+  getAIPricing: () => ipcRenderer.invoke('get-ai-pricing'),
+
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {

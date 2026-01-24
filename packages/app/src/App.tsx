@@ -16,7 +16,7 @@ import { Store, useSignal } from '@codelobby/shared-store'
 import { Slot } from '@codelobby/slot-system'
 import { Button, Toaster, TokenInput, TooltipProvider } from '@codelobby/ui-kit'
 import { MousePointerClick, PanelRight, PanelRightClose } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 const MIN_PANEL_WIDTH = 300
 const MAX_PANEL_WIDTH = 9999 // Allow virtually unlimited resizing

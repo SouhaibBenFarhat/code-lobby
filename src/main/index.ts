@@ -9,6 +9,7 @@ if (process.platform === 'darwin') {
 }
 
 import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { getAllModelPricing } from './ai-pricing'
 import {
   analyzeCIFailure,
   analyzeCIFailureStreaming,
@@ -61,6 +62,7 @@ import {
   factoryReset,
   getActivePRChatId,
   getAIPanel,
+  getAIUsage,
   getAllReposCache,
   getCardLayouts,
   getChatHistory,
@@ -91,6 +93,7 @@ import {
   isCacheValid,
   LayoutItem,
   PanelSettings,
+  resetAIUsage,
   setAIPanel,
   setAllReposCache,
   setCardLayouts,
@@ -340,6 +343,29 @@ function setupIPCHandlers(): void {
       logger.error(LogCategory.APP, 'Failed to delete custom prompt', { error })
       return { success: false, error: String(error) }
     }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AI USAGE TRACKING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  ipcMain.handle('get-ai-usage', async () => {
+    return getAIUsage()
+  })
+
+  ipcMain.handle('reset-ai-usage', async () => {
+    try {
+      resetAIUsage()
+      logger.info(LogCategory.APP, 'Reset AI usage tracking')
+      return { success: true }
+    } catch (error) {
+      logger.error(LogCategory.APP, 'Failed to reset AI usage', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('get-ai-pricing', async () => {
+    return getAllModelPricing()
   })
 
   ipcMain.handle('validate-token', async () => {

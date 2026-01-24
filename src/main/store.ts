@@ -153,6 +153,15 @@ export interface CustomQuickPrompt {
   createdAt: string
 }
 
+// AI Usage tracking (for cost calculation)
+export interface AIUsage {
+  totalInputTokens: number
+  totalOutputTokens: number
+  totalCostUsd: number
+  sessionStartedAt: string // ISO timestamp when tracking started
+  lastUpdatedAt: string // ISO timestamp of last usage
+}
+
 // Cache TTL constants (in milliseconds)
 export const CACHE_TTL_PR_DATA = 30 * 60 * 1000 // 30 minutes
 export const CACHE_TTL_ALL_REPOS = 30 * 60 * 1000 // 30 minutes
@@ -183,6 +192,7 @@ interface StoreSchema {
   activePRChatId: string | null // Currently active PR chat (null = general chat)
   tanstackQueryCache: string | null // TanStack Query cache for standardized persistence
   customQuickPrompts: CustomQuickPrompt[] // User-created quick prompts
+  aiUsage: AIUsage // Cumulative AI token usage and costs
 }
 
 const store = new Store<StoreSchema>({
@@ -229,7 +239,14 @@ const store = new Store<StoreSchema>({
     prChats: [],
     activePRChatId: null,
     tanstackQueryCache: null, // TanStack Query cache (starts empty)
-    customQuickPrompts: [] // User-created quick prompts
+    customQuickPrompts: [], // User-created quick prompts
+    aiUsage: {
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCostUsd: 0,
+      sessionStartedAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString()
+    }
   },
   encryptionKey: 'codelobby-secure-key'
 })
@@ -808,4 +825,41 @@ export function deleteCustomQuickPrompt(id: string): boolean {
   prompts.splice(index, 1)
   store.set('customQuickPrompts', prompts)
   return true
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI USAGE TRACKING
+// ═══════════════════════════════════════════════════════════════════════════
+// Track cumulative token usage and costs for AI features
+
+export function getAIUsage(): AIUsage {
+  return storeGet('aiUsage', () => store.get('aiUsage'))
+}
+
+export function addAIUsage(inputTokens: number, outputTokens: number, costUsd: number): void {
+  const current = getAIUsage()
+  const updated: AIUsage = {
+    totalInputTokens: current.totalInputTokens + inputTokens,
+    totalOutputTokens: current.totalOutputTokens + outputTokens,
+    totalCostUsd: current.totalCostUsd + costUsd,
+    sessionStartedAt: current.sessionStartedAt,
+    lastUpdatedAt: new Date().toISOString()
+  }
+  storeSet('aiUsage', () => store.set('aiUsage', updated), {
+    addedInputTokens: inputTokens,
+    addedOutputTokens: outputTokens,
+    addedCostUsd: Math.round(costUsd * 10000) / 10000
+  })
+}
+
+export function resetAIUsage(): void {
+  const fresh: AIUsage = {
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalCostUsd: 0,
+    sessionStartedAt: new Date().toISOString(),
+    lastUpdatedAt: new Date().toISOString()
+  }
+  storeSet('aiUsage', () => store.set('aiUsage', fresh))
+  logger.info(LogCategory.STORE, 'Reset AI usage tracking')
 }

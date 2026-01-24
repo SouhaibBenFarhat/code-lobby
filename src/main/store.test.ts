@@ -40,7 +40,14 @@ vi.mock('electron-store', () => {
             prAnalysisPanelStates: {},
             prChats: [],
             activePRChatId: null,
-            customQuickPrompts: []
+            customQuickPrompts: [],
+            aiUsage: {
+              totalInputTokens: 0,
+              totalOutputTokens: 0,
+              totalCostUsd: 0,
+              sessionStartedAt: new Date().toISOString(),
+              lastUpdatedAt: new Date().toISOString()
+            }
           }
           return defaults[key]
         }
@@ -63,6 +70,7 @@ vi.mock('electron-store', () => {
 import ElectronStore from 'electron-store'
 // Import after mocking
 import {
+  addAIUsage,
   addChatMessage,
   addCustomQuickPrompt,
   addMessageToPRChat,
@@ -82,6 +90,7 @@ import {
   factoryReset,
   getActivePRChatId,
   getAIPanel,
+  getAIUsage,
   getAllReposCache,
   getCardLayouts,
   getChatHistory,
@@ -107,6 +116,7 @@ import {
   getUser,
   getViewMode,
   isCacheValid,
+  resetAIUsage,
   setActivePRChatId,
   setAIPanel,
   setAllReposCache,
@@ -1229,6 +1239,72 @@ describe('Store', () => {
       const prompt2 = addCustomQuickPrompt('Prompt 2', 'Second')
 
       expect(prompt1.id).not.toBe(prompt2.id)
+    })
+  })
+
+  describe('AI Usage Tracking', () => {
+    it('should return default AI usage', () => {
+      const usage = getAIUsage()
+      expect(usage.totalInputTokens).toBe(0)
+      expect(usage.totalOutputTokens).toBe(0)
+      expect(usage.totalCostUsd).toBe(0)
+      expect(usage.sessionStartedAt).toBeDefined()
+      expect(usage.lastUpdatedAt).toBeDefined()
+    })
+
+    it('should add AI usage', () => {
+      addAIUsage(1000, 500, 0.05)
+
+      const usage = getAIUsage()
+      expect(usage.totalInputTokens).toBe(1000)
+      expect(usage.totalOutputTokens).toBe(500)
+      expect(usage.totalCostUsd).toBe(0.05)
+    })
+
+    it('should accumulate AI usage', () => {
+      addAIUsage(1000, 500, 0.05)
+      addAIUsage(2000, 1000, 0.1)
+
+      const usage = getAIUsage()
+      expect(usage.totalInputTokens).toBe(3000)
+      expect(usage.totalOutputTokens).toBe(1500)
+      expect(usage.totalCostUsd).toBeCloseTo(0.15)
+    })
+
+    it('should update lastUpdatedAt when adding usage', () => {
+      const beforeUsage = getAIUsage()
+      const beforeTimestamp = beforeUsage.lastUpdatedAt
+
+      // Wait a tiny bit to ensure timestamp changes
+      addAIUsage(100, 50, 0.01)
+
+      const afterUsage = getAIUsage()
+      expect(new Date(afterUsage.lastUpdatedAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTimestamp).getTime()
+      )
+    })
+
+    it('should reset AI usage', () => {
+      addAIUsage(1000, 500, 0.05)
+      resetAIUsage()
+
+      const usage = getAIUsage()
+      expect(usage.totalInputTokens).toBe(0)
+      expect(usage.totalOutputTokens).toBe(0)
+      expect(usage.totalCostUsd).toBe(0)
+    })
+
+    it('should update sessionStartedAt when resetting', () => {
+      const beforeUsage = getAIUsage()
+      const beforeSession = beforeUsage.sessionStartedAt
+
+      addAIUsage(1000, 500, 0.05)
+      resetAIUsage()
+
+      const afterUsage = getAIUsage()
+      expect(new Date(afterUsage.sessionStartedAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeSession).getTime()
+      )
     })
   })
 })
