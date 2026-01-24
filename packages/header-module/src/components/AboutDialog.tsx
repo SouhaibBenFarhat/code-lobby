@@ -9,7 +9,7 @@ import {
   MarkdownContent,
   ScrollArea
 } from '@codelobby/ui-kit'
-import { AlertTriangle, Book, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, Book, RotateCcw } from 'lucide-react'
 import { useCallback, useState } from 'react'
 
 // Features book content (from features_book.md)
@@ -321,21 +321,10 @@ export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps): Reac
       </DialogTrigger>
       <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Book className="w-5 h-5 text-primary" />
-              About CodeLobby
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setOpen(false)}
-              type="button"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Book className="w-5 h-5 text-primary" />
+            About CodeLobby
+          </DialogTitle>
         </DialogHeader>
         <ScrollArea className="flex-1 px-6 py-4">
           <div className="prose prose-sm dark:prose-invert max-w-none">

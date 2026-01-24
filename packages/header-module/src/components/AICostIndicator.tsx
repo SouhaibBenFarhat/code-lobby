@@ -55,7 +55,7 @@ function formatDate(isoString: string): string {
   })
 }
 
-export function AICostIndicator(): React.JSX.Element {
+export function AICostIndicator(): React.JSX.Element | null {
   const [usage, setUsage] = useState<AIUsage | null>(null)
   const [isResetting, setIsResetting] = useState(false)
 
@@ -87,7 +87,8 @@ export function AICostIndicator(): React.JSX.Element {
     }
   }
 
-  if (!usage || (usage.totalInputTokens === 0 && usage.totalOutputTokens === 0)) {
+  // Don't render if we haven't loaded usage data yet
+  if (!usage) {
     return null
   }
 

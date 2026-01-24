@@ -455,7 +455,6 @@ export function AIChatPanel({
             setEnableThinking(enabled)
             await api.ai.setEnableThinking(enabled)
           }}
-          onLoadModels={loadModels}
           onRemoveApiKey={handleRemoveApiKey}
         />
       )}

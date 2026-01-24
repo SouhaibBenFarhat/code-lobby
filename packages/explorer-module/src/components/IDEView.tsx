@@ -259,11 +259,11 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
           <User className="w-2.5 h-2.5" />
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-mono text-muted-foreground">#{pr.number}</span>
-          <span className={cn('text-sm truncate', isSelected && 'font-medium')}>{pr.title}</span>
-        </div>
+      <div className="flex-1 min-w-0 flex items-center">
+        <span className="text-xs font-mono text-muted-foreground">#{pr.number}</span>
+        <span className={cn('text-sm truncate ml-1.5', isSelected && 'font-medium')}>
+          {pr.title}
+        </span>
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <span className="text-[10px] text-muted-foreground">
