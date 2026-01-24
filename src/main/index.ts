@@ -136,11 +136,18 @@ import { executeWebFetch, FETCH_URL_TOOL } from './web-fetch'
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
-  // Set dock icon on macOS
-  if (process.platform === 'darwin') {
-    const iconPath = join(__dirname, '../../build/icon.png')
-    app.dock.setIcon(iconPath)
+  // Set dock icon on macOS (only in dev - production uses icon.icns from bundle)
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    try {
+      const iconPath = join(__dirname, '../../build/icon.png')
+      app.dock.setIcon(iconPath)
+    } catch {
+      // Icon not found in dev, ignore
+    }
   }
+
+  // Icon path - only set in dev mode (production uses bundle icon)
+  const iconPath = app.isPackaged ? undefined : join(__dirname, '../../build/icon.png')
 
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -153,7 +160,7 @@ function createWindow(): void {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 12, y: 18 }, // Position traffic lights vertically centered in header
     backgroundColor: '#0d1117',
-    icon: join(__dirname, '../../build/icon.png'),
+    ...(iconPath && { icon: iconPath }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
