@@ -1,18 +1,54 @@
 /**
- * AI Queries - Data persisted via TanStack Query persistence
+ * AI Queries - TanStack Query hooks for AI chat state
+ *
+ * Pattern:
+ * - usePRChatMessages(prId) - fetch messages for a specific PR
+ * - Settings queries use persisted cache
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
+import { CLAUDE_MODELS } from '../endpoints'
+import { http } from '../http'
 import { keys } from '../keys'
-import type { ChatMessage, CustomPrompt, PRChat } from '../types'
+import type { ChatMessage, ClaudeModel, CustomPrompt } from '../types'
+
+// Claude API headers
+function claudeHeaders(apiKey: string): Record<string, string> {
+  return {
+    'x-api-key': apiKey,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  }
+}
 
 // Helper to get persisted data with default
 function getPersisted<T>(key: readonly string[], defaultValue: T): T {
   return queryClient.getQueryData(key) ?? defaultValue
 }
 
-export function useClaudeApiKey() {
+// ═══════════════════════════════════════════════════════════════════════════
+// PR CHAT MESSAGES - The main query for fetching chat for a specific PR
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function usePRChatMessages(prId: string | null): UseQueryResult<ChatMessage[]> {
+  return useQuery({
+    queryKey: prId ? keys.prChatMessages(prId) : ['ai', 'pr-chat', 'none'],
+    queryFn: (): ChatMessage[] => {
+      if (!prId) return []
+      // Read from persisted cache (TanStack Query persistence handles storage)
+      return getPersisted(keys.prChatMessages(prId), [])
+    },
+    enabled: !!prId,
+    staleTime: Infinity // Only updated via mutations
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS QUERIES - API key, model selection, etc.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function useClaudeApiKey(): UseQueryResult<string | null> {
   return useQuery({
     queryKey: keys.claudeApiKey,
     queryFn: (): string | null => getPersisted(keys.claudeApiKey, null),
@@ -20,7 +56,7 @@ export function useClaudeApiKey() {
   })
 }
 
-export function useSelectedModel() {
+export function useSelectedModel(): UseQueryResult<string | null> {
   return useQuery({
     queryKey: keys.selectedModel,
     queryFn: (): string | null => getPersisted(keys.selectedModel, null),
@@ -28,7 +64,7 @@ export function useSelectedModel() {
   })
 }
 
-export function useEnableThinking() {
+export function useEnableThinking(): UseQueryResult<boolean> {
   return useQuery({
     queryKey: keys.enableThinking,
     queryFn: (): boolean => getPersisted(keys.enableThinking, true),
@@ -36,7 +72,7 @@ export function useEnableThinking() {
   })
 }
 
-export function useEnableWebFetch() {
+export function useEnableWebFetch(): UseQueryResult<boolean> {
   return useQuery({
     queryKey: keys.enableWebFetch,
     queryFn: (): boolean => getPersisted(keys.enableWebFetch, false),
@@ -44,7 +80,7 @@ export function useEnableWebFetch() {
   })
 }
 
-export function useCustomPrompts() {
+export function useCustomPrompts(): UseQueryResult<CustomPrompt[]> {
   return useQuery({
     queryKey: keys.customPrompts,
     queryFn: (): CustomPrompt[] => getPersisted(keys.customPrompts, []),
@@ -52,42 +88,36 @@ export function useCustomPrompts() {
   })
 }
 
-export function useChatHistory() {
-  return useQuery({
-    queryKey: keys.chatHistory,
-    queryFn: (): ChatMessage[] => getPersisted(keys.chatHistory, []),
-    staleTime: Infinity
-  })
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// CLAUDE MODELS - Fetches available models from Anthropic API
+// ═══════════════════════════════════════════════════════════════════════════
 
-export function usePRChats() {
-  return useQuery({
-    queryKey: keys.prChats,
-    queryFn: (): PRChat[] => getPersisted(keys.prChats, []),
-    staleTime: Infinity
-  })
-}
+export function useClaudeModels(): UseQueryResult<ClaudeModel[]> {
+  const { data: apiKey } = useClaudeApiKey()
 
-export function useActivePRChatId() {
   return useQuery({
-    queryKey: keys.activePRChatId,
-    queryFn: (): string | null => getPersisted(keys.activePRChatId, null),
-    staleTime: Infinity
-  })
-}
+    queryKey: keys.claudeModels,
+    queryFn: async (): Promise<ClaudeModel[]> => {
+      if (!apiKey) return []
 
-export function useIsAILoading() {
-  return useQuery({
-    queryKey: keys.isAILoading,
-    queryFn: (): boolean => getPersisted(keys.isAILoading, false),
-    staleTime: Infinity
-  })
-}
+      const data = await http.get<{
+        data: Array<{ id: string; display_name: string; created_at: string; type?: string }>
+      }>(CLAUDE_MODELS, claudeHeaders(apiKey))
 
-export function useAIThinking() {
-  return useQuery({
-    queryKey: keys.aiThinking,
-    queryFn: (): string => getPersisted(keys.aiThinking, ''),
-    staleTime: Infinity
+      const models: ClaudeModel[] = (data.data || []).map((m) => ({
+        id: m.id,
+        display_name: m.display_name,
+        created_at: m.created_at,
+        type: m.type
+      }))
+
+      // Sort by created_at descending (newest first)
+      models.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      return models
+    },
+    enabled: !!apiKey,
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+    retry: 1
   })
 }

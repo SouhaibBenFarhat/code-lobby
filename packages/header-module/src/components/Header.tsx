@@ -94,7 +94,7 @@ export function Header({
   onToggleAIPanel
 }: HeaderProps): React.JSX.Element {
   // TanStack Query hooks
-  const { isLoading: reposLoading, data: reposData } = useRepos()
+  const { isLoading: reposLoading } = useRepos()
   const { isLoading: prsLoading, isFetching: prsFetching } = usePRs()
   const queryClient = useQueryClient()
 

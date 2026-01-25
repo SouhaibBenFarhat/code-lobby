@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { MergeMethod, ReviewEvent } from '../github'
 import * as github from '../github'
 import { keys } from '../keys'
-import type { PRIdentifier, PullRequest } from '../types'
+import type { PRIdentifier } from '../types'
 
 export type { MergeMethod, ReviewEvent }
 
@@ -143,24 +143,6 @@ export function useAddPRComment() {
           queryKey: keys.prDetail(selectedPRId.repoFullName, selectedPRId.prNumber)
         })
       }
-    }
-  })
-}
-
-/**
- * Refresh selected PR detail
- */
-export function useRefreshPRDetail() {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ repoFullName, prNumber }: { repoFullName: string; prNumber: number }) => {
-      const token = getToken(qc)
-      const pr = await github.fetchSinglePR(token, repoFullName, prNumber)
-      return pr as PullRequest
-    },
-    onSuccess: (pr, { repoFullName, prNumber }) => {
-      qc.setQueryData(keys.prDetail(repoFullName, prNumber), pr)
     }
   })
 }

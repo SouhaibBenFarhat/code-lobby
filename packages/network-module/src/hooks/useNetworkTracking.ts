@@ -3,12 +3,12 @@
  *
  * Intercepts global fetch() to track ALL HTTP requests with full
  * request/response bodies, timing, and status codes.
+ *
+ * Uses TanStack mutations from @codelobby/data to store requests.
  */
 
-import { useQueryClient } from '@tanstack/react-query'
+import { type NetworkRequest, useAddNetworkRequest, useUpdateNetworkRequest } from '@codelobby/data'
 import { useEffect, useRef } from 'react'
-import { keys } from '../keys'
-import type { NetworkRequest } from '../types'
 
 // Store original fetch to restore later
 let originalFetch: typeof fetch | null = null
@@ -16,10 +16,11 @@ let isIntercepted = false
 
 /**
  * Hook that intercepts global fetch() to track network requests.
- * Should be mounted once - the network module handles this.
+ * Should be mounted once at app level.
  */
 export function useNetworkTracking(): void {
-  const qc = useQueryClient()
+  const addRequest = useAddNetworkRequest()
+  const updateRequest = useUpdateNetworkRequest()
   const requestIdRef = useRef(0)
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function useNetworkTracking(): void {
         }
       }
 
-      // Add pending request
+      // Add pending request via mutation
       const request: NetworkRequest = {
         id: requestId,
         method: getMethodName(url, method),
@@ -61,7 +62,7 @@ export function useNetworkTracking(): void {
         startTime,
         requestBody
       }
-      addNetworkRequest(qc, request)
+      addRequest.mutate(request)
 
       try {
         // Make actual request
@@ -84,14 +85,17 @@ export function useNetworkTracking(): void {
 
         // Update with success/error based on HTTP status
         const isSuccess = response.ok
-        updateNetworkRequest(qc, requestId, {
-          status: isSuccess ? 'success' : 'error',
-          statusCode: response.status,
-          endTime,
-          durationMs,
-          responseBody,
-          responseSize,
-          error: isSuccess ? undefined : `HTTP ${response.status} ${response.statusText}`
+        updateRequest.mutate({
+          id: requestId,
+          updates: {
+            status: isSuccess ? 'success' : 'error',
+            statusCode: response.status,
+            endTime,
+            durationMs,
+            responseBody,
+            responseSize,
+            error: isSuccess ? undefined : `HTTP ${response.status} ${response.statusText}`
+          }
         })
 
         return response
@@ -100,11 +104,14 @@ export function useNetworkTracking(): void {
         const durationMs = endTime - startTime
 
         // Update with network error
-        updateNetworkRequest(qc, requestId, {
-          status: 'error',
-          endTime,
-          durationMs,
-          error: error instanceof Error ? error.message : String(error)
+        updateRequest.mutate({
+          id: requestId,
+          updates: {
+            status: 'error',
+            endTime,
+            durationMs,
+            error: error instanceof Error ? error.message : String(error)
+          }
         })
 
         throw error
@@ -118,7 +125,7 @@ export function useNetworkTracking(): void {
         isIntercepted = false
       }
     }
-  }, [qc])
+  }, [addRequest, updateRequest])
 }
 
 /**
@@ -145,26 +152,9 @@ function getMethodName(url: string, httpMethod: string): string {
   }
 
   // Generic
-  return `${httpMethod} ${new URL(url).pathname}`
-}
-
-/**
- * Add a network request to the cache
- */
-function addNetworkRequest(qc: ReturnType<typeof useQueryClient>, request: NetworkRequest): void {
-  const current = qc.getQueryData<NetworkRequest[]>(keys.networkRequests) ?? []
-  qc.setQueryData(keys.networkRequests, [...current, request])
-}
-
-/**
- * Update an existing network request in the cache
- */
-function updateNetworkRequest(
-  qc: ReturnType<typeof useQueryClient>,
-  id: string,
-  updates: Partial<NetworkRequest>
-): void {
-  const current = qc.getQueryData<NetworkRequest[]>(keys.networkRequests) ?? []
-  const updated = current.map((req) => (req.id === id ? { ...req, ...updates } : req))
-  qc.setQueryData(keys.networkRequests, updated)
+  try {
+    return `${httpMethod} ${new URL(url).pathname}`
+  } catch {
+    return `${httpMethod} ${url}`
+  }
 }

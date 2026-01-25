@@ -5,17 +5,13 @@
 // AI
 export {
   useAddCustomPrompt,
-  useClearPRChatMessages,
-  useCreatePRChat,
+  useClearChat,
   useDeleteCustomPrompt,
-  useSendChatMessage,
-  useSetAILoading,
-  useSetAIThinking,
+  useSaveMessage,
   useSetClaudeApiKey,
   useSetEnableThinking,
   useSetEnableWebFetch,
-  useSetSelectedModel,
-  useSwitchToPRChat
+  useSetSelectedModel
 } from './ai'
 // Network
 export {
@@ -34,7 +30,6 @@ export {
   useConvertPRToDraft,
   useMarkPRReady,
   useMergePR,
-  useRefreshPRDetail,
   useReopenPR,
   useSelectPR,
   useSubmitPRReview

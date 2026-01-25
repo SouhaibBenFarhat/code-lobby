@@ -10,12 +10,21 @@ export const keys = {
   // GitHub (NOT persisted - fetch fresh)
   repos: ['github', 'repos'] as const,
   // Per-repo PR cache (each repo has its own cache entry)
-  prsForRepo: (repoFullName: string) => ['github', 'prs', repoFullName] as const,
+  prsForRepo: (repoFullName: string): readonly ['github', 'prs', string] =>
+    ['github', 'prs', repoFullName] as const,
   // Legacy: combined key (deprecated - use prsForRepo instead)
-  prs: (repoFullNames: string[]) => ['github', 'prs', ...repoFullNames.sort()] as const,
-  prDetail: (repoFullName: string, prNumber: number) =>
+  prs: (repoFullNames: string[]): readonly ['github', 'prs', ...string[]] =>
+    ['github', 'prs', ...repoFullNames.sort()] as const,
+  prDetail: (
+    repoFullName: string,
+    prNumber: number
+  ): readonly ['github', 'pr-detail', string, number] =>
     ['github', 'pr-detail', repoFullName, prNumber] as const,
-  prFiles: (owner: string, repo: string, prNumber: number) =>
+  prFiles: (
+    owner: string,
+    repo: string,
+    prNumber: number
+  ): readonly ['github', 'pr-files', string, string, number] =>
     ['github', 'pr-files', owner, repo, prNumber] as const,
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
@@ -35,13 +44,14 @@ export const keys = {
 
   // AI (PERSISTED)
   claudeApiKey: ['ai', 'claude-api-key'] as const,
+  claudeModels: ['ai', 'claude-models'] as const,
   selectedModel: ['ai', 'selected-model'] as const,
   enableThinking: ['ai', 'enable-thinking'] as const,
   enableWebFetch: ['ai', 'enable-web-fetch'] as const,
   customPrompts: ['ai', 'custom-prompts'] as const,
-  chatHistory: ['ai', 'chat-history'] as const,
-  prChats: ['ai', 'pr-chats'] as const,
-  activePRChatId: ['ai', 'active-pr-chat-id'] as const,
+  // Per-PR chat messages (each PR has its own cache entry)
+  prChatMessages: (prId: string): readonly ['ai', 'pr-chat', string] =>
+    ['ai', 'pr-chat', prId] as const,
 
   // Network (NOT persisted - runtime only)
   networkRequests: ['network', 'requests'] as const,
@@ -51,7 +61,6 @@ export const keys = {
   local: {
     selectedPRId: ['local', 'selected-pr-id'] as const,
     isAILoading: ['local', 'is-ai-loading'] as const,
-    aiThinking: ['local', 'ai-thinking'] as const,
     networkPanelOpen: ['local', 'network-panel-open'] as const,
     networkPanelHeight: ['local', 'network-panel-height'] as const
   },
@@ -59,7 +68,6 @@ export const keys = {
   // For backward compat - keep flat keys
   selectedPRId: ['local', 'selected-pr-id'] as const,
   isAILoading: ['local', 'is-ai-loading'] as const,
-  aiThinking: ['local', 'ai-thinking'] as const,
 
   // System (native/OS state)
   system: {

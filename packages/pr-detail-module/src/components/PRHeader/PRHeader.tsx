@@ -3,8 +3,11 @@
  * Uses TanStack Query hooks.
  */
 
-import { type PullRequest, useCreatePRChat, useSetAIPanel } from '@codelobby/data'
+import { type PullRequest, useSetAIPanel } from '@codelobby/data'
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
   Badge,
   Button,
   ClaudeIcon,
@@ -27,7 +30,6 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
-  User,
   X
 } from 'lucide-react'
 import { useCallback } from 'react'
@@ -73,21 +75,15 @@ function PRTitleSection({ pr }: { pr: PullRequest }) {
 }
 
 export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
-  const { pr, refresh, isLoading: isRefreshing } = useSelectedPR()
+  const { pr, refresh, isRefreshing } = useSelectedPR()
   const setAIPanel = useSetAIPanel()
-  const createPRChat = useCreatePRChat()
 
   const openPRInChat = useCallback(
-    (pr: PullRequest) => {
-      createPRChat.mutate({
-        prId: `${pr.base.repo.full_name}#${pr.number}`,
-        prNumber: pr.number,
-        prTitle: pr.title,
-        repoFullName: pr.base.repo.full_name
-      })
+    (_pr: PullRequest) => {
+      // Just open the AI panel - the AIChat component will use the selected PR
       setAIPanel.mutate({ isOpen: true })
     },
-    [createPRChat, setAIPanel]
+    [setAIPanel]
   )
 
   if (!pr) return null
@@ -164,7 +160,12 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
         <Col span="auto">
           <Row gutter="xs" align="center">
             <Col span="auto">
-              <User className="w-3 h-3 text-muted-foreground" />
+              <Avatar className="w-4 h-4">
+                <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
+                <AvatarFallback className="text-[8px]">
+                  {pr.user.login.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             </Col>
             <Col span="auto">
               <span className="truncate max-w-[80px]">{pr.user.login}</span>

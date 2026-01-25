@@ -20,6 +20,7 @@ export { MergeButton, type MergeButtonProps } from './MergeButton'
 export { PRDescription, type PRDescriptionProps } from './PRDescription'
 // Main component
 export { PRDetail, type PRDetailProps } from './PRDetail'
+export { PRDetailSkeleton, type PRDetailSkeletonProps } from './PRDetailSkeleton'
 export {
   ReadyForReviewButton,
   type ReadyForReviewButtonProps

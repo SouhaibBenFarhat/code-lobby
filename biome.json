@@ -35,7 +35,9 @@
         "noSvgWithoutTitle": "error"
       },
       "correctness": {
-        "useExhaustiveDependencies": "error"
+        "useExhaustiveDependencies": "error",
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error"
       }
     }
   },

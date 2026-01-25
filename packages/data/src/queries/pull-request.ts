@@ -17,6 +17,7 @@ const PR_CACHE_TIME = 15 * 60 * 1000
 
 /**
  * Fetch PRs for a single repo (per-repo cache)
+ * PRs are sorted by created_at (newest first) via GraphQL orderBy
  */
 export function usePRsForRepo(repoFullName: string): UseQueryResult<PullRequest[]> {
   const { data: token } = useGitHubToken()
@@ -65,7 +66,7 @@ export function usePRs(): {
     }))
   })
 
-  // Combine results from all queries
+  // Combine results from all queries (each repo's PRs are already sorted by GraphQL)
   const allPRs = queries.flatMap((q) => q.data || [])
 
   // Only show as loading if ALL queries are loading (initial load)

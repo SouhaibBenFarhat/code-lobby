@@ -139,10 +139,6 @@ describe('Query Keys', () => {
       expect(keys.local.isAILoading).toEqual(['local', 'is-ai-loading'])
     })
 
-    it('should have local.aiThinking key', () => {
-      expect(keys.local.aiThinking).toEqual(['local', 'ai-thinking'])
-    })
-
     it('should have local.networkPanelOpen key', () => {
       expect(keys.local.networkPanelOpen).toEqual(['local', 'network-panel-open'])
     })
@@ -158,10 +154,6 @@ describe('Query Keys', () => {
 
     it('should have flat isAILoading key for backward compat', () => {
       expect(keys.isAILoading).toEqual(['local', 'is-ai-loading'])
-    })
-
-    it('should have flat aiThinking key for backward compat', () => {
-      expect(keys.aiThinking).toEqual(['local', 'ai-thinking'])
     })
   })
 
@@ -203,15 +195,14 @@ describe('Query Keys', () => {
         keys.networkRequests,
         keys.networkPanelOpen,
         keys.selectedPRId,
-        keys.isAILoading,
-        keys.aiThinking
+        keys.isAILoading
       ]
 
       const keyStrings = staticKeys.map((k) => JSON.stringify(k))
       const uniqueKeys = new Set(keyStrings)
 
       // Check for duplicates (excluding backward compat aliases)
-      expect(uniqueKeys.size).toBeGreaterThanOrEqual(staticKeys.length - 3) // 3 backward compat keys
+      expect(uniqueKeys.size).toBeGreaterThanOrEqual(staticKeys.length - 2) // 2 backward compat keys
     })
   })
 })

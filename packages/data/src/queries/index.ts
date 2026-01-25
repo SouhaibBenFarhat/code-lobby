@@ -4,15 +4,12 @@
 
 // AI
 export {
-  useActivePRChatId,
-  useAIThinking,
-  useChatHistory,
   useClaudeApiKey,
+  useClaudeModels,
   useCustomPrompts,
   useEnableThinking,
   useEnableWebFetch,
-  useIsAILoading,
-  usePRChats,
+  usePRChatMessages,
   useSelectedModel
 } from './ai'
 // Network

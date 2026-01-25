@@ -1,18 +1,15 @@
 /**
- * GitHub API Client - Direct fetch, no IPC
+ * GitHub API Client
  * All functions receive token as parameter (pure functions)
  */
 
+import { GITHUB_API, GITHUB_GRAPHQL } from './endpoints'
+import { type HttpError, http } from './http'
 import type { GitHubUser, PRFile, PullRequest, Repository } from './types'
-
-const GITHUB_API = 'https://api.github.com'
-const GITHUB_GRAPHQL = 'https://api.github.com/graphql'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
-
-type AuthHeaders = Record<string, string>
 
 interface ValidateTokenResult {
   valid: boolean
@@ -42,15 +39,19 @@ interface ReviewResult extends MutationResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HELPERS
+// AUTH HEADERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function headers(token: string): AuthHeaders {
+function authHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json'
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GRAPHQL HELPER
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function graphql<T>(
   token: string,
@@ -59,29 +60,19 @@ async function graphql<T>(
 ): Promise<T> {
   console.log('[graphql] Making request to GitHub API...')
 
-  const res = await fetch(GITHUB_GRAPHQL, {
-    method: 'POST',
-    headers: headers(token),
-    body: JSON.stringify({ query, variables })
-  })
+  const response = await http.post<{ data: T; errors?: Array<{ message: string }> }>(
+    GITHUB_GRAPHQL,
+    { query, variables },
+    authHeaders(token)
+  )
 
-  console.log('[graphql] Response status:', res.status)
-
-  if (!res.ok) {
-    const text = await res.text()
-    console.error('[graphql] Error response:', text)
-    throw new Error(`GitHub API error: ${res.status}`)
+  if (response.errors?.length) {
+    console.error('[graphql] GraphQL errors:', response.errors)
+    throw new Error(response.errors.map((e) => e.message).join(', '))
   }
 
-  const json = await res.json()
-  console.log('[graphql] Response JSON:', JSON.stringify(json).substring(0, 500))
-
-  if (json.errors) {
-    console.error('[graphql] GraphQL errors:', json.errors)
-    throw new Error(json.errors[0]?.message || 'GraphQL error')
-  }
-
-  return json.data
+  console.log('[graphql] Response received')
+  return response.data
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,12 +81,13 @@ async function graphql<T>(
 
 export async function validateToken(token: string): Promise<ValidateTokenResult> {
   try {
-    const res = await fetch(`${GITHUB_API}/user`, { headers: headers(token) })
-    if (!res.ok) return { valid: false, user: null }
-
-    const user = await res.json()
+    const user = await http.get<GitHubUser>(`${GITHUB_API}/user`, authHeaders(token))
     return { valid: true, user }
-  } catch {
+  } catch (error) {
+    const httpError = error as HttpError
+    if (httpError.status === 401) {
+      return { valid: false, user: null }
+    }
     return { valid: false, user: null }
   }
 }
@@ -105,9 +97,12 @@ export async function validateToken(token: string): Promise<ValidateTokenResult>
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function fetchCurrentUser(token: string): Promise<GitHubUser> {
-  const res = await fetch(`${GITHUB_API}/user`, { headers: headers(token) })
-  if (!res.ok) throw new Error('Failed to fetch user')
-  const user = await res.json()
+  const user = await http.get<{
+    login: string
+    avatar_url: string
+    name: string | null
+    html_url: string
+  }>(`${GITHUB_API}/user`, authHeaders(token))
   return {
     login: user.login,
     avatar_url: user.avatar_url,
@@ -326,7 +321,7 @@ export async function fetchPRsForRepos(
     const [owner, name] = fullName.split('/')
     return `
       repo${i}: repository(owner: "${owner}", name: "${name}") {
-        pullRequests(first: 50, states: [OPEN], orderBy: { field: UPDATED_AT, direction: DESC }) {
+        pullRequests(first: 50, states: [OPEN], orderBy: { field: CREATED_AT, direction: DESC }) {
           nodes {
             id
             number

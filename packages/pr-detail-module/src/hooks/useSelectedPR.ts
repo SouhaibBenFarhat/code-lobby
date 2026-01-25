@@ -5,38 +5,28 @@
 import {
   type PRIdentifier,
   type PullRequest,
-  useRefreshPRDetail,
   useSelectedPR as useSelectedPRFromData,
   useSelectedPRId,
   useUser
 } from '@codelobby/data'
-import { useCallback } from 'react'
 
 export interface UseSelectedPRResult {
   pr: PullRequest | null
   refresh: () => void
   isLoading: boolean
+  isRefreshing: boolean
   selectedPRId: PRIdentifier | null
 }
 
 export function useSelectedPR(): UseSelectedPRResult {
   const { data: selectedPRId } = useSelectedPRId()
-  const { data: pr, isLoading } = useSelectedPRFromData()
-  const refreshPRDetail = useRefreshPRDetail()
-
-  const refresh = useCallback((): void => {
-    if (selectedPRId) {
-      refreshPRDetail.mutate({
-        repoFullName: selectedPRId.repoFullName,
-        prNumber: selectedPRId.prNumber
-      })
-    }
-  }, [selectedPRId, refreshPRDetail])
+  const { data: pr, isLoading, isFetching, refetch } = useSelectedPRFromData()
 
   return {
     pr: pr ?? null,
-    refresh,
+    refresh: refetch,
     isLoading,
+    isRefreshing: isFetching && !isLoading, // Fetching but not initial load
     selectedPRId: selectedPRId ?? null
   }
 }

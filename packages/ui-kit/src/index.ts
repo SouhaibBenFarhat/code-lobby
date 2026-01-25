@@ -76,6 +76,7 @@ export {
   SheetTitle,
   SheetTrigger
 } from './sheet'
+export { Skeleton, type SkeletonProps } from './skeleton'
 export {
   Timeline,
   TimelineConnector,

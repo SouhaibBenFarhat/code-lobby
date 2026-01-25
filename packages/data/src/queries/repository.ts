@@ -2,7 +2,7 @@
  * Repository Queries
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { UseQueryResult, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as github from '../github'
 import { keys } from '../keys'
 import type { Repository } from '../types'
@@ -16,7 +16,7 @@ const REPOS_CACHE_TIME = 60 * 60 * 1000
  * Only runs when user is authenticated (has token)
  * Cache: 1 hour, persisted to localStorage
  */
-export function useRepos() {
+export function useRepos(): UseQueryResult<Repository[], Error> {
   const qc = useQueryClient()
 
   // Use useUser() for reactive updates

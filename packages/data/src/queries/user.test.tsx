@@ -120,7 +120,12 @@ describe('User Queries', () => {
 
     it('returns authenticated with user data', async () => {
       const authData: AuthData = {
-        user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', name: 'Test', html_url: '' },
+        user: {
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          name: 'Test',
+          html_url: ''
+        },
         token: 'test-token'
       }
       queryClient.setQueryData(keys.user, authData)

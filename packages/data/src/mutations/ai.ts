@@ -1,14 +1,25 @@
 /**
- * AI Mutations - Just update the query cache (persisted automatically)
+ * AI Mutations - TanStack Query mutations for AI chat
+ *
+ * Pattern:
+ * 1. Component does streaming fetch directly via XHR (for real-time updates)
+ * 2. useSaveMessage() - saves message to cache after streaming completes
+ * 3. Settings mutations for API key, model, etc.
+ *
+ * Note: Claude API constants and request building are in:
+ * packages/ai-chat-module/src/utils/claude-request.ts
  */
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
-import type { ChatMessage, CustomPrompt, PRChat } from '../types'
+import type { ChatMessage, CustomPrompt } from '../types'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS MUTATIONS
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function useSetClaudeApiKey(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: (apiKey: string) => Promise.resolve(apiKey),
     onSuccess: (apiKey) => {
@@ -19,7 +30,6 @@ export function useSetClaudeApiKey(): UseMutationResult<string, Error, string> {
 
 export function useSetSelectedModel(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: (model: string) => Promise.resolve(model),
     onSuccess: (model) => {
@@ -30,7 +40,6 @@ export function useSetSelectedModel(): UseMutationResult<string, Error, string> 
 
 export function useSetEnableThinking(): UseMutationResult<boolean, Error, boolean> {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: (enabled: boolean) => Promise.resolve(enabled),
     onSuccess: (enabled) => {
@@ -41,7 +50,6 @@ export function useSetEnableThinking(): UseMutationResult<boolean, Error, boolea
 
 export function useSetEnableWebFetch(): UseMutationResult<boolean, Error, boolean> {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: (enabled: boolean) => Promise.resolve(enabled),
     onSuccess: (enabled) => {
@@ -49,6 +57,10 @@ export function useSetEnableWebFetch(): UseMutationResult<boolean, Error, boolea
     }
   })
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CUSTOM PROMPTS MUTATIONS
+// ═══════════════════════════════════════════════════════════════════════════
 
 interface AddCustomPromptParams {
   label: string
@@ -61,7 +73,6 @@ export function useAddCustomPrompt(): UseMutationResult<
   AddCustomPromptParams
 > {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: ({ label, prompt }: AddCustomPromptParams) => {
       const newPrompt: CustomPrompt = { id: crypto.randomUUID(), label, prompt }
@@ -76,7 +87,6 @@ export function useAddCustomPrompt(): UseMutationResult<
 
 export function useDeleteCustomPrompt(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
-
   return useMutation({
     mutationFn: (id: string) => Promise.resolve(id),
     onSuccess: (id) => {
@@ -89,125 +99,35 @@ export function useDeleteCustomPrompt(): UseMutationResult<string, Error, string
   })
 }
 
-interface SendChatMessageParams {
-  message: string
+// ═══════════════════════════════════════════════════════════════════════════
+// SAVE MESSAGE MUTATION - Call this after streaming completes
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface SaveMessageParams {
+  prId: string
+  message: ChatMessage
 }
 
-export function useSendChatMessage(): UseMutationResult<ChatMessage, Error, SendChatMessageParams> {
+export function useSaveMessage(): UseMutationResult<ChatMessage, Error, SaveMessageParams> {
   const qc = useQueryClient()
-
   return useMutation({
-    mutationFn: async ({ message }: SendChatMessageParams) => {
-      qc.setQueryData(keys.isAILoading, true)
-
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString()
-      }
-
-      // Add to history
-      const current = qc.getQueryData<ChatMessage[]>(keys.chatHistory) || []
-      qc.setQueryData(keys.chatHistory, [...current, userMessage])
-
-      // TODO: Call Claude API directly here
-      return userMessage
-    },
-    onSettled: () => {
-      qc.setQueryData(keys.isAILoading, false)
+    mutationFn: ({ message }: SaveMessageParams) => Promise.resolve(message),
+    onSuccess: (message, { prId }) => {
+      const currentMessages = qc.getQueryData<ChatMessage[]>(keys.prChatMessages(prId)) || []
+      qc.setQueryData(keys.prChatMessages(prId), [...currentMessages, message])
     }
   })
 }
 
-interface CreatePRChatParams {
-  prId: string
-  prNumber: number
-  prTitle: string
-  repoFullName: string
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// CLEAR CHAT MUTATION
+// ═══════════════════════════════════════════════════════════════════════════
 
-export function useCreatePRChat(): UseMutationResult<PRChat, Error, CreatePRChatParams> {
+export function useClearChat(): UseMutationResult<void, Error, string> {
   const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ prId, prNumber, prTitle, repoFullName }: CreatePRChatParams) => {
-      const chat: PRChat = {
-        prId,
-        prNumber,
-        prTitle,
-        repoFullName,
-        messages: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      return chat
-    },
-    onSuccess: (chat) => {
-      const current = qc.getQueryData<PRChat[]>(keys.prChats) || []
-      qc.setQueryData(keys.prChats, [...current, chat])
-      qc.setQueryData(keys.activePRChatId, chat.prId)
-    }
-  })
-}
-
-interface SwitchToPRChatResult {
-  prId: string
-  chat: PRChat | undefined
-}
-
-export function useSwitchToPRChat(): UseMutationResult<SwitchToPRChatResult, Error, string> {
-  const qc = useQueryClient()
-
   return useMutation({
     mutationFn: async (prId: string) => {
-      const chats = qc.getQueryData<PRChat[]>(keys.prChats) || []
-      const chat = chats.find((c) => c.prId === prId)
-      return { prId, chat }
-    },
-    onSuccess: ({ prId, chat }) => {
-      qc.setQueryData(keys.activePRChatId, prId)
-      if (chat) {
-        qc.setQueryData(keys.chatHistory, chat.messages)
-      }
-    }
-  })
-}
-
-export function useClearPRChatMessages(): UseMutationResult<string, Error, string> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (prChatId: string) => prChatId,
-    onSuccess: (prChatId) => {
-      const chats = qc.getQueryData<PRChat[]>(keys.prChats) || []
-      qc.setQueryData(
-        keys.prChats,
-        chats.map((c) => (c.prId === prChatId ? { ...c, messages: [] } : c))
-      )
-      qc.setQueryData(keys.chatHistory, [])
-    }
-  })
-}
-
-export function useSetAILoading(): UseMutationResult<boolean, Error, boolean> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (isLoading: boolean) => Promise.resolve(isLoading),
-    onSuccess: (isLoading) => {
-      qc.setQueryData(keys.isAILoading, isLoading)
-    }
-  })
-}
-
-export function useSetAIThinking(): UseMutationResult<string, Error, string> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (thinking: string) => Promise.resolve(thinking),
-    onSuccess: (thinking) => {
-      qc.setQueryData(keys.aiThinking, thinking)
+      qc.setQueryData(keys.prChatMessages(prId), [])
     }
   })
 }

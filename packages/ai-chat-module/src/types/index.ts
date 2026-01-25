@@ -2,14 +2,8 @@
  * Shared types for the AI Chat module
  */
 
-// Chat message structure
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  thinking?: string
-  timestamp: string
-}
+// Chat message structure (re-export from @codelobby/data for compatibility)
+export type { ChatMessage } from '@codelobby/data'
 
 // Postable comment metadata that Claude can embed in responses
 export interface PostableComment {
@@ -24,12 +18,8 @@ export interface ContentSection {
   prComment: string | null // The extracted PR comment to post (if any)
 }
 
-// Claude model info
-export interface ClaudeModel {
-  id: string
-  display_name: string
-  created_at: string
-}
+// Claude model info (re-export from @codelobby/data for compatibility)
+export type { ClaudeModel } from '@codelobby/data'
 
 // GitHub user for avatar display
 export interface GitHubUser {
@@ -38,7 +28,7 @@ export interface GitHubUser {
   name: string | null
 }
 
-// Linked PR chat info
+// Linked PR chat info (kept for backwards compatibility)
 export interface LinkedPRChat {
   prId: string
   prNumber: number
@@ -96,25 +86,17 @@ export interface PRContext {
   isApproved?: boolean
 }
 
-// Custom prompt from storage
-export interface CustomPrompt {
-  id: string
-  label: string
-  prompt: string
-  createdAt: string
-}
+// Custom prompt from storage (re-export from @codelobby/data for compatibility)
+export type { CustomPrompt } from '@codelobby/data'
 
 // State for tracking posted comments and posting in progress
 export interface PostingState {
   [key: string]: 'posting' | 'posted' | 'error'
 }
 
-// Main AIChat panel props
+// Main AIChat panel props - simplified
 export interface AIChatPanelProps {
   onClose: () => void
   user?: GitHubUser | null
-  linkedPRChat?: LinkedPRChat | null
-  onClearLinkedPRChat?: () => void
   selectedPR?: SelectedPR | null
-  onStartPRChat?: (pr: SelectedPR) => void
 }

@@ -5,9 +5,10 @@
  * Self-contained module using TanStack Query.
  */
 
-import { useNetworkTracking, useToggleNetworkPanel } from '@codelobby/data'
+import { useToggleNetworkPanel } from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { NetworkPanel } from './components'
+import { useNetworkTracking } from './hooks'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EXPORTS
@@ -35,7 +36,8 @@ export {
   NetworkSearchInput,
   NetworkStats
 } from './components'
-
+// Hooks
+export { useNetworkTracking } from './hooks'
 // Utils
 export {
   calculateTotals,

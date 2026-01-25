@@ -25,7 +25,8 @@ export { ChatSettings, type ChatSettingsProps } from './ChatSettings'
 export { ContextIndicator, type ContextIndicatorProps } from './ContextIndicator'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MessageErrorBoundary } from './MessageErrorBoundary'
-export { QueuedMessageBubble, type QueuedMessageBubbleProps } from './QueuedMessageBubble'
 export { QuickActions, type QuickActionsProps } from './QuickActions'
 export { StreamingBubble, type StreamingBubbleProps } from './StreamingBubble'
-export { VirtualizedMessageList, type VirtualizedMessageListProps } from './VirtualizedMessageList'
+
+// Note: VirtualizedMessageList, QueuedMessageBubble are not exported (unused).
+// They remain in the codebase for potential future use.

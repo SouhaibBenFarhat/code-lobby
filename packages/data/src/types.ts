@@ -193,6 +193,14 @@ export interface CustomPrompt {
   id: string
   label: string
   prompt: string
+  createdAt?: string
+}
+
+export interface ClaudeModel {
+  id: string
+  display_name: string
+  created_at: string
+  type?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

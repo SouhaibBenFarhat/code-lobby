@@ -1,12 +1,11 @@
 /**
  * @codelobby/ai-chat-module
  *
- * AI Chat Module - Uses TanStack Query
+ * AI Chat Module - Automatically follows selected PR
  */
 
 import {
   useAIPanel,
-  useCreatePRChat,
   useIsAuthenticated,
   useSelectedPR,
   useSetAIPanel,
@@ -15,26 +14,31 @@ import {
 import { registerToSlot } from '@codelobby/slot-system'
 import { AIChatPanel } from './components/AIChat'
 
-// Component exports
-export type {
-  AddCustomPromptModalProps,
-  ContextIndicatorProps,
-  MessageBubbleProps,
-  QueuedMessageBubbleProps,
-  QuickActionsProps,
-  StreamingBubbleProps,
-  VirtualizedMessageListProps
-} from './components'
 export {
   AddCustomPromptModal,
+  type AddCustomPromptModalProps,
+  ChatLoadingSkeleton,
   ContextIndicator,
+  type ContextIndicatorProps,
+  ContextSyncBanner,
+  type ContextSyncBannerProps,
+  ErrorBanner,
+  type ErrorBannerProps,
   MessageBubble,
+  type MessageBubbleProps,
   MessageErrorBoundary,
-  QueuedMessageBubble,
+  NoPRSelectedState,
+  type NoPRSelectedStateProps,
+  PRContextBanner,
+  type PRContextBannerProps,
+  PREmptyState,
+  type PREmptyStateProps,
   QuickActions,
+  type QuickActionsProps,
   StreamingBubble,
-  VirtualizedMessageList
+  type StreamingBubbleProps
 } from './components'
+// Component exports
 export { AIChatPanel } from './components/AIChat'
 
 export {
@@ -73,13 +77,20 @@ export {
 } from './utils'
 export { calculateTotalTokens, estimateTokens } from './utils/tokens'
 
+/**
+ * AIChatWrapper - Connects AI Chat to the slot system
+ *
+ * The chat automatically follows the currently selected PR:
+ * - When you select a PR in IDE View or Canvas, the chat switches to that PR's conversation
+ * - If there's an existing conversation, it loads those messages
+ * - If not, it shows the empty state to start a new chat
+ */
 function AIChatWrapper(): React.JSX.Element | null {
   const { data: authData } = useUser()
   const { data: aiPanelData } = useAIPanel()
   const { data: selectedPR } = useSelectedPR()
   const { isAuthenticated } = useIsAuthenticated()
   const setAIPanel = useSetAIPanel()
-  const createPRChat = useCreatePRChat()
 
   const aiPanelOpen = aiPanelData?.isOpen ?? false
 
@@ -92,34 +103,16 @@ function AIChatWrapper(): React.JSX.Element | null {
     setAIPanel.mutate({ isOpen: false })
   }
 
-  const handleClearLinkedPRChat = (): void => {
-    // TODO: implement clear linked PR chat
-  }
-
-  const handleStartPRChat = async (): Promise<void> => {
-    if (selectedPR) {
-      createPRChat.mutate({
-        prId: `${selectedPR.base.repo.full_name}#${selectedPR.number}`,
-        prNumber: selectedPR.number,
-        prTitle: selectedPR.title,
-        repoFullName: selectedPR.base.repo.full_name
-      })
-    }
-  }
-
   return (
     <AIChatPanel
       onClose={handleClose}
       user={authData?.user ?? null}
-      linkedPRChat={null}
-      onClearLinkedPRChat={handleClearLinkedPRChat}
       selectedPR={selectedPR ?? null}
-      onStartPRChat={handleStartPRChat}
     />
   )
 }
 
-// Self-register to the ai-panel slot (visibility handled in component)
+// Self-register to the ai-panel slot
 registerToSlot({
   id: 'ai-chat',
   slot: 'ai-panel',

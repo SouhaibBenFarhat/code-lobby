@@ -12,36 +12,44 @@
 // Client
 export { QueryClientProvider, queryClient, useQueryClient } from './client'
 
+// API Endpoints
+export {
+  CLAUDE_API,
+  CLAUDE_MESSAGES,
+  CLAUDE_MODELS,
+  GITHUB_API,
+  GITHUB_GRAPHQL
+} from './endpoints'
 // Direct GitHub access
 export * as github from './github'
-// Hooks
-export { useNetworkTracking } from './hooks'
+// HTTP Client
+export { type HttpError, http } from './http'
 // Keys (for cache manipulation)
 export { keys } from './keys'
 // Mutations
 export {
+  // AI Mutations
   useAddCustomPrompt,
   // Network
   useAddNetworkRequest,
+  // Pull Request
   useAddPRComment,
+  // Settings
   useClearCache,
+  useClearChat,
   useClearNetworkRequests,
-  useClearPRChatMessages,
   useClosePR,
   useConvertPRToDraft,
-  useCreatePRChat,
   useDeleteCustomPrompt,
   useFactoryReset,
   useMarkPRReady,
   useMergePR,
+  // System
   useOpenExternal,
-  useRefreshPRDetail,
   useReopenPR,
+  useSaveMessage,
   useSelectPR,
-  useSendChatMessage,
-  useSetAILoading,
   useSetAIPanel,
-  useSetAIThinking,
   useSetCardLayouts,
   useSetClaudeApiKey,
   useSetEnableThinking,
@@ -58,11 +66,10 @@ export {
   useSetTheme,
   useSetViewMode,
   useShowNotification,
+  // User / Auth
   useSignIn,
   useSignOut,
   useSubmitPRReview,
-  useSwitchToPRChat,
-  // System
   useToggleFullscreen,
   useToggleMyPRsFilter,
   useToggleNetworkPanel,
@@ -73,19 +80,19 @@ export {
 } from './mutations'
 // Queries
 export {
-  useActivePRChatId,
+  // User / Auth
+  type AuthData,
+  // Settings
   useAIPanel,
-  useAIThinking,
   useCardLayouts,
-  useChatHistory,
   useClaudeApiKey,
+  useClaudeModels,
   useCurrentUser,
   useCustomPrompts,
   useEnableThinking,
   useEnableWebFetch,
   useGitHubToken,
   useIDESettings,
-  useIsAILoading,
   useIsAuthenticated,
   // System
   useIsFullscreen,
@@ -95,13 +102,16 @@ export {
   useNetworkPanelHeight,
   // Network
   useNetworkRequests,
-  usePRChats,
+  usePRChatMessages,
   usePRDetailPanel,
+  // Pull Request
   usePRFiles,
   usePRs,
   usePRsForRepo,
+  // Rate Limit
   useRateLimit,
   useRepoColors,
+  // Repository
   useRepos,
   useSelectedModel,
   useSelectedPR,
@@ -116,6 +126,7 @@ export type {
   CardLayout,
   ChatMessage,
   CheckStatus,
+  ClaudeModel,
   CustomPrompt,
   GitHubUser,
   MergeableState,
