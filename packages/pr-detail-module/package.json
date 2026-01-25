@@ -8,10 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@codelobby/api": "*",
-    "@codelobby/queries": "*",
+    "@codelobby/data": "*",
     "@codelobby/slot-system": "*",
-    "@codelobby/shared-store": "*",
     "@codelobby/ui-kit": "*",
     "lucide-react": "^0.294.0"
   },

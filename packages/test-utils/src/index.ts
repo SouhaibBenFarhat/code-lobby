@@ -7,3 +7,4 @@
 export * from './mocks/electron'
 export * from './mocks/factories'
 export * from './render'
+export { createTestQueryClient } from './setup'

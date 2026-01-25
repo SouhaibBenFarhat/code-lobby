@@ -3,9 +3,11 @@
  *
  * Note: Some tests are skipped due to complex async rendering requirements.
  * The component works correctly in the app - these tests need more setup.
+ *
+ * Components subscribe to store directly - use initialSelectedPR and initialUser options.
  */
 
-import { Store } from '@codelobby/shared-store'
+import type { GitHubUser } from '@codelobby/shared-store'
 import {
   createMockApproval,
   createMockApprovedPR,
@@ -38,11 +40,18 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PRDetail } from './PRDetail'
 
-// Components now use shared-store instead of React Context
-// The mock usePRChat is no longer needed
-
 describe('PRDetail', () => {
   const mockOnClose = vi.fn()
+  const mockUser: GitHubUser = {
+    login: 'testuser',
+    avatar_url: 'https://example.com/avatar.png',
+    name: 'Test User'
+  }
+  const mockReviewer: GitHubUser = {
+    login: 'reviewer',
+    avatar_url: 'https://github.com/reviewer.png',
+    name: 'Reviewer User'
+  }
 
   beforeEach(() => {
     resetIdCounter()
@@ -57,21 +66,21 @@ describe('PRDetail', () => {
   describe('Header', () => {
     it('should render PR title', () => {
       const pr = createMockPullRequest({ title: 'Fix authentication bug' })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('Fix authentication bug')).toBeInTheDocument()
     })
 
     it('should render PR number', () => {
       const pr = createMockPullRequest({ number: 42 })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText(/#42/)).toBeInTheDocument()
     })
 
     it('should render close button', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const closeButton =
         document.querySelector('button svg.lucide-panel-right-close')?.parentElement ||
@@ -81,11 +90,13 @@ describe('PRDetail', () => {
 
     it('should call onClose when close button clicked', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
+      // Find the panel close button (icon-only button with X icon, not the "Close PR" button)
+      // The panel close button is a ghost icon button, while the Close PR button has text
       const closeButton =
         document.querySelector('button svg.lucide-panel-right-close')?.parentElement ||
-        document.querySelector('button svg.lucide-x')?.parentElement
+        document.querySelector('button.h-7.w-7 svg.lucide-x')?.parentElement
 
       if (closeButton) {
         fireEvent.click(closeButton)
@@ -96,24 +107,32 @@ describe('PRDetail', () => {
     it('should render author info', () => {
       const user = createMockUser({ login: 'johndoe' })
       const pr = createMockPullRequest({ user })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('johndoe')).toBeInTheDocument()
     })
 
     it('should render Open Preview button (globe icon)', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const previewButton = document.querySelector('button svg.lucide-globe')?.parentElement
       expect(previewButton).toBeInTheDocument()
+    })
+
+    it('should not render when no PR is selected', () => {
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: null,
+        initialUser: mockUser
+      })
+      expect(container).toBeEmptyDOMElement()
     })
   })
 
   describe('Discussion Tabs', () => {
     it('should render All tab', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Discussion section has All tab
       expect(screen.getByRole('button', { name: /All/i })).toBeInTheDocument()
@@ -121,21 +140,21 @@ describe('PRDetail', () => {
 
     it('should render People tab', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByRole('button', { name: /People/i })).toBeInTheDocument()
     })
 
     it('should render Bots tab', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByRole('button', { name: /Bots/i })).toBeInTheDocument()
     })
 
     it('should render Code tab', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByRole('button', { name: /Code/i })).toBeInTheDocument()
     })
@@ -144,7 +163,7 @@ describe('PRDetail', () => {
   describe('CI Status', () => {
     it('should show success status for passing checks', async () => {
       const pr = createMockPRWithChecks('success')
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // CI section is visible on the page (no tab click needed)
       await waitFor(() => {
@@ -155,7 +174,7 @@ describe('PRDetail', () => {
 
     it('should show failure status for failing checks', async () => {
       const pr = createMockPRWithChecks('failure')
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       await waitFor(() => {
         const failureIndicators = document.querySelectorAll('.text-destructive')
@@ -165,7 +184,7 @@ describe('PRDetail', () => {
 
     it('should show pending status for running checks', async () => {
       const pr = createMockPRWithChecks('pending')
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       await waitFor(() => {
         const spinners = document.querySelectorAll('.animate-spin')
@@ -181,7 +200,10 @@ describe('PRDetail', () => {
       if (pr.commentsList?.[0]) pr.commentsList[0].body = 'First comment body'
       if (pr.commentsList?.[1]) pr.commentsList[1].body = 'Second comment body'
 
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Component should render with comments
       await waitFor(() => {
@@ -191,7 +213,7 @@ describe('PRDetail', () => {
 
     it('should have tabs to filter people vs bots', async () => {
       const pr = createMockPRWithMixedComments()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Discussion section has All/People/Bots/Code tabs
       await waitFor(() => {
@@ -212,7 +234,10 @@ describe('PRDetail', () => {
         })
       ]
 
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       await waitFor(() => {
         expect(container.firstChild).toBeInTheDocument()
@@ -223,7 +248,10 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       pr.reviews = [createMockApproval()]
 
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       await waitFor(() => {
         expect(container.firstChild).toBeInTheDocument()
@@ -234,7 +262,10 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       pr.reviews = [createMockChangesRequested()]
 
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       await waitFor(() => {
         expect(container.firstChild).toBeInTheDocument()
@@ -246,7 +277,10 @@ describe('PRDetail', () => {
     it('should render PR with code reviews without error', async () => {
       const pr = createMockPRWithCodeReviews()
 
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       await waitFor(() => {
         expect(container.firstChild).toBeInTheDocument()
@@ -271,7 +305,7 @@ describe('PRDetail', () => {
         })
       ]
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // The Code tab should show count of 1
       await waitFor(() => {
@@ -287,7 +321,7 @@ describe('PRDetail', () => {
         createMockReviewThread({ path: 'src/file3.ts', line: 30 })
       ]
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       await waitFor(() => {
         expect(screen.getByText(/Code \(3\)/)).toBeInTheDocument()
@@ -298,7 +332,7 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest()
       pr.reviewThreads = []
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       await waitFor(() => {
         expect(screen.getByText(/Code \(0\)/)).toBeInTheDocument()
@@ -309,7 +343,7 @@ describe('PRDetail', () => {
   describe('PR Stats', () => {
     it('should display additions and deletions', () => {
       const pr = createMockPullRequest({ additions: 100, deletions: 50 })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Multiple elements may show additions/deletions (header, changed files section)
       expect(screen.getAllByText(/\+100/).length).toBeGreaterThan(0)
@@ -318,7 +352,10 @@ describe('PRDetail', () => {
 
     it('should display changed files count', () => {
       const pr = createMockPullRequest({ changed_files: 15, additions: 100, deletions: 50 })
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Component should render without errors
       expect(container.firstChild).toBeInTheDocument()
@@ -333,7 +370,10 @@ describe('PRDetail', () => {
           { name: 'priority-high', color: 'ff6600' }
         ]
       })
-      const { container } = render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Component should render without errors
       expect(container.firstChild).toBeInTheDocument()
@@ -354,7 +394,7 @@ describe('PRDetail', () => {
           sha: 'def'
         }
       })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText(/feature\/new-login/)).toBeInTheDocument()
       expect(screen.getByText(/main/)).toBeInTheDocument()
@@ -364,7 +404,7 @@ describe('PRDetail', () => {
   describe('PR Description', () => {
     it('should display description section', () => {
       const pr = createMockPullRequest({ body: 'This is the PR description' })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('Description')).toBeInTheDocument()
     })
@@ -373,7 +413,7 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest({
         body: '## Summary\nThis PR adds new features\n\n- Feature 1\n- Feature 2'
       })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Description section should be expanded by default
       expect(screen.getByText(/Summary/)).toBeInTheDocument()
@@ -382,14 +422,14 @@ describe('PRDetail', () => {
 
     it('should show placeholder when no description provided', () => {
       const pr = createMockPullRequest({ body: null })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('No description provided')).toBeInTheDocument()
     })
 
     it('should show placeholder for empty description', () => {
       const pr = createMockPullRequest({ body: '' })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('No description provided')).toBeInTheDocument()
     })
@@ -398,7 +438,7 @@ describe('PRDetail', () => {
   describe('Start AI Chat Button', () => {
     it('should render the Start AI Chat button', () => {
       const pr = createMockPullRequest()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // The button should have the Claude icon (ClaudeIcon has aria-label="Claude AI")
       const claudeIcon = screen.getByLabelText('Claude AI')
@@ -409,7 +449,7 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest({ number: 123, title: 'Test PR' })
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Find and click the Claude icon's parent button
       const claudeIcon = screen.getByLabelText('Claude AI')
@@ -437,7 +477,7 @@ describe('PRDetail', () => {
   describe('Merge Button', () => {
     it('should render merge button for a mergeable PR', () => {
       const pr = createMockMergeablePR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Should show "Merge" button when PR is ready
       expect(screen.getByRole('button', { name: /Merge/i })).toBeInTheDocument()
@@ -445,7 +485,7 @@ describe('PRDetail', () => {
 
     it('should show "Merge" text and be enabled when PR is clean and mergeable', () => {
       const pr = createMockMergeablePR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -454,7 +494,7 @@ describe('PRDetail', () => {
 
     it('should be disabled when PR has conflicts', () => {
       const pr = createMockConflictingPR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -463,7 +503,7 @@ describe('PRDetail', () => {
 
     it('should be disabled when blocked by branch protection', () => {
       const pr = createMockBlockedPR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -472,7 +512,7 @@ describe('PRDetail', () => {
 
     it('should be disabled when branch is behind base', () => {
       const pr = createMockBehindPR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -481,7 +521,7 @@ describe('PRDetail', () => {
 
     it('should be disabled when required checks are failing', () => {
       const pr = createMockUnstablePR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -495,7 +535,7 @@ describe('PRDetail', () => {
         mergeStateStatus: 'CLEAN', // Not BLOCKED
         reviewDecision: 'REVIEW_REQUIRED'
       })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -509,7 +549,7 @@ describe('PRDetail', () => {
         mergeStateStatus: 'CLEAN', // Not BLOCKED
         reviewDecision: 'CHANGES_REQUESTED'
       })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -518,7 +558,7 @@ describe('PRDetail', () => {
 
     it('should be disabled for draft PRs', () => {
       const pr = createMockDraftPR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -527,7 +567,7 @@ describe('PRDetail', () => {
 
     it('should show spinner when merge status is computing', () => {
       const pr = createMockComputingPR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       expect(mergeButton).toBeInTheDocument()
@@ -540,7 +580,7 @@ describe('PRDetail', () => {
 
     it('should show confirmation dialog when clicking merge on a mergeable PR', async () => {
       const pr = createMockMergeablePR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Find the merge trigger button (the one in the header)
       const mergeButtons = screen.getAllByRole('button', { name: /Merge/i })
@@ -561,7 +601,7 @@ describe('PRDetail', () => {
 
     it('should show merge method options in confirmation dialog', async () => {
       const pr = createMockMergeablePR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Find the merge trigger button
       const mergeButtons = screen.getAllByRole('button', { name: /Merge/i })
@@ -578,7 +618,7 @@ describe('PRDetail', () => {
 
     it('should close confirmation dialog when clicking cancel', async () => {
       const pr = createMockMergeablePR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
       fireEvent.click(mergeButton)
@@ -602,7 +642,7 @@ describe('PRDetail', () => {
         .mockResolvedValue({ success: true, mergedAt: new Date().toISOString() })
       window.electron.mergePR = mergePRSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Open confirmation dialog
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
@@ -626,7 +666,7 @@ describe('PRDetail', () => {
       const mergePRSpy = vi.fn().mockResolvedValue({ success: true })
       window.electron.mergePR = mergePRSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Open confirmation dialog
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
@@ -657,7 +697,7 @@ describe('PRDetail', () => {
       })
       window.electron.mergePR = mergePRSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Open confirmation dialog
       const mergeButton = screen.getByRole('button', { name: /Merge/i })
@@ -686,7 +726,7 @@ describe('PRDetail', () => {
       const mergePRSpy = vi.fn().mockReturnValue(mergePromise)
       window.electron.mergePR = mergePRSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Open confirmation dialog
       const mergeButtons = screen.getAllByRole('button', { name: /Merge/i })
@@ -712,26 +752,22 @@ describe('PRDetail', () => {
   })
 
   describe('Approve Button', () => {
-    beforeEach(() => {
-      // Set a logged-in user for approve tests
-      Store.user.value = {
-        login: 'reviewer',
-        avatar_url: 'https://github.com/reviewer.png',
-        name: 'Reviewer User',
-        html_url: 'https://github.com/reviewer'
-      }
-    })
-
     it('should render approve button', () => {
       const pr = createMockNeedsReviewPR()
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       expect(screen.getByRole('button', { name: /Approve/i })).toBeInTheDocument()
     })
 
     it('should show "Approve" and be enabled when user can approve', () => {
       const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       expect(approveButton).toBeInTheDocument()
@@ -740,7 +776,10 @@ describe('PRDetail', () => {
 
     it('should have green styling when user can approve', () => {
       const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       expect(approveButton).toHaveClass('bg-green-600')
@@ -748,7 +787,10 @@ describe('PRDetail', () => {
 
     it('should have green styling when already approved', () => {
       const pr = createMockApprovedPR('reviewer')
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       expect(approveButton).toHaveClass('bg-green-600')
@@ -756,7 +798,10 @@ describe('PRDetail', () => {
 
     it('should be disabled when PR is already approved', () => {
       const pr = createMockApprovedPR('reviewer')
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       expect(approveButton).toBeInTheDocument()
@@ -766,7 +811,10 @@ describe('PRDetail', () => {
     it('should be disabled when viewing own PR (cannot self-approve)', () => {
       // The current user (reviewer) created this PR
       const pr = createMockOwnPR('reviewer')
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       expect(approveButton).toBeDisabled()
@@ -774,7 +822,10 @@ describe('PRDetail', () => {
 
     it('should be disabled for draft PRs', () => {
       const pr = createMockDraftPR({ user: createMockUser({ login: 'author' }) })
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       expect(approveButton).toBeDisabled()
@@ -785,7 +836,10 @@ describe('PRDetail', () => {
       const submitPRReviewSpy = vi.fn().mockResolvedValue({ success: true, state: 'APPROVED' })
       window.electron.submitPRReview = submitPRReviewSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       fireEvent.click(approveButton)
@@ -800,7 +854,10 @@ describe('PRDetail', () => {
       const submitPRReviewSpy = vi.fn().mockResolvedValue({ success: true, state: 'APPROVED' })
       window.electron.submitPRReview = submitPRReviewSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       fireEvent.click(approveButton)
@@ -820,7 +877,10 @@ describe('PRDetail', () => {
       const submitPRReviewSpy = vi.fn().mockReturnValue(approvePromise)
       window.electron.submitPRReview = submitPRReviewSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       fireEvent.click(approveButton)
@@ -842,7 +902,10 @@ describe('PRDetail', () => {
       })
       window.electron.submitPRReview = submitPRReviewSpy
 
-      render(<PRDetail pr={pr} onClose={mockOnClose} />)
+      render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockReviewer
+      })
 
       const approveButton = screen.getByRole('button', { name: /Approve/i })
       fireEvent.click(approveButton)

@@ -1,11 +1,9 @@
 /**
  * RepoSelector - Repository filter dropdown.
- * Uses TanStack Query for data fetching with automatic caching.
- * Selection state lives ONLY in query cache - optimistic updates make it instant.
+ * Uses TanStack Query for data.
  */
 
-import { useRepos, useSelectedRepos, useSetSelectedRepos } from '@codelobby/queries'
-import type { Repository } from '@codelobby/shared-store'
+import { useRepos, useSelectedRepos, useSetSelectedRepos } from '@codelobby/data'
 import {
   Badge,
   Button,
@@ -22,44 +20,29 @@ import { useMemo, useState } from 'react'
 export function RepoSelector(): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  // Snapshot of selected repos when dropdown opens - used for stable sorting
   const [sortSnapshot, setSortSnapshot] = useState<Set<string>>(new Set())
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERY - Single source of truth for selection
-  // ═══════════════════════════════════════════════════════════════════════════
-  const { data: allReposData } = useRepos()
-  const { data: savedSelection } = useSelectedRepos()
-  const setSelectedReposMutation = useSetSelectedRepos()
+  // TanStack Query hooks
+  const { data: allRepos = [] } = useRepos()
+  const { data: savedSelection = [] } = useSelectedRepos()
+  const setSelectedRepos = useSetSelectedRepos()
 
-  const allRepos = (allReposData as Repository[]) || []
-
-  // Derive selected repos from query cache
-  // - null/undefined = no selection yet (show none selected)
-  // - [] = user explicitly deselected all
-  // - [...] = user selected specific repos
   const selectedRepos = useMemo(() => {
     return new Set(savedSelection || [])
   }, [savedSelection])
 
-  // Handle dropdown open/close - snapshot selection for stable sorting
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      // Take snapshot of current selection when opening
-      // This determines sort order while dropdown is open
       setSortSnapshot(new Set(savedSelection || []))
     }
     setOpen(isOpen)
   }
 
-  // Filter repos by search and sort: SELECTED FIRST, then alphabetically
-  // Uses sortSnapshot (captured on open) so list doesn't jump while selecting
   const filteredRepos = useMemo(() => {
     if (!allRepos || allRepos.length === 0) return []
 
     let repos = [...allRepos]
 
-    // Apply search filter
     if (search.trim()) {
       const searchLower = search.toLowerCase()
       repos = repos.filter(
@@ -70,22 +53,17 @@ export function RepoSelector(): React.JSX.Element {
       )
     }
 
-    // Sort using snapshot (stable while dropdown is open)
-    // Selected repos (at time of opening) come first, then alphabetically
     return repos.sort((a, b) => {
       const aSelected = sortSnapshot.has(a.full_name)
       const bSelected = sortSnapshot.has(b.full_name)
 
-      // Selected repos come first
       if (aSelected && !bSelected) return -1
       if (!aSelected && bSelected) return 1
 
-      // Within same group, sort alphabetically
       return a.name.localeCompare(b.name)
     })
   }, [allRepos, search, sortSnapshot])
 
-  // Toggle single repo - mutation has optimistic update for instant UI
   const toggleRepo = (repoName: string) => {
     const newSelection = new Set(selectedRepos)
     if (newSelection.has(repoName)) {
@@ -93,18 +71,16 @@ export function RepoSelector(): React.JSX.Element {
     } else {
       newSelection.add(repoName)
     }
-    setSelectedReposMutation.mutate(Array.from(newSelection))
+    setSelectedRepos.mutate(Array.from(newSelection))
   }
 
-  // Select all
   const selectAll = () => {
     if (!allRepos || allRepos.length === 0) return
-    setSelectedReposMutation.mutate(allRepos.map((r) => r.full_name))
+    setSelectedRepos.mutate(allRepos.map((r) => r.full_name))
   }
 
-  // Deselect all
   const deselectAll = () => {
-    setSelectedReposMutation.mutate([])
+    setSelectedRepos.mutate([])
   }
 
   const totalCount = allRepos?.length || 0
@@ -123,7 +99,6 @@ export function RepoSelector(): React.JSX.Element {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-0" align="end">
-        {/* Header with ViewHeader-style elevation */}
         <div className="flex items-center justify-between h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
           <div className="flex items-center gap-2">
             <FolderGit2 className="w-4 h-4 text-primary flex-shrink-0" />
@@ -138,7 +113,6 @@ export function RepoSelector(): React.JSX.Element {
             </Button>
           </div>
         </div>
-        {/* Search input */}
         <div className="p-3 border-b border-border/50">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />

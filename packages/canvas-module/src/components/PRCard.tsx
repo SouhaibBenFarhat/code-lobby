@@ -1,10 +1,9 @@
 /**
  * PRCard - A card displaying a single PR in the canvas view.
- * Uses shared-store instead of React Context.
+ * Uses TanStack Query for all data.
  */
 
-import type { PullRequest } from '@codelobby/shared-store'
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import { type PullRequest, useSelectedPRId, useSelectPR } from '@codelobby/data'
 import {
   Avatar,
   AvatarFallback,
@@ -36,15 +35,19 @@ interface PRCardProps {
 }
 
 export function PRCard({ pr }: PRCardProps): React.JSX.Element {
-  // Use shared store instead of context
-  const selectedPR = useSignal(Store.selectedPR)
-  const isSelected = selectedPR?.id === pr.id
+  const { data: selectedPRId } = useSelectedPRId()
+  const selectPR = useSelectPR()
+
+  const isSelected =
+    selectedPRId?.repoFullName === pr.base.repo.full_name && selectedPRId?.prNumber === pr.number
 
   const handleSelect = () => {
-    Actions.selectPR(pr)
+    selectPR.mutate({
+      repoFullName: pr.base.repo.full_name,
+      prNumber: pr.number
+    })
   }
 
-  // With GraphQL, checks are already included in PR data - no extra API call!
   const checks = pr.checks
 
   const getCheckStatusIcon = () => {
@@ -101,7 +104,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
       onClick={handleSelect}
     >
       <div className="space-y-2 overflow-hidden">
-        {/* Title row */}
         <div className="flex items-start gap-2 overflow-hidden">
           <GitPullRequest
             className={cn(
@@ -120,7 +122,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
           <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
         </div>
 
-        {/* Branch info */}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
           <GitBranch className="w-3 h-3" />
           <span className="truncate">{truncate(pr.head.ref, 20)}</span>
@@ -128,7 +129,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
           <span className="truncate">{truncate(pr.base.ref, 15)}</span>
         </div>
 
-        {/* Labels */}
         {pr.labels.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {pr.labels.slice(0, 3).map((label) => (
@@ -152,13 +152,10 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
           </div>
         )}
 
-        {/* Stats row */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
-          {/* Left group: PR number, author, draft, CI */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-mono">#{pr.number}</span>
 
-            {/* Author */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1">
@@ -176,14 +173,12 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
               <TooltipContent>Author: {pr.user.login}</TooltipContent>
             </Tooltip>
 
-            {/* Draft badge */}
             {pr.draft && (
               <Badge variant="secondary" className="h-5 text-[10px] px-1.5">
                 Draft
               </Badge>
             )}
 
-            {/* CI Status */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1">{getCheckStatusIcon()}</div>
@@ -192,9 +187,7 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
             </Tooltip>
           </div>
 
-          {/* Right group: Changes, comments, time */}
           <div className="flex items-center gap-2">
-            {/* Changes */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 text-xs">
@@ -206,7 +199,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
               <TooltipContent>{pr.changed_files} files changed</TooltipContent>
             </Tooltip>
 
-            {/* Comments */}
             {totalComments > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -221,7 +213,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
               </Tooltip>
             )}
 
-            {/* Time */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 # CodeLobby Application Architecture
 
-This document provides an extensive technical overview of the CodeLobby application architecture. It serves as a reference for developers working on the codebase.
+This document provides a technical overview of the CodeLobby application architecture, updated to reflect the **TanStack Query-based** state management system.
 
 ---
 
@@ -9,16 +9,13 @@ This document provides an extensive technical overview of the CodeLobby applicat
 1. [High-Level Overview](#1-high-level-overview)
 2. [Process Architecture (Electron)](#2-process-architecture-electron)
 3. [Package Structure (Monorepo)](#3-package-structure-monorepo)
-4. [Slot-Based Module System](#4-slot-based-module-system)
-5. [State Management (Shared Store)](#5-state-management-shared-store)
-6. [Action System (Event-Driven)](#6-action-system-event-driven)
-7. [Data Flow Architecture](#7-data-flow-architecture)
-8. [IPC Communication Layer](#8-ipc-communication-layer)
-9. [API Client Layer](#9-api-client-layer)
-10. [Component Architecture Patterns](#10-component-architecture-patterns)
-11. [TypeScript Configuration](#11-typescript-configuration)
-12. [Available Slots & Modules](#12-available-slots--modules)
-13. [Adding New Features](#13-adding-new-features)
+4. [State Management (TanStack Query)](#4-state-management-tanstack-query)
+5. [Slot-Based Module System](#5-slot-based-module-system)
+6. [Data Flow Architecture](#6-data-flow-architecture)
+7. [Query Keys & Persistence](#7-query-keys--persistence)
+8. [Component Architecture Patterns](#8-component-architecture-patterns)
+9. [TypeScript Configuration](#9-typescript-configuration)
+10. [Adding New Features](#10-adding-new-features)
 
 ---
 
@@ -30,86 +27,86 @@ CodeLobby is an **Electron desktop application** built with:
 |-------|------------|
 | Desktop Framework | Electron 28 |
 | Frontend | React 18 + TypeScript 5 |
-| State Management | Custom Signals (@preact/signals-inspired) |
+| State Management | **TanStack Query 5** |
 | Build Tool | electron-vite |
 | Styling | Tailwind CSS 3 + shadcn/ui |
-| Data Fetching | TanStack Query 5 |
-| GitHub API | @octokit/graphql |
+| GitHub API | GraphQL (direct fetch) |
 | AI Integration | Anthropic Claude API |
-| Persistence | electron-store (encrypted) |
+| Persistence | localStorage + TanStack Query Persist |
 
 ### Architectural Philosophy
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    "Buffet Pattern"                         │
+│                 TanStack Query Cache                         │
+│        (Single Source of Truth for ALL state)               │
 │                                                             │
-│   Data Module (Kitchen)                                     │
-│   └─► Fetches data from APIs                                │
-│   └─► Writes to Shared Store                                │
-│                                                             │
-│   Shared Store (Buffet Table)                               │
-│   └─► Single source of truth                                │
-│   └─► Reactive signals                                      │
-│                                                             │
-│   UI Modules (Guests)                                       │
-│   └─► Read from store                                       │
-│   └─► Emit actions (never write directly)                   │
-│   └─► No cross-module imports                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │   GitHub    │  │  Settings   │  │    UI State         │ │
+│  │   Data      │  │  (persisted)│  │  (local/persisted)  │ │
+│  │ repos, prs  │  │ viewMode,   │  │  selectedPR,        │ │
+│  │ user, rate  │  │ selectedRepo│  │  aiPanel, etc.      │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+        ▲                                        │
+        │ useQuery                               │ useMutation
+        │ (read)                                 │ (write)
+┌───────┴────────────────────────────────────────┴───────────┐
+│                      UI Components                          │
+│  Header │ Canvas │ PRDetail │ AIChat │ Network │ Explorer  │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Key Principles:**
+
+1. **TanStack Query is the single source of truth** — ALL state lives in the query cache
+2. **useQuery for reads** — Components read data via query hooks
+3. **useMutation for writes** — Components write data via mutation hooks
+4. **Automatic persistence** — Settings and AI data persist to localStorage
+5. **No custom state management** — No signals, no Redux, no custom stores
 
 ---
 
 ## 2. Process Architecture (Electron)
 
-Electron runs two separate processes that communicate via IPC:
+Electron runs two separate processes:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Renderer Process                          │
-│        React + TypeScript + TanStack Query                   │
+│        React + TanStack Query + Direct fetch()               │
 │              (packages/* + src/renderer/)                    │
 └───────────────────────┬─────────────────────────────────────┘
-                        │ IPC (contextBridge)
+                        │ window.electron (IPC)
 ┌───────────────────────┴─────────────────────────────────────┐
 │                    Preload Script                            │
-│           Type-safe IPC bridge (window.electron)             │
+│           Type-safe IPC bridge (for OS operations)           │
 │              (src/preload/)                                  │
 └───────────────────────┬─────────────────────────────────────┘
                         │ ipcRenderer.invoke
 ┌───────────────────────┴─────────────────────────────────────┐
 │                    Main Process                              │
-│      Electron + GitHub API + Claude API + electron-store     │
+│      Electron + Claude API + electron-store (AI only)        │
 │              (src/main/)                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Directory Responsibilities
+### What Lives Where
 
-| Directory | Process | Purpose |
-|-----------|---------|---------|
-| `src/main/` | Main | IPC handlers, API calls, storage, prompts |
-| `src/preload/` | Preload | Secure bridge exposing `window.electron` |
-| `src/renderer/` | Renderer | Entry point (`main.tsx`), global styles |
-| `packages/*` | Renderer | All UI modules, state, components |
+| Process | Responsibility |
+|---------|----------------|
+| **Renderer** | ALL GitHub API calls, state management, UI |
+| **Preload** | OS operations (fullscreen, theme, notifications) |
+| **Main** | Claude AI streaming, system prompts, electron-store |
 
-### Key Files in Main Process
+### Key Change from Old Architecture
 
-| File | Purpose |
-|------|---------|
-| `index.ts` | App entry, window creation, IPC handler registration |
-| `store.ts` | electron-store wrapper, persistence logic |
-| `github-graphql.ts` | GitHub GraphQL queries |
-| `claude-api.ts` | Anthropic Claude API integration |
-| `http-client.ts` | Centralized HTTP logging |
-| `prompts/*.ts` | AI system prompts |
+**Before (old):** GitHub API calls went through Main Process via IPC
+**Now:** GitHub API calls happen directly in Renderer via `fetch()`
 
 ---
 
 ## 3. Package Structure (Monorepo)
-
-CodeLobby uses npm workspaces with the following structure:
 
 ```
 packages/
@@ -117,39 +114,39 @@ packages/
 │   └── src/
 │       ├── App.tsx         # Main layout with <Slot> components
 │       ├── bootstrap.ts    # Module registration & initialization
-│       └── index.ts        # Export
+│       └── index.ts
 │
-├── shared-store/           # Reactive state management
+├── data/                   # 🔑 THE CORE - TanStack Query state
 │   └── src/
-│       ├── store.ts        # Signal-based store
-│       ├── actions.ts      # Action emitters
-│       └── types.ts        # Shared TypeScript types
+│       ├── client.ts       # QueryClient + persistence config
+│       ├── keys.ts         # All query keys (organized by category)
+│       ├── types.ts        # Shared TypeScript types
+│       ├── github.ts       # GitHub API functions (direct fetch)
+│       ├── queries/        # useQuery hooks
+│       │   ├── repository.ts
+│       │   ├── pull-request.ts
+│       │   ├── user.ts
+│       │   ├── settings.ts
+│       │   ├── ai.ts
+│       │   ├── system.ts
+│       │   └── network.ts
+│       ├── mutations/      # useMutation hooks
+│       │   ├── pull-request.ts
+│       │   ├── user.ts
+│       │   ├── settings.ts
+│       │   ├── ai.ts
+│       │   ├── system.ts
+│       │   └── network.ts
+│       └── hooks/          # Utility hooks
+│           └── useNetworkTracking.ts
 │
 ├── slot-system/            # Module registration
-│   └── src/index.tsx       # registerToSlot, <Slot>, useSlotModules
-│
-├── api/                    # IPC client wrapper
-│   └── src/
-│       ├── client.ts       # Main api object
-│       ├── logger.ts       # Request logging
-│       └── namespaces/     # Grouped API methods
-│           ├── github.ts
-│           ├── ai.ts
-│           ├── settings.ts
-│           └── logs.ts
-│
-├── data-module/            # Data fetching & store updates
-│   └── src/index.ts        # Action listeners, IPC calls, store writes
+│   └── src/index.tsx       # registerToSlot, <Slot>
 │
 ├── ui-kit/                 # Shared UI components (shadcn/ui)
-│   └── src/                # Button, Input, Card, Dialog, etc.
-│
-├── queries/                # TanStack Query definitions
+│   └── src/                # Button, Input, Card, etc.
 │
 ├── logger/                 # Structured logging
-│   └── src/
-│       ├── main-logger.ts      # Main process logger
-│       └── renderer-logger.ts  # Renderer process logger
 │
 ├── test-utils/             # Test utilities & mocks
 │
@@ -164,582 +161,321 @@ packages/
 
 ### Package Dependencies (Allowed Imports)
 
-Each module can **ONLY** import from:
-
-| Allowed Import | Purpose |
-|----------------|---------|
-| `@codelobby/shared-store` | Global state (Store, Actions, signals) |
-| `@codelobby/slot-system` | Slot registration |
-| `@codelobby/ui-kit` | Shared UI components |
-| `@codelobby/queries` | Data fetching hooks |
-| `@codelobby/data-module` | Data utilities |
-| `@codelobby/api` | IPC client |
-| `@codelobby/logger` | Logging |
-| `@codelobby/test-utils` | Test utilities |
-| `./components/*` | Own internal components |
+| Package | Can Import |
+|---------|------------|
+| UI modules | `@codelobby/data`, `@codelobby/slot-system`, `@codelobby/ui-kit` |
+| `@codelobby/data` | `@tanstack/react-query`, types |
+| `@codelobby/slot-system` | React |
 
 ### ❌ FORBIDDEN Imports
 
 ```typescript
 // ❌ NEVER import one UI module from another
 import { SomeComponent } from '@codelobby/canvas-module'
-import { AnotherComponent } from '@codelobby/header-module'
 ```
 
 ---
 
-## 4. Slot-Based Module System
+## 4. State Management (TanStack Query)
 
-The slot system enables **zero cross-imports** between UI modules. Each module self-registers to a named slot at import time.
+### Everything is a Query or Mutation
 
-### How It Works
+```typescript
+// READING data - useQuery
+const { data: repos } = useRepos()
+const { data: theme } = useTheme()
+const { data: selectedPR } = useSelectedPR()
 
+// WRITING data - useMutation
+const setTheme = useSetTheme()
+const selectPR = useSelectPR()
+const signIn = useSignIn()
+
+// Usage
+setTheme.mutate('dark')
+selectPR.mutate({ owner: 'org', repo: 'app', number: 123 })
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     App Shell (App.tsx)                      │
-│   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────┐   │
-│   │ <Slot   │ │ <Slot   │ │ <Slot   │ │ <Slot           │   │
-│   │ name=   │ │ name=   │ │ name=   │ │ name=           │   │
-│   │"header">│ │"left-   │ │"main">  │ │"ai-panel">      │   │
-│   │         │ │panel">  │ │         │ │                 │   │
-│   └────┬────┘ └────┬────┘ └────┬────┘ └────────┬────────┘   │
-└────────┼──────────┼──────────┼─────────────────┼────────────┘
-         │          │          │                 │
-    ┌────▼────┐┌────▼────┐┌────▼────┐      ┌────▼────┐
-    │ header- ││explorer-││ canvas- │      │ai-chat- │
-    │ module  ││ module  ││ module  │      │ module  │
-    └─────────┘└─────────┘└─────────┘      └─────────┘
-    
-    Each module self-registers to its slot via registerToSlot()
+
+### Query Cache as State Store
+
+```typescript
+// @codelobby/data/src/queries/settings.ts
+export function useViewMode() {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: keys.viewMode,
+    queryFn: () => qc.getQueryData<ViewMode>(keys.viewMode) ?? 'canvas',
+    staleTime: Infinity
+  })
+}
+
+// @codelobby/data/src/mutations/settings.ts
+export function useSetViewMode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (mode: ViewMode) => {
+      qc.setQueryData(keys.viewMode, mode)
+      localStorage.setItem('codelobby-view-mode', mode)
+      return mode
+    }
+  })
+}
 ```
+
+### No More Signals, No More Actions
+
+**Old (deleted):**
+```typescript
+// ❌ OLD - Don't use
+import { Store, Actions } from '@codelobby/shared-store'
+Store.selectedPR.value = pr  // Signal write
+Actions.selectPR(pr)         // Action emit
+```
+
+**New:**
+```typescript
+// ✅ NEW - Use this
+import { useSelectedPR, useSelectPR } from '@codelobby/data'
+const { data: selectedPR } = useSelectedPR()  // Read
+const selectPR = useSelectPR()
+selectPR.mutate(prIdentifier)                  // Write
+```
+
+---
+
+## 5. Slot-Based Module System
+
+The slot system remains unchanged — modules self-register to named slots.
 
 ### Available Slots
 
 | Slot Name | Purpose | Module |
 |-----------|---------|--------|
 | `header` | App header bar | header-module |
-| `left-panel` | Explorer sidebar (IDE mode) | explorer-module |
+| `left-panel` | Explorer sidebar | explorer-module |
 | `main` | Main content area | canvas-module |
 | `pr-detail-panel` | PR detail sidebar | pr-detail-module |
 | `ai-panel` | Claude AI chat panel | ai-chat-module |
 | `network-panel` | HTTP request monitor | network-module |
-| `right-panel` | Generic right panel | - |
-| `footer` | Footer area | - |
-| `modal` | Modal dialogs | - |
-| `toast` | Toast notifications | - |
 
 ### Module Registration Pattern
 
-Every UI module **MUST** follow this pattern:
-
 ```typescript
 // packages/my-module/src/index.tsx
-
-import { Store, useSignal } from '@codelobby/shared-store'
 import { registerToSlot } from '@codelobby/slot-system'
+import { useNetworkPanel } from '@codelobby/data'
 import { MyComponent } from './components/MyComponent'
 
-// Wrapper connects component to shared store
 function MyComponentWrapper() {
-  const someState = useSignal(Store.someState)
-  
-  return <MyComponent state={someState} />
+  const { data: isOpen } = useNetworkPanel()
+  if (!isOpen) return null
+  return <MyComponent />
 }
 
-// CRITICAL: Self-register to slot
 registerToSlot({
   id: 'my-module',
-  slot: 'main',  // or 'header', 'left-panel', etc.
+  slot: 'network-panel',
   component: MyComponentWrapper,
-  order: 0,
-  visible: () => Store.someCondition.value
+  order: 0
 })
 ```
 
-### Bootstrap Process
-
-Modules are loaded in `packages/app/src/bootstrap.ts`:
-
-```typescript
-// Each import triggers the module's registerToSlot() call
-import '@codelobby/header-module'
-import '@codelobby/explorer-module'
-import '@codelobby/canvas-module'
-import '@codelobby/pr-detail-module'
-import '@codelobby/ai-chat-module'
-import '@codelobby/network-module'
-```
-
 ---
 
-## 5. State Management (Shared Store)
+## 6. Data Flow Architecture
 
-The shared store is the **single source of truth** for all application state. It uses a custom signal-based implementation inspired by @preact/signals.
-
-### Signal Implementation
-
-```typescript
-// packages/shared-store/src/store.ts
-
-export interface Signal<T> {
-  value: T
-  subscribe(fn: () => void): () => boolean
-  getSnapshot(): T
-}
-
-export function createSignal<T>(initialValue: T): Signal<T> {
-  let value = initialValue
-  const subscribers = new Set<() => void>()
-
-  return {
-    get value(): T {
-      return value
-    },
-    set value(newValue: T) {
-      if (newValue !== value) {
-        value = newValue
-        for (const fn of subscribers) fn()
-      }
-    },
-    subscribe(fn) {
-      subscribers.add(fn)
-      return () => subscribers.delete(fn)
-    },
-    getSnapshot(): T {
-      return value
-    }
-  }
-}
-```
-
-### Using Signals in React
-
-```typescript
-import { Store, useSignal } from '@codelobby/shared-store'
-
-function MyComponent() {
-  // Automatically re-renders when signal value changes
-  const selectedPR = useSignal(Store.selectedPR)
-  const viewMode = useSignal(Store.viewMode)
-  
-  return <div>{selectedPR?.title}</div>
-}
-```
-
-### Store Structure
-
-```typescript
-export const Store: StoreType = {
-  // Authentication
-  user: createSignal<GitHubUser | null>(null),
-  isAuthenticated: createSignal<boolean>(false),
-
-  // GitHub Data
-  repos: createSignal<Repository[]>([]),
-  prs: createSignal<PullRequest[]>([]),
-  selectedRepos: createSignal<string[] | null>(null),
-  selectedPR: createSignal<PullRequest | null>(null),
-  rateLimit: createSignal<RateLimit | null>(null),
-
-  // AI Chat
-  chatHistory: createSignal<ChatMessage[]>([]),
-  prChats: createSignal<PRChat[]>([]),
-  linkedPRChat: createSignal<LinkedPRChat | null>(null),
-  claudeApiKey: createSignal<string | null>(null),
-  selectedModel: createSignal<string | null>(null),
-  enableThinking: createSignal<boolean>(true),
-
-  // Layout & UI State
-  viewMode: createSignal<ViewMode>('canvas'),
-  prDetailOpen: createSignal<boolean>(false),
-  aiPanelOpen: createSignal<boolean>(false),
-  explorerWidth: createSignal<number>(280),
-  cardLayouts: createSignal<CardLayout[]>([]),
-
-  // Loading States
-  loading: {
-    repos: createSignal<boolean>(false),
-    prs: createSignal<boolean>(false),
-    prDetail: createSignal<boolean>(false),
-    auth: createSignal<boolean>(true)
-  },
-
-  // Errors
-  errors: {
-    github: createSignal<Error | null>(null),
-    ai: createSignal<Error | null>(null),
-    auth: createSignal<Error | null>(null)
-  }
-}
-```
-
-### ❌ FORBIDDEN: Writing to Store Outside data-module
-
-**ONLY `data-module` is allowed to write to Store!**
-
-```typescript
-// ❌ NEVER DO THIS in UI modules or queries
-import { Store } from '@codelobby/shared-store'
-Store.selectedPR.value = newPR  // FORBIDDEN!
-
-// ✅ CORRECT - Emit an action, let data-module handle it
-import { Actions } from '@codelobby/shared-store'
-Actions.selectPR(newPR)
-```
-
----
-
-## 6. Action System (Event-Driven)
-
-Actions are event emitters that UI modules use to request data operations. The data module listens for these events and updates the store.
-
-### Data Flow
-
-```
-UI Module → emit Action → Data Module listens → IPC call → Update Store → UI reacts
-```
-
-### Action Implementation
-
-```typescript
-// packages/shared-store/src/actions.ts
-
-// Emit an action event
-function emit<K extends keyof ActionEvents>(
-  action: K,
-  ...args: ActionEvents[K] extends void ? [] : [ActionEvents[K]]
-): void {
-  const detail = args[0]
-  window.dispatchEvent(new CustomEvent(action, { detail }))
-}
-
-// Listen for an action event (used by data-module)
-export function onAction<K extends keyof ActionEvents>(
-  action: K,
-  handler: (payload: ActionEvents[K]) => void
-): () => void {
-  const listener = ((e: CustomEvent) => handler(e.detail)) as EventListener
-  window.addEventListener(action, listener)
-  return () => window.removeEventListener(action, listener)
-}
-```
-
-### Available Actions
-
-```typescript
-export const Actions = {
-  // GitHub Actions
-  fetchRepos: () => emit('action:fetch-repos'),
-  fetchPRs: (repos: string[]) => emit('action:fetch-prs', { repos }),
-  selectPR: (pr: PullRequest | null) => emit('action:select-pr', { pr }),
-  refreshPRDetail: (repoFullName, prNumber) => emit('action:refresh-pr-detail', {...}),
-
-  // AI Actions
-  sendAIMessage: (message, systemContext?) => emit('action:send-ai-message', {...}),
-  createPRChat: (pr) => emit('action:create-pr-chat', { pr }),
-  analyzeCIFailure: (owner, repo, checkRunId, checkName) => emit('action:analyze-ci-failure', {...}),
-
-  // Auth Actions
-  signIn: (token) => emit('action:sign-in', { token }),
-  signOut: () => emit('action:sign-out'),
-
-  // Layout Actions
-  setViewMode: (mode) => emit('action:set-view-mode', { mode }),
-  toggleAIPanel: () => emit('action:toggle-ai-panel'),
-  togglePRDetail: () => emit('action:toggle-pr-detail'),
-
-  // Data Actions
-  clearCache: () => emit('action:clear-cache'),
-  factoryReset: () => emit('action:factory-reset'),
-}
-```
-
-### Using Actions in UI
-
-```typescript
-import { Actions } from '@codelobby/shared-store'
-
-function PRCard({ pr }) {
-  const handleClick = () => {
-    Actions.selectPR(pr)  // Emits event, data-module handles it
-  }
-  
-  return <div onClick={handleClick}>{pr.title}</div>
-}
-```
-
----
-
-## 7. Data Flow Architecture
+### GitHub Data Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        GitHub API                            │
-│                    (GraphQL Endpoint)                        │
+│                    (api.github.com)                          │
 └─────────────────────────────────────────────────────────────┘
+                              ▲
+                              │ fetch() (direct from renderer)
+                              │
+┌─────────────────────────────┴───────────────────────────────┐
+│                    @codelobby/data                           │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  github.ts - API functions (fetchRepos, fetchPRs, etc.) ││
+│  └─────────────────────────────────────────────────────────┘│
+│                              ▲                               │
+│                              │ queryFn                       │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  queries/repository.ts - useRepos(), usePRs()           ││
+│  └─────────────────────────────────────────────────────────┘│
+│                              ▲                               │
+│                              │ useQuery                      │
+└─────────────────────────────┴───────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Main Process                             │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
-│  │ github-graphql  │  │     store       │  │    IPC      │  │
-│  │   .ts           │  │     .ts         │  │  Handlers   │  │
-│  │                 │  │                 │  │             │  │
-│  │ • GraphQL       │  │ • Token         │  │ • fetch-prs │  │
-│  │   queries       │  │ • User cache    │  │ • get-token │  │
-│  │ • Data parsing  │  │ • Card layouts  │  │ • etc.      │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                         (IPC Bridge)
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Renderer Process                          │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
-│  │   @codelobby/   │  │  @codelobby/    │  │ UI Modules  │  │
-│  │      api        │  │  shared-store   │  │             │  │
-│  │                 │  │                 │  │ • header    │  │
-│  │ • Typed IPC     │  │ • Signals       │  │ • canvas    │  │
-│  │ • Logging       │  │ • Actions       │  │ • ai-chat   │  │
-│  │ • Namespaces    │  │ • useSignal()   │  │ • pr-detail │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
-│           │                    ▲                  │          │
-│           │                    │                  │          │
-│           ▼                    │                  ▼          │
-│  ┌─────────────────────────────┴──────────────────────────┐ │
-│  │                   @codelobby/data-module               │ │
-│  │  • Listens for actions                                 │ │
-│  │  • Calls api.* methods                                 │ │
-│  │  • Updates Store                                       │ │
-│  └────────────────────────────────────────────────────────┘ │
+│                      UI Components                           │
+│  PRGrid.tsx, Header.tsx, etc.                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Complete Flow Example: Selecting a PR
+### Complete Flow Example: Fetching PRs
 
-1. **User clicks PR card** → UI component
-2. **Component calls** `Actions.selectPR(pr)`
-3. **data-module listens** → `onAction('action:select-pr', ...)`
-4. **data-module updates store**:
-   ```typescript
-   Store.selectedPR.value = pr
-   Store.prDetailOpen.value = pr !== null
-   ```
-5. **All components using** `useSignal(Store.selectedPR)` **re-render**
+```typescript
+// 1. Component uses hook
+const { data: prs, isLoading } = usePRs()
+
+// 2. Hook definition (queries/pull-request.ts)
+export function usePRs() {
+  const qc = useQueryClient()
+  const { data: selectedRepos } = useSelectedRepos()
+  const token = qc.getQueryData<string>(keys.githubToken)
+
+  return useQuery({
+    queryKey: keys.prs(selectedRepos ?? []),
+    queryFn: async () => {
+      // 3. Direct fetch to GitHub
+      return github.fetchPRsForRepos(token!, selectedRepos!)
+    },
+    enabled: !!token && !!selectedRepos?.length,
+    staleTime: 15 * 60 * 1000  // 15 minutes
+  })
+}
+
+// 4. API function (github.ts)
+export async function fetchPRsForRepos(token: string, repos: string[]) {
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ query: GET_PRS_QUERY, variables: { repos } })
+  })
+  return transformResponse(await response.json())
+}
+```
 
 ---
 
-## 8. IPC Communication Layer
+## 7. Query Keys & Persistence
 
-### Preload Script (`src/preload/index.ts`)
-
-The preload script exposes a type-safe `window.electron` object:
+### Key Organization
 
 ```typescript
-const electronAPI: ElectronAPI = {
-  // Token management
-  getToken: () => ipcRenderer.invoke('get-token'),
-  setToken: (token) => ipcRenderer.invoke('set-token', token),
-  
-  // GitHub API
-  fetchPRs: () => ipcRenderer.invoke('fetch-prs'),
-  fetchAllPRsForRepos: (repos) => ipcRenderer.invoke('fetch-all-prs-for-repos', repos),
-  
-  // AI Chat
-  sendChatMessageStreaming: (message, systemContext?) =>
-    ipcRenderer.invoke('send-chat-message-streaming', message, systemContext),
-  onChatStreamChunk: (callback) => {
-    ipcRenderer.on('chat-stream-chunk', (_, chunk) => callback(chunk))
-    return () => ipcRenderer.removeListener('chat-stream-chunk', handler)
-  },
-  
-  // Settings
-  getViewMode: () => ipcRenderer.invoke('get-view-mode'),
-  setViewMode: (mode) => ipcRenderer.invoke('set-view-mode', mode),
-}
+// @codelobby/data/src/keys.ts
+export const keys = {
+  // GitHub (NOT persisted - fetched fresh)
+  repos: ['github', 'repos'],
+  prs: (repos) => ['github', 'prs', ...repos],
+  user: ['github', 'user'],
+  rateLimit: ['github', 'rate-limit'],
 
-contextBridge.exposeInMainWorld('electron', electronAPI)
+  // Settings (PERSISTED to localStorage)
+  selectedRepos: ['settings', 'selected-repos'],
+  viewMode: ['settings', 'view-mode'],
+  githubToken: ['settings', 'github-token'],
+
+  // AI (PERSISTED to localStorage)
+  claudeApiKey: ['ai', 'claude-api-key'],
+  chatHistory: ['ai', 'chat-history'],
+
+  // Local UI state (PERSISTED)
+  local: {
+    selectedPRId: ['local', 'selected-pr-id'],
+    networkPanelOpen: ['local', 'network-panel-open'],
+    networkPanelHeight: ['local', 'network-panel-height']
+  },
+
+  // System (OS state - NOT persisted)
+  system: {
+    fullscreen: ['system', 'fullscreen'],
+    theme: ['system', 'theme']
+  }
+}
 ```
 
-### Main Process IPC Handlers (`src/main/index.ts`)
+### Persistence Configuration
 
 ```typescript
-// Pattern for IPC handlers
-ipcMain.handle('fetch-prs', async () => {
-  try {
-    const token = getToken()
-    if (!token) return { success: false, error: 'Not authenticated' }
-    
-    const data = await fetchAllPRsForRepos(token, repos)
-    return { success: true, data }
-  } catch (error) {
-    logger.error(LogCategory.API, 'Failed to fetch PRs', { error })
-    return { success: false, error: error.message }
-  }
+// @codelobby/data/src/client.ts
+const persister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: 'codelobby-cache'
 })
-```
 
-### IPC Response Convention
-
-All IPC handlers return objects with this shape:
-
-```typescript
-{ success: boolean; data?: T; error?: string }
-```
-
----
-
-## 9. API Client Layer
-
-The `@codelobby/api` package provides a typed wrapper around `window.electron`:
-
-### Structure
-
-```typescript
-// packages/api/src/client.ts
-export const api = {
-  github: {
-    fetchContributedRepos: () => window.electron.fetchContributedRepos(),
-    fetchAllPRsForRepos: (repos) => window.electron.fetchAllPRsForRepos(repos),
-    validateToken: () => window.electron.validateToken(),
-    // ...
-  },
-  
-  settings: {
-    getViewMode: () => window.electron.getViewMode(),
-    setViewMode: (mode) => window.electron.setViewMode(mode),
-    // ...
-  },
-  
-  ai: {
-    sendChatMessageStreaming: (message, systemContext) => 
-      window.electron.sendChatMessageStreaming(message, systemContext),
-    onChatStreamChunk: (callback) => 
-      window.electron.onChatStreamChunk(callback),
-    // ...
-  },
-  
-  logs: {
-    getLogs: () => window.electron.getLogs(),
-    clearLogs: () => window.electron.clearLogs(),
-    // ...
-  }
-}
-```
-
-### Usage in data-module
-
-```typescript
-import { api } from '@codelobby/api'
-
-onAction('action:fetch-repos', async () => {
-  Store.loading.repos.value = true
-  try {
-    const result = await api.github.fetchContributedRepos()
-    if (result.success && result.data) {
-      Store.repos.value = result.data
+persistQueryClient({
+  queryClient,
+  persister,
+  dehydrateOptions: {
+    shouldDehydrateQuery: (query) => {
+      const key = query.queryKey[0]
+      // Only persist settings, ai, local, and github data
+      return ['settings', 'ai', 'local', 'github'].includes(key as string)
     }
-  } finally {
-    Store.loading.repos.value = false
   }
 })
 ```
 
 ---
 
-## 10. Component Architecture Patterns
+## 8. Component Architecture Patterns
 
-### Folder Structure
+### Reading State
 
-Every component lives in its own folder:
+```typescript
+import { useSelectedPR, useViewMode, useTheme } from '@codelobby/data'
 
+function MyComponent() {
+  const { data: selectedPR } = useSelectedPR()
+  const { data: viewMode } = useViewMode()
+  const { data: theme } = useTheme()
+
+  return <div>{selectedPR?.title}</div>
+}
 ```
-components/
-└── MyComponent/
-    ├── index.ts              # Barrel export
-    ├── MyComponent.tsx       # Component code
-    └── MyComponent.test.tsx  # Tests (colocated)
+
+### Writing State
+
+```typescript
+import { useSelectPR, useSetViewMode } from '@codelobby/data'
+
+function MyComponent() {
+  const selectPR = useSelectPR()
+  const setViewMode = useSetViewMode()
+
+  const handleClick = () => {
+    selectPR.mutate({ owner: 'org', repo: 'app', number: 123 })
+    setViewMode.mutate('ide')
+  }
+}
 ```
 
 ### Dumb Component Pattern
 
-When splitting large components, keep child components **"dumb" (presentational)**:
+Keep child components presentational:
 
 ```typescript
 // ✅ GOOD - Dumb presentational component
-// ChatHeader.tsx
-import { Button } from '@codelobby/ui-kit'
-
-interface ChatHeaderProps {
-  title: string
-  onClose: () => void           // ← Callback prop
-  onClearHistory: () => void    // ← Callback prop
-}
-
-export function ChatHeader({ title, onClose, onClearHistory }: ChatHeaderProps) {
+function PRCard({ pr, onSelect }: { pr: PullRequest; onSelect: () => void }) {
   return (
-    <div>
-      <h2>{title}</h2>
-      <Button onClick={onClose}>Close</Button>
-      <Button onClick={onClearHistory}>Clear</Button>
+    <div onClick={onSelect}>
+      <h3>{pr.title}</h3>
     </div>
   )
 }
-```
 
-```typescript
-// ❌ BAD - Component reaching outside for data/actions
-import { Store, Actions } from '@codelobby/shared-store'  // ❌
+// Parent handles state
+function PRList() {
+  const { data: prs } = usePRs()
+  const selectPR = useSelectPR()
 
-export function ChatHeader() {
-  const linkedPRChat = useSignal(Store.linkedPRChat)  // ❌ Direct store access
-  
-  const handleClear = async () => {
-    await window.electron.clearChatHistory()  // ❌ Direct IPC call
-    Actions.clearChat()  // ❌ Direct action dispatch
-  }
+  return prs?.map(pr => (
+    <PRCard 
+      key={pr.id} 
+      pr={pr} 
+      onSelect={() => selectPR.mutate(pr)} 
+    />
+  ))
 }
-```
-
-### Orchestrator Pattern
-
-```
-┌─────────────────────────────────────────────────────┐
-│  index.tsx (Wrapper)                                │
-│  - Connects to shared-store via useSignal()         │
-│  - Passes props down                                │
-└─────────────────────┬───────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────┐
-│  MainComponent.tsx (Orchestrator)                   │
-│  - Manages local state                              │
-│  - Calls window.electron for IPC                    │
-│  - Passes data + callbacks to children              │
-└─────────────────────┬───────────────────────────────┘
-                      │
-    ┌─────────────────┼─────────────────┐
-    │                 │                 │
-┌───▼───┐        ┌────▼────┐       ┌────▼────┐
-│Header │        │ Content │       │  Input  │
-│(dumb) │        │ (dumb)  │       │ (dumb)  │
-└───────┘        └─────────┘       └─────────┘
-```
-
-### Always Use UI-Kit Components
-
-```typescript
-// ❌ BAD - Raw HTML input
-<input type="text" placeholder="Search..." className="..." />
-
-// ✅ GOOD - Use the Input component from ui-kit
-import { Input } from '@codelobby/ui-kit'
-<Input type="text" placeholder="Search..." />
 ```
 
 ---
 
-## 11. TypeScript Configuration
+## 9. TypeScript Configuration
 
 The project uses **project references** for Electron's dual-process architecture:
 
@@ -749,33 +485,17 @@ tsconfig.json (root)
 └── references → tsconfig.node.json   # Main process
 ```
 
-| Config | Purpose | Includes |
-|--------|---------|----------|
-| `tsconfig.json` | Root with project references | `"files": []` |
-| `tsconfig.web.json` | Browser/renderer context | `packages/**/*`, `src/renderer/**/*` |
-| `tsconfig.node.json` | Node.js/main process | `src/main/**/*`, `src/preload/**/*` |
-
 ### Path Aliases (tsconfig.web.json)
 
 ```json
 {
   "compilerOptions": {
     "paths": {
-      "@codelobby/shared-store": ["packages/shared-store/src/index.ts"],
+      "@codelobby/data": ["packages/data/src/index.ts"],
       "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"],
       "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
-      "@codelobby/api": ["packages/api/src/index.ts"],
-      "@codelobby/data-module": ["packages/data-module/src/index.ts"],
-      "@codelobby/logger": ["packages/logger/src/index.ts"],
-      "@codelobby/queries": ["packages/queries/src/index.ts"],
-      "@codelobby/test-utils": ["packages/test-utils/src/index.ts"],
-      // UI modules
       "@codelobby/header-module": ["packages/header-module/src/index.tsx"],
-      "@codelobby/explorer-module": ["packages/explorer-module/src/index.tsx"],
-      "@codelobby/canvas-module": ["packages/canvas-module/src/index.tsx"],
-      "@codelobby/pr-detail-module": ["packages/pr-detail-module/src/index.tsx"],
-      "@codelobby/ai-chat-module": ["packages/ai-chat-module/src/index.tsx"],
-      "@codelobby/network-module": ["packages/network-module/src/index.tsx"]
+      // ... etc
     }
   }
 }
@@ -783,169 +503,51 @@ tsconfig.json (root)
 
 ---
 
-## 12. Available Slots & Modules
+## 10. Adding New Features
 
-| Slot | Module | Description |
-|------|--------|-------------|
-| `header` | header-module | App header with nav, settings, user avatar |
-| `left-panel` | explorer-module | IDE-style tree view sidebar |
-| `main` | canvas-module | Free-form PR card canvas |
-| `pr-detail-panel` | pr-detail-module | PR detail sidebar with CI, comments |
-| `ai-panel` | ai-chat-module | Claude AI chat panel |
-| `network-panel` | network-module | HTTP request monitoring |
+### Adding New State
 
----
-
-## 13. Adding New Features
-
-### Adding a New IPC Handler
-
-**Step 1: Define in main process** (`src/main/index.ts`)
-
+**1. Add query key** in `keys.ts`:
 ```typescript
-ipcMain.handle('my-new-handler', async (_, arg1: string, arg2: number) => {
-  try {
-    const result = await doSomething(arg1, arg2)
-    return { success: true, data: result }
-  } catch (error) {
-    logger.error(LogCategory.API, 'Handler failed', { error })
-    return { success: false, error: (error as Error).message }
-  }
-})
-```
-
-**Step 2: Add to preload** (`src/preload/index.ts`)
-
-```typescript
-// In electronAPI object
-myNewHandler: (arg1: string, arg2: number) => 
-  ipcRenderer.invoke('my-new-handler', arg1, arg2),
-```
-
-**Step 3: Add TypeScript types** (`src/preload/electron-api.d.ts`)
-
-```typescript
-interface ElectronAPI {
-  myNewHandler: (arg1: string, arg2: number) => Promise<{ success: boolean; data?: T; error?: string }>
+export const keys = {
+  // ...
+  myNewState: ['settings', 'my-new-state'] as const
 }
 ```
 
-**Step 4: Add to API client** (`packages/api/src/namespaces/...`)
-
+**2. Create query hook** in `queries/`:
 ```typescript
-export const myNamespace = {
-  myNewHandler: (arg1: string, arg2: number) => 
-    window.electron.myNewHandler(arg1, arg2)
+export function useMyNewState() {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: keys.myNewState,
+    queryFn: () => qc.getQueryData<MyType>(keys.myNewState) ?? defaultValue,
+    staleTime: Infinity
+  })
 }
 ```
+
+**3. Create mutation hook** in `mutations/`:
+```typescript
+export function useSetMyNewState() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (value: MyType) => {
+      qc.setQueryData(keys.myNewState, value)
+      return value
+    }
+  })
+}
+```
+
+**4. Export** from `index.ts`.
 
 ### Adding a New UI Module
 
-**Step 1: Create package structure**
-
-```
-packages/my-new-module/
-├── package.json
-└── src/
-    ├── index.tsx           # Entry + slot registration
-    └── components/
-        └── MyComponent/
-            ├── index.ts
-            ├── MyComponent.tsx
-            └── MyComponent.test.tsx
-```
-
-**Step 2: package.json**
-
-```json
-{
-  "name": "@codelobby/my-new-module",
-  "version": "1.0.0",
-  "main": "src/index.tsx",
-  "dependencies": {
-    "@codelobby/shared-store": "workspace:*",
-    "@codelobby/slot-system": "workspace:*",
-    "@codelobby/ui-kit": "workspace:*"
-  }
-}
-```
-
-**Step 3: Create index.tsx with slot registration**
-
-```typescript
-// packages/my-new-module/src/index.tsx
-import { Store, useSignal } from '@codelobby/shared-store'
-import { registerToSlot } from '@codelobby/slot-system'
-import { MyComponent } from './components/MyComponent'
-
-function MyComponentWrapper() {
-  const someState = useSignal(Store.someState)
-  return <MyComponent state={someState} />
-}
-
-registerToSlot({
-  id: 'my-new-module',
-  slot: 'main',  // or appropriate slot
-  component: MyComponentWrapper,
-  order: 0,
-  visible: () => true
-})
-```
-
-**Step 4: Add to bootstrap.ts**
-
-```typescript
-// packages/app/src/bootstrap.ts
-import '@codelobby/my-new-module'
-```
-
-**Step 5: Add path alias to tsconfig.web.json**
-
-```json
-{
-  "paths": {
-    "@codelobby/my-new-module": ["packages/my-new-module/src/index.tsx"]
-  }
-}
-```
-
-### Adding a New Action
-
-**Step 1: Define action type** (`packages/shared-store/src/actions.ts`)
-
-```typescript
-export type ActionEvents = {
-  // ... existing actions
-  'action:my-new-action': { param1: string; param2: number }
-}
-```
-
-**Step 2: Add action emitter**
-
-```typescript
-export const Actions = {
-  // ... existing actions
-  myNewAction: (param1: string, param2: number) => 
-    emit('action:my-new-action', { param1, param2 }),
-}
-```
-
-**Step 3: Handle in data-module** (`packages/data-module/src/index.ts`)
-
-```typescript
-cleanupFunctions.push(
-  onAction('action:my-new-action', async ({ param1, param2 }) => {
-    try {
-      const result = await api.myNamespace.myNewHandler(param1, param2)
-      if (result.success) {
-        Store.myData.value = result.data
-      }
-    } catch (error) {
-      Store.errors.myError.value = error as Error
-    }
-  })
-)
-```
+1. Create `packages/my-module/` with standard structure
+2. Import hooks from `@codelobby/data`
+3. Register to slot via `registerToSlot()`
+4. Import in `bootstrap.ts`
 
 ---
 
@@ -963,13 +565,12 @@ npm run test         # Run tests
 
 ### Key Principles Summary
 
-1. **Single Source of Truth**: Renderer's Store is authoritative
-2. **Unidirectional Data Flow**: Actions → Data Module → Store → UI
-3. **Zero Cross-Imports**: UI modules never import from each other
-4. **Only data-module Writes**: UI modules read from Store, emit Actions
-5. **Dumb Components**: Pass data/callbacks via props
-6. **Colocated Tests**: Test files live next to source files
-7. **Type-Safe IPC**: All IPC calls are typed via ElectronAPI interface
+1. **TanStack Query is the single source of truth** — No other state management
+2. **useQuery for reads, useMutation for writes** — Consistent patterns
+3. **Direct fetch() for GitHub** — No IPC layer for data fetching
+4. **Settings/AI persisted, GitHub fresh** — Selective persistence
+5. **Zero cross-imports between UI modules** — Use @codelobby/data
+6. **Slot system for module composition** — Self-registering modules
 
 ---
 

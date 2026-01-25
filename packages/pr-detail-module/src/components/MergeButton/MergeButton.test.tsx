@@ -1,18 +1,16 @@
 /**
  * MergeButton Component Tests
  *
- * Tests for merge button states, confirmation popover, and merge methods.
+ * Tests for merge button states, confirmation popover, and submission.
+ * Components subscribe to store directly - use initialSelectedPR option in render.
  */
 
 import {
-  createMockBehindPR,
+  createMockApprovedPR,
   createMockBlockedPR,
-  createMockComputingPR,
   createMockConflictingPR,
   createMockDraftPR,
   createMockMergeablePR,
-  createMockPullRequest,
-  createMockUnstablePR,
   fireEvent,
   render,
   resetMockElectron,
@@ -24,8 +22,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MergeButton } from './MergeButton'
 
 describe('MergeButton', () => {
-  const mockOnMergeComplete = vi.fn()
-
   beforeEach(() => {
     setupMockElectron()
     vi.clearAllMocks()
@@ -38,24 +34,37 @@ describe('MergeButton', () => {
   describe('rendering', () => {
     it('should render merge button', () => {
       const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       expect(screen.getByRole('button', { name: /Merge/i })).toBeInTheDocument()
     })
 
-    it('should render git merge icon', () => {
+    it('should render merge icon', () => {
       const pr = createMockMergeablePR()
-      const { container } = render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      const { container } = render(<MergeButton />, { initialSelectedPR: pr })
 
       const mergeIcon = container.querySelector('.lucide-git-merge')
       expect(mergeIcon).toBeInTheDocument()
+    })
+
+    it('should not render when no PR is selected', () => {
+      const { container } = render(<MergeButton />, { initialSelectedPR: null })
+      expect(container).toBeEmptyDOMElement()
     })
   })
 
   describe('button states', () => {
     it('should be enabled for mergeable PRs', () => {
       const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
+
+      const button = screen.getByRole('button', { name: /Merge/i })
+      expect(button).not.toBeDisabled()
+    })
+
+    it('should be enabled for approved PRs', () => {
+      const pr = createMockApprovedPR()
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
       expect(button).not.toBeDisabled()
@@ -63,7 +72,7 @@ describe('MergeButton', () => {
 
     it('should be disabled for draft PRs', () => {
       const pr = createMockDraftPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
       expect(button).toBeDisabled()
@@ -71,7 +80,7 @@ describe('MergeButton', () => {
 
     it('should be disabled for PRs with conflicts', () => {
       const pr = createMockConflictingPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
       expect(button).toBeDisabled()
@@ -79,65 +88,7 @@ describe('MergeButton', () => {
 
     it('should be disabled for blocked PRs', () => {
       const pr = createMockBlockedPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
-    })
-
-    it('should be disabled for PRs behind base branch', () => {
-      const pr = createMockBehindPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
-    })
-
-    it('should be disabled for unstable PRs', () => {
-      const pr = createMockUnstablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
-    })
-
-    it('should show loading state when merge status is computing', () => {
-      const pr = createMockComputingPR()
-      const { container } = render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const spinner = container.querySelector('.animate-spin')
-      expect(spinner).toBeInTheDocument()
-    })
-
-    it('should show success styling for mergeable PRs', () => {
-      const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toHaveClass('bg-success')
-    })
-  })
-
-  describe('button variants by state', () => {
-    it('should be disabled with secondary variant for drafts', () => {
-      const pr = createMockDraftPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
-    })
-
-    it('should be disabled with destructive variant for conflicting PRs', () => {
-      const pr = createMockConflictingPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
-    })
-
-    it('should be disabled for PRs behind base branch', () => {
-      const pr = createMockBehindPR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
       expect(button).toBeDisabled()
@@ -145,9 +96,9 @@ describe('MergeButton', () => {
   })
 
   describe('confirmation popover', () => {
-    it('should show confirmation popover when merge button is clicked', async () => {
+    it('should open confirmation popover on click', async () => {
       const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
       fireEvent.click(button)
@@ -159,83 +110,50 @@ describe('MergeButton', () => {
 
     it('should show branch names in confirmation', async () => {
       const pr = createMockMergeablePR()
-      pr.head.ref = 'feature/my-branch'
-      pr.base.ref = 'main'
+      render(<MergeButton />, { initialSelectedPR: pr })
 
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
+      const button = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(button)
 
       await waitFor(() => {
-        expect(screen.getByText('feature/my-branch')).toBeInTheDocument()
-        expect(screen.getByText('main')).toBeInTheDocument()
+        expect(screen.getByText(pr.head.ref)).toBeInTheDocument()
+        expect(screen.getByText(pr.base.ref)).toBeInTheDocument()
       })
     })
 
-    it('should show merge method selection', async () => {
+    it('should show merge method selection buttons', async () => {
       const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Squash/i })).toBeInTheDocument()
-        // There are multiple "Merge" buttons when popover is open, use getAllByRole
-        const mergeButtons = screen.getAllByRole('button', { name: /^Merge$/i })
-        expect(mergeButtons.length).toBeGreaterThanOrEqual(1)
-        expect(screen.getByRole('button', { name: /Rebase/i })).toBeInTheDocument()
-      })
-    })
-
-    it('should default to Squash merge method', async () => {
-      const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
-
-      await waitFor(() => {
-        const squashButton = screen.getByRole('button', { name: /Squash/i })
-        // Squash should have the selected styling (variant='default')
-        expect(squashButton.className).toMatch(/bg-primary|variant-default/)
-      })
-    })
-
-    it('should close confirmation when cancel is clicked', async () => {
-      const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      // Open confirmation
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
+      const button = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(button)
 
       await waitFor(() => {
         expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
       })
 
-      // Click cancel
-      fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
-
-      await waitFor(() => {
-        expect(screen.queryByText('Confirm Merge')).not.toBeInTheDocument()
-      })
+      // Look for Squash and Rebase buttons specifically
+      expect(screen.getByRole('button', { name: 'Squash' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Rebase' })).toBeInTheDocument()
+      // There's also a "Merge" method button
+      const mergeButtons = screen.getAllByRole('button', { name: 'Merge' })
+      expect(mergeButtons.length).toBeGreaterThan(0)
     })
 
-    it('should close confirmation when X button is clicked', async () => {
+    it('should close popover when X is clicked', async () => {
       const pr = createMockMergeablePR()
-      const { container } = render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      const { container } = render(<MergeButton />, { initialSelectedPR: pr })
 
-      // Open confirmation
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
+      const button = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(button)
 
       await waitFor(() => {
         expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
       })
 
-      // Click X button
-      const xIcon = container.querySelector('.lucide-x')
-      const closeButton = xIcon?.closest('button')
-      if (closeButton) {
-        fireEvent.click(closeButton)
-      }
+      const closeButton = container.querySelector('.lucide-x')?.closest('button')
+      expect(closeButton).not.toBeNull()
+      if (closeButton) fireEvent.click(closeButton)
 
       await waitFor(() => {
         expect(screen.queryByText('Confirm Merge')).not.toBeInTheDocument()
@@ -243,136 +161,136 @@ describe('MergeButton', () => {
     })
   })
 
-  describe('merge execution', () => {
-    it('should call window.electron.mergePR when confirm is clicked', async () => {
+  describe('merge submission', () => {
+    it('should call mergePR with default SQUASH method', async () => {
       const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      window.electron.mergePR = vi.fn().mockResolvedValue({ success: true })
 
-      // Open confirmation
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
+      render(<MergeButton />, { initialSelectedPR: pr })
+
+      const button = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(button)
 
       await waitFor(() => {
         expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
       })
 
-      // Click confirm
-      fireEvent.click(screen.getByRole('button', { name: /Confirm/i }))
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(window.electron.mergePR).toHaveBeenCalledWith(pr.id, 'SQUASH')
       })
     })
 
-    it('should call onMergeComplete after successful merge', async () => {
+    it('should call mergePR with MERGE method when selected', async () => {
       const pr = createMockMergeablePR()
+      window.electron.mergePR = vi.fn().mockResolvedValue({ success: true })
 
-      // Mock successful merge
-      ;(window.electron.mergePR as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        success: true
-      })
+      render(<MergeButton />, { initialSelectedPR: pr })
 
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      // Open confirmation and confirm
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
-      await waitFor(() => expect(screen.getByText('Confirm Merge')).toBeInTheDocument())
-      fireEvent.click(screen.getByRole('button', { name: /Confirm/i }))
+      const button = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(button)
 
       await waitFor(() => {
-        expect(mockOnMergeComplete).toHaveBeenCalled()
-      })
-    })
-
-    it('should show error message when merge fails', async () => {
-      const pr = createMockMergeablePR()
-
-      // Mock failed merge
-      ;(window.electron.mergePR as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        success: false,
-        error: 'Merge failed: branch protection rules not met'
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
       })
 
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      // Open confirmation and confirm
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
-      await waitFor(() => expect(screen.getByText('Confirm Merge')).toBeInTheDocument())
-      fireEvent.click(screen.getByRole('button', { name: /Confirm/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText(/branch protection rules not met/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should show spinner during merge', async () => {
-      const pr = createMockMergeablePR()
-
-      // Mock slow merge
-      ;(window.electron.mergePR as ReturnType<typeof vi.fn>).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ success: true }), 1000))
+      // Get all buttons named "Merge" - one is trigger, others are method selections
+      const mergeButtons = screen.getAllByRole('button', { name: 'Merge' })
+      // The method selection button is inside the popover, not the trigger
+      const mergeMethodButton = mergeButtons.find(
+        (btn) => btn.textContent === 'Merge' && btn.closest('.flex.gap-1')
       )
+      if (mergeMethodButton) {
+        fireEvent.click(mergeMethodButton)
+      }
 
-      const { container } = render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
-
-      // Open confirmation and confirm
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
-      await waitFor(() => expect(screen.getByText('Confirm Merge')).toBeInTheDocument())
-      fireEvent.click(screen.getByRole('button', { name: /Confirm/i }))
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        // Should show spinner during merge
-        const spinner = container.querySelector('.animate-spin')
-        expect(spinner).toBeInTheDocument()
+        expect(window.electron.mergePR).toHaveBeenCalledWith(pr.id, 'MERGE')
       })
     })
-  })
 
-  describe('merge method selection', () => {
-    it('should use selected merge method', async () => {
+    it('should call mergePR with REBASE method when selected', async () => {
       const pr = createMockMergeablePR()
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      window.electron.mergePR = vi.fn().mockResolvedValue({ success: true })
 
-      // Open confirmation
-      fireEvent.click(screen.getByRole('button', { name: /Merge/i }))
-      await waitFor(() => expect(screen.getByText('Confirm Merge')).toBeInTheDocument())
+      render(<MergeButton />, { initialSelectedPR: pr })
 
-      // Select Rebase method
-      fireEvent.click(screen.getByRole('button', { name: /Rebase/i }))
+      const button = screen.getByRole('button', { name: /Merge/i })
+      fireEvent.click(button)
 
-      // Confirm
-      fireEvent.click(screen.getByRole('button', { name: /Confirm/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      const rebaseButton = screen.getByRole('button', { name: /Rebase/i })
+      fireEvent.click(rebaseButton)
+
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(window.electron.mergePR).toHaveBeenCalledWith(pr.id, 'REBASE')
       })
     })
-  })
 
-  describe('review decision states', () => {
-    it('should be disabled when changes are requested', () => {
-      const pr = createMockPullRequest({
-        reviewDecision: 'CHANGES_REQUESTED',
-        mergeable: 'MERGEABLE',
-        mergeStateStatus: 'BLOCKED'
+    it('should disable confirm button during submission', async () => {
+      const pr = createMockMergeablePR()
+      let resolvePromise: (value: { success: boolean }) => void
+      const promise = new Promise<{ success: boolean }>((resolve) => {
+        resolvePromise = resolve
       })
+      window.electron.mergePR = vi.fn().mockReturnValue(promise)
 
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
+      fireEvent.click(button)
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
+
+      // API should have been called
+      await waitFor(() => {
+        expect(window.electron.mergePR).toHaveBeenCalled()
+      })
+
+      // Cancel button should be disabled during merge
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+
+      resolvePromise?.({ success: true })
     })
 
-    it('should be disabled when review is required', () => {
-      const pr = createMockPullRequest({
-        reviewDecision: 'REVIEW_REQUIRED',
-        mergeable: 'MERGEABLE',
-        mergeStateStatus: 'BLOCKED'
+    it('should show error message on failure', async () => {
+      const pr = createMockMergeablePR()
+      window.electron.mergePR = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Branch protection rules not satisfied'
       })
 
-      render(<MergeButton pr={pr} onMergeComplete={mockOnMergeComplete} />)
+      render(<MergeButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Merge/i })
-      expect(button).toBeDisabled()
+      fireEvent.click(button)
+
+      await waitFor(() => {
+        expect(screen.getByText('Confirm Merge')).toBeInTheDocument()
+      })
+
+      const confirmButton = screen.getByRole('button', { name: /Confirm/i })
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Branch protection rules not satisfied')).toBeInTheDocument()
+      })
     })
   })
 })

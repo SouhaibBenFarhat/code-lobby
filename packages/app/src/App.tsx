@@ -1,73 +1,81 @@
 /**
  * @codelobby/app - App Shell
  *
- * The App Shell is the main layout component. It:
- * - Defines the layout structure with slots
- * - Handles authentication state
- * - Manages panel resizing
- * - Provides global UI providers (Tooltip, Toast, etc.)
- *
- * The App Shell does NOT import any module components directly.
- * Modules register themselves to slots via the Slot System.
+ * Simplified version using @codelobby/data (TanStack Query only)
  */
 
-import { api } from '@codelobby/api'
-import { Store, useSignal } from '@codelobby/shared-store'
+import {
+  useAIPanel,
+  useIsAuthenticated,
+  useNetworkPanel,
+  useNetworkPanelHeight,
+  usePRDetailPanel,
+  useSelectedPRId,
+  useSetAIPanel,
+  useSetNetworkPanelHeight,
+  useSetPRDetailPanel,
+  useValidatePersistedToken,
+  useViewMode
+} from '@codelobby/data'
 import { Slot } from '@codelobby/slot-system'
-import { Button, Toaster, TokenInput, TooltipProvider } from '@codelobby/ui-kit'
+import { Button, Toaster, TooltipProvider } from '@codelobby/ui-kit'
 import { MousePointerClick, PanelRight, PanelRightClose } from 'lucide-react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { TokenInput } from './TokenInput'
 
 const MIN_PANEL_WIDTH = 300
-const MAX_PANEL_WIDTH = 9999 // Allow virtually unlimited resizing
+const MAX_PANEL_WIDTH = 9999
 const DEFAULT_PANEL_WIDTH = 400
 const DEFAULT_AI_PANEL_WIDTH = 380
-const MIN_VERTICAL_SPLIT = 20 // Minimum percentage for vertical split
-const MAX_VERTICAL_SPLIT = 80 // Maximum percentage for vertical split
+const MIN_PANEL_HEIGHT = 80
+const DEFAULT_NETWORK_PANEL_HEIGHT = 200
 
-/**
- * Main App Shell component.
- */
 export function App(): React.JSX.Element {
-  // Read global state from the store
-  const isAuthenticated = useSignal(Store.isAuthenticated)
-  const isAuthLoading = useSignal(Store.loading.auth)
-  const viewMode = useSignal(Store.viewMode)
-  const prDetailOpen = useSignal(Store.prDetailOpen)
-  const prDetailWidth = useSignal(Store.prDetailWidth)
-  const aiPanelOpen = useSignal(Store.aiPanelOpen)
-  const aiPanelWidth = useSignal(Store.aiPanelWidth)
-  const networkPanelOpen = useSignal(Store.networkPanelOpen)
-  const networkPanelHeight = useSignal(Store.networkPanelHeight)
-  const selectedPR = useSignal(Store.selectedPR)
-  const _user = useSignal(Store.user)
+  // Read data from TanStack Query
+  const { isAuthenticated, isLoading: isAuthLoading } = useIsAuthenticated()
+  const { data: viewMode = 'canvas' } = useViewMode()
+  const { data: prDetailPanelData } = usePRDetailPanel()
+  const { data: aiPanelData } = useAIPanel()
+  const { data: selectedPRId } = useSelectedPRId()
 
-  // Either AI or Network panel is open = show the right sidebar
-  const rightSidebarOpen = aiPanelOpen || networkPanelOpen
+  const prDetailOpen = prDetailPanelData?.isOpen ?? false
+  const prDetailWidth = prDetailPanelData?.width ?? DEFAULT_PANEL_WIDTH
+  const aiPanelOpen = aiPanelData?.isOpen ?? false
+  const aiPanelWidth = aiPanelData?.width ?? DEFAULT_AI_PANEL_WIDTH
 
-  // Panel resize state (local to App Shell)
+  // Network panel state
+  const { data: networkPanelOpen } = useNetworkPanel()
+  const { data: networkPanelHeight = DEFAULT_NETWORK_PANEL_HEIGHT } = useNetworkPanelHeight()
+
+  // Mutations
+  const setPRDetailPanel = useSetPRDetailPanel()
+  const setAIPanel = useSetAIPanel()
+  const setNetworkPanelHeight = useSetNetworkPanelHeight()
+  const { mutate: validatePersistedToken } = useValidatePersistedToken()
+
+  // On app startup, validate persisted token and restore user data
+  useEffect(() => {
+    validatePersistedToken()
+  }, [validatePersistedToken])
+
+  // Panel resize state
   const [isPRResizing, setIsPRResizing] = useState(false)
   const [isAIResizing, setIsAIResizing] = useState(false)
-  const [isVerticalResizing, setIsVerticalResizing] = useState(false)
+  const [isNetworkResizing, setIsNetworkResizing] = useState(false)
 
-  // Refs for smooth resize
   const prPanelRef = useRef<HTMLElement>(null)
   const rightSidebarRef = useRef<HTMLElement>(null)
+  const networkPanelRef = useRef<HTMLDivElement>(null)
   const prWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   const aiWidthRef = useRef(DEFAULT_AI_PANEL_WIDTH)
-  const networkHeightRef = useRef(40) // percentage
+  const networkHeightRef = useRef(DEFAULT_NETWORK_PANEL_HEIGHT)
   const prRafRef = useRef<number | null>(null)
   const aiRafRef = useRef<number | null>(null)
-  const verticalRafRef = useRef<number | null>(null)
+  const networkRafRef = useRef<number | null>(null)
   const prResizeStart = useRef<{ startX: number; startWidth: number } | null>(null)
   const aiResizeStart = useRef<{ startX: number; startWidth: number } | null>(null)
-  const verticalResizeStart = useRef<{
-    startY: number
-    startHeight: number
-    containerHeight: number
-  } | null>(null)
+  const networkResizeStart = useRef<{ startY: number; startHeight: number } | null>(null)
 
-  // PR Panel resize handlers
   const handlePRResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault()
@@ -78,7 +86,6 @@ export function App(): React.JSX.Element {
     [prDetailWidth]
   )
 
-  // AI Panel resize handlers
   const handleAIResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault()
@@ -89,28 +96,18 @@ export function App(): React.JSX.Element {
     [aiPanelWidth]
   )
 
-  // Vertical split resize handler (between AI and Network panels)
-  const handleVerticalResizeStart = useCallback(
+  const handleNetworkResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault()
-      setIsVerticalResizing(true)
-      const container = rightSidebarRef.current
-      if (container) {
-        verticalResizeStart.current = {
-          startY: e.clientY,
-          startHeight: networkPanelHeight,
-          containerHeight: container.clientHeight
-        }
-        networkHeightRef.current = networkPanelHeight
-      }
+      setIsNetworkResizing(true)
+      networkResizeStart.current = { startY: e.clientY, startHeight: networkPanelHeight }
+      networkHeightRef.current = networkPanelHeight
     },
     [networkPanelHeight]
   )
 
-  // Global mouse event handlers for resizing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      // PR Panel resize
       if (isPRResizing && prResizeStart.current && prPanelRef.current) {
         if (prRafRef.current) cancelAnimationFrame(prRafRef.current)
         prRafRef.current = requestAnimationFrame(() => {
@@ -127,7 +124,6 @@ export function App(): React.JSX.Element {
         })
       }
 
-      // Right Sidebar resize (AI + Network panels share this width)
       if (isAIResizing && aiResizeStart.current && rightSidebarRef.current) {
         if (aiRafRef.current) cancelAnimationFrame(aiRafRef.current)
         aiRafRef.current = requestAnimationFrame(() => {
@@ -144,65 +140,63 @@ export function App(): React.JSX.Element {
         })
       }
 
-      // Vertical split resize (between AI and Network panels)
-      if (isVerticalResizing && verticalResizeStart.current) {
-        if (verticalRafRef.current) cancelAnimationFrame(verticalRafRef.current)
-        verticalRafRef.current = requestAnimationFrame(() => {
-          if (!verticalResizeStart.current) return
-          const deltaY = e.clientY - verticalResizeStart.current.startY
-          const deltaPercent = (deltaY / verticalResizeStart.current.containerHeight) * 100
-          // Subtract deltaPercent: drag DOWN = AI grows = network shrinks
+      if (
+        isNetworkResizing &&
+        networkResizeStart.current &&
+        networkPanelRef.current &&
+        rightSidebarRef.current
+      ) {
+        if (networkRafRef.current) cancelAnimationFrame(networkRafRef.current)
+        networkRafRef.current = requestAnimationFrame(() => {
+          if (!networkResizeStart.current || !networkPanelRef.current || !rightSidebarRef.current)
+            return
+          // Dragging up increases height, dragging down decreases height
+          const delta = networkResizeStart.current.startY - e.clientY
+          // Max height is sidebar height minus minimum space for AI panel
+          const sidebarHeight = rightSidebarRef.current.clientHeight
+          const maxHeight = sidebarHeight - MIN_PANEL_HEIGHT
           const newHeight = Math.min(
-            MAX_VERTICAL_SPLIT,
-            Math.max(MIN_VERTICAL_SPLIT, verticalResizeStart.current.startHeight - deltaPercent)
+            maxHeight,
+            Math.max(MIN_PANEL_HEIGHT, networkResizeStart.current.startHeight + delta)
           )
+          networkPanelRef.current.style.height = `${newHeight}px`
           networkHeightRef.current = newHeight
-          Store.networkPanelHeight.value = newHeight
         })
       }
     }
 
     const handleMouseUp = () => {
-      // Clean up animation frames
-      if (prRafRef.current) {
-        cancelAnimationFrame(prRafRef.current)
-        prRafRef.current = null
-      }
-      if (aiRafRef.current) {
-        cancelAnimationFrame(aiRafRef.current)
-        aiRafRef.current = null
-      }
-      if (verticalRafRef.current) {
-        cancelAnimationFrame(verticalRafRef.current)
-        verticalRafRef.current = null
-      }
+      if (prRafRef.current) cancelAnimationFrame(prRafRef.current)
+      if (aiRafRef.current) cancelAnimationFrame(aiRafRef.current)
+      if (networkRafRef.current) cancelAnimationFrame(networkRafRef.current)
 
-      // Sync final values to store
       if (isPRResizing) {
-        Store.prDetailWidth.value = prWidthRef.current
-        api.settings.setPRDetailPanel({ width: prWidthRef.current })
+        setPRDetailPanel.mutate({ width: prWidthRef.current })
       }
       if (isAIResizing) {
-        Store.aiPanelWidth.value = aiWidthRef.current
-        api.settings.setAIPanel({ width: aiWidthRef.current })
+        setAIPanel.mutate({ width: aiWidthRef.current })
       }
-      if (isVerticalResizing) {
-        Store.networkPanelHeight.value = networkHeightRef.current
-        // Network panel height isn't persisted to settings (for now)
+      if (isNetworkResizing) {
+        setNetworkPanelHeight.mutate(networkHeightRef.current)
       }
 
       setIsPRResizing(false)
       setIsAIResizing(false)
-      setIsVerticalResizing(false)
+      setIsNetworkResizing(false)
       prResizeStart.current = null
       aiResizeStart.current = null
-      verticalResizeStart.current = null
+      networkResizeStart.current = null
     }
 
-    if (isPRResizing || isAIResizing || isVerticalResizing) {
+    if (isPRResizing || isAIResizing) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = isVerticalResizing ? 'row-resize' : 'col-resize'
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    } else if (isNetworkResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'row-resize'
       document.body.style.userSelect = 'none'
     }
 
@@ -212,28 +206,19 @@ export function App(): React.JSX.Element {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
-  }, [isPRResizing, isAIResizing, isVerticalResizing])
+  }, [
+    isPRResizing,
+    isAIResizing,
+    isNetworkResizing,
+    setPRDetailPanel,
+    setAIPanel,
+    setNetworkPanelHeight
+  ])
 
   const togglePRPanel = () => {
-    const newState = !Store.prDetailOpen.value
-    Store.prDetailOpen.value = newState
-    api.settings.setPRDetailPanel({ isOpen: newState })
+    setPRDetailPanel.mutate({ isOpen: !prDetailOpen })
   }
 
-  // Handle authentication success
-  const handleAuthenticated = (authenticatedUser: {
-    login: string
-    avatar_url: string
-    name: string | null
-  }) => {
-    Store.user.value = {
-      ...authenticatedUser,
-      html_url: `https://github.com/${authenticatedUser.login}`
-    }
-    Store.isAuthenticated.value = true
-  }
-
-  // Loading state
   if (isAuthLoading) {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
@@ -245,84 +230,54 @@ export function App(): React.JSX.Element {
     )
   }
 
-  // Not authenticated - show token input
   if (!isAuthenticated) {
     return (
       <div className="h-screen bg-background">
-        <TokenInput onAuthenticated={handleAuthenticated} />
+        <TokenInput />
         <Toaster />
       </div>
     )
   }
 
-  // Authenticated - render the app with slots
   return (
     <TooltipProvider>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
-        {/* Header Slot */}
         <Slot name="header" wrapInContainer={false} />
 
-        {/* Main content area */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left Panel Slot (Explorer in IDE mode) */}
           <Slot name="left-panel" className="flex-shrink-0" />
 
-          {/* Main Content Slot (Canvas or IDE view) */}
           <main className="flex-1 overflow-auto bg-muted/20">
             <Slot name="main" wrapInContainer={false} />
           </main>
 
-          {/* Panel toggle button when collapsed (canvas mode only) */}
           {viewMode === 'canvas' && !prDetailOpen && (
             <Button
               variant="unstyled"
               size="none"
               onClick={togglePRPanel}
               className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-              title="Open PR details panel"
             >
               <PanelRight className="w-5 h-5" />
             </Button>
           )}
 
-          {/* Right Panel - PR Detail (canvas mode) */}
           {viewMode === 'canvas' && prDetailOpen && (
             <aside
               ref={prPanelRef}
               className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
-              style={{
-                width: prDetailWidth,
-                minWidth: prDetailWidth,
-                maxWidth: prDetailWidth,
-                willChange: isPRResizing ? 'width' : 'auto',
-                contain: 'layout style'
-              }}
+              style={{ width: prDetailWidth, minWidth: prDetailWidth, maxWidth: prDetailWidth }}
             >
-              {/* Resize handle */}
-              <div
-                role="slider"
-                aria-orientation="horizontal"
+              <button
+                type="button"
                 aria-label="Resize panel"
-                aria-valuemin={MIN_PANEL_WIDTH}
-                aria-valuemax={MAX_PANEL_WIDTH}
-                aria-valuenow={prDetailWidth}
-                tabIndex={0}
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                  isPRResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                }`}
+                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-20 border-0 p-0 transition-colors ${isPRResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
                 onMouseDown={handlePRResizeStart}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowLeft')
-                    Store.prDetailWidth.value = Math.max(MIN_PANEL_WIDTH, prDetailWidth - 20)
-                  if (e.key === 'ArrowRight')
-                    Store.prDetailWidth.value = Math.min(MAX_PANEL_WIDTH, prDetailWidth + 20)
-                }}
               />
               <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                {selectedPR ? (
+                {selectedPRId ? (
                   <Slot name="pr-detail-panel" wrapInContainer={false} />
                 ) : (
-                  /* Placeholder when no PR selected */
                   <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
                       <h3 className="font-semibold text-sm">PR Details</h3>
@@ -340,15 +295,7 @@ export function App(): React.JSX.Element {
                         <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
                           <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
                         </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            No PR selected
-                          </p>
-                          <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                            Click on a pull request card to view its details, CI status, and
-                            comments
-                          </p>
-                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">No PR selected</p>
                       </div>
                     </div>
                   </div>
@@ -357,95 +304,38 @@ export function App(): React.JSX.Element {
             </aside>
           )}
 
-          {/* Right Sidebar - contains AI Panel and Network Panel stacked vertically */}
-          {rightSidebarOpen && (
+          {aiPanelOpen && (
             <aside
               ref={rightSidebarRef}
               className="apple-panel overflow-hidden flex relative flex-shrink-0"
-              style={{
-                width: aiPanelWidth,
-                minWidth: aiPanelWidth,
-                maxWidth: aiPanelWidth,
-                willChange: isAIResizing ? 'width' : 'auto',
-                contain: 'layout style'
-              }}
+              style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
             >
-              {/* Horizontal resize handle (left edge) */}
-              <div
-                role="slider"
-                aria-orientation="horizontal"
-                aria-label="Resize sidebar"
-                aria-valuemin={MIN_PANEL_WIDTH}
-                aria-valuemax={MAX_PANEL_WIDTH}
-                aria-valuenow={aiPanelWidth}
-                tabIndex={0}
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-                  isAIResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
-                }`}
+              <button
+                type="button"
+                aria-label="Resize panel"
+                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-20 border-0 p-0 transition-colors ${isAIResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
                 onMouseDown={handleAIResizeStart}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowLeft')
-                    Store.aiPanelWidth.value = Math.max(MIN_PANEL_WIDTH, aiPanelWidth - 20)
-                  if (e.key === 'ArrowRight')
-                    Store.aiPanelWidth.value = Math.min(MAX_PANEL_WIDTH, aiPanelWidth + 20)
-                }}
               />
-
-              {/* Vertical flex container for both panels */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* AI Panel - takes remaining space when network is open, full height otherwise */}
-                {aiPanelOpen && (
-                  <div
-                    className="overflow-hidden flex flex-col"
-                    style={{
-                      flex: networkPanelOpen ? `0 0 ${100 - networkPanelHeight}%` : '1 1 auto',
-                      minHeight: networkPanelOpen ? '100px' : undefined
-                    }}
-                  >
-                    <Slot name="ai-panel" wrapInContainer={false} />
-                  </div>
-                )}
-
-                {/* Vertical resize handle (between AI and Network) */}
-                {aiPanelOpen && networkPanelOpen && (
-                  <div
-                    role="slider"
-                    aria-orientation="vertical"
-                    aria-label="Resize panels vertically"
-                    aria-valuemin={MIN_VERTICAL_SPLIT}
-                    aria-valuemax={MAX_VERTICAL_SPLIT}
-                    aria-valuenow={networkPanelHeight}
-                    tabIndex={0}
-                    className={`h-1 cursor-row-resize hover:bg-primary/50 transition-colors flex-shrink-0 ${
-                      isVerticalResizing ? 'bg-primary' : 'bg-border hover:bg-primary/30'
-                    }`}
-                    onMouseDown={handleVerticalResizeStart}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowUp')
-                        Store.networkPanelHeight.value = Math.min(
-                          MAX_VERTICAL_SPLIT,
-                          networkPanelHeight + 5
-                        )
-                      if (e.key === 'ArrowDown')
-                        Store.networkPanelHeight.value = Math.max(
-                          MIN_VERTICAL_SPLIT,
-                          networkPanelHeight - 5
-                        )
-                    }}
-                  />
-                )}
-
-                {/* Network Panel - at the bottom */}
+                <div className="flex-1 overflow-hidden">
+                  <Slot name="ai-panel" wrapInContainer={false} />
+                </div>
                 {networkPanelOpen && (
-                  <div
-                    className="overflow-hidden flex flex-col"
-                    style={{
-                      flex: aiPanelOpen ? `0 0 ${networkPanelHeight}%` : '1 1 auto',
-                      minHeight: aiPanelOpen ? '100px' : undefined
-                    }}
-                  >
-                    <Slot name="network-panel" wrapInContainer={false} />
-                  </div>
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Resize network panel"
+                      className={`h-1 w-full cursor-row-resize border-0 p-0 flex-shrink-0 transition-colors ${isNetworkResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+                      onMouseDown={handleNetworkResizeStart}
+                    />
+                    <div
+                      ref={networkPanelRef}
+                      className="flex-shrink-0 overflow-hidden"
+                      style={{ height: networkPanelHeight }}
+                    >
+                      <Slot name="network-panel" wrapInContainer={false} />
+                    </div>
+                  </>
                 )}
               </div>
             </aside>

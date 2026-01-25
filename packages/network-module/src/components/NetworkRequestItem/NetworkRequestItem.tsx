@@ -5,7 +5,7 @@
  * Shows status icon, HTTP method, URL, status code, duration, cost, and error state.
  */
 
-import type { NetworkRequest } from '@codelobby/shared-store'
+import type { NetworkRequest } from '@codelobby/data'
 import { Badge, Button, cn, Tooltip, TooltipContent, TooltipTrigger } from '@codelobby/ui-kit'
 import { ChevronDown, Zap } from 'lucide-react'
 import { useState } from 'react'

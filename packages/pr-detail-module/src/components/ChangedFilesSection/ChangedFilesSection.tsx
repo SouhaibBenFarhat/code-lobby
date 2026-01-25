@@ -1,9 +1,9 @@
 /**
  * ChangedFilesSection - Displays changed files in a tree structure with diff viewer.
+ * Uses TanStack Query hooks.
  */
 
-import type { PRFile } from '@codelobby/queries'
-import { usePRFiles } from '@codelobby/queries'
+import { type PRFile, usePRFiles } from '@codelobby/data'
 import { Badge, Button, Input } from '@codelobby/ui-kit'
 import {
   AlertCircle,
@@ -28,7 +28,6 @@ export interface ChangedFilesSectionProps {
   totalChanged: number
 }
 
-/** Build tree structure from files */
 function buildFileTreeFromFiles(files: PRFile[]): FileTreeNodeType {
   const root: FileTreeNodeType = { name: '', path: '', isFile: false, children: new Map() }
 
@@ -59,7 +58,6 @@ function buildFileTreeFromFiles(files: PRFile[]): FileTreeNodeType {
   return root
 }
 
-/** Get sorted children: directories first, then files, alphabetically */
 function getSortedChildren(node: FileTreeNodeType): FileTreeNodeType[] {
   return Array.from(node.children.values()).sort((a, b) => {
     if (a.isFile !== b.isFile) return a.isFile ? 1 : -1
@@ -73,24 +71,23 @@ export function ChangedFilesSection({
   prNumber,
   totalChanged
 }: ChangedFilesSectionProps): React.JSX.Element {
+  // TanStack Query hook
   const { data: files = [], isLoading, error } = usePRFiles(owner, repo, prNumber)
+
   const [searchQuery, setSearchQuery] = useState('')
   const [isExpanded, setIsExpanded] = useState(true)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
 
-  // Filter files based on search
   const filteredFiles = useMemo(() => {
     if (!searchQuery.trim()) return files
     const query = searchQuery.toLowerCase()
     return files.filter((f) => f.path.toLowerCase().includes(query))
   }, [files, searchQuery])
 
-  // Build file tree from filtered files
   const fileTree = useMemo(() => buildFileTreeFromFiles(filteredFiles), [filteredFiles])
   const rootChildren = useMemo(() => getSortedChildren(fileTree), [fileTree])
 
-  // Toggle directory expansion
   const toggleDir = useCallback((path: string) => {
     setExpandedDirs((prev) => {
       const next = new Set(prev)
@@ -103,7 +100,6 @@ export function ChangedFilesSection({
     })
   }, [])
 
-  // Toggle file diff expansion
   const toggleFile = useCallback((path: string) => {
     setExpandedFiles((prev) => {
       const next = new Set(prev)
@@ -116,7 +112,6 @@ export function ChangedFilesSection({
     })
   }, [])
 
-  // File statistics by type
   const fileStats = useMemo(() => {
     const stats = { added: 0, deleted: 0, modified: 0, renamed: 0 }
     for (const file of files) {
@@ -140,7 +135,6 @@ export function ChangedFilesSection({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Header */}
       <Button
         variant="unstyled"
         size="none"
@@ -163,7 +157,6 @@ export function ChangedFilesSection({
 
       {isExpanded && (
         <div className="flex flex-col gap-3">
-          {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
@@ -185,7 +178,6 @@ export function ChangedFilesSection({
             )}
           </div>
 
-          {/* File type stats */}
           {files.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               {fileStats.added > 0 && (
@@ -215,7 +207,6 @@ export function ChangedFilesSection({
             </div>
           )}
 
-          {/* Content - File Tree */}
           {isLoading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />

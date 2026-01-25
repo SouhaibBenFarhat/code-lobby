@@ -143,6 +143,44 @@ export interface ElectronAPI {
     error?: string
   }>
 
+  // Close PR (without merging, optionally with a closing comment)
+  closePR: (
+    prNodeId: string,
+    comment?: string
+  ) => Promise<{
+    success: boolean
+    closedAt?: string
+    error?: string
+  }>
+
+  // Add comment to PR
+  addPRComment: (
+    prNodeId: string,
+    body: string
+  ) => Promise<{
+    success: boolean
+    commentId?: string
+    error?: string
+  }>
+
+  // Reopen PR
+  reopenPR: (prNodeId: string) => Promise<{
+    success: boolean
+    error?: string
+  }>
+
+  // Mark PR Ready for Review
+  markPRReady: (prNodeId: string) => Promise<{
+    success: boolean
+    error?: string
+  }>
+
+  // Convert PR to Draft
+  convertPRToDraft: (prNodeId: string) => Promise<{
+    success: boolean
+    error?: string
+  }>
+
   // Submit PR Review (approve, request changes, or comment)
   submitPRReview: (
     prNodeId: string,

@@ -1,9 +1,7 @@
 /**
  * Error boundary for message content rendering.
- * Catches React errors during rendering and logs them.
  */
 
-import { api } from '@codelobby/api'
 import { AlertCircle } from 'lucide-react'
 import React from 'react'
 
@@ -32,20 +30,9 @@ export class MessageErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log to console for debugging
     console.error('[AIChat] Message render error:', error)
     console.error('[AIChat] Error info:', errorInfo)
     console.error('[AIChat] Message ID:', this.props.messageId)
-    console.error('[AIChat] Content preview:', this.props.content?.slice(0, 500))
-
-    // Log to app logs via the centralized API
-    api.logs.logFromRenderer('error', 'AI Chat', `Message render error: ${error.message}`, {
-      errorMessage: error.message,
-      errorStack: error.stack,
-      componentStack: errorInfo.componentStack,
-      messageId: this.props.messageId,
-      contentPreview: this.props.content?.slice(0, 200)
-    })
   }
 
   render(): React.ReactNode {

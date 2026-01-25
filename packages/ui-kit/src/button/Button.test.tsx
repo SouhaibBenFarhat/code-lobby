@@ -191,4 +191,86 @@ describe('Button', () => {
       expect(classes).toContain('h-11')
     })
   })
+
+  describe('disabled wrapper for tooltips', () => {
+    it('should wrap disabled button in a span', () => {
+      const { container } = render(<Button disabled>Disabled</Button>)
+      const wrapper = container.querySelector('span')
+      expect(wrapper).toBeInTheDocument()
+      expect(wrapper).toHaveClass('inline-flex', 'cursor-not-allowed')
+      // Button should be inside the span
+      expect(wrapper?.querySelector('button')).toBeInTheDocument()
+    })
+
+    it('should NOT wrap non-disabled button in a span', () => {
+      const { container } = render(<Button>Enabled</Button>)
+      const wrapper = container.querySelector('span.inline-flex.cursor-not-allowed')
+      expect(wrapper).not.toBeInTheDocument()
+    })
+
+    it('should move mouse events to wrapper span when disabled', () => {
+      const onMouseEnter = vi.fn()
+      const onMouseLeave = vi.fn()
+      const { container } = render(
+        <Button disabled onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+          Disabled
+        </Button>
+      )
+
+      const wrapper = container.querySelector('span')
+      expect(wrapper).toBeInTheDocument()
+      fireEvent.mouseEnter(wrapper as Element)
+      expect(onMouseEnter).toHaveBeenCalledTimes(1)
+
+      fireEvent.mouseLeave(wrapper as Element)
+      expect(onMouseLeave).toHaveBeenCalledTimes(1)
+    })
+
+    it('should move pointer events to wrapper span when disabled', () => {
+      const onPointerEnter = vi.fn()
+      const onPointerLeave = vi.fn()
+      const { container } = render(
+        <Button disabled onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
+          Disabled
+        </Button>
+      )
+
+      const wrapper = container.querySelector('span')
+      expect(wrapper).toBeInTheDocument()
+      fireEvent.pointerEnter(wrapper as Element)
+      expect(onPointerEnter).toHaveBeenCalledTimes(1)
+
+      fireEvent.pointerLeave(wrapper as Element)
+      expect(onPointerLeave).toHaveBeenCalledTimes(1)
+    })
+
+    it('should still have disabled button inside wrapper', () => {
+      render(<Button disabled>Disabled</Button>)
+      const button = screen.getByRole('button')
+      expect(button).toBeDisabled()
+      expect(button).toHaveClass('disabled:opacity-40')
+    })
+
+    it('should preserve other props on the button when disabled', () => {
+      render(
+        <Button disabled data-testid="my-button" aria-label="My Button">
+          Disabled
+        </Button>
+      )
+      const button = screen.getByRole('button')
+      expect(button).toHaveAttribute('data-testid', 'my-button')
+      expect(button).toHaveAttribute('aria-label', 'My Button')
+    })
+
+    it('should preserve variant and size classes when disabled', () => {
+      render(
+        <Button disabled variant="destructive" size="lg">
+          Disabled
+        </Button>
+      )
+      const button = screen.getByRole('button')
+      expect(button).toHaveClass('bg-destructive')
+      expect(button).toHaveClass('h-11')
+    })
+  })
 })

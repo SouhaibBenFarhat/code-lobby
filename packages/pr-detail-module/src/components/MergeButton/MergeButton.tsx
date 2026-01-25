@@ -1,29 +1,42 @@
 /**
  * MergeButton - PR merge button with confirmation popover and method selection.
+ *
+ * Uses TanStack mutations for merging.
  */
 
-import type { MergeMethod, PullRequest } from '@codelobby/shared-store'
+import { type MergeMethod, useMergePR } from '@codelobby/data'
 import { Button, Col, cn, Row, Tooltip, TooltipContent, TooltipTrigger } from '@codelobby/ui-kit'
 import { AlertCircle, Check, GitMerge, Loader2, X } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useSelectedPR } from '../../hooks'
 
-export interface MergeButtonProps {
-  pr: PullRequest
-  onMergeComplete?: () => void
-}
+/** Props for MergeButton - no props needed, subscribes to store */
+export type MergeButtonProps = Record<string, never>
 
-export function MergeButton({ pr, onMergeComplete }: MergeButtonProps): React.JSX.Element {
-  const [isMerging, setIsMerging] = useState(false)
-  const [mergeError, setMergeError] = useState<string | null>(null)
+export function MergeButton(): React.JSX.Element | null {
+  const { pr } = useSelectedPR()
+  const mergeMutation = useMergePR()
   const [mergeMethod, setMergeMethod] = useState<MergeMethod>('SQUASH')
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const mergeable = pr.mergeable
-  const mergeState = pr.mergeStateStatus
-  const reviewDecision = pr.reviewDecision
+  // Derive state unconditionally (before hooks)
+  const mergeable = pr?.mergeable
+  const mergeState = pr?.mergeStateStatus
+  const reviewDecision = pr?.reviewDecision
+  const isDraft = pr?.draft
 
-  // Determine if merge is possible and why not
+  // Determine if merge is possible and why not - useMemo must be called unconditionally
   const getMergeStatus = useMemo(() => {
+    // No PR selected
+    if (!pr) {
+      return {
+        canMerge: false,
+        isComputing: false,
+        reason: 'No PR selected',
+        variant: 'secondary' as const
+      }
+    }
+
     // Computing state
     if (mergeable === 'UNKNOWN' || mergeState === 'UNKNOWN') {
       return {
@@ -35,7 +48,7 @@ export function MergeButton({ pr, onMergeComplete }: MergeButtonProps): React.JS
     }
 
     // Draft PRs cannot be merged
-    if (pr.draft || mergeState === 'DRAFT') {
+    if (isDraft || mergeState === 'DRAFT') {
       return {
         canMerge: false,
         isComputing: false,
@@ -130,32 +143,25 @@ export function MergeButton({ pr, onMergeComplete }: MergeButtonProps): React.JS
       reason: mergeable === 'MERGEABLE' ? 'Ready to merge' : 'Cannot merge',
       variant: mergeable === 'MERGEABLE' ? ('default' as const) : ('secondary' as const)
     }
-  }, [mergeable, mergeState, reviewDecision, pr.draft])
+  }, [pr, mergeable, mergeState, reviewDecision, isDraft])
 
-  const handleMerge = useCallback(async () => {
-    setIsMerging(true)
-    setMergeError(null)
+  const handleMerge = () => {
+    if (!pr) return
 
-    try {
-      const result = await window.electron.mergePR(
-        pr.id, // GraphQL node ID
-        mergeMethod
-      )
-
-      if (result.success) {
-        setShowConfirm(false)
-        onMergeComplete?.()
-      } else {
-        setMergeError(result.error || 'Failed to merge PR')
+    mergeMutation.mutate(
+      { prNodeId: pr.id, mergeMethod },
+      {
+        onSuccess: () => setShowConfirm(false)
       }
-    } catch (error) {
-      setMergeError((error as Error).message)
-    } finally {
-      setIsMerging(false)
-    }
-  }, [pr.id, mergeMethod, onMergeComplete])
+    )
+  }
+
+  // Early return AFTER all hooks
+  if (!pr) return null
 
   const { canMerge, isComputing, reason, variant } = getMergeStatus
+  const isMerging = mergeMutation.isPending
+  const mergeError = mergeMutation.error?.message || null
 
   // Button states
   const isDisabled = !canMerge || isMerging || isComputing

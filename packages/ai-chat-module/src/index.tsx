@@ -1,26 +1,21 @@
 /**
  * @codelobby/ai-chat-module
  *
- * AI Chat Module - Main entry point
- * AI chat panel powered by Claude, fully self-contained using shared-store.
- *
- * Architecture:
- * - types/         - Shared TypeScript interfaces
- * - constants/     - Configuration constants and prompt definitions
- * - utils/         - Utility functions (postable parsing, token estimation)
- * - hooks/         - Custom React hooks (useThrottledValue)
- * - components/    - UI components (split for better testing/extensibility)
+ * AI Chat Module - Uses TanStack Query
  */
 
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import {
+  useAIPanel,
+  useCreatePRChat,
+  useIsAuthenticated,
+  useSelectedPR,
+  useSetAIPanel,
+  useUser
+} from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { AIChatPanel } from './components/AIChat'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPORTS - Components, Types, Utils for external consumers
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Component building blocks - for custom implementations
+// Component exports
 export type {
   AddCustomPromptModalProps,
   ContextIndicatorProps,
@@ -40,10 +35,8 @@ export {
   StreamingBubble,
   VirtualizedMessageList
 } from './components'
-// Main component export
 export { AIChatPanel } from './components/AIChat'
 
-// Constants - for external consumers who want to customize prompts
 export {
   CONTEXT_WINDOWS,
   DEFAULT_CONTEXT_WINDOW,
@@ -52,10 +45,8 @@ export {
   POSTABLE_START
 } from './constants'
 
-// Hooks - for external consumers
 export { useThrottledValue } from './hooks'
 
-// Types - for external consumers
 export type {
   AIChatPanelProps,
   ChatMessage,
@@ -73,7 +64,6 @@ export type {
   StreamingState
 } from './types'
 
-// Utils - for external consumers who need postable parsing
 export {
   extractPostable,
   extractPRComment,
@@ -83,60 +73,56 @@ export {
 } from './utils'
 export { calculateTotalTokens, estimateTokens } from './utils/tokens'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SLOT SYSTEM INTEGRATION
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * AIChatWrapper connects AIChatPanel to the shared store.
- * This wrapper allows the stateful AIChatPanel to be used with the slot system.
- */
 function AIChatWrapper(): React.JSX.Element | null {
-  const user = useSignal(Store.user)
-  const linkedPRChat = useSignal(Store.linkedPRChat)
-  const selectedPR = useSignal(Store.selectedPR)
-  const aiPanelOpen = useSignal(Store.aiPanelOpen)
+  const { data: authData } = useUser()
+  const { data: aiPanelData } = useAIPanel()
+  const { data: selectedPR } = useSelectedPR()
+  const { isAuthenticated } = useIsAuthenticated()
+  const setAIPanel = useSetAIPanel()
+  const createPRChat = useCreatePRChat()
 
-  // Don't render if panel is closed
-  if (!aiPanelOpen) {
+  const aiPanelOpen = aiPanelData?.isOpen ?? false
+
+  // Don't render if panel is closed or not authenticated
+  if (!aiPanelOpen || !isAuthenticated) {
     return null
   }
 
   const handleClose = (): void => {
-    Actions.toggleAIPanel()
+    setAIPanel.mutate({ isOpen: false })
   }
 
   const handleClearLinkedPRChat = (): void => {
-    Actions.clearLinkedPRChat()
+    // TODO: implement clear linked PR chat
   }
 
   const handleStartPRChat = async (): Promise<void> => {
     if (selectedPR) {
-      Actions.createPRChat(selectedPR)
+      createPRChat.mutate({
+        prId: `${selectedPR.base.repo.full_name}#${selectedPR.number}`,
+        prNumber: selectedPR.number,
+        prTitle: selectedPR.title,
+        repoFullName: selectedPR.base.repo.full_name
+      })
     }
   }
 
   return (
     <AIChatPanel
       onClose={handleClose}
-      user={user}
-      linkedPRChat={linkedPRChat}
+      user={authData?.user ?? null}
+      linkedPRChat={null}
       onClearLinkedPRChat={handleClearLinkedPRChat}
-      selectedPR={selectedPR}
+      selectedPR={selectedPR ?? null}
       onStartPRChat={handleStartPRChat}
     />
   )
 }
 
-// Self-register to the ai-panel slot
+// Self-register to the ai-panel slot (visibility handled in component)
 registerToSlot({
   id: 'ai-chat',
   slot: 'ai-panel',
   component: AIChatWrapper,
-  order: 0,
-  visible: () => {
-    const aiPanelOpen = Store.aiPanelOpen.value
-    const isAuthenticated = Store.isAuthenticated.value
-    return aiPanelOpen && isAuthenticated
-  }
+  order: 0
 })

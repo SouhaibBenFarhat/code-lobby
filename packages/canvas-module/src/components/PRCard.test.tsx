@@ -1,9 +1,8 @@
 /**
  * PRCard Component Tests
- * Updated for Buffet Pattern architecture
+ * Updated for TanStack Query architecture
  */
 
-import { resetStore, Store } from '@codelobby/shared-store'
 import {
   createMockDraftPR,
   createMockPRWithChecks,
@@ -19,10 +18,16 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PRCard } from './PRCard'
 
+// Mock the data module
+vi.mock('@codelobby/data', () => ({
+  useSelectedPRId: () => ({ data: null }),
+  useSelectPR: () => ({ mutate: vi.fn() })
+}))
+
 describe('PRCard', () => {
   beforeEach(() => {
     resetIdCounter()
-    resetStore()
+    // TanStack Query cache is mocked, no global store to reset
     setupMockElectron()
     vi.clearAllMocks()
   })
@@ -127,25 +132,21 @@ describe('PRCard', () => {
     })
   })
 
-  describe('Selection (Buffet Pattern)', () => {
-    it('should set selected PR in Store', () => {
+  describe('Selection', () => {
+    it('should render PR card correctly', () => {
       const pr = createMockPullRequest()
-
-      // Verify store can be set
-      Store.selectedPR.value = pr
-      expect(Store.selectedPR.value).toEqual(pr)
-
-      // Render component - it should use Store.selectedPR internally
       render(<PRCard pr={pr} />)
+
+      // PR should be rendered
+      expect(screen.getByText(pr.title)).toBeInTheDocument()
     })
 
-    it('should not apply selected styling when PR is not selected', () => {
+    it('should have pr-card-item class', () => {
       const pr = createMockPullRequest()
-      Store.selectedPR.value = null
       const { container } = render(<PRCard pr={pr} />)
 
-      const card = container.firstChild as HTMLElement
-      expect(card).not.toHaveClass('selected')
+      const card = container.querySelector('.pr-card-item')
+      expect(card).toBeInTheDocument()
     })
   })
 

@@ -24,113 +24,49 @@ import {
   sendMessageStreaming as sendClaudeMessageStreaming,
   sendMessageStreamingWithTools as sendClaudeMessageStreamingWithTools
 } from './claude-api'
-import {
-  fetchAllPRsForRepos,
-  fetchAllRepositories,
-  fetchCheckRunDetails,
-  fetchCheckRunLogs,
-  fetchRateLimitOnly,
-  type MergeMethod,
-  mergePullRequest,
-  type ReviewEvent,
-  setGraphQLRateLimitNotifier,
-  submitPullRequestReview,
-  validateToken
-} from './github-graphql'
-import {
-  type NetworkRequestEvent as HttpNetworkRequestEvent,
-  onNetworkRequest as onHttpNetworkRequest,
-  onRateLimitUpdate,
-  type RateLimitUpdate
-} from './http-client'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
-  AIPanelSettings,
   addChatMessage,
   addCustomQuickPrompt,
   addMessageToPRChat,
-  CACHE_TTL_ALL_REPOS,
-  CACHE_TTL_PR_DATA,
   ChatMessage,
-  clearAllUserData,
   clearChatHistory,
-  clearDataCache,
-  clearQueryCache,
-  clearToken,
   deleteCustomQuickPrompt,
   deletePRAnalysis,
   factoryReset,
   getActivePRChatId,
-  getAIPanel,
   getAIUsage,
-  getAllReposCache,
-  getCardLayouts,
   getChatHistory,
   getClaudeApiKey,
   getCustomQuickPrompts,
   getEnableThinking,
   getEnableWebFetch,
-  getIDEViewSettings,
-  getMinimizedRepos,
-  getMyPRsRepos,
   getPRAnalysis,
   getPRAnalysisPanelOpen,
   getPRChat,
   getPRChatMessages,
-  getPRDataCache,
-  getPRDetailPanel,
-  // TanStack Query cache persistence
-  getQueryCache,
-  getRepoColors,
-  getRepoOrder,
   getSelectedModel,
-  getSelectedRepos,
-  getSettings,
-  getToken,
-  getUser,
-  getViewMode,
-  IDEViewSettings,
-  isCacheValid,
-  LayoutItem,
-  PanelSettings,
   resetAIUsage,
-  setAIPanel,
-  setAllReposCache,
-  setCardLayouts,
   setClaudeApiKey,
   setEnableThinking,
   setEnableWebFetch,
-  setIDEViewSettings,
-  setMyPRsRepos,
   setPRAnalysis,
   setPRAnalysisPanelOpen,
-  setPRDataCache,
-  setPRDetailPanel,
-  setQueryCache,
-  setRepoColor,
-  setRepoMinimized,
-  setRepoOrder,
-  setSelectedModel,
-  setSelectedRepos,
-  setSettings,
-  setToken,
-  setUser,
-  setViewMode,
-  ViewMode
+  setSelectedModel
 } from './store'
 import { executeWebFetch, FETCH_URL_TOOL } from './web-fetch'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SINGLE SOURCE OF TRUTH ARCHITECTURE
+// ARCHITECTURE NOTE
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// The RENDERER's Store is the single source of truth for app state.
-// Main process is just an I/O layer:
-//   - Fetches from GitHub API
-//   - Reads/writes to disk (config.json) for persistence
-//   - Returns data to renderer → Store caches it in memory
+// After the TanStack Query refactor, the main process is now ONLY responsible for:
+// 1. Window/app lifecycle (Electron)
+// 2. Claude AI integration (CORS requires main process)
+// 3. Native features (notifications, fullscreen, shell.openExternal)
 //
-// NO in-memory caching in main process - avoids sync issues.
+// GitHub API calls and settings are now handled directly in the renderer
+// using @codelobby/data package with TanStack Query + localStorage.
 // ═══════════════════════════════════════════════════════════════════════════
 
 let mainWindow: BrowserWindow | null = null
@@ -173,44 +109,6 @@ function createWindow(): void {
     mainWindow?.show()
   })
 
-  // Shared function to send rate limit updates to renderer
-  const sendRateLimitUpdate = (rateLimit: RateLimitUpdate) => {
-    logger.debug(LogCategory.RATE_LIMIT, 'Rate limit update received', {
-      resource: rateLimit.resource,
-      used: rateLimit.used,
-      remaining: rateLimit.remaining
-    })
-    // Only send graphql rate limit updates (that's what the app uses)
-    if (rateLimit.resource === 'graphql') {
-      logger.debug(LogCategory.RATE_LIMIT, 'Sending rate limit to renderer', {
-        used: rateLimit.used,
-        remaining: rateLimit.remaining
-      })
-      mainWindow?.webContents.send('rate-limit-update', {
-        limit: rateLimit.limit,
-        remaining: rateLimit.remaining,
-        used: rateLimit.used,
-        resetAt: rateLimit.resetAt,
-        percentage: rateLimit.percentage
-      })
-    }
-  }
-
-  // Set up rate limit callback for REST API calls (via http-client)
-  onRateLimitUpdate(sendRateLimitUpdate)
-
-  // Set up rate limit callback for GraphQL API calls (via @octokit/graphql)
-  setGraphQLRateLimitNotifier(sendRateLimitUpdate)
-  logger.info(LogCategory.RATE_LIMIT, 'Rate limit notifiers configured')
-
-  // Set up network request tracking (for Network Panel)
-  // ALL API calls (GraphQL + REST) go through httpFetch() in http-client.ts
-  onHttpNetworkRequest((event: HttpNetworkRequestEvent) => {
-    mainWindow?.webContents.send('network-request', event)
-  })
-
-  logger.info(LogCategory.API, 'Network request notifier configured (all calls via httpFetch)')
-
   // Notify renderer of fullscreen changes
   mainWindow.on('enter-full-screen', () => {
     mainWindow?.webContents.send('fullscreen-change', true)
@@ -232,97 +130,47 @@ function createWindow(): void {
   }
 }
 
-// IPC Handlers
+// IPC Handlers - Only AI and native features
 function setupIPCHandlers(): void {
-  logger.info(LogCategory.APP, 'Setting up IPC handlers')
+  logger.info(LogCategory.APP, 'Setting up IPC handlers (AI + native features only)')
 
-  // Window state
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WINDOW & NATIVE FEATURES
+  // ═══════════════════════════════════════════════════════════════════════════
+
   ipcMain.handle('is-fullscreen', () => {
     return mainWindow?.isFullScreen() ?? false
   })
 
-  // Token management
-  ipcMain.handle('get-token', async () => {
-    return getToken()
-  })
-
-  ipcMain.handle('set-token', async (_, token: string) => {
-    logger.info(LogCategory.AUTH, 'Attempting to set token')
-    try {
-      const user = await validateToken(token)
-      if (user) {
-        setToken(token)
-        setUser(user) // Cache user info to avoid re-validation
-        logger.info(LogCategory.AUTH, 'Token validated successfully', { user: user.login })
-        return { success: true, user }
-      }
-      logger.warn(LogCategory.AUTH, 'Token validation failed - invalid token')
-      return { success: false, error: 'Invalid token. Please check your token and try again.' }
-    } catch (error: unknown) {
-      const err = error as { status?: number; message?: string }
-      if (err.status === 403) {
-        logger.error(LogCategory.AUTH, 'Rate limit exceeded during token validation', {
-          status: 403
-        })
-        return {
-          success: false,
-          error: 'GitHub API rate limit exceeded. Please wait a few minutes and try again.'
-        }
-      }
-      logger.error(LogCategory.AUTH, 'Token validation error', { error: err.message })
-      return { success: false, error: err.message || 'Failed to validate token' }
+  ipcMain.handle('toggle-fullscreen', () => {
+    if (mainWindow) {
+      mainWindow.setFullScreen(!mainWindow.isFullScreen())
     }
   })
 
-  ipcMain.handle('clear-token', async () => {
-    logger.info(LogCategory.AUTH, 'Clearing token and all user data (logout)')
-    clearToken()
-    // Clear persistent cache and user data
-    clearAllUserData()
+  ipcMain.handle('show-notification', async (_, title: string, body: string) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body }).show()
+    }
     return { success: true }
   })
 
-  // Clear all cached data and refresh (without logging out)
-  ipcMain.handle('clear-all-data', async () => {
-    logger.info(LogCategory.APP, 'Clearing all cached data for fresh reload')
-    // Clear persistent data cache only (not user preferences)
-    clearDataCache()
+  ipcMain.handle('open-external', async (_, url: string) => {
+    await shell.openExternal(url)
     return { success: true }
   })
 
   // Factory reset - completely wipes ALL data (like a fresh install)
   ipcMain.handle('factory-reset', async () => {
     logger.info(LogCategory.APP, 'Factory reset initiated - wiping ALL data')
-    // Wipe everything from electron-store
     factoryReset()
     logger.info(LogCategory.APP, 'Factory reset complete - app is now in fresh install state')
     return { success: true }
   })
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERY CACHE PERSISTENCE
-  // ═══════════════════════════════════════════════════════════════════════════
-  // These handlers allow TanStack Query to persist/restore its cache from disk.
-  // This is the STANDARDIZED approach for React Query caching.
-
-  ipcMain.handle('get-query-cache', async () => {
-    return getQueryCache()
-  })
-
-  ipcMain.handle('set-query-cache', async (_, cache: string) => {
-    setQueryCache(cache)
-    return { success: true }
-  })
-
-  ipcMain.handle('clear-query-cache', async () => {
-    clearQueryCache()
-    return { success: true }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
   // CUSTOM QUICK PROMPTS
   // ═══════════════════════════════════════════════════════════════════════════
-  // User-created pre-prompts for the AI chat
 
   ipcMain.handle('get-custom-prompts', async () => {
     return getCustomQuickPrompts()
@@ -375,519 +223,10 @@ function setupIPCHandlers(): void {
     return getAllModelPricing()
   })
 
-  ipcMain.handle('validate-token', async () => {
-    const token = getToken()
-    if (!token) {
-      logger.debug(LogCategory.AUTH, 'No token found')
-      return { valid: false }
-    }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CLAUDE AI CHAT
+  // ═══════════════════════════════════════════════════════════════════════════
 
-    // First check if we have cached user info (no API call needed)
-    const cachedUser = getUser()
-    if (cachedUser) {
-      logger.debug(LogCategory.AUTH, 'Using cached user info', { user: cachedUser.login })
-      return { valid: true, user: cachedUser }
-    }
-
-    // If no cached user, validate token (makes API call)
-    try {
-      logger.info(LogCategory.AUTH, 'Validating token via API')
-      const user = await validateToken(token)
-      if (user) {
-        setUser(user) // Cache for future
-        logger.info(LogCategory.AUTH, 'Token validated via API', { user: user.login })
-        return { valid: true, user }
-      }
-      logger.warn(LogCategory.AUTH, 'Token validation returned no user')
-      return { valid: false }
-    } catch (error) {
-      logger.error(LogCategory.AUTH, 'Token validation failed', { error: (error as Error).message })
-      return { valid: false, error: 'Could not validate token' }
-    }
-  })
-
-  // GitHub API - Lazy loading approach
-  // Repos fetched independently, PRs fetched only when repos are selected
-  //
-  // SINGLE SOURCE OF TRUTH: Main process just does I/O.
-  // TanStack Query in renderer handles caching.
-
-  // DEPRECATED: Old handler that fetched ALL PRs at once
-  // Use fetch-all-prs-for-repos instead for lazy loading
-  ipcMain.handle('fetch-prs', async () => {
-    logger.warn(LogCategory.API, 'fetch-prs is deprecated - use fetch-all-prs-for-repos instead')
-    return { success: true, data: [], deprecated: true }
-  })
-
-  // Fetch PRs for specific repos only (lazy loading)
-  ipcMain.handle('fetch-all-prs-for-repos', async (_, repoFullNames: string[]) => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      const sortedRepos = [...repoFullNames].sort()
-      const reposKey = sortedRepos.join(',')
-
-      // Check persistent cache (30 min TTL)
-      // Store in renderer will cache in memory - no need for session cache here
-      const persistentCache = getPRDataCache()
-      if (
-        persistentCache &&
-        isCacheValid(persistentCache.lastFetch, CACHE_TTL_PR_DATA) &&
-        [...persistentCache.selectedRepos].sort().join(',') === reposKey
-      ) {
-        const cacheAge = Math.round((Date.now() - persistentCache.lastFetch) / 1000 / 60)
-        const expiresIn = Math.round(
-          (CACHE_TTL_PR_DATA - (Date.now() - persistentCache.lastFetch)) / 1000 / 60
-        )
-        logger.info(LogCategory.CACHE, '✅ Using persistent cache (30 min TTL)', {
-          ageMinutes: cacheAge,
-          expiresInMinutes: expiresIn,
-          prs: persistentCache.data.pullRequests?.length || 0,
-          repos: repoFullNames.length
-        })
-
-        return {
-          success: true,
-          data: persistentCache.data.pullRequests || [],
-          currentUser: persistentCache.data.currentUser,
-          rateLimit: persistentCache.data.rateLimit || {
-            limit: 5000,
-            remaining: 5000,
-            used: 0,
-            resetAt: '',
-            percentage: 0
-          },
-          fromCache: true
-        }
-      }
-
-      // Cache miss - fetch fresh data from GitHub API
-      logger.info(LogCategory.API, '🔄 Cache miss - fetching from GitHub API', {
-        repos: repoFullNames
-      })
-      const data = await fetchAllPRsForRepos(token, repoFullNames)
-      logger.info(LogCategory.API, 'PR data fetched successfully', {
-        count: data.pullRequests.length,
-        rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
-      })
-
-      // Save to persistent cache (for app restart)
-      setPRDataCache(
-        {
-          pullRequests: data.pullRequests,
-          currentUser: data.currentUser,
-          rateLimit: data.rateLimit
-        },
-        sortedRepos
-      )
-
-      return {
-        success: true,
-        data: data.pullRequests,
-        currentUser: data.currentUser,
-        rateLimit: data.rateLimit
-      }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch all PRs for repos', {
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
-  })
-
-  // Refresh PRs for a single repository (bypasses cache)
-  ipcMain.handle('refresh-repo-prs', async (_, repoFullName: string) => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-
-    try {
-      logger.info(LogCategory.API, '🔄 Refreshing PRs for single repo', { repo: repoFullName })
-
-      // Fetch fresh data for this specific repo (always bypass cache)
-      const data = await fetchAllPRsForRepos(token, [repoFullName])
-
-      logger.info(LogCategory.API, 'Single repo PRs refreshed', {
-        repo: repoFullName,
-        count: data.pullRequests.length,
-        rateLimit: `${data.rateLimit.remaining}/${data.rateLimit.limit}`
-      })
-
-      return {
-        success: true,
-        data: data.pullRequests,
-        currentUser: data.currentUser,
-        rateLimit: data.rateLimit
-      }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to refresh repo PRs', {
-        repo: repoFullName,
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
-  })
-
-  // Refresh a SINGLE PR by number (much more efficient than refreshing all PRs)
-  // Cost: ~1 point vs 5-10 points for bulk refresh
-  ipcMain.handle('refresh-single-pr', async (_, repoFullName: string, prNumber: number) => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-
-    try {
-      const [owner, repo] = repoFullName.split('/')
-      if (!owner || !repo) {
-        return { success: false, error: 'Invalid repository name' }
-      }
-
-      logger.info(LogCategory.API, '🔄 Refreshing single PR', {
-        repo: repoFullName,
-        prNumber
-      })
-
-      const { fetchSinglePR } = await import('./github-graphql')
-      const { pullRequest, rateLimit } = await fetchSinglePR(token, owner, repo, prNumber)
-
-      if (!pullRequest) {
-        return { success: false, error: `PR #${prNumber} not found` }
-      }
-
-      logger.info(LogCategory.API, 'Single PR refreshed', {
-        repo: repoFullName,
-        prNumber,
-        title: pullRequest.title,
-        cost: rateLimit.cost,
-        remaining: rateLimit.remaining
-      })
-
-      return {
-        success: true,
-        data: pullRequest,
-        rateLimit
-      }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to refresh single PR', {
-        repo: repoFullName,
-        prNumber,
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
-  })
-
-  // PR events - extracted from PR data when PRs are fetched for selected repos
-  // Events are embedded in PR data from fetchAllPRsForRepos, no separate fetch needed
-  ipcMain.handle('fetch-pr-events', async () => {
-    // Events are now extracted client-side from PR data
-    // This handler returns empty - UI should use PR data directly
-    logger.debug(LogCategory.API, 'fetch-pr-events called - events are embedded in PR data')
-    return { success: true, data: [] }
-  })
-
-  // PR checks - already included in PR data from fetchAllPRsForRepos
-  ipcMain.handle('fetch-pr-checks', async (_, _owner: string, _repo: string, _ref: string) => {
-    // Checks are embedded in PR data from lazy loading
-    // This handler returns stub - UI should use PR.checks from fetched PRs
-    logger.debug(LogCategory.API, 'fetch-pr-checks called - checks are embedded in PR data')
-    return {
-      success: true,
-      data: { state: 'pending', total_count: 0, check_runs: [] }
-    }
-  })
-
-  ipcMain.handle('fetch-contributed-repos', async () => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      // Check persistent cache (30 min TTL)
-      // Store in renderer will cache in memory - no need for session cache here
-      const persistentCache = getAllReposCache()
-      if (persistentCache && isCacheValid(persistentCache.lastFetch, CACHE_TTL_ALL_REPOS)) {
-        const cacheAge = Math.round((Date.now() - persistentCache.lastFetch) / 1000 / 60)
-        const expiresIn = Math.round(
-          (CACHE_TTL_ALL_REPOS - (Date.now() - persistentCache.lastFetch)) / 1000 / 60
-        )
-        logger.info(LogCategory.CACHE, '✅ Using persistent repos cache (30 min TTL)', {
-          ageMinutes: cacheAge,
-          expiresInMinutes: expiresIn,
-          count: persistentCache.data?.length || 0
-        })
-        return { success: true, data: persistentCache.data || [], fromCache: true }
-      }
-
-      // Cache miss - fetch from GitHub API
-      logger.info(LogCategory.GRAPHQL, '🔄 Cache miss - fetching all repositories')
-      const allRepos = await fetchAllRepositories(token)
-      logger.info(LogCategory.GRAPHQL, 'Repositories fetched', { count: allRepos.length })
-
-      // Save to persistent cache (for app restart)
-      setAllReposCache(allRepos)
-
-      return { success: true, data: allRepos, fromCache: false }
-    } catch (error) {
-      logger.error(LogCategory.GRAPHQL, 'Failed to fetch repositories', {
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
-  })
-
-  // Fetch PR changed files
-  ipcMain.handle('fetch-pr-files', async (_, owner: string, repo: string, prNumber: number) => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      const { fetchPRFiles } = await import('./github-graphql')
-      const { files, rateLimit } = await fetchPRFiles(token, owner, repo, prNumber)
-      return { success: true, data: files, rateLimit }
-    } catch (error) {
-      logger.error(LogCategory.GRAPHQL, 'Failed to fetch PR files', {
-        owner,
-        repo,
-        prNumber,
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
-  })
-
-  // Post PR review comment
-  ipcMain.handle(
-    'post-pr-comment',
-    async (
-      _,
-      owner: string,
-      repo: string,
-      prNumber: number,
-      commitId: string,
-      path: string,
-      line: number,
-      body: string
-    ) => {
-      const token = getToken()
-      if (!token) return { success: false, error: 'No token' }
-      try {
-        const { postPRReviewComment } = await import('./github-graphql')
-        const result = await postPRReviewComment(
-          token,
-          owner,
-          repo,
-          prNumber,
-          commitId,
-          path,
-          line,
-          body
-        )
-        return result
-      } catch (error) {
-        logger.error(LogCategory.GRAPHQL, 'Failed to post PR comment', {
-          owner,
-          repo,
-          prNumber,
-          path,
-          line,
-          error: (error as Error).message
-        })
-        return { success: false, error: (error as Error).message }
-      }
-    }
-  )
-
-  // Merge PR
-  ipcMain.handle(
-    'merge-pr',
-    async (
-      _,
-      prNodeId: string,
-      mergeMethod?: MergeMethod,
-      commitHeadline?: string,
-      commitBody?: string
-    ) => {
-      const token = getToken()
-      if (!token) return { success: false, error: 'No GitHub token configured' }
-
-      try {
-        const result = await mergePullRequest(
-          token,
-          prNodeId,
-          mergeMethod || 'SQUASH',
-          commitHeadline,
-          commitBody
-        )
-        return result
-      } catch (error) {
-        logger.error(LogCategory.GRAPHQL, 'Failed to merge PR', {
-          prNodeId,
-          mergeMethod,
-          error: (error as Error).message
-        })
-        return { success: false, error: (error as Error).message }
-      }
-    }
-  )
-
-  // Submit PR Review (approve, request changes, or comment)
-  ipcMain.handle(
-    'submit-pr-review',
-    async (_, prNodeId: string, event: ReviewEvent, body?: string) => {
-      const token = getToken()
-      if (!token) return { success: false, error: 'No GitHub token configured' }
-
-      try {
-        const result = await submitPullRequestReview(token, prNodeId, event, body)
-        return result
-      } catch (error) {
-        logger.error(LogCategory.GRAPHQL, 'Failed to submit PR review', {
-          prNodeId,
-          event,
-          error: (error as Error).message
-        })
-        return { success: false, error: (error as Error).message }
-      }
-    }
-  )
-
-  // Settings
-  ipcMain.handle('get-settings', async () => {
-    return getSettings()
-  })
-
-  ipcMain.handle('set-settings', async (_, settings: Record<string, unknown>) => {
-    setSettings(settings)
-    return { success: true }
-  })
-
-  // Notifications
-  ipcMain.handle('show-notification', async (_, title: string, body: string) => {
-    if (Notification.isSupported()) {
-      new Notification({ title, body }).show()
-    }
-    return { success: true }
-  })
-
-  // Repo order
-  ipcMain.handle('get-repo-order', async () => {
-    return getRepoOrder()
-  })
-
-  ipcMain.handle('set-repo-order', async (_, order: string[]) => {
-    setRepoOrder(order)
-    return { success: true }
-  })
-
-  // Rate limit info - uses dedicated endpoint that doesn't count against rate limit
-  ipcMain.handle('get-rate-limit', async () => {
-    const token = getToken()
-    if (!token) return { success: false, error: 'No token' }
-    try {
-      // Use the dedicated rate limit endpoint (doesn't count against limit!)
-      const rateLimit = await fetchRateLimitOnly(token)
-      logger.debug(LogCategory.RATE_LIMIT, 'Rate limit status', {
-        used: rateLimit.used,
-        remaining: rateLimit.remaining,
-        limit: rateLimit.limit,
-        percentage: rateLimit.percentage,
-        resetAt: rateLimit.resetAt
-      })
-      return { success: true, data: rateLimit }
-    } catch (error) {
-      logger.error(LogCategory.RATE_LIMIT, 'Failed to get rate limit', {
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
-    }
-  })
-
-  // Card layouts (free-form positioning and sizing)
-  ipcMain.handle('get-card-layouts', async () => {
-    return getCardLayouts()
-  })
-
-  ipcMain.handle('set-card-layouts', async (_, layouts: LayoutItem[]) => {
-    setCardLayouts(layouts)
-    return { success: true }
-  })
-
-  // Selected repos (which repos to display)
-  ipcMain.handle('get-selected-repos', async () => {
-    return getSelectedRepos()
-  })
-
-  ipcMain.handle('set-selected-repos', async (_, repos: string[]) => {
-    setSelectedRepos(repos)
-    return { success: true }
-  })
-
-  // My PRs filter (shared across all views)
-  ipcMain.handle('get-my-prs-repos', async () => {
-    return getMyPRsRepos()
-  })
-
-  ipcMain.handle('set-my-prs-repos', async (_, repos: string[]) => {
-    setMyPRsRepos(repos)
-    return { success: true }
-  })
-
-  // PR Detail panel settings
-  ipcMain.handle('get-pr-detail-panel', async () => {
-    return getPRDetailPanel()
-  })
-
-  ipcMain.handle('set-pr-detail-panel', async (_, settings: Partial<PanelSettings>) => {
-    setPRDetailPanel(settings)
-    return { success: true }
-  })
-
-  // AI Panel settings
-  ipcMain.handle('get-ai-panel', async () => {
-    return getAIPanel()
-  })
-
-  ipcMain.handle('set-ai-panel', async (_, settings: Partial<AIPanelSettings>) => {
-    setAIPanel(settings)
-    return { success: true }
-  })
-
-  // Repo colors
-  ipcMain.handle('get-repo-colors', async () => {
-    return getRepoColors()
-  })
-
-  ipcMain.handle('set-repo-color', async (_, repoFullName: string, color: string | null) => {
-    setRepoColor(repoFullName, color)
-    return { success: true }
-  })
-
-  // Minimized repos
-  ipcMain.handle('get-minimized-repos', async () => {
-    return getMinimizedRepos()
-  })
-
-  ipcMain.handle('set-repo-minimized', async (_, repoFullName: string, isMinimized: boolean) => {
-    setRepoMinimized(repoFullName, isMinimized)
-    return { success: true }
-  })
-
-  // View mode
-  ipcMain.handle('get-view-mode', async () => {
-    return getViewMode()
-  })
-
-  ipcMain.handle('set-view-mode', async (_, mode: ViewMode) => {
-    setViewMode(mode)
-    return { success: true }
-  })
-
-  // IDE view settings
-  ipcMain.handle('get-ide-view-settings', async () => {
-    return getIDEViewSettings()
-  })
-
-  ipcMain.handle('set-ide-view-settings', async (_, settings: Partial<IDEViewSettings>) => {
-    setIDEViewSettings(settings)
-    return { success: true }
-  })
-
-  // AI Chat
   ipcMain.handle('get-claude-api-key', async () => {
     logger.debug(LogCategory.AUTH, 'Getting Claude API key')
     const key = getClaudeApiKey()
@@ -1219,6 +558,10 @@ function setupIPCHandlers(): void {
     }
   )
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AI-POWERED FEATURES (Preview URL, Jira, CI Analysis, PR Analysis)
+  // ═══════════════════════════════════════════════════════════════════════════
+
   // Extract preview URL from PR context using AI
   ipcMain.handle(
     'extract-preview-url',
@@ -1281,7 +624,6 @@ function setupIPCHandlers(): void {
         let url = result.ticketUrl
         if (!url && result.ticketKey) {
           // Default to Atlassian cloud - user can configure their domain later
-          // For now, we'll just open a search that works for most setups
           url = `https://jira.atlassian.com/browse/${result.ticketKey}`
         }
 
@@ -1305,81 +647,35 @@ function setupIPCHandlers(): void {
     async (
       _,
       params: {
-        owner: string
-        repo: string
-        checkRunId: string
         checkName: string
+        conclusion: string | null
+        output: {
+          title: string | null
+          summary: string | null
+          text: string | null
+        }
+        annotations: Array<{
+          path: string
+          startLine: number
+          endLine: number
+          message: string
+          annotationLevel: string
+          title: string | null
+          rawDetails: string | null
+        }>
       }
     ) => {
-      const token = getToken()
-      if (!token) {
-        return { success: false, error: 'Not authenticated' }
-      }
-
       const apiKey = getClaudeApiKey()
       if (!apiKey) {
         return { success: false, error: 'Claude API key not configured' }
       }
 
       logger.info(LogCategory.APP, 'Analyzing CI failure', {
-        owner: params.owner,
-        repo: params.repo,
-        checkRunId: params.checkRunId,
         checkName: params.checkName
       })
 
       try {
-        // 1. Fetch check run details from GitHub
-        const { checkRun } = await fetchCheckRunDetails(
-          token,
-          params.owner,
-          params.repo,
-          params.checkRunId
-        )
-
-        // 2. Try to fetch actual CI logs if this is a GitHub Actions job
-        let logs: string | null = null
-        if (checkRun.databaseId) {
-          logs = await fetchCheckRunLogs(token, params.owner, params.repo, checkRun.databaseId)
-          logger.info(LogCategory.APP, 'Fetched CI logs', {
-            checkName: params.checkName,
-            hasLogs: !!logs,
-            logSize: logs?.length || 0
-          })
-        } else {
-          logger.info(
-            LogCategory.APP,
-            'No databaseId available - third-party CI, skipping log fetch',
-            {
-              checkName: params.checkName
-            }
-          )
-        }
-
-        // 3. Analyze with Claude - include logs in the text output if available
-        const outputText = logs
-          ? `${checkRun.output.text || ''}\n\n--- CI LOGS ---\n${logs}`
-          : checkRun.output.text
-
-        const result = await analyzeCIFailure(apiKey, {
-          checkName: checkRun.name,
-          conclusion: checkRun.conclusion,
-          output: {
-            title: checkRun.output.title,
-            summary: checkRun.output.summary,
-            text: outputText
-          },
-          annotations: checkRun.output.annotations
-        })
-
-        if (result.success) {
-          logger.info(LogCategory.APP, 'CI failure analyzed', {
-            checkName: params.checkName,
-            hasSummary: !!result.summary,
-            hadLogs: !!logs
-          })
-        }
-
+        const result = await analyzeCIFailure(apiKey, params)
         return result
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1395,17 +691,24 @@ function setupIPCHandlers(): void {
     async (
       event,
       params: {
-        owner: string
-        repo: string
-        checkRunId: string
         checkName: string
+        conclusion: string | null
+        output: {
+          title: string | null
+          summary: string | null
+          text: string | null
+        }
+        annotations: Array<{
+          path: string
+          startLine: number
+          endLine: number
+          message: string
+          annotationLevel: string
+          title: string | null
+          rawDetails: string | null
+        }>
       }
     ) => {
-      const token = getToken()
-      if (!token) {
-        return { success: false, error: 'Not authenticated' }
-      }
-
       const apiKey = getClaudeApiKey()
       if (!apiKey) {
         return { success: false, error: 'Claude API key not configured' }
@@ -1415,50 +718,14 @@ function setupIPCHandlers(): void {
       const webContents = event.sender
 
       logger.info(LogCategory.APP, 'Starting streaming CI failure analysis', {
-        owner: params.owner,
-        repo: params.repo,
-        checkRunId: params.checkRunId,
         checkName: params.checkName,
         streamId
       })
 
       try {
-        // 1. Fetch check run details from GitHub
-        const { checkRun } = await fetchCheckRunDetails(
-          token,
-          params.owner,
-          params.repo,
-          params.checkRunId
-        )
-
-        // 2. Try to fetch actual CI logs if this is a GitHub Actions job
-        let logs: string | null = null
-        if (checkRun.databaseId) {
-          logs = await fetchCheckRunLogs(token, params.owner, params.repo, checkRun.databaseId)
-        }
-
-        // 3. Stream the analysis with Claude
-        const outputText = logs
-          ? `${checkRun.output.text || ''}\n\n--- CI LOGS ---\n${logs}`
-          : checkRun.output.text
-
-        analyzeCIFailureStreaming(
-          apiKey,
-          {
-            checkName: checkRun.name,
-            conclusion: checkRun.conclusion,
-            output: {
-              title: checkRun.output.title,
-              summary: checkRun.output.summary,
-              text: outputText
-            },
-            annotations: checkRun.output.annotations
-          },
-          (chunk) => {
-            // Send chunk to renderer
-            webContents.send('ci-analysis-stream-chunk', { streamId, ...chunk })
-          }
-        )
+        analyzeCIFailureStreaming(apiKey, params, (chunk) => {
+          webContents.send('ci-analysis-stream-chunk', { streamId, ...chunk })
+        })
 
         return { success: true, streamId }
       } catch (error) {
@@ -1622,7 +889,10 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
-  // PR Chat operations
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PR CHAT OPERATIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
   ipcMain.handle('get-pr-chats', async () => {
     const { getPRChats } = await import('./store')
     return getPRChats()
@@ -1648,7 +918,7 @@ function setupIPCHandlers(): void {
     }
   )
 
-  ipcMain.handle('add-message-to-pr-chat', async (_, prId: string, message: any) => {
+  ipcMain.handle('add-message-to-pr-chat', async (_, prId: string, message: ChatMessage) => {
     const { addMessageToPRChat } = await import('./store')
     addMessageToPRChat(prId, message)
     return { success: true }
@@ -1682,7 +952,10 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
-  // Logging
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGGING
+  // ═══════════════════════════════════════════════════════════════════════════
+
   ipcMain.handle('get-logs', async () => {
     return logger.getLogs()
   })

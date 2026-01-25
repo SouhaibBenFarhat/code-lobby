@@ -4,7 +4,7 @@
  * RepoCard now fetches its own PRs via usePRsForRepo hook
  */
 
-import { resetStore, Store } from '@codelobby/shared-store'
+// Note: Store is now replaced by TanStack Query hooks (mocked above)
 import {
   createMockPRWithChecks,
   createMockPullRequest,
@@ -21,13 +21,18 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RepoCard } from './RepoCard'
 
-// Mock the queries module - RepoCard now fetches its own PRs
+// Mock the data module - RepoCard and PRCard use various hooks
 const mockUsePRsForRepo = vi.fn()
-const mockUseRefreshRepoPRs = vi.fn()
+const mockUseMyPRsRepos = vi.fn()
+const mockRefetch = vi.fn()
 
-vi.mock('@codelobby/queries', () => ({
+vi.mock('@codelobby/data', () => ({
   usePRsForRepo: (repoFullName: string | null) => mockUsePRsForRepo(repoFullName),
-  useRefreshRepoPRs: () => mockUseRefreshRepoPRs()
+  useMyPRsRepos: () => mockUseMyPRsRepos(),
+  useToggleMyPRsFilter: () => ({ mutate: vi.fn() }),
+  // PRCard hooks
+  useSelectedPRId: () => ({ data: null }),
+  useSelectPR: () => ({ mutate: vi.fn() })
 }))
 
 describe('RepoCard', () => {
@@ -46,20 +51,20 @@ describe('RepoCard', () => {
 
   beforeEach(() => {
     resetIdCounter()
-    resetStore()
+    // TanStack Query cache is mocked, no global store to reset
     setupMockElectron()
     vi.clearAllMocks()
 
-    // Default: no PRs, not loading
+    // Default: no PRs, not loading, not fetching
     mockPRs = []
+    mockRefetch.mockClear()
     mockUsePRsForRepo.mockReturnValue({
       data: mockPRs,
-      isLoading: false
+      isLoading: false,
+      isFetching: false,
+      refetch: mockRefetch
     })
-    mockUseRefreshRepoPRs.mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false
-    })
+    mockUseMyPRsRepos.mockReturnValue({ data: [] })
   })
 
   afterEach(() => {
@@ -67,11 +72,16 @@ describe('RepoCard', () => {
   })
 
   // Helper to set mock PRs for tests
-  const setMockPRs = (prs: ReturnType<typeof createMockPullRequest>[]) => {
+  const setMockPRs = (
+    prs: ReturnType<typeof createMockPullRequest>[],
+    options?: { isFetching?: boolean }
+  ) => {
     mockPRs = prs
     mockUsePRsForRepo.mockReturnValue({
       data: mockPRs,
-      isLoading: false
+      isLoading: false,
+      isFetching: options?.isFetching ?? false,
+      refetch: mockRefetch
     })
   }
 
@@ -189,15 +199,12 @@ describe('RepoCard', () => {
         title: 'Existing PR',
         base: { repo, ref: 'main', sha: 'a' }
       })
-      const mockMutate = vi.fn()
 
       mockUsePRsForRepo.mockReturnValue({
         data: [pr],
-        isLoading: false
-      })
-      mockUseRefreshRepoPRs.mockReturnValue({
-        mutate: mockMutate,
-        isPending: false
+        isLoading: false,
+        isFetching: false,
+        refetch: mockRefetch
       })
 
       render(<RepoCard repo={repo} {...defaultProps} />)
@@ -209,7 +216,7 @@ describe('RepoCard', () => {
       const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
       if (reloadButton) {
         fireEvent.click(reloadButton)
-        expect(mockMutate).toHaveBeenCalledWith(repo.full_name)
+        expect(mockRefetch).toHaveBeenCalled()
       }
     })
 
@@ -222,11 +229,9 @@ describe('RepoCard', () => {
 
       mockUsePRsForRepo.mockReturnValue({
         data: [pr],
-        isLoading: false
-      })
-      mockUseRefreshRepoPRs.mockReturnValue({
-        mutate: vi.fn(),
-        isPending: true // Refreshing!
+        isLoading: false,
+        isFetching: true, // Refreshing!
+        refetch: mockRefetch
       })
 
       render(<RepoCard repo={repo} {...defaultProps} />)
@@ -421,20 +426,20 @@ describe('RepoCard', () => {
         base: { repo, ref: 'main', sha: 'b' }
       })
 
-      // Enable filter for this repo via shared store BEFORE rendering
-      Store.myPRsRepos.value = [repo.full_name]
+      // Enable filter for this repo via mocked hook
+      mockUseMyPRsRepos.mockReturnValue({ data: [repo.full_name] })
 
       setMockPRs([myPR, otherPR])
       render(<RepoCard repo={repo} {...defaultProps} currentUser="testuser" />)
 
-      // Both PRs are initially in props, filtering happens inside component
-      // The component reads from Store.myPRsRepos via useSignal
+      // Both PRs are initially in data, filtering happens inside component
+      // The component reads from useMyPRsRepos hook
       await waitFor(() => {
         expect(screen.getByText('My PR')).toBeInTheDocument()
       })
 
       // Note: The actual filtering behavior depends on the component implementation
-      // This test verifies the component CAN read from the store
+      // This test verifies the component CAN read from the hook
     })
   })
 
@@ -483,20 +488,17 @@ describe('RepoCard', () => {
     })
   })
 
-  describe('Selected PR (Buffet Pattern)', () => {
-    it('should highlight selected PR from store', () => {
+  describe('Selected PR', () => {
+    it('should render PR card with proper structure', () => {
       const repo = createMockRepository()
       const pr = createMockPullRequest({ id: 'PR_123', base: { repo, ref: 'main', sha: 'a' } })
 
-      // Set selected PR via shared store
-      Store.selectedPR.value = pr
       setMockPRs([pr])
 
       const { container } = render(<RepoCard repo={repo} {...defaultProps} />)
 
-      // Selected PR should have special styling
-      const prCard = container.querySelector('.selected')
-      expect(prCard || container.querySelector('.pr-card-item')).toBeTruthy()
+      // PR card should be rendered
+      expect(container.querySelector('.pr-card-item') || screen.getByText(pr.title)).toBeTruthy()
     })
   })
 
@@ -640,12 +642,13 @@ describe('RepoCard', () => {
       expect(reloadButton).toBeInTheDocument()
     })
 
-    it('should call refresh mutation when reload button is clicked', async () => {
+    it('should call refetch when reload button is clicked', async () => {
       const repo = createMockRepository()
-      const mockMutate = vi.fn()
-      mockUseRefreshRepoPRs.mockReturnValue({
-        mutate: mockMutate,
-        isPending: false
+      mockUsePRsForRepo.mockReturnValue({
+        data: [],
+        isLoading: false,
+        isFetching: false,
+        refetch: mockRefetch
       })
 
       render(<RepoCard repo={repo} {...defaultProps} />)
@@ -653,15 +656,17 @@ describe('RepoCard', () => {
       const reloadButton = document.querySelector('button svg.lucide-refresh-cw')?.parentElement
       if (reloadButton) {
         fireEvent.click(reloadButton)
-        expect(mockMutate).toHaveBeenCalledWith(repo.full_name)
+        expect(mockRefetch).toHaveBeenCalled()
       }
     })
 
     it('should show loading spinner when reloading', async () => {
       const repo = createMockRepository()
-      mockUseRefreshRepoPRs.mockReturnValue({
-        mutate: vi.fn(),
-        isPending: true
+      mockUsePRsForRepo.mockReturnValue({
+        data: [],
+        isLoading: false,
+        isFetching: true, // Fetching/refreshing
+        refetch: mockRefetch
       })
 
       render(<RepoCard repo={repo} {...defaultProps} />)

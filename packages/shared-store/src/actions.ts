@@ -7,7 +7,7 @@
  * UI Modules → emit Actions → Data Module listens → Updates Store → UI reacts
  */
 
-import type { CardLayout, NetworkRequest, PullRequest, ViewMode } from './types'
+import type { CardLayout, NetworkRequest, PRIdentifier, PullRequest, ViewMode } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ACTION EVENT TYPES
@@ -20,7 +20,8 @@ export type ActionEvents = {
   'action:fetch-pr-details': { prId: string }
   'action:refresh-repo': { repoFullName: string }
   'action:refresh-pr-detail': { repoFullName: string; prNumber: number }
-  'action:select-pr': { pr: PullRequest | null }
+  'action:fetch-pr-files': { owner: string; repo: string; prNumber: number }
+  'action:select-pr': { prId: PRIdentifier | null }
   'action:select-repos': { repos: string[] | null }
 
   // AI Actions
@@ -114,7 +115,7 @@ export interface ActionsType {
   fetchPRDetails: (prId: string) => void
   refreshRepo: (repoFullName: string) => void
   refreshPRDetail: (repoFullName: string, prNumber: number) => void
-  selectPR: (pr: PullRequest | null) => void
+  selectPR: (prId: PRIdentifier | null) => void
   selectRepos: (repos: string[] | null) => void
   // AI Actions
   sendAIMessage: (message: string, systemContext?: string) => void
@@ -180,8 +181,12 @@ export const Actions: ActionsType = {
   refreshPRDetail: (repoFullName: string, prNumber: number) =>
     emit('action:refresh-pr-detail', { repoFullName, prNumber }),
 
-  /** Select a PR (opens detail panel) */
-  selectPR: (pr: PullRequest | null) => emit('action:select-pr', { pr }),
+  /** Fetch changed files for a PR */
+  fetchPRFiles: (owner: string, repo: string, prNumber: number) =>
+    emit('action:fetch-pr-files', { owner, repo, prNumber }),
+
+  /** Select a PR by identifier (opens detail panel, PRDetail fetches data) */
+  selectPR: (prId: PRIdentifier | null) => emit('action:select-pr', { prId }),
 
   /** Set which repos are visible (null = all) */
   selectRepos: (repos: string[] | null) => emit('action:select-repos', { repos }),

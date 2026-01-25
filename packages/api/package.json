@@ -1,8 +1,0 @@
-{
-  "name": "@codelobby/api",
-  "version": "1.0.0",
-  "private": true,
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "description": "Centralized API client with automatic logging for all electron IPC calls"
-}

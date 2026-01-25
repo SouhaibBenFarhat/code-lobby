@@ -101,7 +101,6 @@ export {
   toast
 } from './toaster'
 export { Toggle, type ToggleProps } from './toggle'
-export { TokenInput } from './token-input'
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
 export { cn, formatRelativeTime, groupBy, truncate } from './utils'
 export {

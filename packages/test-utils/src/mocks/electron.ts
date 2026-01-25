@@ -144,6 +144,12 @@ interface MockElectronAPI {
   // Merge PR
   mergePR: ReturnType<typeof vi.fn>
 
+  // Close PR
+  closePR: ReturnType<typeof vi.fn>
+
+  // Reopen PR
+  reopenPR: ReturnType<typeof vi.fn>
+
   // Submit PR Review (approve, request changes, comment)
   submitPRReview: ReturnType<typeof vi.fn>
 
@@ -355,6 +361,17 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
       success: true,
       mergedAt: new Date().toISOString(),
       sha: 'abc123def456'
+    }),
+
+    // Close PR
+    closePR: vi.fn().mockResolvedValue({
+      success: true,
+      closedAt: new Date().toISOString()
+    }),
+
+    // Reopen PR
+    reopenPR: vi.fn().mockResolvedValue({
+      success: true
     }),
 
     // Submit PR Review (approve, request changes, comment)

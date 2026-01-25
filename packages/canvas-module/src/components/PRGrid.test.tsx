@@ -1,4 +1,4 @@
-import { resetStore } from '@codelobby/shared-store'
+// Note: Store is now replaced by TanStack Query hooks (mocked below)
 import { createMockRepository, resetMockElectron, setupMockElectron } from '@codelobby/test-utils'
 import { TooltipProvider } from '@codelobby/ui-kit'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -52,11 +52,12 @@ vi.mock('@codelobby/queries', () => ({
   }),
   usePRsForRepo: () => ({
     data: [],
-    isLoading: false
+    isLoading: false,
+    isFetching: false,
+    refetch: vi.fn()
   }),
-  useRefreshRepoPRs: () => ({
-    mutate: vi.fn(),
-    isPending: false
+  useQueryClient: () => ({
+    refetchQueries: vi.fn()
   })
 }))
 
@@ -103,7 +104,7 @@ function renderWithProviders(ui: React.ReactElement) {
 
 describe('PRGrid', () => {
   beforeEach(() => {
-    resetStore()
+    // TanStack Query cache is mocked, no global store to reset
     setupMockElectron()
     mockRepos = []
     mockSelectedRepos = []

@@ -35,19 +35,17 @@ export default defineConfig({
       '@main': resolve(__dirname, './src/main'),
       '@preload': resolve(__dirname, './src/preload'),
       // Workspace packages
+      '@codelobby/data': resolve(__dirname, 'packages/data/src/index.ts'),
       '@codelobby/slot-system': resolve(__dirname, 'packages/slot-system/src/index.tsx'),
-      '@codelobby/shared-store': resolve(__dirname, 'packages/shared-store/src/index.ts'),
-      '@codelobby/queries': resolve(__dirname, 'packages/queries/src/index.ts'),
-      '@codelobby/data-module': resolve(__dirname, 'packages/data-module/src/index.ts'),
       '@codelobby/header-module': resolve(__dirname, 'packages/header-module/src/index.tsx'),
       '@codelobby/explorer-module': resolve(__dirname, 'packages/explorer-module/src/index.tsx'),
       '@codelobby/canvas-module': resolve(__dirname, 'packages/canvas-module/src/index.tsx'),
+      '@codelobby/network-module': resolve(__dirname, 'packages/network-module/src/index.tsx'),
       '@codelobby/pr-detail-module': resolve(__dirname, 'packages/pr-detail-module/src/index.tsx'),
       '@codelobby/ai-chat-module': resolve(__dirname, 'packages/ai-chat-module/src/index.tsx'),
       '@codelobby/app': resolve(__dirname, 'packages/app/src/index.ts'),
       '@codelobby/ui-kit': resolve(__dirname, 'packages/ui-kit/src/index.ts'),
       '@codelobby/test-utils': resolve(__dirname, 'packages/test-utils/src/index.ts'),
-      '@codelobby/api': resolve(__dirname, 'packages/api/src/index.ts'),
       '@codelobby/logger/main': resolve(__dirname, 'packages/logger/src/main.ts'),
       '@codelobby/logger': resolve(__dirname, 'packages/logger/src/index.ts')
     }

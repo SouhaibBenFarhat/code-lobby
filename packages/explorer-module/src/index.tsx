@@ -1,33 +1,32 @@
 /**
  * @codelobby/explorer-module
  *
- * IDE-style file tree view of repositories and PRs.
+ * IDE-style file tree view using TanStack Query.
  */
 
-import { Store, useSignal } from '@codelobby/shared-store'
+import { useIsAuthenticated, useUser, useViewMode } from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { IDEView } from './components/IDEView'
 
-// Re-export components
 export { IDEView } from './components/IDEView'
 
-/**
- * ExplorerWrapper connects the IDEView to the shared store.
- */
 function ExplorerWrapper() {
-  const user = useSignal(Store.user)
-  return <IDEView currentUser={user?.login || null} />
+  const { data: authData } = useUser()
+  const { data: viewMode } = useViewMode()
+  const { isAuthenticated } = useIsAuthenticated()
+
+  // Only render in IDE mode when authenticated
+  if (viewMode !== 'ide' || !isAuthenticated) {
+    return null
+  }
+
+  return <IDEView currentUser={authData?.user?.login || null} />
 }
 
-// Self-register to the left-panel slot (only visible in IDE view mode)
+// Self-register to the left-panel slot (visibility handled in component)
 registerToSlot({
   id: 'explorer',
   slot: 'left-panel',
   component: ExplorerWrapper,
-  order: 0,
-  visible: () => {
-    const viewMode = Store.viewMode.value
-    const isAuthenticated = Store.isAuthenticated.value
-    return viewMode === 'ide' && isAuthenticated
-  }
+  order: 0
 })

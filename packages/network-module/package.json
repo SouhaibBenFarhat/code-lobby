@@ -6,7 +6,7 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "dependencies": {
-    "@codelobby/shared-store": "*",
+    "@codelobby/data": "*",
     "@codelobby/slot-system": "*",
     "@codelobby/ui-kit": "*",
     "lucide-react": "^0.454.0",

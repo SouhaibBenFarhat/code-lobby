@@ -1,33 +1,30 @@
-import type { NetworkRequest } from '@codelobby/shared-store'
-import { Actions, Store } from '@codelobby/shared-store'
+import type { NetworkRequest } from '@codelobby/data'
+import { keys } from '@codelobby/data'
 import { TooltipProvider } from '@codelobby/ui-kit'
-import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NetworkPanel } from './NetworkPanel'
 
-// Mock shared-store
-vi.mock('@codelobby/shared-store', async () => {
-  const actual = await vi.importActual('@codelobby/shared-store')
-  return {
-    ...actual,
-    Actions: {
-      clearNetworkRequests: vi.fn()
-    },
-    Store: {
-      networkRequests: {
-        value: [],
-        subscribe: vi.fn(() => () => {}),
-        getSnapshot: vi.fn(() => [])
-      }
-    },
-    useSignal: vi.fn((signal) => signal.value)
-  }
-})
+function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false }
+    }
+  })
+}
 
-// Wrapper component to provide TooltipProvider context
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <TooltipProvider>{children}</TooltipProvider>
+// Wrapper component to provide all required contexts
+function createTestWrapper(queryClient: QueryClient) {
+  return function TestWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>{children}</TooltipProvider>
+      </QueryClientProvider>
+    )
+  }
 }
 
 const createMockRequest = (
@@ -48,12 +45,14 @@ const createMockRequest = (
 
 describe('NetworkPanel', () => {
   const mockOnClose = vi.fn()
+  let queryClient: QueryClient
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset mock store value
-    Store.networkRequests.value = []
-    // Mock clipboard API using defineProperty
+    queryClient = createQueryClient()
+    // Initialize empty network requests
+    queryClient.setQueryData(keys.networkRequests, [])
+    // Mock clipboard API
     const mockClipboard = {
       writeText: vi.fn().mockResolvedValue(undefined)
     }
@@ -64,24 +63,24 @@ describe('NetworkPanel', () => {
     })
   })
 
+  afterEach(() => {
+    cleanup()
+  })
+
   it('should render the panel', () => {
-    render(
-      <TestWrapper>
-        <NetworkPanel onClose={mockOnClose} />
-      </TestWrapper>
-    )
+    render(<NetworkPanel onClose={mockOnClose} />, {
+      wrapper: createTestWrapper(queryClient)
+    })
 
     expect(screen.getByTestId('network-panel')).toBeInTheDocument()
   })
 
   it('should render all sub-components', () => {
-    Store.networkRequests.value = [createMockRequest('1')]
+    queryClient.setQueryData(keys.networkRequests, [createMockRequest('1')])
 
-    render(
-      <TestWrapper>
-        <NetworkPanel onClose={mockOnClose} />
-      </TestWrapper>
-    )
+    render(<NetworkPanel onClose={mockOnClose} />, {
+      wrapper: createTestWrapper(queryClient)
+    })
 
     // Header
     expect(screen.getByTestId('network-panel-header')).toBeInTheDocument()
@@ -97,11 +96,9 @@ describe('NetworkPanel', () => {
     it('should call onClose when close button is clicked', async () => {
       const user = userEvent.setup()
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       await user.click(screen.getByTestId('close-button'))
       expect(mockOnClose).toHaveBeenCalledTimes(1)
@@ -110,57 +107,50 @@ describe('NetworkPanel', () => {
 
   describe('Clear functionality', () => {
     it('should not show clear button when no requests', () => {
-      Store.networkRequests.value = []
-
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.queryByTestId('clear-button')).not.toBeInTheDocument()
     })
 
     it('should show clear button when there are requests', () => {
-      Store.networkRequests.value = [createMockRequest('1')]
+      queryClient.setQueryData(keys.networkRequests, [createMockRequest('1')])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('clear-button')).toBeInTheDocument()
     })
 
-    it('should call clearNetworkRequests action when clear is clicked', async () => {
+    it('should clear requests when clear button is clicked', async () => {
       const user = userEvent.setup()
-      Store.networkRequests.value = [createMockRequest('1')]
+      queryClient.setQueryData(keys.networkRequests, [createMockRequest('1')])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       await user.click(screen.getByTestId('clear-button'))
-      expect(Actions.clearNetworkRequests).toHaveBeenCalledTimes(1)
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData(keys.networkRequests)).toEqual([])
+      })
     })
   })
 
   describe('Search functionality', () => {
     it('should filter requests when typing in search', async () => {
       const user = userEvent.setup()
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { url: 'https://api.github.com/graphql' }),
         createMockRequest('2', { url: 'https://api.example.com/users' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       // Initially shows all requests
       expect(screen.getAllByTestId('network-request-item')).toHaveLength(2)
@@ -177,17 +167,15 @@ describe('NetworkPanel', () => {
 
     it('should show filtered count in stats', async () => {
       const user = userEvent.setup()
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { url: 'https://api.github.com' }),
         createMockRequest('2', { url: 'https://api.example.com' }),
         createMockRequest('3', { url: 'https://api.github.com/repos' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       await user.type(screen.getByTestId('search-input'), 'github')
 
@@ -198,13 +186,13 @@ describe('NetworkPanel', () => {
 
     it('should show no match state when filter has no results', async () => {
       const user = userEvent.setup()
-      Store.networkRequests.value = [createMockRequest('1', { url: 'https://api.github.com' })]
+      queryClient.setQueryData(keys.networkRequests, [
+        createMockRequest('1', { url: 'https://api.github.com' })
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       await user.type(screen.getByTestId('search-input'), 'nonexistent')
 
@@ -215,16 +203,14 @@ describe('NetworkPanel', () => {
 
     it('should clear filter when clear button is clicked', async () => {
       const user = userEvent.setup()
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { url: 'https://api.github.com' }),
         createMockRequest('2', { url: 'https://api.example.com' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       // Type to filter
       await user.type(screen.getByTestId('search-input'), 'github')
@@ -245,57 +231,47 @@ describe('NetworkPanel', () => {
 
   describe('Stats display', () => {
     it('should not show stats when no requests', () => {
-      Store.networkRequests.value = []
-
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.queryByTestId('network-stats')).not.toBeInTheDocument()
     })
 
     it('should show stats when there are requests', () => {
-      Store.networkRequests.value = [createMockRequest('1')]
+      queryClient.setQueryData(keys.networkRequests, [createMockRequest('1')])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('network-stats')).toBeInTheDocument()
     })
 
     it('should show correct pending count', () => {
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { status: 'pending' }),
         createMockRequest('2', { status: 'pending' }),
         createMockRequest('3', { status: 'success' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('pending-count')).toHaveTextContent('2')
     })
 
     it('should show correct error count', () => {
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { status: 'error' }),
         createMockRequest('2', { status: 'success' }),
         createMockRequest('3', { status: 'error' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('error-count')).toHaveTextContent('2 failed')
     })
@@ -303,31 +279,27 @@ describe('NetworkPanel', () => {
 
   describe('Total cost display', () => {
     it('should show total cost in header when > 0', () => {
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { cost: 10 }),
         createMockRequest('2', { cost: 15 })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('total-cost')).toHaveTextContent('25 pts')
     })
 
     it('should not show total cost when 0', () => {
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { cost: 0 }),
         createMockRequest('2', { cost: undefined })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.queryByTestId('total-cost')).not.toBeInTheDocument()
     })
@@ -335,13 +307,9 @@ describe('NetworkPanel', () => {
 
   describe('Empty state', () => {
     it('should show empty state when no requests', () => {
-      Store.networkRequests.value = []
-
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('empty-state')).toBeInTheDocument()
       expect(screen.getByText('No requests yet')).toBeInTheDocument()
@@ -349,64 +317,58 @@ describe('NetworkPanel', () => {
   })
 
   describe('Request list', () => {
-    it('should display requests in reverse order (newest first)', () => {
-      Store.networkRequests.value = [
+    it('should display requests in chronological order (oldest first, newest last)', () => {
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { url: 'https://first.com' }),
         createMockRequest('2', { url: 'https://second.com' }),
         createMockRequest('3', { url: 'https://third.com' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       const items = screen.getAllByTestId('network-request-item')
-      expect(items[0]).toHaveTextContent('https://third.com')
+      // Chronological: oldest first, newest last
+      expect(items[0]).toHaveTextContent('https://first.com')
       expect(items[1]).toHaveTextContent('https://second.com')
-      expect(items[2]).toHaveTextContent('https://first.com')
+      expect(items[2]).toHaveTextContent('https://third.com')
     })
   })
 
   describe('Panel footer', () => {
     it('should show footer when there are requests', () => {
-      Store.networkRequests.value = [createMockRequest('1'), createMockRequest('2')]
+      queryClient.setQueryData(keys.networkRequests, [
+        createMockRequest('1'),
+        createMockRequest('2')
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.getByTestId('list-footer')).toBeInTheDocument()
       expect(screen.getByTestId('list-footer')).toHaveTextContent('2 requests')
     })
 
     it('should not show footer when no requests', () => {
-      Store.networkRequests.value = []
-
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       expect(screen.queryByTestId('list-footer')).not.toBeInTheDocument()
     })
 
     it('should show filtered count in footer', () => {
-      Store.networkRequests.value = [
+      queryClient.setQueryData(keys.networkRequests, [
         createMockRequest('1', { url: 'https://api.github.com' }),
         createMockRequest('2', { url: 'https://api.example.com' }),
         createMockRequest('3', { url: 'https://api.github.com/repos' })
-      ]
+      ])
 
-      render(
-        <TestWrapper>
-          <NetworkPanel onClose={mockOnClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanel onClose={mockOnClose} />, {
+        wrapper: createTestWrapper(queryClient)
+      })
 
       // Without filter, shows all 3
       expect(screen.getByTestId('list-footer')).toHaveTextContent('3 requests')

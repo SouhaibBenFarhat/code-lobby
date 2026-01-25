@@ -1,8 +1,7 @@
 /**
- * @codelobby/app
- *
- * Main app package that exports the App shell and bootstrap function.
+ * @codelobby/app - Main exports
  */
 
 export { App } from './App'
 export { bootstrap } from './bootstrap'
+export { TokenInput } from './TokenInput'

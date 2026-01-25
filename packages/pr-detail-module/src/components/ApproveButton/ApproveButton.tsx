@@ -1,42 +1,49 @@
 /**
  * ApproveButton - PR approval button with status feedback.
+ *
+ * Uses TanStack mutations for approval.
  */
 
-import type { PullRequest } from '@codelobby/shared-store'
+import { useSubmitPRReview } from '@codelobby/data'
 import { Button, cn, Tooltip, TooltipContent, TooltipTrigger } from '@codelobby/ui-kit'
 import { Check, CheckCheck, Loader2 } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useCurrentUser, useSelectedPR } from '../../hooks'
 
-export interface ApproveButtonProps {
-  pr: PullRequest
-  currentUser: string | null
-  onApproveComplete?: () => void
-}
+// Props interface kept for API consistency (no props needed - subscribes to store)
+export type ApproveButtonProps = Record<string, never>
 
-export function ApproveButton({
-  pr,
-  currentUser,
-  onApproveComplete
-}: ApproveButtonProps): React.JSX.Element {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export function ApproveButton(): React.JSX.Element | null {
+  const { pr } = useSelectedPR()
+  const currentUser = useCurrentUser()
+  const reviewMutation = useSubmitPRReview()
   const [showSuccess, setShowSuccess] = useState(false)
 
-  const reviewDecision = pr.reviewDecision
-  const isOwnPR = currentUser === pr.user.login
+  // Derive state unconditionally (before hooks that depend on them)
+  const reviewDecision = pr?.reviewDecision
+  const isOwnPR = currentUser === pr?.user.login
   const isAlreadyApproved = reviewDecision === 'APPROVED'
-  const isDraft = pr.draft
+  const isDraft = pr?.draft
+  const reviews = pr?.reviews
 
-  // Check if user has already approved (from reviews array)
+  // Check if user has already approved (from reviews array) - useMemo must be called unconditionally
   const userHasApproved = useMemo(() => {
-    if (!currentUser || !pr.reviews) return false
-    return pr.reviews.some(
+    if (!currentUser || !reviews) return false
+    return reviews.some(
       (review) => review.author.login === currentUser && review.state === 'approved'
     )
-  }, [currentUser, pr.reviews])
+  }, [currentUser, reviews])
 
-  // Determine button state
+  // Determine button state - useMemo must be called unconditionally
   const getButtonState = useMemo(() => {
+    if (!pr) {
+      return {
+        canApprove: false,
+        reason: 'No PR selected',
+        variant: 'secondary' as const
+      }
+    }
+
     if (isDraft) {
       return {
         canApprove: false,
@@ -67,28 +74,27 @@ export function ApproveButton({
       reason: 'Approve this PR',
       variant: 'outline' as const
     }
-  }, [isDraft, isOwnPR, userHasApproved, isAlreadyApproved])
+  }, [pr, isDraft, isOwnPR, userHasApproved, isAlreadyApproved])
 
-  const handleApprove = useCallback(async () => {
-    setIsSubmitting(true)
-    setError(null)
+  const handleApprove = () => {
+    if (!pr) return
 
-    try {
-      const result = await window.electron.submitPRReview(pr.id, 'APPROVE')
-
-      if (result.success) {
-        setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 2000)
-        onApproveComplete?.()
-      } else {
-        setError(result.error || 'Failed to approve PR')
+    reviewMutation.mutate(
+      { prNodeId: pr.id, event: 'APPROVE' },
+      {
+        onSuccess: () => {
+          setShowSuccess(true)
+          setTimeout(() => setShowSuccess(false), 2000)
+        }
       }
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [pr.id, onApproveComplete])
+    )
+  }
+
+  const isSubmitting = reviewMutation.isPending
+  const error = reviewMutation.error?.message || null
+
+  // Early return AFTER all hooks
+  if (!pr) return null
 
   const { canApprove, reason, variant, isApproved } = getButtonState
 

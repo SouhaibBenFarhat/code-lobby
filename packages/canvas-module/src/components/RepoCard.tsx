@@ -1,12 +1,14 @@
 /**
  * RepoCard - A draggable card displaying a repository and its PRs.
- * Each card fetches its OWN PRs independently for isolated loading states.
- * Uses ViewHeader-style elevation for visual consistency.
+ * Uses TanStack Query for all data.
  */
 
-import { usePRsForRepo, useRefreshRepoPRs } from '@codelobby/queries'
-import type { Repository } from '@codelobby/shared-store'
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import {
+  type Repository,
+  useMyPRsRepos,
+  usePRsForRepo,
+  useToggleMyPRsFilter
+} from '@codelobby/data'
 import {
   Avatar,
   AvatarFallback,
@@ -39,19 +41,18 @@ import {
 import React, { memo, useMemo } from 'react'
 import { PRCard } from './PRCard'
 
-// Preset color palette
 const COLOR_PALETTE = [
-  null, // No color (default)
-  '#ef4444', // Red
-  '#f97316', // Orange
-  '#eab308', // Yellow
-  '#22c55e', // Green
-  '#14b8a6', // Teal
-  '#3b82f6', // Blue
-  '#6366f1', // Indigo
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#64748b' // Slate
+  null,
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#14b8a6',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#ec4899',
+  '#64748b'
 ]
 
 interface RepoCardProps {
@@ -82,26 +83,26 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
   }: RepoCardProps): React.JSX.Element {
     const [colorPickerOpen, setColorPickerOpen] = React.useState(false)
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // EACH CARD FETCHES ITS OWN PRs - Independent loading per card!
-    // ═══════════════════════════════════════════════════════════════════════════
-    const { data: prs = [], isLoading: isLoadingPRs } = usePRsForRepo(repo.full_name)
-    const refreshMutation = useRefreshRepoPRs()
-    const isReloading = refreshMutation.isPending
+    // TanStack Query hooks - fetch PRs for THIS repo only (per-repo cache)
+    const {
+      data: prs = [],
+      isLoading: isLoadingPRs,
+      isFetching,
+      refetch
+    } = usePRsForRepo(repo.full_name)
+    const { data: myPRsRepos = [] } = useMyPRsRepos()
+    const toggleMyPRsFilter = useToggleMyPRsFilter()
 
-    // Use shared store instead of context
-    const myPRsRepos = useSignal(Store.myPRsRepos)
     const showOnlyMyPRs = myPRsRepos.includes(repo.full_name)
 
     const handleToggleMyPRsFilter = () => {
-      Actions.toggleMyPRsFilter(repo.full_name)
+      toggleMyPRsFilter.mutate(repo.full_name)
     }
 
     const handleReload = () => {
-      refreshMutation.mutate(repo.full_name)
+      refetch()
     }
 
-    // Filter PRs based on toggle
     const filteredPRs = useMemo(() => {
       if (!showOnlyMyPRs || !currentUser) return prs
       return prs.filter((pr) => pr.user.login === currentUser)
@@ -125,7 +126,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
             : {})
         }}
       >
-        {/* Header with ViewHeader-style elevation */}
         <div
           className={cn(
             'flex items-center h-10 px-2 border-b border-border',
@@ -136,7 +136,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
           )}
           style={color ? { backgroundColor: `${color}15`, borderBottomColor: `${color}40` } : {}}
         >
-          {/* Left: Avatar + Repo name */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Avatar className="h-6 w-6 rounded-md flex-shrink-0">
               <AvatarImage src={repo.owner.avatar_url} alt={repo.owner.login} />
@@ -162,9 +161,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
             </div>
           </div>
 
-          {/* Right: Action buttons */}
           <div className="flex items-center gap-0.5 flex-shrink-0">
-            {/* Color picker */}
             {onColorChange && (
               <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
                 <Tooltip>
@@ -213,7 +210,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               </Popover>
             )}
 
-            {/* My PRs filter toggle */}
             {currentUser && totalPRs > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -242,21 +238,20 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               </Tooltip>
             )}
 
-            {/* Reload button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  disabled={isReloading}
+                  disabled={isFetching}
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
                     handleReload()
                   }}
                 >
-                  {isReloading ? (
+                  {isFetching ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -266,7 +261,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               <TooltipContent>Reload PRs</TooltipContent>
             </Tooltip>
 
-            {/* External link */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -285,7 +279,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               <TooltipContent>Open on GitHub</TooltipContent>
             </Tooltip>
 
-            {/* Minimize button */}
             {onMinimizeChange && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -310,7 +303,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
               </Tooltip>
             )}
 
-            {/* Close button */}
             {onClose && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -333,7 +325,6 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
           </div>
         </div>
 
-        {/* Content - hidden when minimized */}
         {!isMinimized && (
           <CardContent className="flex-1 overflow-auto pt-2 px-2 pb-2">
             {isLoadingPRs ? (

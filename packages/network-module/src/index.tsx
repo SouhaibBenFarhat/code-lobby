@@ -2,16 +2,10 @@
  * @codelobby/network-module
  *
  * Network monitoring module - displays API calls, costs, and timing information.
- * Self-contained module that registers to the slot system.
- *
- * Architecture:
- * - Reads network requests from shared-store
- * - Displays in a resizable panel similar to AI Chat
- * - No cross-imports with other UI modules
- * - Communication via Actions (events)
+ * Self-contained module using TanStack Query.
  */
 
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import { useNetworkTracking, useToggleNetworkPanel } from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { NetworkPanel } from './components'
 
@@ -56,22 +50,25 @@ export {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * NetworkPanelWrapper connects NetworkPanel to the shared store.
- * This wrapper allows the component to be used with the slot system.
+ * NetworkPanelWrapper connects NetworkPanel to TanStack Query.
+ * Visibility and height are controlled by App.tsx.
+ * Also subscribes to TanStack Query cache to track all API calls.
  */
-function NetworkPanelWrapper(): React.JSX.Element | null {
-  const networkPanelOpen = useSignal(Store.networkPanelOpen)
+function NetworkPanelWrapper(): React.JSX.Element {
+  const toggleNetworkPanel = useToggleNetworkPanel()
 
-  // Don't render if panel is closed
-  if (!networkPanelOpen) {
-    return null
-  }
+  // Subscribe to TanStack Query cache to track all API calls
+  useNetworkTracking()
 
   const handleClose = (): void => {
-    Actions.toggleNetworkPanel()
+    toggleNetworkPanel.mutate()
   }
 
-  return <NetworkPanel onClose={handleClose} />
+  return (
+    <div className="bg-background h-full overflow-hidden">
+      <NetworkPanel onClose={handleClose} />
+    </div>
+  )
 }
 
 // Self-register to the network-panel slot
@@ -79,10 +76,5 @@ registerToSlot({
   id: 'network-panel',
   slot: 'network-panel',
   component: NetworkPanelWrapper,
-  order: 0,
-  visible: () => {
-    const networkPanelOpen = Store.networkPanelOpen.value
-    const isAuthenticated = Store.isAuthenticated.value
-    return networkPanelOpen && isAuthenticated
-  }
+  order: 0
 })

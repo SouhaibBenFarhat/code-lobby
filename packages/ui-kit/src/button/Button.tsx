@@ -54,9 +54,68 @@ type ForwardRefComponent<T, P> = React.ForwardRefExoticComponent<P & React.RefAt
 const Button: ForwardRefComponent<HTMLButtonElement, ButtonProps> = React.forwardRef<
   HTMLButtonElement,
   ButtonProps
->(({ className, variant, size, asChild = false, ...props }, ref) => {
+>(({ className, variant, size, asChild = false, disabled, ...props }, ref) => {
   const Comp = asChild ? Slot : 'button'
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+
+  // When disabled, wrap in a span that receives hover events for tooltips
+  // (the button itself has pointer-events: none when disabled)
+  if (disabled) {
+    const {
+      // Extract all pointer/mouse/focus events for the wrapper
+      onMouseEnter,
+      onMouseLeave,
+      onMouseMove,
+      onMouseOver,
+      onMouseOut,
+      onPointerEnter,
+      onPointerLeave,
+      onPointerMove,
+      onPointerOver,
+      onPointerOut,
+      onFocus,
+      onBlur,
+      // Keep the rest for the button
+      ...buttonProps
+    } = props
+
+    // Check if className contains w-full to apply it to the wrapper too
+    const isFullWidth = typeof className === 'string' && className.includes('w-full')
+
+    return (
+      // biome-ignore lint/a11y/noStaticElementInteractions: Wrapper only catches hover events for tooltip on disabled button
+      <span
+        className={cn('inline-flex cursor-not-allowed', isFullWidth && 'w-full')}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onMouseMove={onMouseMove}
+        onMouseOver={onMouseOver}
+        onMouseOut={onMouseOut}
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+        onPointerMove={onPointerMove}
+        onPointerOver={onPointerOver}
+        onPointerOut={onPointerOut}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      >
+        <Comp
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          disabled={disabled}
+          {...buttonProps}
+        />
+      </span>
+    )
+  }
+
+  return (
+    <Comp
+      className={cn(buttonVariants({ variant, size, className }))}
+      ref={ref}
+      disabled={disabled}
+      {...props}
+    />
+  )
 })
 Button.displayName = 'Button'
 

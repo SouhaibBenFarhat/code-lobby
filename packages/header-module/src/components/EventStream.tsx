@@ -1,10 +1,9 @@
 /**
  * EventStream - Activity feed showing PR events.
- * Uses shared-store for ALL data (Buffet Pattern).
+ * Uses TanStack Query for data.
  */
 
-import { usePRs } from '@codelobby/queries'
-import type { PREvent, PullRequest } from '@codelobby/shared-store'
+import { type PullRequest, usePRs } from '@codelobby/data'
 import {
   Avatar,
   AvatarFallback,
@@ -30,8 +29,20 @@ import {
 } from 'lucide-react'
 import { useMemo } from 'react'
 
+interface PREvent {
+  id: number
+  event: string
+  state?: 'approved' | 'changes_requested' | 'commented'
+  actor?: { login: string; avatar_url: string }
+  created_at: string
+  body?: string
+  prTitle?: string
+  prNumber?: number
+  repoName?: string
+}
+
 interface EventItemProps {
-  event: PREvent & { prTitle?: string; prNumber?: number; repoName?: string }
+  event: PREvent
 }
 
 function getEventIcon(eventType: string) {
@@ -144,30 +155,19 @@ function EventItem({ event }: EventItemProps) {
 }
 
 export function EventStream(): React.JSX.Element {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERY - Data fetching with automatic caching
-  // ═══════════════════════════════════════════════════════════════════════════
-  const { data: prsResult, isLoading, isFetching: prsFetching, refetch } = usePRs()
+  const { data: prs = [], isLoading, isFetching, refetch } = usePRs()
 
-  // usePRs() already returns only PRs for selected repos
-  const prs = (prsResult?.prs as PullRequest[]) || []
-
-  // Extract events from PR data (comments, reviews already included)
   const events = useMemo(() => {
-    const allEvents: (PREvent & { prTitle?: string; prNumber?: number; repoName?: string })[] = []
+    const allEvents: PREvent[] = []
 
-    for (const pr of prs) {
-      // Add comments as events
+    for (const pr of prs as PullRequest[]) {
       if (pr.commentsList) {
         for (const comment of pr.commentsList) {
           allEvents.push({
             id: Number(comment.id) || Date.now(),
             event: 'commented',
             actor: comment.author
-              ? {
-                  login: comment.author.login,
-                  avatar_url: comment.author.avatar_url || ''
-                }
+              ? { login: comment.author.login, avatar_url: comment.author.avatar_url || '' }
               : undefined,
             created_at: comment.created_at,
             body: comment.body,
@@ -178,7 +178,6 @@ export function EventStream(): React.JSX.Element {
         }
       }
 
-      // Add reviews as events
       if (pr.reviews) {
         for (const review of pr.reviews) {
           allEvents.push({
@@ -186,10 +185,7 @@ export function EventStream(): React.JSX.Element {
             event: 'reviewed',
             state: review.state.toLowerCase() as 'approved' | 'changes_requested' | 'commented',
             actor: review.author
-              ? {
-                  login: review.author.login,
-                  avatar_url: review.author.avatar_url || ''
-                }
+              ? { login: review.author.login, avatar_url: review.author.avatar_url || '' }
               : undefined,
             created_at: review.created_at,
             body: review.body || undefined,
@@ -201,13 +197,10 @@ export function EventStream(): React.JSX.Element {
       }
     }
 
-    // Sort by date, newest first
     return allEvents.sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
   }, [prs])
-
-  const isFetching = isLoading || prsFetching
 
   return (
     <div className="flex flex-col h-full">

@@ -5,7 +5,7 @@
  * Auto-scrolls to show newest items when they arrive.
  */
 
-import type { NetworkRequest } from '@codelobby/shared-store'
+import type { NetworkRequest } from '@codelobby/data'
 import { ScrollArea } from '@codelobby/ui-kit'
 import { Globe, Search } from 'lucide-react'
 import { useEffect, useRef } from 'react'
@@ -81,8 +81,8 @@ export function NetworkRequestList({
         <NoMatchState />
       ) : (
         <div data-testid="request-items" className="pl-1">
-          {/* Show newest first - timeline format */}
-          {[...filteredRequests].reverse().map((request, index, arr) => (
+          {/* Show oldest first, newest at bottom - chronological order */}
+          {filteredRequests.map((request, index, arr) => (
             <NetworkRequestItem
               key={request.id}
               request={request}

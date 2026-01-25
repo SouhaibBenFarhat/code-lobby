@@ -1,49 +1,50 @@
 /**
  * @codelobby/pr-detail-module
  *
- * PR detail panel showing comments, reviews, and CI status.
- * Fully self-contained using shared-store.
- *
- * Renders in:
- * - `main` slot when in IDE mode (selected PR details)
- * - `right-panel` slot when in Canvas mode (side panel)
+ * PR detail panel using TanStack Query.
  */
 
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import {
+  useIsAuthenticated,
+  usePRDetailPanel,
+  useSelectedPRId,
+  useSelectPR,
+  useViewMode
+} from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { GitPullRequest } from 'lucide-react'
 import { PRDetail } from './components/PRDetail'
 
-// Re-export components
 export { PRDetail } from './components/PRDetail'
+export { useCurrentUser, useSelectedPR } from './hooks'
 
-/**
- * PRDetailWrapper connects PRDetail to the shared store.
- * Used in Canvas mode (right panel).
- */
-function PRDetailWrapper() {
-  const selectedPR = useSignal(Store.selectedPR)
+function _PRDetailWrapper() {
+  const { data: selectedPRId } = useSelectedPRId()
+  const selectPR = useSelectPR()
 
-  if (!selectedPR) {
+  if (!selectedPRId) {
     return null
   }
 
   const handleClose = () => {
-    Actions.selectPR(null)
+    selectPR.mutate(null)
   }
 
-  return <PRDetail pr={selectedPR} onClose={handleClose} />
+  return <PRDetail onClose={handleClose} />
 }
 
-/**
- * IDEMainContent - Shows PR detail or placeholder in IDE mode.
- * This replaces the old inline rendering in IDEView.
- */
 function IDEMainContent() {
-  const selectedPR = useSignal(Store.selectedPR)
+  const { data: selectedPRId } = useSelectedPRId()
+  const { data: viewMode } = useViewMode()
+  const { isAuthenticated } = useIsAuthenticated()
+  const selectPR = useSelectPR()
 
-  if (!selectedPR) {
-    // Placeholder when no PR is selected
+  // Only render in IDE mode when authenticated
+  if (viewMode !== 'ide' || !isAuthenticated) {
+    return null
+  }
+
+  if (!selectedPRId) {
     return (
       <div className="h-full flex items-center justify-center bg-muted/10">
         <div className="text-center space-y-4">
@@ -62,10 +63,28 @@ function IDEMainContent() {
   }
 
   const handleClose = () => {
-    Actions.selectPR(null)
+    selectPR.mutate(null)
   }
 
-  return <PRDetail pr={selectedPR} onClose={handleClose} />
+  return <PRDetail onClose={handleClose} />
+}
+
+function CanvasPRDetail() {
+  const { data: selectedPRId } = useSelectedPRId()
+  const { data: viewMode } = useViewMode()
+  const { data: prDetailPanel } = usePRDetailPanel()
+  const selectPR = useSelectPR()
+
+  // Only render in canvas mode with panel open and PR selected
+  if (viewMode !== 'canvas' || !prDetailPanel?.isOpen || !selectedPRId) {
+    return null
+  }
+
+  const handleClose = () => {
+    selectPR.mutate(null)
+  }
+
+  return <PRDetail onClose={handleClose} />
 }
 
 // Register to main slot for IDE mode
@@ -73,24 +92,13 @@ registerToSlot({
   id: 'pr-detail-ide',
   slot: 'main',
   component: IDEMainContent,
-  order: 10, // After canvas (if both were visible)
-  visible: () => {
-    const viewMode = Store.viewMode.value
-    const isAuthenticated = Store.isAuthenticated.value
-    return viewMode === 'ide' && isAuthenticated
-  }
+  order: 10
 })
 
 // Register to pr-detail-panel slot for Canvas mode
 registerToSlot({
   id: 'pr-detail-canvas',
   slot: 'pr-detail-panel',
-  component: PRDetailWrapper,
-  order: 0,
-  visible: () => {
-    const viewMode = Store.viewMode.value
-    const prDetailOpen = Store.prDetailOpen.value
-    const selectedPR = Store.selectedPR.value
-    return viewMode === 'canvas' && prDetailOpen && selectedPR !== null
-  }
+  component: CanvasPRDetail,
+  order: 0
 })

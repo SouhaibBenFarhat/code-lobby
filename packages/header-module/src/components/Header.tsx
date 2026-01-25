@@ -1,6 +1,15 @@
-import { api } from '@codelobby/api'
-import { useClearCacheAndRefresh, usePRs, useRateLimit, useRepos } from '@codelobby/queries'
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import {
+  useIsFullscreen,
+  useNetworkPanel,
+  usePRs,
+  useQueryClient,
+  useRateLimit,
+  useRepos,
+  useSetTheme,
+  useTheme,
+  useToggleNetworkPanel,
+  type ViewMode
+} from '@codelobby/data'
 import {
   Avatar,
   AvatarFallback,
@@ -23,11 +32,11 @@ import {
   Clock,
   FolderTree,
   Gauge,
-  Globe,
   LayoutGrid,
   Loader2,
   LogOut,
   Moon,
+  Network,
   RefreshCw,
   Sun
 } from 'lucide-react'
@@ -38,7 +47,6 @@ import { EventStream } from './EventStream'
 import { LogsViewer } from './LogsViewer'
 import { RepoSelector } from './RepoSelector'
 
-// Helper to format time until reset
 function formatTimeUntilReset(resetAt: string): string {
   const resetDate = new Date(resetAt)
   const now = new Date()
@@ -61,8 +69,6 @@ function formatTimeUntilReset(resetAt: string): string {
 
   return `${diffSecs}s`
 }
-
-export type ViewMode = 'canvas' | 'ide'
 
 interface User {
   login: string
@@ -87,37 +93,28 @@ export function Header({
   isAIPanelOpen,
   onToggleAIPanel
 }: HeaderProps): React.JSX.Element {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERY - Data fetching with automatic caching
-  // ═══════════════════════════════════════════════════════════════════════════
-  const { data: rateLimitData } = useRateLimit()
-  const { isLoading: reposLoading, isFetching: reposFetching } = useRepos()
-  // Note: selectedReposData not used here, just loading states
+  // TanStack Query hooks
+  const { isLoading: reposLoading, data: reposData } = useRepos()
   const { isLoading: prsLoading, isFetching: prsFetching } = usePRs()
-  const clearCacheMutation = useClearCacheAndRefresh()
+  const queryClient = useQueryClient()
 
-  const isFetching = reposLoading || prsLoading || reposFetching || prsFetching
+  // System state via TanStack
+  const { data: isFullscreen = false } = useIsFullscreen()
+  const { data: theme = 'dark' } = useTheme()
+  const setTheme = useSetTheme()
+  const isDark = theme === 'dark'
 
-  // Network panel state
-  const isNetworkPanelOpen = useSignal(Store.networkPanelOpen)
+  const isFetching = reposLoading || prsLoading || prsFetching
 
-  const [isDark, setIsDark] = useState(true)
-  const [, setTick] = useState(0) // Force re-render for countdown
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Rate limit from GitHub API
+  const { data: rateLimitData } = useRateLimit()
 
-  // Fetch initial fullscreen state and listen for changes
-  useEffect(() => {
-    // Get initial state
-    api.settings.isFullscreen().then(setIsFullscreen)
+  // Network panel
+  const { data: networkPanelOpen } = useNetworkPanel()
+  const toggleNetworkPanel = useToggleNetworkPanel()
 
-    // Listen for changes
-    const cleanup = api.settings.onFullscreenChange((fullscreen) => {
-      setIsFullscreen(fullscreen)
-    })
-    return cleanup
-  }, [])
+  const [, setTick] = useState(0)
 
-  // Calculate rate limit status
   const isRateLimited = rateLimitData && rateLimitData.remaining === 0
   const isNearLimit = rateLimitData && rateLimitData.percentage >= 80
   const _timeUntilReset = useMemo(() => {
@@ -125,46 +122,34 @@ export function Header({
     return formatTimeUntilReset(rateLimitData.resetAt)
   }, [rateLimitData?.resetAt])
 
-  // Update countdown every second when rate limited or near limit
   useEffect(() => {
     if (!isRateLimited && !isNearLimit) return
-
-    const interval = setInterval(() => {
-      setTick((t) => t + 1)
-    }, 1000)
-
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(interval)
   }, [isRateLimited, isNearLimit])
 
+  // Apply theme on mount and when it changes
   useEffect(() => {
-    // Check saved theme or default to dark
-    const savedTheme = localStorage.getItem('codelobby-theme')
-    const prefersDark = savedTheme ? savedTheme === 'dark' : true
-    setIsDark(prefersDark)
-    document.documentElement.classList.toggle('dark', prefersDark)
-  }, [])
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [isDark])
 
   const toggleTheme = () => {
-    const newIsDark = !isDark
-    setIsDark(newIsDark)
-    document.documentElement.classList.toggle('dark', newIsDark)
-    localStorage.setItem('codelobby-theme', newIsDark ? 'dark' : 'light')
+    setTheme.mutate(isDark ? 'light' : 'dark')
   }
 
   const handleRefresh = () => {
-    // Clear cache and re-fetch all data via TanStack Query
-    clearCacheMutation.mutate()
+    // Invalidate all PR queries to trigger refetch
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === 'github' && query.queryKey[1] === 'prs'
+    })
   }
 
   return (
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-4 pr-4 drag-region header-bar shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-20">
-      {/* Left section with window controls area + logo */}
       <div className="flex items-center h-full">
-        {/* Window controls spacer (traffic lights) - hidden in fullscreen */}
         {!isFullscreen && <div className="w-[72px] h-full flex-shrink-0" />}
         {isFullscreen && <div className="w-3 h-full flex-shrink-0" />}
 
-        {/* Logo - positioned right after traffic lights */}
         <div className="flex items-center gap-2.5 no-drag pr-4">
           <CodeLobbyLogo size={28} />
           <div className="flex flex-col">
@@ -178,7 +163,6 @@ export function Header({
 
       <Separator orientation="vertical" className="h-6" />
 
-      {/* View Mode Switcher */}
       <div className="flex items-center gap-1 no-drag bg-muted/50 rounded-lg p-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -314,7 +298,6 @@ export function Header({
         </>
       )}
 
-      {/* AI Cost Indicator - next to rate limit */}
       <AICostIndicator />
 
       <div className="flex-1" />
@@ -361,6 +344,20 @@ export function Header({
           <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>
         </Tooltip>
 
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('h-8 w-8', networkPanelOpen && 'bg-muted')}
+              onClick={() => toggleNetworkPanel.mutate()}
+            >
+              <Network className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Network Panel</TooltipContent>
+        </Tooltip>
+
         <Popover>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -383,20 +380,6 @@ export function Header({
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant={isNetworkPanelOpen ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => Actions.toggleNetworkPanel()}
-            >
-              <Globe className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Network requests</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
             <div>
               <LogsViewer />
             </div>
@@ -415,7 +398,7 @@ export function Header({
 
         <Separator orientation="vertical" className="h-6" />
 
-        {user && (
+        {user?.login && (
           <div className="flex items-center gap-2">
             <Avatar className="h-7 w-7">
               <AvatarImage src={user.avatar_url} alt={user.login} />

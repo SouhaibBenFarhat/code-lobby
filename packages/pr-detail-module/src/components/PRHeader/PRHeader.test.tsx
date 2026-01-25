@@ -1,7 +1,15 @@
+/**
+ * PRHeader Component Tests
+ *
+ * Tests for PR header rendering, action buttons, and stats.
+ * Components subscribe to store directly - use initialSelectedPR option in render.
+ */
+
+import type { GitHubUser } from '@codelobby/shared-store'
 import {
   createMockPullRequest,
   fireEvent,
-  customRender as render,
+  render,
   resetMockElectron,
   screen,
   setupMockElectron
@@ -12,6 +20,11 @@ import { PRHeader } from './PRHeader'
 
 describe('PRHeader', () => {
   const mockOnClose = vi.fn()
+  const mockUser: GitHubUser = {
+    login: 'testuser',
+    avatar_url: 'https://example.com/avatar.png',
+    name: 'Test User'
+  }
 
   beforeEach(() => {
     setupMockElectron()
@@ -33,35 +46,35 @@ describe('PRHeader', () => {
   describe('rendering', () => {
     it('should render PR number', () => {
       const pr = createPR({ number: 456 })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('#456')).toBeInTheDocument()
     })
 
     it('should render PR title', () => {
       const pr = createPR({ title: 'My Amazing Feature' })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('My Amazing Feature')).toBeInTheDocument()
     })
 
     it('should render Draft badge for draft PRs', () => {
       const pr = createPR({ draft: true })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
 
     it('should not render Draft badge for non-draft PRs', () => {
       const pr = createPR({ draft: false })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.queryByText('Draft')).not.toBeInTheDocument()
     })
 
     it('should render branch info', () => {
       const pr = createPR()
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Branch names are truncated but should be present
       expect(screen.getByText('→')).toBeInTheDocument()
@@ -69,14 +82,14 @@ describe('PRHeader', () => {
 
     it('should render author login', () => {
       const pr = createPR()
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText(pr.user.login)).toBeInTheDocument()
     })
 
     it('should render additions and deletions', () => {
       const pr = createPR({ additions: 100, deletions: 50 })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('+100')).toBeInTheDocument()
       expect(screen.getByText('-50')).toBeInTheDocument()
@@ -84,16 +97,27 @@ describe('PRHeader', () => {
 
     it('should render comment count', () => {
       const pr = createPR({ comments: 5, review_comments: 3 })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByText('8')).toBeInTheDocument()
+    })
+
+    it('should not render when no PR is selected', () => {
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: null,
+        initialUser: mockUser
+      })
+      expect(container).toBeEmptyDOMElement()
     })
   })
 
   describe('action buttons', () => {
     it('should render close button', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Find close button (last button with X icon)
       const buttons = container.querySelectorAll('button')
@@ -102,7 +126,10 @@ describe('PRHeader', () => {
 
     it('should call onClose when close button is clicked', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Find close button - it's the last icon button after separator
       const buttons = container.querySelectorAll('button')
@@ -114,7 +141,10 @@ describe('PRHeader', () => {
 
     it('should render refresh button', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Look for RefreshCw icon
       const refreshIcon = container.querySelector('.lucide-refresh-cw')
@@ -123,7 +153,10 @@ describe('PRHeader', () => {
 
     it('should render external link button', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Look for ExternalLink icon
       const externalIcon = container.querySelector('.lucide-external-link')
@@ -135,7 +168,10 @@ describe('PRHeader', () => {
       const mockOpen = vi.fn()
       window.open = mockOpen
 
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       const externalIcon = container.querySelector('.lucide-external-link')
       const button = externalIcon?.closest('button')
@@ -150,7 +186,10 @@ describe('PRHeader', () => {
   describe('Why Open? button', () => {
     it('should render Why Open? button with HelpCircle icon', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       const helpIcon = container.querySelector('.lucide-help-circle')
       expect(helpIcon).toBeInTheDocument()
@@ -160,7 +199,10 @@ describe('PRHeader', () => {
   describe('AI Chat button', () => {
     it('should render AI Chat button with Claude icon', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       // Claude icon doesn't have lucide class, look for svg with specific viewBox or path
       const svgs = container.querySelectorAll('button svg')
@@ -171,7 +213,10 @@ describe('PRHeader', () => {
   describe('Preview button', () => {
     it('should render Preview button with Globe icon', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       const globeIcon = container.querySelector('.lucide-globe')
       expect(globeIcon).toBeInTheDocument()
@@ -181,7 +226,10 @@ describe('PRHeader', () => {
   describe('Jira button', () => {
     it('should render Jira button with Ticket icon', () => {
       const pr = createPR()
-      const { container } = render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
 
       const ticketIcon = container.querySelector('.lucide-ticket')
       expect(ticketIcon).toBeInTheDocument()
@@ -191,14 +239,14 @@ describe('PRHeader', () => {
   describe('Approve and Merge buttons', () => {
     it('should render Approve button', () => {
       const pr = createPR()
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByRole('button', { name: /Approve/i })).toBeInTheDocument()
     })
 
     it('should render Merge button', () => {
       const pr = createPR()
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       expect(screen.getByRole('button', { name: /Merge/i })).toBeInTheDocument()
     })
@@ -207,7 +255,7 @@ describe('PRHeader', () => {
   describe('stats section', () => {
     it('should display relative time', () => {
       const pr = createPR({ created_at: new Date().toISOString() })
-      render(<PRHeader pr={pr} onClose={mockOnClose} />)
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       // Should show something like "just now" or "X seconds ago"
       const statsSection = screen.getByText(pr.user.login).closest('div')

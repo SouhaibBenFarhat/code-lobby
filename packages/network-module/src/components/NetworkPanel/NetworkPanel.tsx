@@ -2,11 +2,10 @@
  * NetworkPanel Component
  *
  * Main container component that displays a list of API calls with their costs,
- * status, and timing information. Composes smaller components for header,
- * search, stats, and request list.
+ * status, and timing information. Uses TanStack Query for state.
  */
 
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import { useClearNetworkRequests, useNetworkRequests } from '@codelobby/data'
 import { useMemo, useState } from 'react'
 import { calculateTotals, filterRequests } from '../../utils'
 import { ListFooter } from '../ListFooter'
@@ -21,7 +20,8 @@ export interface NetworkPanelProps {
 }
 
 export function NetworkPanel({ onClose }: NetworkPanelProps): React.JSX.Element {
-  const requests = useSignal(Store.networkRequests)
+  const { data: requests = [] } = useNetworkRequests()
+  const clearRequests = useClearNetworkRequests()
   const [searchQuery, setSearchQuery] = useState('')
 
   // Filter requests by URL search
@@ -34,7 +34,7 @@ export function NetworkPanel({ onClose }: NetworkPanelProps): React.JSX.Element 
   const totals = useMemo(() => calculateTotals(filteredRequests), [filteredRequests])
 
   const handleClearAll = (): void => {
-    Actions.clearNetworkRequests()
+    clearRequests.mutate()
   }
 
   const isFiltered = Boolean(searchQuery.trim())

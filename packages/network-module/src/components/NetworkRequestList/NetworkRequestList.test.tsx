@@ -1,4 +1,4 @@
-import type { NetworkRequest } from '@codelobby/shared-store'
+import type { NetworkRequest } from '@codelobby/data'
 import { TooltipProvider } from '@codelobby/ui-kit'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -100,7 +100,7 @@ describe('NetworkRequestList', () => {
       expect(screen.getAllByTestId('network-request-item')).toHaveLength(3)
     })
 
-    it('should render requests in reverse order (newest first)', () => {
+    it('should render requests in chronological order (oldest first, newest last)', () => {
       const requests = [
         createMockRequest('1', { url: 'https://first.com' }),
         createMockRequest('2', { url: 'https://second.com' }),
@@ -113,10 +113,10 @@ describe('NetworkRequestList', () => {
       )
 
       const items = screen.getAllByTestId('network-request-item')
-      // Newest (last in array) should be first in list
-      expect(items[0]).toHaveTextContent('https://third.com')
+      // Chronological order: first in array is first in list (oldest first, newest last)
+      expect(items[0]).toHaveTextContent('https://first.com')
       expect(items[1]).toHaveTextContent('https://second.com')
-      expect(items[2]).toHaveTextContent('https://first.com')
+      expect(items[2]).toHaveTextContent('https://third.com')
     })
 
     it('should only render filtered requests', () => {

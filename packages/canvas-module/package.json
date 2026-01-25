@@ -8,11 +8,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@codelobby/data": "*",
     "@codelobby/slot-system": "*",
-    "@codelobby/shared-store": "*",
-    "@codelobby/queries": "*",
     "@codelobby/ui-kit": "*",
-    "@tanstack/react-query": "^5.17.0",
     "lucide-react": "^0.294.0",
     "react-rnd": "^10.4.1"
   },

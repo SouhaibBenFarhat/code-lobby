@@ -2,7 +2,7 @@
  * FileTreeNode - Recursive component for displaying file tree structure.
  */
 
-import type { PRFile } from '@codelobby/queries'
+import type { PRFile } from '@codelobby/data'
 import { Badge, Button } from '@codelobby/ui-kit'
 import {
   ChevronDown,

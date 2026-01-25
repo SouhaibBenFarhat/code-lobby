@@ -60,6 +60,23 @@ const electronAPI: ElectronAPI = {
     commitBody?: string
   ) => ipcRenderer.invoke('merge-pr', prNodeId, mergeMethod, commitHeadline, commitBody),
 
+  // Close PR (without merging, optionally with a closing comment)
+  closePR: (prNodeId: string, comment?: string) =>
+    ipcRenderer.invoke('close-pr', prNodeId, comment),
+
+  // Add comment to PR
+  addPRComment: (prNodeId: string, body: string) =>
+    ipcRenderer.invoke('add-pr-comment', prNodeId, body),
+
+  // Reopen PR
+  reopenPR: (prNodeId: string) => ipcRenderer.invoke('reopen-pr', prNodeId),
+
+  // Mark PR Ready for Review
+  markPRReady: (prNodeId: string) => ipcRenderer.invoke('mark-pr-ready', prNodeId),
+
+  // Convert PR to Draft
+  convertPRToDraft: (prNodeId: string) => ipcRenderer.invoke('convert-pr-to-draft', prNodeId),
+
   // Submit PR Review (approve, request changes, or comment)
   submitPRReview: (
     prNodeId: string,

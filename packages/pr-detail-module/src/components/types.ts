@@ -2,7 +2,7 @@
  * Shared types for PR Detail components
  */
 
-import type { PRFile } from '@codelobby/queries'
+import type { PRFile } from '@codelobby/data'
 
 /** Check run data */
 export interface CheckRun {

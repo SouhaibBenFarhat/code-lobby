@@ -1,44 +1,55 @@
 /**
  * @codelobby/header-module
  *
- * Self-contained header module with all components.
+ * Self-contained header module using TanStack Query.
  */
 
-import type { ViewMode } from '@codelobby/shared-store'
-import { Actions, Store, useSignal } from '@codelobby/shared-store'
+import {
+  useAIPanel,
+  useCurrentUser,
+  useSetAIPanel,
+  useSetViewMode,
+  useSignOut,
+  useViewMode,
+  type ViewMode
+} from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { Header } from './components/Header'
 
 export { AboutDialog } from './components/AboutDialog'
 export { EventStream } from './components/EventStream'
-// Re-export components for external use
 export { Header } from './components/Header'
 export { LogsViewer } from './components/LogsViewer'
 export { RepoSelector } from './components/RepoSelector'
 
 /**
- * HeaderWrapper connects the Header component to the shared store.
+ * HeaderWrapper connects the Header component to TanStack Query.
  */
 function HeaderWrapper() {
-  const user = useSignal(Store.user)
-  const viewMode = useSignal(Store.viewMode)
-  const isAIPanelOpen = useSignal(Store.aiPanelOpen)
+  const { data: user } = useCurrentUser()
+  const { data: viewMode = 'canvas' } = useViewMode()
+  const { data: aiPanelData } = useAIPanel()
+  const isAIPanelOpen = aiPanelData?.isOpen ?? false
+
+  const setViewMode = useSetViewMode()
+  const setAIPanel = useSetAIPanel()
+  const signOut = useSignOut()
 
   const handleLogout = () => {
-    Actions.signOut()
+    signOut.mutate()
   }
 
   const handleViewModeChange = (mode: ViewMode) => {
-    Actions.setViewMode(mode)
+    setViewMode.mutate(mode)
   }
 
   const handleToggleAIPanel = () => {
-    Actions.toggleAIPanel()
+    setAIPanel.mutate({ isOpen: !isAIPanelOpen })
   }
 
   return (
     <Header
-      user={user}
+      user={user ?? null}
       onLogout={handleLogout}
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
