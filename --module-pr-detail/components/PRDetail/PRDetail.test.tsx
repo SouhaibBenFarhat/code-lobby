@@ -228,6 +228,59 @@ describe('PRDetail', () => {
         expect(screen.getByRole('button', { name: /Bots/i })).toBeInTheDocument()
       })
     })
+
+    it('should show all comments when All tab is selected', async () => {
+      const pr = createMockPRWithMixedComments() // 2 human + 2 bot comments
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
+
+      // All tab is selected by default - check the count shows 4
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /All \(4\)/i })).toBeInTheDocument()
+      })
+    })
+
+    it('should filter to only human comments when People tab is clicked', async () => {
+      const pr = createMockPRWithMixedComments() // 2 human + 2 bot comments
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
+
+      // Click People tab
+      const peopleTab = screen.getByRole('button', { name: /People \(2\)/i })
+      fireEvent.click(peopleTab)
+
+      // Should show 2 comments (humans only)
+      await waitFor(() => {
+        // People tab should be active and show count of 2
+        expect(screen.getByRole('button', { name: /People \(2\)/i })).toBeInTheDocument()
+      })
+    })
+
+    it('should filter to only bot comments when Bots tab is clicked', async () => {
+      const pr = createMockPRWithMixedComments() // 2 human + 2 bot comments
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
+
+      // Click Bots tab
+      const botsTab = screen.getByRole('button', { name: /Bots \(2\)/i })
+      fireEvent.click(botsTab)
+
+      // Should show 2 comments (bots only)
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Bots \(2\)/i })).toBeInTheDocument()
+      })
+    })
+
+    it('should show different comment counts for People vs All tabs', async () => {
+      const pr = createMockPRWithMixedComments() // 2 human + 2 bot comments
+      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
+
+      await waitFor(() => {
+        // All shows total count
+        expect(screen.getByRole('button', { name: /All \(4\)/i })).toBeInTheDocument()
+        // People shows only human count
+        expect(screen.getByRole('button', { name: /People \(2\)/i })).toBeInTheDocument()
+        // Bots shows only bot count
+        expect(screen.getByRole('button', { name: /Bots \(2\)/i })).toBeInTheDocument()
+      })
+    })
   })
 
   describe('Reviews', () => {
