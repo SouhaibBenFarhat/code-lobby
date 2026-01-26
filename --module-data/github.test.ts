@@ -349,7 +349,7 @@ describe('GitHub API', () => {
                       id: 'C_1',
                       body: 'Great work!',
                       createdAt: '2024-01-01T12:00:00Z',
-                      author: { login: 'reviewer', avatarUrl: '' }
+                      author: { __typename: 'User', login: 'reviewer', avatarUrl: '' }
                     }
                   ]
                 },
@@ -359,7 +359,7 @@ describe('GitHub API', () => {
                       id: 'R_1',
                       state: 'APPROVED',
                       createdAt: '2024-01-01T12:00:00Z',
-                      author: { login: 'reviewer', avatarUrl: '' },
+                      author: { __typename: 'User', login: 'reviewer', avatarUrl: '' },
                       body: 'LGTM'
                     }
                   ]
@@ -385,6 +385,235 @@ describe('GitHub API', () => {
       expect(result.commentsList?.[0]?.body).toBe('Great work!')
       expect(result.reviews).toHaveLength(1)
       expect(result.reviews?.[0]?.state).toBe('approved')
+    })
+
+    it('detects bot authors via __typename', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                id: 'PR_1',
+                number: 1,
+                title: 'Bot PR',
+                body: '',
+                url: '',
+                state: 'OPEN',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                isDraft: false,
+                mergedAt: null,
+                author: { login: 'author', avatarUrl: '' },
+                headRefName: 'main',
+                headRefOid: 'abc',
+                baseRefName: 'main',
+                baseRepository: {
+                  name: 'repo',
+                  nameWithOwner: 'org/repo',
+                  owner: { login: 'org', avatarUrl: '' }
+                },
+                labels: { nodes: [] },
+                comments: {
+                  nodes: [
+                    {
+                      id: 'C_bot',
+                      body: 'Automated comment',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'Bot', login: 'dependabot[bot]', avatarUrl: '' }
+                    },
+                    {
+                      id: 'C_human',
+                      body: 'Human comment',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'User', login: 'developer', avatarUrl: '' }
+                    }
+                  ]
+                },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+                additions: 0,
+                deletions: 0,
+                changedFiles: 0,
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+                reviewDecision: null,
+                commits: { nodes: [] }
+              }
+            }
+          }
+        })
+      )
+
+      const result = await fetchSinglePR('token', 'org/repo', 1)
+
+      expect(result.commentsList).toHaveLength(2)
+      // Bot comment (detected via __typename)
+      expect(result.commentsList?.[0]?.author.isBot).toBe(true)
+      expect(result.commentsList?.[0]?.author.login).toBe('dependabot[bot]')
+      // Human comment
+      expect(result.commentsList?.[1]?.author.isBot).toBe(false)
+      expect(result.commentsList?.[1]?.author.login).toBe('developer')
+    })
+
+    it('detects bot authors via login patterns', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                id: 'PR_1',
+                number: 1,
+                title: 'PR with bots',
+                body: '',
+                url: '',
+                state: 'OPEN',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                isDraft: false,
+                mergedAt: null,
+                author: { login: 'author', avatarUrl: '' },
+                headRefName: 'main',
+                headRefOid: 'abc',
+                baseRefName: 'main',
+                baseRepository: {
+                  name: 'repo',
+                  nameWithOwner: 'org/repo',
+                  owner: { login: 'org', avatarUrl: '' }
+                },
+                labels: { nodes: [] },
+                comments: {
+                  nodes: [
+                    {
+                      id: 'C_1',
+                      body: 'Bot login ending with [bot]',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'User', login: 'codecov[bot]', avatarUrl: '' }
+                    },
+                    {
+                      id: 'C_2',
+                      body: 'Bot login ending with -bot',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'User', login: 'renovate-bot', avatarUrl: '' }
+                    },
+                    {
+                      id: 'C_3',
+                      body: 'GitHub Actions bot',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'User', login: 'github-actions', avatarUrl: '' }
+                    }
+                  ]
+                },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+                additions: 0,
+                deletions: 0,
+                changedFiles: 0,
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+                reviewDecision: null,
+                commits: { nodes: [] }
+              }
+            }
+          }
+        })
+      )
+
+      const result = await fetchSinglePR('token', 'org/repo', 1)
+
+      expect(result.commentsList).toHaveLength(3)
+      // All should be detected as bots via login pattern
+      expect(result.commentsList?.[0]?.author.isBot).toBe(true) // [bot] suffix
+      expect(result.commentsList?.[1]?.author.isBot).toBe(true) // -bot suffix
+      expect(result.commentsList?.[2]?.author.isBot).toBe(true) // github-actions
+    })
+
+    it('sets isBot to false for regular human users', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                id: 'PR_1',
+                number: 1,
+                title: 'Human PR',
+                body: '',
+                url: '',
+                state: 'OPEN',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                isDraft: false,
+                mergedAt: null,
+                author: { login: 'author', avatarUrl: '' },
+                headRefName: 'main',
+                headRefOid: 'abc',
+                baseRefName: 'main',
+                baseRepository: {
+                  name: 'repo',
+                  nameWithOwner: 'org/repo',
+                  owner: { login: 'org', avatarUrl: '' }
+                },
+                labels: { nodes: [] },
+                comments: {
+                  nodes: [
+                    {
+                      id: 'C_1',
+                      body: 'Regular comment',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'User', login: 'johndoe', avatarUrl: '' }
+                    }
+                  ]
+                },
+                reviews: {
+                  nodes: [
+                    {
+                      id: 'R_1',
+                      state: 'APPROVED',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      author: { __typename: 'User', login: 'reviewer', avatarUrl: '' },
+                      body: 'LGTM'
+                    }
+                  ]
+                },
+                reviewThreads: {
+                  nodes: [
+                    {
+                      id: 'T_1',
+                      isResolved: false,
+                      path: 'file.ts',
+                      line: 10,
+                      comments: {
+                        nodes: [
+                          {
+                            id: 'TC_1',
+                            body: 'Code review comment',
+                            createdAt: '2024-01-01T00:00:00Z',
+                            author: { __typename: 'User', login: 'codereviewer', avatarUrl: '' },
+                            diffHunk: '@@ -1,1 +1,1 @@'
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                additions: 0,
+                deletions: 0,
+                changedFiles: 0,
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+                reviewDecision: null,
+                commits: { nodes: [] }
+              }
+            }
+          }
+        })
+      )
+
+      const result = await fetchSinglePR('token', 'org/repo', 1)
+
+      // All authors should have isBot: false
+      expect(result.commentsList?.[0]?.author.isBot).toBe(false)
+      expect(result.reviews?.[0]?.author.isBot).toBe(false)
+      expect(result.reviewThreads?.[0]?.comments[0]?.author.isBot).toBe(false)
     })
   })
 
