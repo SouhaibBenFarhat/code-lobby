@@ -17,7 +17,7 @@ CodeLobby is an **Electron desktop application** using **TanStack Query as the s
 ┌─────────────────────────┴─────────────────────────────────┐
 │                    Renderer Process                        │
 │    React + TanStack Query + Direct fetch()                │
-│    packages/* + src/renderer/                             │
+│    --module-*/ + src/renderer/                            │
 └─────────────────────────┬─────────────────────────────────┘
                           │ window.electron (IPC for OS operations)
 ┌─────────────────────────┴─────────────────────────────────┐

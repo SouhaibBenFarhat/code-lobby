@@ -75,7 +75,7 @@ Electron runs two separate processes:
 ┌─────────────────────────────────────────────────────────────┐
 │                    Renderer Process                          │
 │        React + TanStack Query + Direct fetch()               │
-│              (packages/* + src/renderer/)                    │
+│              (--module-*/ + src/renderer/)                   │
 └───────────────────────┬─────────────────────────────────────┘
                         │ window.electron (IPC)
 ┌───────────────────────┴─────────────────────────────────────┐
