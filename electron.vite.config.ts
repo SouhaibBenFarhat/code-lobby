@@ -7,8 +7,8 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
-        '@logger/main': resolve('__module__logger/main.ts'),
-        '@logger': resolve('__module__logger/index.ts')
+        '@logger/main': resolve('--module-logger/main.ts'),
+        '@logger': resolve('--module-logger/index.ts')
       }
     }
   },
@@ -16,8 +16,8 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
-        '@logger/main': resolve('__module__logger/main.ts'),
-        '@logger': resolve('__module__logger/index.ts')
+        '@logger/main': resolve('--module-logger/main.ts'),
+        '@logger': resolve('--module-logger/index.ts')
       }
     }
   },
@@ -25,19 +25,19 @@ export default defineConfig({
     resolve: {
       alias: {
         '@': resolve('src/renderer'),
-        '@logger': resolve('__module__logger/index.ts'),
-        '@slot-system': resolve('__module__slot-system/index.tsx'),
-        '@data': resolve('__module__data/index.ts'),
-        '@header': resolve('__module__header/index.tsx'),
-        '@explorer': resolve('__module__explorer/index.tsx'),
-        '@canvas': resolve('__module__canvas/index.tsx'),
-        '@pr-detail': resolve('__module__pr-detail/index.tsx'),
-        '@ai-chat': resolve('__module__ai-chat/index.tsx'),
-        '@network': resolve('__module__network/index.tsx'),
-        '@app/bootstrap': resolve('__module__app/bootstrap.ts'),
-        '@app': resolve('__module__app/index.ts'),
-        '@ui-kit': resolve('__module__ui-kit/index.ts'),
-        '@test-utils': resolve('__module__test-utils/index.ts')
+        '@logger': resolve('--module-logger/index.ts'),
+        '@slot-system': resolve('--module-slot-system/index.tsx'),
+        '@data': resolve('--module-data/index.ts'),
+        '@header': resolve('--module-header/index.tsx'),
+        '@explorer': resolve('--module-explorer/index.tsx'),
+        '@canvas': resolve('--module-canvas/index.tsx'),
+        '@pr-detail': resolve('--module-pr-detail/index.tsx'),
+        '@ai-chat': resolve('--module-ai-chat/index.tsx'),
+        '@network': resolve('--module-network/index.tsx'),
+        '@app/bootstrap': resolve('--module-app/bootstrap.ts'),
+        '@app': resolve('--module-app/index.ts'),
+        '@ui-kit': resolve('--module-ui-kit/index.ts'),
+        '@test-utils': resolve('--module-test-utils/index.ts')
       }
     },
     plugins: [react()]

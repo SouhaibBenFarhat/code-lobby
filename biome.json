@@ -11,8 +11,8 @@
       "*.tsx",
       "src/**/*.ts",
       "src/**/*.tsx",
-      "__module__*/**/*.ts",
-      "__module__*/**/*.tsx",
+      "--module-*/**/*.ts",
+      "--module-*/**/*.tsx",
       "tests/**/*.ts",
       "tests/**/*.tsx"
     ]
