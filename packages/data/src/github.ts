@@ -535,37 +535,86 @@ export async function fetchSinglePR(
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
+// REST API response type for PR files
+interface GitHubPRFileResponse {
+  sha: string
+  filename: string
+  status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged'
+  additions: number
+  deletions: number
+  changes: number
+  patch?: string
+  previous_filename?: string
+}
+
+/**
+ * Fetch PR files with diff patches using REST API
+ * REST API includes the actual patch content, GraphQL doesn't
+ */
+// Max files to fetch (soft limit to avoid huge PRs overwhelming the system)
+const MAX_FILES = 500
+
+/**
+ * Fetch PR files with parallel pagination
+ * GitHub limits to 100 per page, but we can fetch all pages in parallel
+ */
 export async function fetchPRFiles(
   token: string,
   owner: string,
   repo: string,
-  prNumber: number
+  prNumber: number,
+  totalFiles?: number
 ): Promise<PRFile[]> {
-  const query = `
-    query($owner: String!, $name: String!, $number: Int!) {
-      repository(owner: $owner, name: $name) {
-        pullRequest(number: $number) {
-          files(first: 100) {
-            nodes {
-              path
-              additions
-              deletions
-              changeType
-            }
-          }
-        }
-      }
-    }
-  `
+  const baseUrl = `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`
 
-  const data = await graphql<{ repository: { pullRequest: { files: { nodes: PRFile[] } } } }>(
-    token,
-    query,
-    { owner, name: repo, number: prNumber }
-  )
+  // If we know total count, fetch all pages in parallel
+  if (totalFiles && totalFiles > 100) {
+    const filesToFetch = Math.min(totalFiles, MAX_FILES)
+    const pageCount = Math.ceil(filesToFetch / 100)
 
-  // Return GraphQL data directly
-  return data.repository.pullRequest.files.nodes
+    // Fetch all pages in parallel
+    const pagePromises = Array.from({ length: pageCount }, (_, i) =>
+      http.get<GitHubPRFileResponse[]>(`${baseUrl}&page=${i + 1}`, authHeaders(token))
+    )
+
+    const pages = await Promise.all(pagePromises)
+    const allFiles = pages.flat()
+
+    return allFiles.map((file) => ({
+      path: file.filename,
+      additions: file.additions,
+      deletions: file.deletions,
+      changeType: mapFileStatus(file.status),
+      patch: file.patch
+    }))
+  }
+
+  // Simple case: just fetch first page
+  const files = await http.get<GitHubPRFileResponse[]>(baseUrl, authHeaders(token))
+
+  return files.map((file) => ({
+    path: file.filename,
+    additions: file.additions,
+    deletions: file.deletions,
+    changeType: mapFileStatus(file.status),
+    patch: file.patch
+  }))
+}
+
+/** Map GitHub REST API file status to our changeType */
+function mapFileStatus(status: GitHubPRFileResponse['status']): PRFile['changeType'] {
+  switch (status) {
+    case 'added':
+      return 'ADDED'
+    case 'removed':
+      return 'DELETED'
+    case 'renamed':
+      return 'RENAMED'
+    case 'copied':
+      return 'COPIED'
+    default:
+      return 'MODIFIED'
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -677,6 +726,15 @@ export async function mergePR(
 
 export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
 
+/**
+ * Review comment for inline feedback
+ */
+export interface ReviewCommentInput {
+  path: string // File path relative to repo root
+  line: number // Line number in the diff
+  body: string // Comment body (markdown supported)
+}
+
 export async function submitPRReview(
   token: string,
   prNodeId: string,
@@ -707,5 +765,42 @@ export async function submitPRReview(
     success: true,
     reviewId: data.addPullRequestReview.pullRequestReview.id,
     state: data.addPullRequestReview.pullRequestReview.state
+  }
+}
+
+/**
+ * Submit a PR review with inline comments
+ * Uses GitHub REST API as GraphQL requires commitOID for each comment
+ */
+export async function submitPRReviewWithComments(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  event: ReviewEvent,
+  body: string,
+  comments: ReviewCommentInput[]
+): Promise<ReviewResult> {
+  // GitHub REST API endpoint for creating a review
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}/reviews`
+
+  const response = await http.post<{ id: number; state: string }>(
+    url,
+    {
+      body,
+      event,
+      comments: comments.map((c) => ({
+        path: c.path,
+        line: c.line,
+        body: c.body
+      }))
+    },
+    authHeaders(token)
+  )
+
+  return {
+    success: true,
+    reviewId: String(response.id),
+    state: response.state
   }
 }

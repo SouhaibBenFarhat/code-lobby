@@ -197,8 +197,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
             {/* Changed Files Section */}
             <Col span="full">
               <ChangedFilesSection
-                owner={pr.base.repo.owner.login}
-                repo={pr.base.repo.name}
+                repoFullName={`${pr.base.repo.owner.login}/${pr.base.repo.name}`}
                 prNumber={pr.number}
                 totalChanged={pr.changed_files}
               />

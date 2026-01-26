@@ -3,23 +3,8 @@
  */
 
 // Chat message structure (re-export from @codelobby/data for compatibility)
-export type { ChatMessage } from '@codelobby/data'
-
-// Postable comment metadata that Claude can embed in responses
-export interface PostableComment {
-  file: string
-  line: number
-}
-
-// A content section that may or may not have a postable comment
-export interface ContentSection {
-  content: string // The displayable content (POSTABLE stripped)
-  postable: PostableComment | null // If this section has a postable finding
-  prComment: string | null // The extracted PR comment to post (if any)
-}
-
 // Claude model info (re-export from @codelobby/data for compatibility)
-export type { ClaudeModel } from '@codelobby/data'
+export type { ChatMessage, ClaudeModel } from '@codelobby/data'
 
 // GitHub user for avatar display
 export interface GitHubUser {
@@ -28,18 +13,13 @@ export interface GitHubUser {
   name: string | null
 }
 
-// Linked PR chat info (kept for backwards compatibility)
-export interface LinkedPRChat {
-  prId: string
-  prNumber: number
-  prTitle: string
-  repoFullName: string
-}
-
 // Selected PR details
 export interface SelectedPR {
+  id: string // GraphQL node ID for mutations
   number: number
   title: string
+  body?: string
+  changed_files?: number
   head: {
     sha: string
   }
@@ -89,10 +69,23 @@ export interface PRContext {
 // Custom prompt from storage (re-export from @codelobby/data for compatibility)
 export type { CustomPrompt } from '@codelobby/data'
 
-// State for tracking posted comments and posting in progress
-export interface PostingState {
-  [key: string]: 'posting' | 'posted' | 'error'
+// Linked PR chat info (used for posting comments)
+export interface LinkedPRChat {
+  prId: string
+  prNumber: number
+  prTitle: string
+  repoFullName: string
 }
+
+// Review types (for Claude-generated PR reviews)
+export type {
+  RawReviewData,
+  ReviewComment,
+  ReviewData,
+  ReviewFileGroup,
+  ReviewPreviewState,
+  ReviewVerdict
+} from './review'
 
 // Main AIChat panel props - simplified
 export interface AIChatPanelProps {

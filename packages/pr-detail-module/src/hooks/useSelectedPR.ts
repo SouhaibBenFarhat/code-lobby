@@ -3,12 +3,15 @@
  */
 
 import {
+  keys,
   type PRIdentifier,
   type PullRequest,
+  useQueryClient,
   useSelectedPR as useSelectedPRFromData,
   useSelectedPRId,
   useUser
 } from '@codelobby/data'
+import { useCallback } from 'react'
 
 export interface UseSelectedPRResult {
   pr: PullRequest | null
@@ -20,11 +23,22 @@ export interface UseSelectedPRResult {
 
 export function useSelectedPR(): UseSelectedPRResult {
   const { data: selectedPRId } = useSelectedPRId()
-  const { data: pr, isLoading, isFetching, refetch } = useSelectedPRFromData()
+  const { data: pr, isLoading, isFetching } = useSelectedPRFromData()
+  const queryClient = useQueryClient()
+
+  // Refresh ALL PR-related queries at once using the shared prefix
+  // This invalidates: detail, files, and any future PR queries
+  const refresh = useCallback(() => {
+    if (selectedPRId) {
+      queryClient.invalidateQueries({
+        queryKey: keys.pr(selectedPRId.repoFullName, selectedPRId.prNumber)
+      })
+    }
+  }, [selectedPRId, queryClient])
 
   return {
     pr: pr ?? null,
-    refresh: refetch,
+    refresh,
     isLoading,
     isRefreshing: isFetching && !isLoading, // Fetching but not initial load
     selectedPRId: selectedPRId ?? null

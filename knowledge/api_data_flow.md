@@ -114,18 +114,23 @@ export async function fetchRepos(token: string): Promise<Repository[]> {
 }
 ```
 
-### GraphQL Queries
+### GitHub API Usage
 
-All GitHub data is fetched via GraphQL for efficiency:
+Most GitHub data is fetched via **GraphQL** for efficiency. Some operations use the **REST API** when GraphQL doesn't provide the required data:
 
-| Query | Data Fetched |
-|-------|--------------|
-| `fetchRepos` | Organization repositories |
-| `fetchPRsForRepos` | PRs with CI status, comments, reviews |
-| `fetchSinglePR` | Single PR with full details |
-| `fetchPRFiles` | Changed files with diffs |
-| `fetchRateLimit` | API rate limit status |
-| `validateToken` | Token validation + user info |
+| Query | Data Fetched | API |
+|-------|--------------|-----|
+| `fetchRepos` | Organization repositories | GraphQL |
+| `fetchPRsForRepos` | PRs with CI status, comments, reviews | GraphQL |
+| `fetchSinglePR` | Single PR with full details | GraphQL |
+| `fetchPRFiles` | Changed files with diffs (patches) | **REST** |
+| `fetchRateLimit` | API rate limit status | REST |
+| `validateToken` | Token validation + user info | GraphQL |
+| `submitPRReview` | Submit review with inline comments | **REST** |
+
+**Why REST for some operations:**
+- `fetchPRFiles` uses REST because GraphQL doesn't return patch/diff content
+- `submitPRReview` with inline comments requires REST API format
 
 ### Transform Layer
 
@@ -483,4 +488,4 @@ try {
 
 ---
 
-*Last updated: January 2026*
+*Last updated: January 26, 2026*

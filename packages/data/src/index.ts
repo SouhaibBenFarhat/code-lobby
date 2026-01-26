@@ -28,6 +28,7 @@ export { type HttpError, http } from './http'
 export { keys } from './keys'
 // Mutations
 export {
+  type ReviewCommentInput,
   // AI Mutations
   useAddCustomPrompt,
   // Network
@@ -70,6 +71,7 @@ export {
   useSignIn,
   useSignOut,
   useSubmitPRReview,
+  useSubmitPRReviewWithComments,
   useToggleFullscreen,
   useToggleMyPRsFilter,
   useToggleNetworkPanel,

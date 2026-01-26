@@ -15,17 +15,28 @@ export const keys = {
   // Legacy: combined key (deprecated - use prsForRepo instead)
   prs: (repoFullNames: string[]): readonly ['github', 'prs', ...string[]] =>
     ['github', 'prs', ...repoFullNames.sort()] as const,
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PR-specific queries - all share prefix ['github', 'pr', repoFullName, prNumber]
+  // This allows invalidating ALL PR data at once with:
+  //   queryClient.invalidateQueries({ queryKey: keys.pr(repoFullName, prNumber) })
+  // ═══════════════════════════════════════════════════════════════════════════
+  /** Base key for a specific PR - use to invalidate ALL PR-related queries */
+  pr: (repoFullName: string, prNumber: number): readonly ['github', 'pr', string, number] =>
+    ['github', 'pr', repoFullName, prNumber] as const,
+  /** PR detail/metadata */
   prDetail: (
     repoFullName: string,
     prNumber: number
-  ): readonly ['github', 'pr-detail', string, number] =>
-    ['github', 'pr-detail', repoFullName, prNumber] as const,
+  ): readonly ['github', 'pr', string, number, 'detail'] =>
+    ['github', 'pr', repoFullName, prNumber, 'detail'] as const,
+  /** PR changed files with diffs */
   prFiles: (
-    owner: string,
-    repo: string,
+    repoFullName: string,
     prNumber: number
-  ): readonly ['github', 'pr-files', string, string, number] =>
-    ['github', 'pr-files', owner, repo, prNumber] as const,
+  ): readonly ['github', 'pr', string, number, 'files'] =>
+    ['github', 'pr', repoFullName, prNumber, 'files'] as const,
+
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
   rateLimit: ['github', 'rate-limit'] as const,

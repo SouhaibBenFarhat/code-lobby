@@ -1,7 +1,7 @@
 # CodeLobby Work Plan
 
-> **Last Updated**: January 25, 2026  
-> **Last Reviewed**: January 25, 2026  
+> **Last Updated**: January 26, 2026  
+> **Last Reviewed**: January 26, 2026  
 > **Status**: Active Development (v1.0.0)
 
 ---
@@ -90,7 +90,8 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Approve PR | ✅ Complete |
 | **Advanced AI** | CI Failure Analysis (streaming) | ✅ Complete |
 | | Web Fetch Tool (Claude can fetch URLs) | ✅ Complete |
-| | Post AI findings to PR as comments | ✅ Complete |
+| | AI PR Review Generation (with inline comments) | ✅ Complete |
+| | Review Preview Modal (edit before submit) | ✅ Complete |
 | | Context Load Indicator | ✅ Complete |
 | | AI Chat Navigation (general & PR chats) | ✅ Complete |
 | | Custom Quick Prompts | ✅ Complete |
@@ -2567,6 +2568,36 @@ type ReviewFocus =
 - Consider privacy implications
 - May need additional GitHub App permissions
 
+### 3.4 Ask AI on Code Line 🔴 Not Started
+> Contextual AI assistance directly from code diffs
+
+Add an "Ask AI" button next to each line of code in the diff viewer (Changed Files in PR Detail view and Review Preview modal). When clicked, opens AI chat with that specific line/code context pre-loaded.
+
+**Features:**
+- [ ] **Hover action button** - Small AI icon appears on line hover
+- [ ] **Line context extraction** - Capture the specific line, surrounding context, and file path
+- [ ] **Pre-filled chat prompt** - Auto-populate AI chat with "Explain this code" or custom prompt
+- [ ] **Quick prompt menu** - Dropdown with common actions:
+  - "Explain this code"
+  - "What does this change do?"
+  - "Is there a bug here?"
+  - "How can this be improved?"
+  - "Generate test for this"
+- [ ] **Multi-line selection** - Select range of lines to ask about
+- [ ] **Response anchoring** - Link AI response back to the specific line
+
+**Technical Notes:**
+- Integrate with existing `AIChat` component
+- Pass `prContext` with highlighted line info
+- Consider adding `selectedCode` to `PRContext` interface
+- Use same streaming infrastructure as existing AI chat
+- May need to adjust diff viewer component to support line-level actions
+
+**UX Considerations:**
+- Button should be unobtrusive (only show on hover)
+- Quick access without leaving the diff view
+- Consider inline response display vs. opening AI panel
+
 ---
 
 ## 📋 Phase 4: Integrations
@@ -2899,4 +2930,4 @@ interface JiraTicket {
 
 ---
 
-*Last reviewed: January 22, 2026*
+*Last reviewed: January 26, 2026*

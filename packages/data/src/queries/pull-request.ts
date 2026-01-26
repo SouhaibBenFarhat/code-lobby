@@ -126,22 +126,24 @@ export function useSelectedPR(): UseQueryResult<PullRequest | null> {
 }
 
 export function usePRFiles(
-  owner: string | null,
-  repo: string | null,
-  prNumber: number | null
+  repoFullName: string | null,
+  prNumber: number | null,
+  /** Total file count from PR metadata - enables parallel fetching for large PRs */
+  totalFiles?: number
 ): UseQueryResult<PRFile[]> {
   const { data: token } = useGitHubToken()
 
   return useQuery({
     queryKey:
-      owner && repo && prNumber
-        ? keys.prFiles(owner, repo, prNumber)
-        : ['github', 'pr-files', 'none'],
+      repoFullName && prNumber
+        ? keys.prFiles(repoFullName, prNumber)
+        : ['github', 'pr', 'none', 'files'],
     queryFn: async () => {
-      if (!token || !owner || !repo || !prNumber) return []
-      const files = await github.fetchPRFiles(token, owner, repo, prNumber)
+      if (!token || !repoFullName || !prNumber) return []
+      const [owner, repo] = repoFullName.split('/')
+      const files = await github.fetchPRFiles(token, owner, repo, prNumber, totalFiles)
       return files as PRFile[]
     },
-    enabled: !!token && !!owner && !!repo && !!prNumber
+    enabled: !!token && !!repoFullName && !!prNumber
   })
 }

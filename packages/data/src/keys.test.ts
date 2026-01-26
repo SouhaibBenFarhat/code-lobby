@@ -21,14 +21,29 @@ describe('Query Keys', () => {
       expect(result).toEqual(['github', 'prs'])
     })
 
-    it('should generate prDetail key', () => {
-      const result = keys.prDetail('org/repo', 123)
-      expect(result).toEqual(['github', 'pr-detail', 'org/repo', 123])
+    it('should generate pr base key for invalidating all PR data', () => {
+      const result = keys.pr('org/repo', 123)
+      expect(result).toEqual(['github', 'pr', 'org/repo', 123])
     })
 
-    it('should generate prFiles key', () => {
-      const result = keys.prFiles('owner', 'repo', 456)
-      expect(result).toEqual(['github', 'pr-files', 'owner', 'repo', 456])
+    it('should generate prDetail key with shared prefix', () => {
+      const result = keys.prDetail('org/repo', 123)
+      expect(result).toEqual(['github', 'pr', 'org/repo', 123, 'detail'])
+    })
+
+    it('should generate prFiles key with shared prefix', () => {
+      const result = keys.prFiles('org/repo', 456)
+      expect(result).toEqual(['github', 'pr', 'org/repo', 456, 'files'])
+    })
+
+    it('prDetail and prFiles should share same prefix as pr base key', () => {
+      const baseKey = keys.pr('org/repo', 123)
+      const detailKey = keys.prDetail('org/repo', 123)
+      const filesKey = keys.prFiles('org/repo', 123)
+
+      // All should start with the same base prefix
+      expect(detailKey.slice(0, 4)).toEqual(baseKey)
+      expect(filesKey.slice(0, 4)).toEqual(baseKey)
     })
 
     it('should have user key', () => {
@@ -107,16 +122,9 @@ describe('Query Keys', () => {
       expect(keys.customPrompts).toEqual(['ai', 'custom-prompts'])
     })
 
-    it('should have chatHistory key', () => {
-      expect(keys.chatHistory).toEqual(['ai', 'chat-history'])
-    })
-
-    it('should have prChats key', () => {
-      expect(keys.prChats).toEqual(['ai', 'pr-chats'])
-    })
-
-    it('should have activePRChatId key', () => {
-      expect(keys.activePRChatId).toEqual(['ai', 'active-pr-chat-id'])
+    it('should generate prChatMessages key', () => {
+      const result = keys.prChatMessages('org/repo#123')
+      expect(result).toEqual(['ai', 'pr-chat', 'org/repo#123'])
     })
   })
 
@@ -185,13 +193,11 @@ describe('Query Keys', () => {
         keys.myPRsRepos,
         keys.githubToken,
         keys.claudeApiKey,
+        keys.claudeModels,
         keys.selectedModel,
         keys.enableThinking,
         keys.enableWebFetch,
         keys.customPrompts,
-        keys.chatHistory,
-        keys.prChats,
-        keys.activePRChatId,
         keys.networkRequests,
         keys.networkPanelOpen,
         keys.selectedPRId,

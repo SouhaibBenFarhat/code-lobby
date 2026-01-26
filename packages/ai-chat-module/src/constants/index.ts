@@ -2,7 +2,7 @@
  * Constants for the AI Chat module
  */
 
-import { AlertCircle, MessageSquare } from 'lucide-react'
+import { AlertCircle, ClipboardCheck, MessageSquare } from 'lucide-react'
 import React from 'react'
 import type { PRContext, QuickPrompt } from '../types'
 
@@ -23,13 +23,53 @@ export const CONTEXT_WINDOWS: Record<string, number> = {
 
 export const DEFAULT_CONTEXT_WINDOW = 200000
 
-// POSTABLE metadata markers
-export const POSTABLE_START = '<!--POSTABLE:'
-export const POSTABLE_END = '-->'
+// ═══════════════════════════════════════════════════════════════════════════
+// REVIEW GENERATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Prompt that instructs Claude to generate a structured code review
+ */
+export const GENERATE_REVIEW_PROMPT = `Please generate a comprehensive code review for this PR. Analyze the changes and provide:
+
+1. An overall summary of the changes and their quality
+2. Specific inline comments for issues, suggestions, or praise at exact file:line locations
+3. A verdict: "approve", "request_changes", or "comment"
+
+You MUST respond with a JSON object in exactly this format:
+
+\`\`\`json:review
+{
+  "summary": "Your overall review summary here. Be constructive and specific.",
+  "comments": [
+    {
+      "file": "path/to/file.ts",
+      "line": 42,
+      "body": "Your comment about this specific line"
+    }
+  ],
+  "verdict": "approve" | "request_changes" | "comment"
+}
+\`\`\`
+
+Guidelines:
+- Use "approve" if the code is good with minor or no issues
+- Use "request_changes" if there are significant problems that must be fixed
+- Use "comment" if you just want to leave feedback without approving/rejecting
+- Each comment must reference an exact file path and line number from the changed files
+- Be constructive, specific, and actionable in your feedback
+- Focus on real issues, not style preferences (unless egregious)`
 
 // Get context-aware PR quick prompts
 export function getPRQuickPrompts(context: PRContext = {}): QuickPrompt[] {
   const prompts: QuickPrompt[] = [
+    // Generate Review is the primary action - always first
+    {
+      id: 'generate-review',
+      label: 'Generate Review',
+      icon: React.createElement(ClipboardCheck, { className: 'w-3 h-3' }),
+      prompt: GENERATE_REVIEW_PROMPT
+    },
     {
       id: 'review-bugs',
       label: 'Find bugs',

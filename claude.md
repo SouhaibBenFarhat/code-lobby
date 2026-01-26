@@ -6,39 +6,39 @@ This document captures the architecture, patterns, conventions, and best practic
 
 ## 🏗️ Architecture Overview
 
-CodeLobby is an **Electron desktop application** with a clear three-layer architecture:
+CodeLobby is an **Electron desktop application** using **TanStack Query as the single source of truth** for ALL state:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Renderer Process                      │
-│        React + TypeScript + TanStack Query               │
-│              (src/renderer/)                             │
-└───────────────────────┬─────────────────────────────────┘
-                        │ IPC (contextBridge)
-┌───────────────────────┴─────────────────────────────────┐
-│                    Preload Script                        │
-│           Type-safe IPC bridge                           │
-│              (src/preload/)                              │
-└───────────────────────┬─────────────────────────────────┘
-                        │ ipcRenderer.invoke
-┌───────────────────────┴─────────────────────────────────┐
-│                    Main Process                          │
-│      Electron + GitHub GraphQL API + electron-store      │
-│              (src/main/)                                 │
-└─────────────────────────────────────────────────────────┘
+│                    External APIs                          │
+│        GitHub API (GraphQL/REST)  │  Claude API (REST)    │
+└─────────────────────────┬─────────┴───────────────────────┘
+                          │ fetch() (direct from renderer)
+┌─────────────────────────┴─────────────────────────────────┐
+│                    Renderer Process                        │
+│    React + TanStack Query + Direct fetch()                │
+│    packages/* + src/renderer/                             │
+└─────────────────────────┬─────────────────────────────────┘
+                          │ window.electron (IPC for OS operations)
+┌─────────────────────────┴─────────────────────────────────┐
+│                    Main Process                            │
+│      Claude AI streaming + System operations               │
+│              (src/main/)                                   │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ### Key Directories
 
 | Directory | Purpose |
 |-----------|---------|
-| `src/main/` | Electron main process - API calls, storage, IPC handlers |
-| `src/preload/` | Secure bridge between main and renderer |
-| `src/renderer/` | React frontend - UI components, state management |
-| `src/renderer/components/` | React components |
-| `src/renderer/components/ui/` | shadcn/ui base components |
-| `src/renderer/styles/` | Global CSS and Tailwind config |
-| `src/renderer/lib/` | Utility functions |
+| `packages/data/` | **THE CORE** - TanStack Query state, queries, mutations, GitHub API |
+| `packages/app/` | App shell with slot rendering |
+| `packages/ui-kit/` | Shared shadcn/ui components |
+| `packages/slot-system/` | Module registration system |
+| `packages/*-module/` | UI feature modules (header, canvas, explorer, pr-detail, ai-chat, network) |
+| `src/main/` | Electron main process - Claude AI streaming, IPC handlers |
+| `src/preload/` | Secure IPC bridge (OS operations only) |
+| `src/renderer/` | React entry point only |
 
 ---
 
@@ -127,10 +127,11 @@ export function setMyNewField(value: MyType): void {
 
 ### Key Principles
 
-1. **One query fetches everything** - PRs, checks, comments, reviews in a single request
-2. **Use pagination** - Always handle `pageInfo.hasNextPage` and `endCursor`
-3. **Rate limit awareness** - Include `rateLimit` in every query
-4. **Cache responses** - Use `cachedPRData` and `cachedAllRepos` with TTL
+1. **Direct fetch from renderer** - No IPC, calls go directly via `fetch()`
+2. **One query fetches everything** - PRs, checks, comments, reviews in a single request
+3. **Use pagination** - Always handle `pageInfo.hasNextPage` and `endCursor`
+4. **Rate limit awareness** - Include `rateLimit` in every query
+5. **TanStack Query handles caching** - Use `staleTime` and `gcTime` in query options
 
 ### GraphQL Query Structure
 ```graphql
@@ -153,25 +154,32 @@ const isBot = author?.__typename === 'Bot' ||
 
 ## ⚛️ React Patterns
 
-### State Management
+### State Management (TanStack Query)
 
-1. **Global state**: React Context (see `PRContext` in App.tsx)
-2. **Server state**: TanStack Query with `window.electron` calls
-3. **Local state**: `useState` for component-specific state
-4. **Persisted state**: Load from `electron-store` via IPC on mount
+**ALL state lives in TanStack Query cache - no signals, no Redux, no custom stores:**
+
+1. **Read state**: `useQuery` hooks from `@codelobby/data`
+2. **Write state**: `useMutation` hooks from `@codelobby/data`
+3. **Local UI state**: `useState` for component-specific state only
+4. **Persisted state**: Automatic via TanStack Query Persist to localStorage
 
 ### TanStack Query Usage
 ```typescript
-const { data, isLoading, error, refetch } = useQuery({
-  queryKey: ['unique-key', dependency],
-  queryFn: async () => {
-    const result = await window.electron.fetchSomething()
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-  refetchOnWindowFocus: true,
-  staleTime: 60000 // 1 minute
-})
+// Reading state
+import { useSelectedPR, usePRs, useViewMode } from '@codelobby/data'
+
+const { data: selectedPR } = useSelectedPR()
+const { data: prs, isLoading } = usePRs()
+const { data: viewMode } = useViewMode()
+
+// Writing state
+import { useSelectPR, useSetViewMode } from '@codelobby/data'
+
+const selectPR = useSelectPR()
+const setViewMode = useSetViewMode()
+
+selectPR.mutate({ repoFullName: 'org/repo', prNumber: 123 })
+setViewMode.mutate('ide')
 ```
 
 ### Component Structure Pattern
@@ -1212,15 +1220,18 @@ Every UI module MUST follow this pattern:
 ```typescript
 // packages/my-module/src/index.tsx
 
-import { Store, useSignal } from '@codelobby/shared-store'
+import { useMyPanelState, useSetMyPanelState } from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { MyComponent } from './components/MyComponent'
 
-// Wrapper connects component to shared store
+// Wrapper connects component to TanStack Query state
 function MyComponentWrapper() {
-  const someState = useSignal(Store.someState)
+  const { data: panelData } = useMyPanelState()
+  const setPanel = useSetMyPanelState()
   
-  return <MyComponent state={someState} />
+  if (!panelData?.isOpen) return null
+  
+  return <MyComponent onClose={() => setPanel.mutate({ isOpen: false })} />
 }
 
 // CRITICAL: Self-register to slot
@@ -1228,19 +1239,16 @@ registerToSlot({
   id: 'my-module',
   slot: 'main',  // or 'header', 'left-panel', etc.
   component: MyComponentWrapper,
-  order: 0,
-  visible: () => Store.someCondition.value
+  order: 0
 })
 ```
 
 ### Allowed Dependencies Per Module
 
 Each module can ONLY import from:
-- ✅ `@codelobby/shared-store` - Global state (Store, Actions, signals)
+- ✅ `@codelobby/data` - TanStack Query hooks (useQuery, useMutation)
 - ✅ `@codelobby/slot-system` - Slot registration
 - ✅ `@codelobby/ui-kit` - Shared UI components
-- ✅ `@codelobby/queries` - Data fetching hooks
-- ✅ `@codelobby/data-module` - Data utilities
 - ✅ `@codelobby/test-utils` - Test utilities
 - ✅ Its own internal components (`./components/...`)
 
@@ -1253,40 +1261,29 @@ import { SomeComponent } from '@codelobby/canvas-module'
 import { AnotherComponent } from '@codelobby/header-module'
 ```
 
-### ❌ FORBIDDEN: Writing to Store Outside data-module
+### State Updates via Mutations Only
 
-**ONLY `data-module` is allowed to write to Store (set `Store.*.value = ...`)!**
-
-UI modules and `@codelobby/queries` should NEVER write to Store directly:
+**All state updates go through `useMutation` hooks from `@codelobby/data`:**
 
 ```typescript
-// ❌ NEVER DO THIS in UI modules or queries
-import { Store } from '@codelobby/shared-store'
-Store.selectedPR.value = newPR  // FORBIDDEN!
-Store.prs.value = [...Store.prs.value, newPR]  // FORBIDDEN!
+// ❌ NEVER manipulate query cache directly in UI modules
+import { useQueryClient } from '@codelobby/data'
+const qc = useQueryClient()
+qc.setQueryData(['some-key'], newData)  // FORBIDDEN in UI modules!
 
-// ✅ CORRECT - Emit an action, let data-module handle the store update
-import { Actions } from '@codelobby/shared-store'
-Actions.selectPR(newPR)  // data-module listens and updates Store
-Actions.refreshPRDetail(repoFullName, prNumber)  // data-module handles it
+// ✅ CORRECT - Use mutation hooks
+import { useSelectPR, useSetViewMode } from '@codelobby/data'
+const selectPR = useSelectPR()
+selectPR.mutate({ repoFullName: 'org/repo', prNumber: 123 })
 ```
 
 **Why this matters:**
 - Keeps data flow unidirectional and predictable
-- Prevents multiple sources of truth
-- Makes debugging easier (all writes in one place)
+- Mutations handle cache updates internally
+- Makes debugging easier (all writes go through mutations)
 - Ensures UI modules stay "dumb" and testable
 
-**Allowed in data-module only:**
-```typescript
-// packages/data-module/src/index.ts
-onAction('action:select-pr', async ({ pr }) => {
-  Store.selectedPR.value = pr  // ✅ OK - data-module is the only writer
-  Store.prDetailOpen.value = pr !== null
-})
-```
-
-**Exception:** Test files can write to Store for test setup (e.g., `Store.prs.value = mockPRs`)
+**Exception:** Test files can use `queryClient.setQueryData()` for test setup
 
 ### ⚠️ CRITICAL: Never Remove Slot Registration
 
@@ -1321,6 +1318,7 @@ import '@codelobby/explorer-module'
 import '@codelobby/canvas-module'
 import '@codelobby/pr-detail-module'
 import '@codelobby/ai-chat-module'
+import '@codelobby/network-module'
 ```
 
 ### Refactoring Checklist
@@ -1328,7 +1326,7 @@ import '@codelobby/ai-chat-module'
 When refactoring any module:
 
 - [ ] Preserve `registerToSlot()` call in `index.tsx`
-- [ ] Keep the Wrapper component that connects to shared-store
+- [ ] Keep the Wrapper component that connects to TanStack Query
 - [ ] Verify no cross-module imports added
 - [ ] Test that module appears in the correct slot after refactor
 - [ ] Check `npm run dev` shows the module rendering correctly
@@ -1349,8 +1347,7 @@ When extracting smaller components from a larger one, keep them **"dumb" (presen
 
 **❌ Dumb components should NOT:**
 - Call `window.electron` directly
-- Import `@codelobby/shared-store`
-- Import `@codelobby/queries`
+- Import `@codelobby/data` hooks (useQuery, useMutation)
 - Manage global state
 - Make API calls
 
@@ -1381,14 +1378,14 @@ export function ChatHeader({ linkedPRChat, onClose, onClearHistory }: ChatHeader
 ```typescript
 // ❌ BAD - Component reaching outside for data/actions
 // ChatHeader.tsx
-import { Store, Actions } from '@codelobby/shared-store'  // ❌ Direct store access
+import { useClearChat, useSelectedPR } from '@codelobby/data'  // ❌ Direct data access
 
 export function ChatHeader() {
-  const linkedPRChat = useSignal(Store.linkedPRChat)  // ❌ Reading from store
+  const { data: selectedPR } = useSelectedPR()  // ❌ Should receive via props
+  const clearChat = useClearChat()
   
   const handleClear = async () => {
-    await window.electron.clearChatHistory()  // ❌ Direct IPC call
-    Actions.clearChat()  // ❌ Direct action dispatch
+    clearChat.mutate()  // ❌ Should be callback prop
   }
   
   return <Button onClick={handleClear}>Clear</Button>
@@ -1399,14 +1396,14 @@ export function ChatHeader() {
 ```
 ┌─────────────────────────────────────────────────────┐
 │  index.tsx (Wrapper)                                │
-│  - Connects to shared-store via useSignal()         │
-│  - Passes props down                                │
+│  - Uses TanStack Query hooks from @codelobby/data   │
+│  - Controls panel visibility                        │
 └─────────────────────┬───────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────┐
 │  MainComponent.tsx (Orchestrator)                   │
 │  - Manages local state                              │
-│  - Calls window.electron for IPC                    │
+│  - Uses TanStack Query hooks for data               │
 │  - Passes data + callbacks to children              │
 └─────────────────────┬───────────────────────────────┘
                       │
@@ -1416,7 +1413,7 @@ export function ChatHeader() {
 │Header │        │ Content │       │  Input  │
 │(dumb) │        │ (dumb)  │       │ (dumb)  │
 └───────┘        └─────────┘       └─────────┘
-   All receive props, none access global state directly
+   All receive props, none use TanStack Query directly
 ```
 
 This pattern ensures:
@@ -1442,7 +1439,7 @@ packages/ai-chat-module/src/
 │   ├── index.ts                           # Barrel exports
 │   ├── AIChat/
 │   │   ├── index.ts
-│   │   ├── AIChat.tsx                     # Main orchestrator (600 lines)
+│   │   ├── AIChat.tsx                     # Main orchestrator (~570 lines)
 │   │   └── AIChat.test.tsx
 │   ├── AddCustomPromptModal/
 │   │   ├── index.ts
@@ -1470,8 +1467,7 @@ packages/ai-chat-module/src/
 │   │   └── ContextIndicator.test.tsx
 │   ├── MessageBubble/
 │   │   ├── index.ts
-│   │   ├── MessageBubble.tsx              # User/assistant message rendering
-│   │   └── MessageBubbles.test.tsx        # Tests for all bubble types
+│   │   └── MessageBubble.tsx              # User/assistant message + review detection
 │   ├── MessageErrorBoundary/
 │   │   ├── index.ts
 │   │   ├── MessageErrorBoundary.tsx       # Error boundary for messages
@@ -1483,6 +1479,9 @@ packages/ai-chat-module/src/
 │   │   ├── index.ts
 │   │   ├── QuickActions.tsx               # Pre-prompt buttons
 │   │   └── QuickActions.test.tsx
+│   ├── ReviewPreviewModal/                # NEW - PR review submission modal
+│   │   ├── index.ts
+│   │   └── ReviewPreviewModal.tsx         # Edit & submit AI-generated reviews
 │   ├── StreamingBubble/
 │   │   ├── index.ts
 │   │   └── StreamingBubble.tsx            # Streaming response display
@@ -1492,20 +1491,18 @@ packages/ai-chat-module/src/
 │       └── VirtualizedMessageList.test.tsx
 ├── hooks/
 │   ├── index.ts
-│   ├── useScrollManagement.ts             # Scroll state & behavior
-│   ├── useScrollManagement.test.ts
-│   ├── useThrottledValue.ts               # Throttle streaming updates
-│   └── useThrottledValue.test.ts
+│   └── useThrottledValue.ts               # Throttle streaming updates
 ├── constants/
-│   └── index.ts                           # Quick prompts, defaults
+│   └── index.ts                           # Quick prompts, review prompt, defaults
 ├── types/
-│   └── index.ts                           # All TypeScript interfaces
+│   ├── index.ts                           # All TypeScript interfaces
+│   └── review.ts                          # Review-related types
 └── utils/
     ├── index.ts
-    ├── postable.ts                        # Parse postable metadata from AI
-    ├── postable.test.ts
-    ├── tokens.ts                          # Token estimation
-    └── tokens.test.ts
+    ├── claude-request.ts                  # Build Claude API requests
+    ├── claude-streaming.ts                # Parse SSE streaming chunks
+    ├── review-parser.ts                   # Parse AI-generated review JSON
+    └── tokens.ts                          # Token estimation
 ```
 
 ### Component Responsibilities
@@ -1609,22 +1606,24 @@ export function useScrollManagement() {
 ```
 index.tsx (Wrapper)
     │
-    │ useSignal(Store.linkedPRChat), useSignal(Store.selectedPR), etc.
+    │ TanStack Query hooks: useUser(), useAIPanel(), useSelectedPR()
     │
     ▼
 AIChat.tsx (Orchestrator)
     │
-    │ - Local state (messages, streaming, input, etc.)
-    │ - IPC calls (window.electron.*)
+    │ - TanStack Query for data (useClaudeApiKey, usePRChatMessages, etc.)
+    │ - TanStack Mutations (useSaveMessage, useClearChat, etc.)
+    │ - XHR streaming for Claude API (bypasses React batching)
+    │ - Local state (streaming content, input, expanded thinking)
     │ - Passes data + callbacks as props
     │
     ├──► ChatHeader (dumb)
     ├──► ChatSettings (dumb)
     ├──► ChatEmptyStates/* (dumb)
-    ├──► VirtualizedMessageList (dumb)
-    │       ├──► MessageBubble (dumb)
+    ├──► Messages area
+    │       ├──► MessageBubble (dumb) - detects review JSON, shows "Open Review" button
     │       ├──► StreamingBubble (dumb)
-    │       └──► QueuedMessageBubble (dumb)
+    │       └──► ReviewPreviewModal (dumb) - edit & submit reviews
     └──► ChatInput (dumb)
             └──► QuickActions (dumb)
                     └──► AddCustomPromptModal (dumb)

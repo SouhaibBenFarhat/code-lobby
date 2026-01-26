@@ -24,6 +24,7 @@ export {
 // Pull Request
 export {
   type MergeMethod,
+  type ReviewCommentInput,
   type ReviewEvent,
   useAddPRComment,
   useClosePR,
@@ -32,7 +33,8 @@ export {
   useMergePR,
   useReopenPR,
   useSelectPR,
-  useSubmitPRReview
+  useSubmitPRReview,
+  useSubmitPRReviewWithComments
 } from './pull-request'
 // Settings
 export {

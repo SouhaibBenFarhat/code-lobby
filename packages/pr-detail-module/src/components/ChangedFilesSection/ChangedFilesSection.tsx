@@ -22,8 +22,7 @@ import { FileTreeNode } from '../FileTreeNode'
 import type { FileTreeNode as FileTreeNodeType } from '../types'
 
 export interface ChangedFilesSectionProps {
-  owner: string
-  repo: string
+  repoFullName: string
   prNumber: number
   totalChanged: number
 }
@@ -66,13 +65,12 @@ function getSortedChildren(node: FileTreeNodeType): FileTreeNodeType[] {
 }
 
 export function ChangedFilesSection({
-  owner,
-  repo,
+  repoFullName,
   prNumber,
   totalChanged
 }: ChangedFilesSectionProps): React.JSX.Element {
-  // TanStack Query hook
-  const { data: files = [], isLoading, error } = usePRFiles(owner, repo, prNumber)
+  // TanStack Query hook - pass totalChanged to enable parallel fetching for large PRs
+  const { data: files = [], isLoading, error } = usePRFiles(repoFullName, prNumber, totalChanged)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isExpanded, setIsExpanded] = useState(true)

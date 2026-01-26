@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BASE_SYSTEM_PROMPT,
   buildClaudeHeaders,
   buildClaudeRequestBody,
   buildSystemPrompt,
   DEFAULT_MODEL,
   formatMessagesForClaude,
-  GENERAL_SYSTEM_PROMPT,
   MAX_TOKENS,
   MAX_TOKENS_WITH_THINKING,
+  REVIEW_FORMAT_INSTRUCTIONS,
   supportsThinking,
   THINKING_BUDGET
 } from './claude-request'
@@ -28,22 +29,132 @@ describe('supportsThinking', () => {
 })
 
 describe('buildSystemPrompt', () => {
-  it('returns general prompt when no PR context', () => {
-    expect(buildSystemPrompt()).toBe(GENERAL_SYSTEM_PROMPT)
-    expect(buildSystemPrompt(undefined)).toBe(GENERAL_SYSTEM_PROMPT)
+  it('returns base prompt when no options', () => {
+    expect(buildSystemPrompt()).toBe(BASE_SYSTEM_PROMPT)
+    expect(buildSystemPrompt(undefined)).toBe(BASE_SYSTEM_PROMPT)
+    expect(buildSystemPrompt({})).toBe(BASE_SYSTEM_PROMPT)
+  })
+
+  it('does NOT include review instructions without PR context', () => {
+    const result = buildSystemPrompt()
+    expect(result).not.toContain('Code Review Generation')
+    expect(result).not.toContain('REVIEW_FORMAT_INSTRUCTIONS')
+  })
+
+  it('includes review format instructions when PR context is provided', () => {
+    const result = buildSystemPrompt({
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        repoFullName: 'owner/repo'
+      }
+    })
+    expect(result).toContain(REVIEW_FORMAT_INSTRUCTIONS)
+    expect(result).toContain('Code Review Generation')
+    expect(result).toContain('json:review')
   })
 
   it('includes PR context when provided', () => {
     const result = buildSystemPrompt({
-      prNumber: 42,
-      prTitle: 'Add feature X',
-      repoFullName: 'owner/repo'
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        repoFullName: 'owner/repo'
+      }
     })
 
     expect(result).toContain('PR #42')
     expect(result).toContain('Add feature X')
     expect(result).toContain('owner/repo')
-    expect(result).toContain(GENERAL_SYSTEM_PROMPT)
+    expect(result).toContain(BASE_SYSTEM_PROMPT)
+  })
+
+  it('includes PR description when provided', () => {
+    const result = buildSystemPrompt({
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        prBody: 'This PR adds a new feature that does amazing things.',
+        repoFullName: 'owner/repo'
+      }
+    })
+
+    expect(result).toContain('## PR Description')
+    expect(result).toContain('This PR adds a new feature that does amazing things.')
+  })
+
+  it('skips empty PR body', () => {
+    const result = buildSystemPrompt({
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        prBody: '   ',
+        repoFullName: 'owner/repo'
+      }
+    })
+
+    expect(result).not.toContain('## PR Description')
+  })
+
+  it('includes file diffs when provided', () => {
+    const result = buildSystemPrompt({
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        repoFullName: 'owner/repo',
+        files: [
+          {
+            path: 'src/index.ts',
+            additions: 10,
+            deletions: 5,
+            changeType: 'MODIFIED',
+            patch: '@@ -1,5 +1,10 @@\n-old code\n+new code'
+          }
+        ]
+      }
+    })
+
+    expect(result).toContain('## Changed Files')
+    expect(result).toContain('src/index.ts')
+    expect(result).toContain('+10, -5')
+    expect(result).toContain('```diff')
+    expect(result).toContain('-old code')
+    expect(result).toContain('+new code')
+  })
+
+  it('shows correct icon for different change types', () => {
+    const result = buildSystemPrompt({
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        repoFullName: 'owner/repo',
+        files: [
+          { path: 'added.ts', additions: 10, deletions: 0, changeType: 'ADDED', patch: '+new' },
+          { path: 'deleted.ts', additions: 0, deletions: 10, changeType: 'DELETED', patch: '-old' },
+          { path: 'renamed.ts', additions: 0, deletions: 0, changeType: 'RENAMED', patch: '' },
+          { path: 'modified.ts', additions: 5, deletions: 5, changeType: 'MODIFIED', patch: '~' }
+        ]
+      }
+    })
+
+    expect(result).toContain('+ added.ts')
+    expect(result).toContain('- deleted.ts')
+    expect(result).toContain('→ renamed.ts')
+    expect(result).toContain('~ modified.ts')
+  })
+
+  it('handles files without patch content', () => {
+    const result = buildSystemPrompt({
+      prContext: {
+        prNumber: 42,
+        prTitle: 'Add feature X',
+        repoFullName: 'owner/repo',
+        files: [{ path: 'binary.png', additions: 0, deletions: 0, changeType: 'ADDED' }]
+      }
+    })
+
+    expect(result).toContain('binary.png')
+    expect(result).toContain('[No diff available]')
   })
 })
 

@@ -13,6 +13,7 @@ import {
 } from '@codelobby/data'
 import { registerToSlot } from '@codelobby/slot-system'
 import { AIChatPanel } from './components/AIChat'
+import type { SelectedPR } from './types'
 
 export {
   AddCustomPromptModal,
@@ -44,9 +45,8 @@ export { AIChatPanel } from './components/AIChat'
 export {
   CONTEXT_WINDOWS,
   DEFAULT_CONTEXT_WINDOW,
-  getPRQuickPrompts,
-  POSTABLE_END,
-  POSTABLE_START
+  GENERATE_REVIEW_PROMPT,
+  getPRQuickPrompts
 } from './constants'
 
 export { useThrottledValue } from './hooks'
@@ -55,25 +55,33 @@ export type {
   AIChatPanelProps,
   ChatMessage,
   ClaudeModel,
-  ContentSection,
   CustomPrompt,
   GitHubUser,
   LinkedPRChat,
-  PostableComment,
-  PostingState,
   PRContext,
   QueuedMessage,
   QuickPrompt,
+  RawReviewData,
+  ReviewComment,
+  ReviewData,
+  ReviewFileGroup,
+  ReviewPreviewState,
+  ReviewVerdict,
   SelectedPR,
   StreamingState
 } from './types'
 
 export {
-  extractPostable,
-  extractPRComment,
-  parseContentSections,
-  parsePostableComments,
-  stripPostableMetadata
+  // Claude request utilities
+  buildClaudeHeaders,
+  buildClaudeRequestBody,
+  buildSystemPrompt,
+  // Review parsing utilities
+  containsReviewJson,
+  formatMessagesForClaude,
+  getDisplayContentWithoutReview,
+  parseReviewFromMessage,
+  supportsThinking
 } from './utils'
 export { calculateTotalTokens, estimateTokens } from './utils/tokens'
 
@@ -107,7 +115,7 @@ function AIChatWrapper(): React.JSX.Element | null {
     <AIChatPanel
       onClose={handleClose}
       user={authData?.user ?? null}
-      selectedPR={selectedPR ?? null}
+      selectedPR={selectedPR as SelectedPR | null}
     />
   )
 }

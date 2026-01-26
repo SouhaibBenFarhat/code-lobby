@@ -4,7 +4,7 @@
  * Tests for changed files display, search, filtering, and file tree.
  */
 
-import type { PRFile } from '@codelobby/queries'
+import type { PRFile } from '@codelobby/data'
 import {
   fireEvent,
   render,
@@ -18,22 +18,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChangedFilesSection } from './ChangedFilesSection'
 
 // Mock the usePRFiles hook
-vi.mock('@codelobby/queries', async () => {
-  const actual = await vi.importActual('@codelobby/queries')
+vi.mock('@codelobby/data', async () => {
+  const actual = await vi.importActual('@codelobby/data')
   return {
     ...actual,
     usePRFiles: vi.fn()
   }
 })
 
-import { usePRFiles } from '@codelobby/queries'
+import { usePRFiles } from '@codelobby/data'
 
 const mockUsePRFiles = usePRFiles as ReturnType<typeof vi.fn>
 
 describe('ChangedFilesSection', () => {
   const defaultProps = {
-    owner: 'test-org',
-    repo: 'test-repo',
+    repoFullName: 'test-org/test-repo',
     prNumber: 1,
     totalChanged: 5
   }
@@ -372,10 +371,10 @@ describe('ChangedFilesSection', () => {
   describe('hook parameters', () => {
     it('should call usePRFiles with correct parameters', () => {
       renderWithQueryClient(
-        <ChangedFilesSection owner="my-org" repo="my-repo" prNumber={42} totalChanged={10} />
+        <ChangedFilesSection repoFullName="my-org/my-repo" prNumber={42} totalChanged={10} />
       )
 
-      expect(mockUsePRFiles).toHaveBeenCalledWith('my-org', 'my-repo', 42)
+      expect(mockUsePRFiles).toHaveBeenCalledWith('my-org/my-repo', 42)
     })
   })
 })

@@ -130,15 +130,13 @@ packages/
 │       │   ├── ai.ts
 │       │   ├── system.ts
 │       │   └── network.ts
-│       ├── mutations/      # useMutation hooks
-│       │   ├── pull-request.ts
-│       │   ├── user.ts
-│       │   ├── settings.ts
-│       │   ├── ai.ts
-│       │   ├── system.ts
-│       │   └── network.ts
-│       └── hooks/          # Utility hooks
-│           └── useNetworkTracking.ts
+│       └── mutations/      # useMutation hooks
+│           ├── pull-request.ts
+│           ├── user.ts
+│           ├── settings.ts
+│           ├── ai.ts
+│           ├── system.ts
+│           └── network.ts
 │
 ├── slot-system/            # Module registration
 │   └── src/index.tsx       # registerToSlot, <Slot>
@@ -574,4 +572,4 @@ npm run test         # Run tests
 
 ---
 
-*Last updated: January 2026*
+*Last updated: January 26, 2026*

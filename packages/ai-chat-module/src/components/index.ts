@@ -26,6 +26,7 @@ export { ContextIndicator, type ContextIndicatorProps } from './ContextIndicator
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MessageErrorBoundary } from './MessageErrorBoundary'
 export { QuickActions, type QuickActionsProps } from './QuickActions'
+export { ReviewPreviewModal, type ReviewPreviewModalProps } from './ReviewPreviewModal'
 export { StreamingBubble, type StreamingBubbleProps } from './StreamingBubble'
 
 // Note: VirtualizedMessageList, QueuedMessageBubble are not exported (unused).

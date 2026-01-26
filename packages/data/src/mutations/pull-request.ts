@@ -127,22 +127,29 @@ export function useConvertPRToDraft() {
 
 /**
  * Add comment to PR
+ * Invalidates all PR-related queries (detail, files, etc.) on success
  */
 export function useAddPRComment() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ prNodeId, body }: { prNodeId: string; body: string }) => {
+    mutationFn: ({
+      prNodeId,
+      body
+    }: {
+      prNodeId: string
+      body: string
+      repoFullName: string
+      prNumber: number
+    }) => {
       const token = getToken(qc)
       return github.addPRComment(token, prNodeId, body)
     },
-    onSuccess: () => {
-      const selectedPRId = qc.getQueryData<PRIdentifier>(keys.selectedPRId)
-      if (selectedPRId) {
-        qc.invalidateQueries({
-          queryKey: keys.prDetail(selectedPRId.repoFullName, selectedPRId.prNumber)
-        })
-      }
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate ALL PR-related queries using shared prefix
+      qc.invalidateQueries({
+        queryKey: keys.pr(repoFullName, prNumber)
+      })
     }
   })
 }
@@ -204,6 +211,51 @@ export function useSubmitPRReview() {
       if (selectedPRId) {
         qc.invalidateQueries({
           queryKey: keys.prDetail(selectedPRId.repoFullName, selectedPRId.prNumber)
+        })
+      }
+    }
+  })
+}
+
+/**
+ * Review comment for inline feedback
+ */
+export interface ReviewCommentInput {
+  path: string
+  line: number
+  body: string
+}
+
+/**
+ * Submit PR review with inline comments
+ */
+export function useSubmitPRReviewWithComments() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      owner,
+      repo,
+      prNumber,
+      event,
+      body,
+      comments
+    }: {
+      owner: string
+      repo: string
+      prNumber: number
+      event: ReviewEvent
+      body: string
+      comments: ReviewCommentInput[]
+    }) => {
+      const token = getToken(qc)
+      return github.submitPRReviewWithComments(token, owner, repo, prNumber, event, body, comments)
+    },
+    onSuccess: () => {
+      const selectedPRId = qc.getQueryData<PRIdentifier>(keys.selectedPRId)
+      if (selectedPRId) {
+        qc.invalidateQueries({
+          queryKey: keys.pr(selectedPRId.repoFullName, selectedPRId.prNumber)
         })
       }
     }

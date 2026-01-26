@@ -267,35 +267,52 @@ This means the AI can:
 
 ---
 
-### 📝 Post AI Findings as PR Comments
+### 📝 AI-Generated PR Reviews
 
-When the AI identifies a bug, security issue, or has a suggestion for a specific line of code, you can post it directly to the PR as a review comment.
+Generate complete GitHub PR reviews with the AI assistant. Claude analyzes the code changes and produces a structured review with inline comments that you can preview, edit, and submit.
 
 **How It Works:**
-1. Ask the AI to review your code or find issues
-2. If the AI finds something at a specific file and line, it will include a "Post to PR" button
-3. Click the button to post the finding as a GitHub review comment
-4. A link to the posted comment appears so you can view it on GitHub
+1. Click "Generate Review" quick action or ask "Generate a code review"
+2. Claude analyzes all file changes and produces a structured review
+3. A **"Open Review"** button appears in the AI response
+4. Click to open the Review Preview modal
+5. Edit the summary, adjust inline comments, and select your verdict
+6. Submit directly to GitHub
 
-**What Gets Posted:**
-- The AI's full response as the comment body
-- Attached to the specific file and line number
-- Attribution showing it was posted via CodeLobby
+**Review Preview Modal:**
+| Feature | Description |
+|---------|-------------|
+| **Summary Editor** | Edit the overall review summary |
+| **Verdict Selection** | Choose: Approve, Request Changes, or Comment |
+| **File Tree** | Navigate changed files with comment counts |
+| **Inline Comments** | View comments in context with the diff |
+| **Delete Comments** | Remove unwanted comments before submission |
+
+**Verdict Options:**
+- **Approve** — Code is good to merge
+- **Request Changes** — Significant issues that must be fixed
+- **Comment** — Feedback without explicit approval/rejection
+
+**What Gets Submitted:**
+- Overall review summary
+- Inline comments attached to specific file lines
+- Your selected verdict (Approve/Request Changes/Comment)
 
 **Example Flow:**
-1. You: "Are there any bugs in this PR?"
-2. AI: "I found a potential null pointer issue at `src/utils/auth.ts` line 42..."
-3. You see a **Post to PR** button appear
-4. Click it → Comment appears on GitHub at that exact line
-5. Link shown: "Posted ✓" with direct link to the comment
+1. Select a PR with changes
+2. Click "Generate Review" in quick actions
+3. AI responds with JSON review data + "Open Review" button
+4. Review modal shows: summary, verdict, and all inline comments
+5. Edit or delete comments as needed
+6. Click "Submit Review" → Review appears on GitHub
 
 **Best For:**
-- Code review findings
-- Security vulnerability reports
-- Refactoring suggestions
-- Bug reports with specific locations
+- Comprehensive code reviews
+- Bulk commenting on multiple files
+- Consistent review workflows
+- Quick approval with feedback
 
-The AI knows when a finding is "postable" (has a specific file and line) and will automatically provide the posting option.
+The AI generates reviews based on the full diff context, ensuring comments reference correct file paths and line numbers.
 
 ---
 
@@ -306,7 +323,7 @@ Start AI conversations faster with pre-defined quick actions. Plus, create your 
 **Built-in Quick Actions:**
 | Context | Actions Available |
 |---------|-------------------|
-| **PR Chat** | Find bugs, Summarize, Why is CI failing? (if CI is failing), Security review, Suggest improvements |
+| **PR Chat** | **Generate Review**, Find bugs, Summarize, Why is CI failing? (if CI is failing), Security review, Suggest improvements |
 | **General Chat** | Explain this code, Best practices, Help me debug |
 
 **Context-Aware:**
@@ -719,7 +736,7 @@ We're actively building:
 | **AI Chat Navigation** | Switch between general and PR chats |
 | **Quick Actions** | Start AI chats with one click |
 | **Custom Prompts** | Save your own quick prompts |
-| **Post AI to PR** | Post AI findings as PR comments |
+| **AI PR Reviews** | Generate and submit full PR reviews |
 | **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
 | **CI Failure Analysis** | AI explains why CI failed |

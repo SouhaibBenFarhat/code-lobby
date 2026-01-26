@@ -7,7 +7,7 @@
  * - Uses XMLHttpRequest for streaming (better than fetch in Electron)
  */
 
-import type { ChatMessage } from '@codelobby/data'
+import type { ChatMessage, ReviewCommentInput } from '@codelobby/data'
 import {
   useAddCustomPrompt,
   useClaudeApiKey,
@@ -18,19 +18,21 @@ import {
   useEnableThinking,
   useEnableWebFetch,
   usePRChatMessages,
+  usePRFiles,
   useSaveMessage,
   useSelectedModel,
   useSetClaudeApiKey,
   useSetEnableThinking,
   useSetEnableWebFetch,
-  useSetSelectedModel
+  useSetSelectedModel,
+  useSubmitPRReviewWithComments
 } from '@codelobby/data'
 import { Button } from '@codelobby/ui-kit'
 import { ArrowDown, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getPRQuickPrompts } from '../../constants'
 import { useThrottledValue } from '../../hooks'
-import type { AIChatPanelProps, StreamingState } from '../../types'
+import type { AIChatPanelProps, ReviewData, ReviewVerdict, StreamingState } from '../../types'
 import {
   applyStreamEvent,
   buildClaudeHeaders,
@@ -47,6 +49,7 @@ import { ChatHeader } from '../ChatHeader'
 import { ChatInput } from '../ChatInput'
 import { ChatSettings } from '../ChatSettings'
 import { MessageBubble } from '../MessageBubble'
+import { ReviewPreviewModal } from '../ReviewPreviewModal'
 import { StreamingBubble } from '../StreamingBubble'
 
 export type { AIChatPanelProps } from '../../types'
@@ -59,14 +62,8 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // ═══════════════════════════════════════════════════════════════════════════
 
   const prId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
-
-  const prContext = selectedPR
-    ? {
-        prNumber: selectedPR.number,
-        prTitle: selectedPR.title,
-        repoFullName: selectedPR.base.repo.full_name
-      }
-    : undefined
+  const repoFullName = selectedPR?.base.repo.full_name ?? null
+  const prNumber = selectedPR?.number ?? null
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERIES & MUTATIONS
@@ -79,6 +76,19 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   const { data: customPrompts = [] } = useCustomPrompts()
   const { data: messages = [], isLoading: isLoadingMessages } = usePRChatMessages(prId)
   const { data: models = [], isLoading: isLoadingModels } = useClaudeModels()
+  // Pass changed_files count to enable parallel fetching for large PRs
+  const { data: prFiles = [] } = usePRFiles(repoFullName, prNumber, selectedPR?.changed_files)
+
+  // Build PR context with full details including file diffs
+  const prContext = selectedPR
+    ? {
+        prNumber: selectedPR.number,
+        prTitle: selectedPR.title,
+        prBody: selectedPR.body,
+        repoFullName: selectedPR.base.repo.full_name,
+        files: prFiles
+      }
+    : undefined
 
   const setApiKey = useSetClaudeApiKey()
   const setSelectedModelMut = useSetSelectedModel()
@@ -88,6 +98,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   const clearChat = useClearChat()
   const addCustomPrompt = useAddCustomPrompt()
   const deleteCustomPrompt = useDeleteCustomPrompt()
+  const submitReview = useSubmitPRReviewWithComments()
 
   // ═══════════════════════════════════════════════════════════════════════════
   // LOCAL STATE
@@ -106,6 +117,13 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     isStreaming: false
   })
   const [userScrolledUp, setUserScrolledUp] = useState(false)
+
+  // Review preview state
+  const [reviewPreview, setReviewPreview] = useState<{
+    isOpen: boolean
+    review: ReviewData | null
+  }>({ isOpen: false, review: null })
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
 
   const throttledStreaming = useThrottledValue(streaming, 100)
 
@@ -181,7 +199,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
       setStreaming({ content: '', thinking: '', isStreaming: true })
 
-      const systemPrompt = buildSystemPrompt(prContext)
+      const systemPrompt = buildSystemPrompt({ prContext })
       const claudeMessages = formatMessagesForClaude([...messages, userMessage])
       const requestBody = buildClaudeRequestBody({
         model: currentModel,
@@ -415,7 +433,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
                 expandedThinking={expandedThinking}
                 toggleThinkingExpanded={toggleThinkingExpanded}
                 user={user}
-                onPostComment={async () => ({ success: false })}
+                onOpenReview={(review) => setReviewPreview({ isOpen: true, review })}
               />
             ))}
 
@@ -504,6 +522,50 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           </div>
         </div>
       ) : null}
+
+      {/* Review Preview Modal */}
+      {selectedPR && (
+        <ReviewPreviewModal
+          isOpen={reviewPreview.isOpen}
+          onClose={() => setReviewPreview({ isOpen: false, review: null })}
+          review={reviewPreview.review}
+          prFiles={prFiles}
+          prTitle={selectedPR.title}
+          repoFullName={selectedPR.base.repo.full_name}
+          isSubmitting={isSubmittingReview}
+          onSubmit={async (
+            summary: string,
+            verdict: ReviewVerdict,
+            comments: ReviewCommentInput[]
+          ) => {
+            setIsSubmittingReview(true)
+            try {
+              // Map verdict to GitHub's review event format
+              const event =
+                verdict === 'approve'
+                  ? 'APPROVE'
+                  : verdict === 'request_changes'
+                    ? 'REQUEST_CHANGES'
+                    : 'COMMENT'
+
+              await submitReview.mutateAsync({
+                owner: selectedPR.base.repo.owner.login,
+                repo: selectedPR.base.repo.name,
+                prNumber: selectedPR.number,
+                event,
+                body: summary,
+                comments
+              })
+              return { success: true }
+            } catch (err) {
+              console.error('Failed to submit review:', err)
+              return { success: false }
+            } finally {
+              setIsSubmittingReview(false)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

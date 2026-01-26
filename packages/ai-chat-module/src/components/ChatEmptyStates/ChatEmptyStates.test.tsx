@@ -26,6 +26,7 @@ describe('ChatEmptyStates', () => {
 
   describe('PREmptyState', () => {
     const mockPR = {
+      id: 'PR_kwDOJ2abc123',
       number: 42,
       title: 'Test PR Title',
       base: {

@@ -697,7 +697,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 - All PRs view (not just yours)
 - AI-powered PR analysis ("Why is this PR still open?")
 - PR-specific AI chat with full code diff context
-- Post AI findings as PR review comments
+- **AI PR Review Generation** — Generate full reviews with inline comments
 - **PR Actions** — Approve and Merge PRs directly
 - **AI CI Failure Analysis** — Understand why CI failed with AI
 - **Web Fetch Tool** — Claude can fetch URLs for context
