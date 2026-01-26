@@ -615,6 +615,116 @@ describe('GitHub API', () => {
       expect(result.reviews?.[0]?.author.isBot).toBe(false)
       expect(result.reviewThreads?.[0]?.comments[0]?.author.isBot).toBe(false)
     })
+
+    it('fetches assignees for a PR', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                id: 'PR_1',
+                number: 1,
+                title: 'PR with assignees',
+                body: '',
+                url: '',
+                state: 'OPEN',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                isDraft: false,
+                mergedAt: null,
+                author: { login: 'author', avatarUrl: '' },
+                headRefName: 'main',
+                headRefOid: 'abc',
+                baseRefName: 'main',
+                baseRepository: {
+                  name: 'repo',
+                  nameWithOwner: 'org/repo',
+                  owner: { login: 'org', avatarUrl: '' }
+                },
+                labels: { nodes: [] },
+                assignees: {
+                  nodes: [
+                    { login: 'assignee1', avatarUrl: 'https://example.com/avatar1.png' },
+                    { login: 'assignee2', avatarUrl: 'https://example.com/avatar2.png' }
+                  ]
+                },
+                comments: { nodes: [] },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+                additions: 10,
+                deletions: 5,
+                changedFiles: 2,
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+                reviewDecision: null,
+                commits: { nodes: [] }
+              }
+            }
+          }
+        })
+      )
+
+      const result = await fetchSinglePR('token', 'org/repo', 1)
+
+      expect(result.assignees).toHaveLength(2)
+      expect(result.assignees[0]).toEqual({
+        login: 'assignee1',
+        avatar_url: 'https://example.com/avatar1.png'
+      })
+      expect(result.assignees[1]).toEqual({
+        login: 'assignee2',
+        avatar_url: 'https://example.com/avatar2.png'
+      })
+    })
+
+    it('returns empty assignees array when no assignees', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          data: {
+            repository: {
+              pullRequest: {
+                id: 'PR_1',
+                number: 1,
+                title: 'PR without assignees',
+                body: '',
+                url: '',
+                state: 'OPEN',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                isDraft: false,
+                mergedAt: null,
+                author: { login: 'author', avatarUrl: '' },
+                headRefName: 'main',
+                headRefOid: 'abc',
+                baseRefName: 'main',
+                baseRepository: {
+                  name: 'repo',
+                  nameWithOwner: 'org/repo',
+                  owner: { login: 'org', avatarUrl: '' }
+                },
+                labels: { nodes: [] },
+                assignees: { nodes: [] },
+                comments: { nodes: [] },
+                reviews: { nodes: [] },
+                reviewThreads: { nodes: [] },
+                additions: 0,
+                deletions: 0,
+                changedFiles: 0,
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+                reviewDecision: null,
+                commits: { nodes: [] }
+              }
+            }
+          }
+        })
+      )
+
+      const result = await fetchSinglePR('token', 'org/repo', 1)
+
+      expect(result.assignees).toHaveLength(0)
+      expect(result.assignees).toEqual([])
+    })
   })
 
   describe('fetchPRFiles', () => {

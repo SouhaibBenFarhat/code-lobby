@@ -264,4 +264,73 @@ describe('PRHeader', () => {
       expect(statsSection).toBeInTheDocument()
     })
   })
+
+  describe('assignees', () => {
+    it('should not show assignees section when there are no assignees', () => {
+      const pr = createPR({ assignees: [] })
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
+
+      // With no assignees, there should be no stacked avatar container
+      const stackedAvatars = container.querySelector('[class*="-space-x"]')
+      expect(stackedAvatars).not.toBeInTheDocument()
+    })
+
+    it('should show assignee avatars when there are assignees', async () => {
+      const pr = createPR({
+        assignees: [
+          { login: 'assignee1', avatar_url: 'https://example.com/avatar1.png' },
+          { login: 'assignee2', avatar_url: 'https://example.com/avatar2.png' }
+        ]
+      })
+      const { container } = render(<PRHeader onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
+
+      // Should have stacked avatars container for assignees
+      const stackedAvatars = container.querySelector('[class*="-space-x"]')
+      expect(stackedAvatars).toBeInTheDocument()
+
+      // The stacked container should have avatar children
+      const avatarsInStack = stackedAvatars?.children
+      expect(avatarsInStack?.length).toBe(2)
+    })
+
+    it('should show up to 3 assignees with overflow indicator', () => {
+      const pr = createPR({
+        assignees: [
+          { login: 'assignee1', avatar_url: 'https://example.com/avatar1.png' },
+          { login: 'assignee2', avatar_url: 'https://example.com/avatar2.png' },
+          { login: 'assignee3', avatar_url: 'https://example.com/avatar3.png' },
+          { login: 'assignee4', avatar_url: 'https://example.com/avatar4.png' },
+          { login: 'assignee5', avatar_url: 'https://example.com/avatar5.png' }
+        ]
+      })
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
+
+      // Should show +2 for the remaining assignees (5 - 3 = 2)
+      expect(screen.getByText('+2')).toBeInTheDocument()
+    })
+
+    it('should not show overflow indicator for 3 or fewer assignees', () => {
+      const pr = createPR({
+        assignees: [
+          { login: 'user1', avatar_url: 'https://example.com/avatar1.png' },
+          { login: 'user2', avatar_url: 'https://example.com/avatar2.png' }
+        ],
+        // Set additions/deletions to 0 to avoid matching +X pattern
+        additions: 0,
+        deletions: 0
+      })
+      render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
+
+      // With only 2 assignees, no overflow indicator should exist
+      // The only +X should be from additions which we set to 0
+      expect(screen.queryByText('+2')).not.toBeInTheDocument()
+      expect(screen.queryByText('+1')).not.toBeInTheDocument()
+    })
+  })
 })
