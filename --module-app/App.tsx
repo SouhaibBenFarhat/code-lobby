@@ -325,7 +325,7 @@ export function App(): React.JSX.Element {
                     <button
                       type="button"
                       aria-label="Resize network panel"
-                      className={`h-1 w-full cursor-row-resize border-0 p-0 flex-shrink-0 transition-colors ${isNetworkResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+                      className={`h-1 w-full cursor-row-resize p-0 flex-shrink-0 transition-colors border-t border-border ${isNetworkResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
                       onMouseDown={handleNetworkResizeStart}
                     />
                     <div
