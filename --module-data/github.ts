@@ -431,7 +431,7 @@ export async function fetchSinglePR(
               id
               body
               createdAt
-              author { login avatarUrl }
+              author { __typename login avatarUrl }
             }
           }
           reviews(first: 50) {
@@ -439,7 +439,7 @@ export async function fetchSinglePR(
               id
               state
               createdAt
-              author { login avatarUrl }
+              author { __typename login avatarUrl }
               body
             }
           }
@@ -454,7 +454,7 @@ export async function fetchSinglePR(
                   id
                   body
                   createdAt
-                  author { login avatarUrl }
+                  author { __typename login avatarUrl }
                   diffHunk
                 }
               }
@@ -503,19 +503,37 @@ export async function fetchSinglePR(
   })
   const pr = data.repository.pullRequest
 
+  // Helper to detect if an author is a bot
+  const isBot = (author: any): boolean => {
+    if (!author) return false
+    // Check __typename from GraphQL
+    if (author.__typename === 'Bot') return true
+    // Check common bot patterns in login
+    const login = author.login?.toLowerCase() || ''
+    return login.endsWith('[bot]') || login.endsWith('-bot') || login.includes('github-actions')
+  }
+
   return {
     ...transformPR(pr),
     commentsList: (pr.comments?.nodes || []).map((c: any) => ({
       id: c.id,
       body: c.body,
       created_at: c.createdAt,
-      author: { login: c.author?.login || 'ghost', avatar_url: c.author?.avatarUrl || '' }
+      author: {
+        login: c.author?.login || 'ghost',
+        avatar_url: c.author?.avatarUrl || '',
+        isBot: isBot(c.author)
+      }
     })),
     reviews: (pr.reviews?.nodes || []).map((r: any) => ({
       id: r.id,
       state: r.state?.toLowerCase(),
       created_at: r.createdAt,
-      author: { login: r.author?.login || 'ghost', avatar_url: r.author?.avatarUrl || '' },
+      author: {
+        login: r.author?.login || 'ghost',
+        avatar_url: r.author?.avatarUrl || '',
+        isBot: isBot(r.author)
+      },
       body: r.body
     })),
     reviewThreads: (pr.reviewThreads?.nodes || []).map((t: any) => ({
@@ -527,7 +545,11 @@ export async function fetchSinglePR(
         id: c.id,
         body: c.body,
         created_at: c.createdAt,
-        author: { login: c.author?.login || 'ghost', avatar_url: c.author?.avatarUrl || '' },
+        author: {
+          login: c.author?.login || 'ghost',
+          avatar_url: c.author?.avatarUrl || '',
+          isBot: isBot(c.author)
+        },
         diffHunk: c.diffHunk
       }))
     }))
