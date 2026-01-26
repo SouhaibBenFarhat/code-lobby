@@ -5,9 +5,10 @@
   "main": "./out/main/index.js",
   "author": "",
   "license": "MIT",
-  "workspaces": [
-    "packages/*"
-  ],
+  "engines": {
+    "pnpm": ">=10.0.0",
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -114,5 +115,8 @@
       "target": "AppImage",
       "icon": "build/icon.png"
     }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron", "esbuild"]
   }
 }

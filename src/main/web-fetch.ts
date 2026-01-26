@@ -12,7 +12,7 @@
  * - Works for documentation, GitHub, wikis, blogs, etc.
  */
 
-import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { LogCategory, mainLogger as logger } from '@logger/main'
 import { http } from './http-client'
 
 // Tool definition for Claude

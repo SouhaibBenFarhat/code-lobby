@@ -2,13 +2,13 @@
  * Main Entry Point - Simplified TanStack Query Only
  */
 
-import { QueryClientProvider, queryClient } from '@codelobby/data'
+import { QueryClientProvider, queryClient } from '@data'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './styles/globals.css'
 
 // Bootstrap the app (imports modules)
-import { App, bootstrap } from '@codelobby/app'
+import { App, bootstrap } from '@app'
 
 bootstrap()
 

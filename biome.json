@@ -11,8 +11,8 @@
       "*.tsx",
       "src/**/*.ts",
       "src/**/*.tsx",
-      "packages/*/src/**/*.ts",
-      "packages/*/src/**/*.tsx",
+      "__module__*/**/*.ts",
+      "__module__*/**/*.tsx",
       "tests/**/*.ts",
       "tests/**/*.tsx"
     ]
@@ -27,7 +27,8 @@
       },
       "style": {
         "useImportType": "off",
-        "noNonNullAssertion": "error"
+        "noNonNullAssertion": "error",
+        "noRestrictedImports": "off"
       },
       "a11y": {
         "noStaticElementInteractions": "error",

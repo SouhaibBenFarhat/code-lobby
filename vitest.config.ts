@@ -7,13 +7,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./packages/test-utils/src/setup.ts'],
-    // Tests are colocated with their source files
+    setupFiles: ['./__module__test-utils/setup.ts'],
     include: [
       'src/main/**/*.test.ts',
       'src/renderer/**/*.test.ts',
-      'packages/*/src/**/*.test.ts',
-      'packages/*/src/**/*.test.tsx'
+      '__module__*/**/*.test.ts',
+      '__module__*/**/*.test.tsx'
     ],
     coverage: {
       provider: 'v8',
@@ -34,20 +33,19 @@ export default defineConfig({
       '@': resolve(__dirname, './src/renderer'),
       '@main': resolve(__dirname, './src/main'),
       '@preload': resolve(__dirname, './src/preload'),
-      // Workspace packages
-      '@codelobby/data': resolve(__dirname, 'packages/data/src/index.ts'),
-      '@codelobby/slot-system': resolve(__dirname, 'packages/slot-system/src/index.tsx'),
-      '@codelobby/header-module': resolve(__dirname, 'packages/header-module/src/index.tsx'),
-      '@codelobby/explorer-module': resolve(__dirname, 'packages/explorer-module/src/index.tsx'),
-      '@codelobby/canvas-module': resolve(__dirname, 'packages/canvas-module/src/index.tsx'),
-      '@codelobby/network-module': resolve(__dirname, 'packages/network-module/src/index.tsx'),
-      '@codelobby/pr-detail-module': resolve(__dirname, 'packages/pr-detail-module/src/index.tsx'),
-      '@codelobby/ai-chat-module': resolve(__dirname, 'packages/ai-chat-module/src/index.tsx'),
-      '@codelobby/app': resolve(__dirname, 'packages/app/src/index.ts'),
-      '@codelobby/ui-kit': resolve(__dirname, 'packages/ui-kit/src/index.ts'),
-      '@codelobby/test-utils': resolve(__dirname, 'packages/test-utils/src/index.ts'),
-      '@codelobby/logger/main': resolve(__dirname, 'packages/logger/src/main.ts'),
-      '@codelobby/logger': resolve(__dirname, 'packages/logger/src/index.ts')
+      '@logger/main': resolve(__dirname, '__module__logger/main.ts'),
+      '@logger': resolve(__dirname, '__module__logger/index.ts'),
+      '@data': resolve(__dirname, '__module__data/index.ts'),
+      '@slot-system': resolve(__dirname, '__module__slot-system/index.tsx'),
+      '@header': resolve(__dirname, '__module__header/index.tsx'),
+      '@explorer': resolve(__dirname, '__module__explorer/index.tsx'),
+      '@canvas': resolve(__dirname, '__module__canvas/index.tsx'),
+      '@network': resolve(__dirname, '__module__network/index.tsx'),
+      '@pr-detail': resolve(__dirname, '__module__pr-detail/index.tsx'),
+      '@ai-chat': resolve(__dirname, '__module__ai-chat/index.tsx'),
+      '@app': resolve(__dirname, '__module__app/index.ts'),
+      '@ui-kit': resolve(__dirname, '__module__ui-kit/index.ts'),
+      '@test-utils': resolve(__dirname, '__module__test-utils/index.ts')
     }
   }
 })

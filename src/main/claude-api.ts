@@ -4,7 +4,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
-import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { LogCategory, mainLogger as logger } from '@logger/main'
 import { calculateCost } from './ai-pricing'
 import { wrapSdkCall, wrapSdkStreamCall } from './http-client'
 import {

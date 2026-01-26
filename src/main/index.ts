@@ -8,7 +8,7 @@ if (process.platform === 'darwin') {
   app.setName('CodeLobby')
 }
 
-import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { LogCategory, mainLogger as logger } from '@logger/main'
 import { getAllModelPricing } from './ai-pricing'
 import {
   analyzeCIFailure,

@@ -1,4 +1,4 @@
-import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { LogCategory, mainLogger as logger } from '@logger/main'
 import Store from 'electron-store'
 
 // ═══════════════════════════════════════════════════════════════════════════

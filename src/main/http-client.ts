@@ -24,7 +24,7 @@
  *   const response = await http.fetch('https://api.example.com', { method: 'PUT', ... })
  */
 
-import { LogCategory, mainLogger as logger } from '@codelobby/logger/main'
+import { LogCategory, mainLogger as logger } from '@logger/main'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RATE LIMIT CALLBACK
