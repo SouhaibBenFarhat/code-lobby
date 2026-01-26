@@ -17,7 +17,7 @@ export function createTestQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         retry: false,
-        gcTime: 0,
+        gcTime: Infinity, staleTime: Infinity,
         staleTime: Infinity, // Data never goes stale in tests - prevents auto-refetching
         refetchOnMount: false, // Don't auto-fetch on mount
         refetchOnWindowFocus: false, // Don't auto-fetch on focus

@@ -33,42 +33,52 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
+// Helper to create default query result
+const mockQueryResult = (data: unknown = null) => ({
+  data,
+  isLoading: false,
+  isFetching: false,
+  error: null,
+  refetch: vi.fn()
+})
+
+// Helper to create default mutation result
+const mockMutationResult = () => ({
+  mutate: vi.fn(),
+  mutateAsync: vi.fn(),
+  isPending: false,
+  isLoading: false
+})
+
 // Mock TanStack Query hooks to prevent auto-fetching
 vi.mock('@data', () => ({
-  useRateLimit: vi.fn(() => ({
-    data: {
-      remaining: 4900,
-      limit: 5000,
-      used: 100,
-      resetAt: new Date(Date.now() + 3600000).toISOString(),
-      percentage: 2
-    },
-    isLoading: false,
-    isFetching: false
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: vi.fn(),
+    setQueryData: vi.fn(),
+    getQueryData: vi.fn()
   })),
-  useRepos: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-    isFetching: false
+  // Query hooks
+  useRateLimit: vi.fn(() => mockQueryResult({
+    remaining: 4900,
+    limit: 5000,
+    used: 100,
+    resetAt: new Date(Date.now() + 3600000).toISOString(),
+    percentage: 2
   })),
-  usePRs: vi.fn(() => ({
-    data: { prs: [], rateLimit: null },
-    isLoading: false,
-    isFetching: false,
-    refetch: vi.fn()
-  })),
-  useSelectedRepos: vi.fn(() => ({
-    data: null,
-    isLoading: false
-  })),
-  useSetSelectedRepos: vi.fn(() => ({
-    mutate: vi.fn(),
-    isPending: false
-  })),
-  useClearCacheAndRefresh: vi.fn(() => ({
-    mutate: vi.fn(),
-    isPending: false
-  }))
+  useRepos: vi.fn(() => mockQueryResult([])),
+  usePRs: vi.fn(() => mockQueryResult({ prs: [], rateLimit: null })),
+  useSelectedRepos: vi.fn(() => mockQueryResult(null)),
+  useIsFullscreen: vi.fn(() => mockQueryResult(false)),
+  useTheme: vi.fn(() => mockQueryResult('dark')),
+  useNetworkPanel: vi.fn(() => mockQueryResult(false)),
+  // Mutation hooks
+  useSetSelectedRepos: vi.fn(() => mockMutationResult()),
+  useClearCacheAndRefresh: vi.fn(() => mockMutationResult()),
+  useSetTheme: vi.fn(() => mockMutationResult()),
+  useToggleNetworkPanel: vi.fn(() => mockMutationResult()),
+  useFactoryReset: vi.fn(() => mockMutationResult()),
+  useSignOut: vi.fn(() => mockMutationResult()),
+  useClearCache: vi.fn(() => mockMutationResult())
 }))
 
 describe('Header', () => {

@@ -78,7 +78,7 @@ describe('ChangedFilesSection', () => {
       defaultOptions: {
         queries: {
           retry: false,
-          gcTime: 0
+          gcTime: Infinity, staleTime: Infinity
         }
       }
     })

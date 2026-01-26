@@ -33,7 +33,7 @@ describe('Settings Queries', () => {
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false, gcTime: 0 }
+        queries: { retry: false, gcTime: Infinity, staleTime: Infinity }
       }
     })
   })
