@@ -32,9 +32,10 @@ persistQueryClient({
   maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   dehydrateOptions: {
     shouldDehydrateQuery: (query) => {
-      // Persist settings, AI data, local state, and GitHub data (for faster startup)
+      // Only persist settings, AI data, and local UI state
+      // GitHub API data should always be fetched fresh (avoids stale mergeable status, etc.)
       const key = query.queryKey[0]
-      return key === 'settings' || key === 'ai' || key === 'local' || key === 'github'
+      return key === 'settings' || key === 'ai' || key === 'local'
     }
   }
 })
