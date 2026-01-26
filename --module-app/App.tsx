@@ -304,7 +304,7 @@ export function App(): React.JSX.Element {
             </aside>
           )}
 
-          {aiPanelOpen && (
+          {(aiPanelOpen || networkPanelOpen) && (
             <aside
               ref={rightSidebarRef}
               className="apple-panel overflow-hidden flex relative flex-shrink-0"
@@ -317,21 +317,29 @@ export function App(): React.JSX.Element {
                 onMouseDown={handleAIResizeStart}
               />
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <div className="flex-1 overflow-hidden">
-                  <Slot name="ai-panel" wrapInContainer={false} />
-                </div>
+                {aiPanelOpen && (
+                  <div
+                    className={
+                      networkPanelOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'
+                    }
+                  >
+                    <Slot name="ai-panel" wrapInContainer={false} />
+                  </div>
+                )}
                 {networkPanelOpen && (
                   <>
-                    <button
-                      type="button"
-                      aria-label="Resize network panel"
-                      className={`h-1 w-full cursor-row-resize p-0 flex-shrink-0 transition-colors border-t border-border ${isNetworkResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
-                      onMouseDown={handleNetworkResizeStart}
-                    />
+                    {aiPanelOpen && (
+                      <button
+                        type="button"
+                        aria-label="Resize network panel"
+                        className={`h-1 w-full cursor-row-resize p-0 flex-shrink-0 transition-colors border-t border-border ${isNetworkResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+                        onMouseDown={handleNetworkResizeStart}
+                      />
+                    )}
                     <div
                       ref={networkPanelRef}
                       className="flex-shrink-0 overflow-hidden"
-                      style={{ height: networkPanelHeight }}
+                      style={{ height: aiPanelOpen ? networkPanelHeight : '100%' }}
                     >
                       <Slot name="network-panel" wrapInContainer={false} />
                     </div>
