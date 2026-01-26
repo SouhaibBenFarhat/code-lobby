@@ -457,7 +457,7 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
         aria-valuenow={explorerWidth}
         tabIndex={0}
         className={cn(
-          'absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors',
+          'absolute right-0 top-0 bottom-0 w-1 z-20 cursor-col-resize hover:bg-primary/50 transition-colors',
           isResizing && 'bg-primary'
         )}
         onMouseDown={handleResizeStart}
