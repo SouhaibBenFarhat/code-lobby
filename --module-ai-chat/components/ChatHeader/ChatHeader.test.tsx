@@ -1,15 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '@test-utils'
 import userEvent from '@testing-library/user-event'
-import { TooltipProvider } from '@ui-kit'
-import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatHeader } from './ChatHeader'
-
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <TooltipProvider>{children}</TooltipProvider>
-)
-
-const renderWithProviders = (ui: ReactNode) => render(ui, { wrapper: Wrapper })
 
 describe('ChatHeader', () => {
   const defaultProps = {
@@ -39,30 +31,30 @@ describe('ChatHeader', () => {
 
   describe('title display', () => {
     it('shows AI Chat title', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} />)
+      render(<ChatHeader {...defaultProps} />)
       expect(screen.getByText('AI Chat')).toBeInTheDocument()
     })
 
     it('shows model name when API key exists', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} />)
+      render(<ChatHeader {...defaultProps} />)
       expect(screen.getByText(/Claude 3.5 Sonnet/)).toBeInTheDocument()
     })
 
     it('does not show model name when no API key', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} apiKey={null} />)
+      render(<ChatHeader {...defaultProps} apiKey={null} />)
       expect(screen.queryByText(/Claude 3.5 Sonnet/)).not.toBeInTheDocument()
     })
   })
 
   describe('action buttons', () => {
     it('renders close button', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} />)
+      render(<ChatHeader {...defaultProps} />)
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBeGreaterThan(0)
     })
 
     it('calls onClose when close button clicked', async () => {
-      renderWithProviders(<ChatHeader {...defaultProps} />)
+      render(<ChatHeader {...defaultProps} />)
       // Find the last button which should be close
       const buttons = screen.getAllByRole('button')
       const closeButton = buttons[buttons.length - 1]
@@ -71,7 +63,7 @@ describe('ChatHeader', () => {
     })
 
     it('calls onShowSettingsChange when settings button clicked', async () => {
-      renderWithProviders(<ChatHeader {...defaultProps} />)
+      render(<ChatHeader {...defaultProps} />)
       // Find the settings button by its aria-label or title
       const buttons = screen.getAllByRole('button')
       // Settings button should be the first one (before trash and close)
@@ -81,7 +73,7 @@ describe('ChatHeader', () => {
     })
 
     it('calls onClearHistory when clear button clicked', async () => {
-      renderWithProviders(<ChatHeader {...defaultProps} />)
+      render(<ChatHeader {...defaultProps} />)
       // Find the clear/trash button (second button)
       const buttons = screen.getAllByRole('button')
       const clearButton = buttons[1]
@@ -90,7 +82,7 @@ describe('ChatHeader', () => {
     })
 
     it('hides settings and clear buttons when no API key', () => {
-      renderWithProviders(<ChatHeader {...defaultProps} apiKey={null} />)
+      render(<ChatHeader {...defaultProps} apiKey={null} />)
       // Only close button should be present
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBe(1)
@@ -99,13 +91,13 @@ describe('ChatHeader', () => {
 
   describe('styling', () => {
     it('has elevation effect classes', () => {
-      const { container } = renderWithProviders(<ChatHeader {...defaultProps} />)
+      const { container } = render(<ChatHeader {...defaultProps} />)
       const header = container.firstChild as HTMLElement
       expect(header).toHaveClass('shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)]')
     })
 
     it('has consistent background styling', () => {
-      const { container } = renderWithProviders(<ChatHeader {...defaultProps} />)
+      const { container } = render(<ChatHeader {...defaultProps} />)
       const header = container.firstChild as HTMLElement
       expect(header).toHaveClass('bg-card/80', 'backdrop-blur-sm')
     })

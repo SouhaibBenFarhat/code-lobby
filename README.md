@@ -1,12 +1,10 @@
-# 🚪 CodeLobby
+# CodeLobby
 
 <div align="center">
 
 ![CodeLobby Logo](build/icon.svg)
 
-**The Future of Software Development is Not About Code.**
-
-*It's about Intent.*
+A PR-centric desktop application for code review workflows with integrated AI assistance.
 
 Built with Electron • React • TypeScript • GraphQL
 
@@ -14,158 +12,81 @@ Built with Electron • React • TypeScript • GraphQL
 
 ---
 
-## 🔮 The Vision
+## The Problem
 
-> *"In the future, engineers won't navigate to files and edit lines of code. They'll navigate to PRs and address intents."*
+AI coding assistants (Copilot, Cursor, Claude) have dramatically accelerated feature development. Engineers can now produce code faster than ever. But this created a new bottleneck: **code review**.
 
-CodeLobby is built on a radical premise: **the Pull Request is the new atomic unit of software development**, not the file.
+Review queues are growing. PRs sit waiting for days. Reviewers are overwhelmed with context-switching between dozens of open PRs across multiple repositories. The traditional workflow—open GitHub, find PR, read diff, check CI, read comments, switch tabs—doesn't scale.
 
-### The Paradigm Shift
+## The Premise
 
-| Traditional IDE | CodeLobby |
-|-----------------|-----------|
-| **Folder** → File → Line | **Repo** → PR → Comment/CI |
-| Navigate to code | Navigate to problems |
-| Edit syntax | Express intent |
-| You write code | AI executes intent |
+CodeLobby is built on a radical premise: **the Pull Request is the atomic unit of software development**, not the file.
 
-### What We See Coming
+When reviewing code, what matters is:
+- What problem is this PR solving?
+- Does CI pass?
+- What feedback has been given?
+- What's blocking the merge?
 
-Software engineers are evolving from **code writers** to **intent orchestrators**. Instead of:
-
-```
-Open IDE → Find file → Read code → Understand context → Write fix → Test → Commit → Push
-```
-
-The future looks like:
-
-```
-Open CodeLobby → See failing CI → Say "Fix this" → Review AI's solution → Approve → Done
-```
-
-### Why PRs Are Perfect for AI
-
-A Pull Request is a **goldmine of context**:
-- 📝 **The Problem**: Title, description, linked issues
-- 💡 **The Attempt**: The diff itself
-- 💬 **The Feedback**: Review comments with specific requests
-- ✅ **The Verification**: CI status with detailed logs
-- 📜 **The History**: Conversations, iterations, decisions
-
-When you tell an AI "fix the CI failure on PR #234", it doesn't need to understand your entire codebase—the PR already contains everything it needs.
-
-### The Commands of Tomorrow
-
-```bash
-# Today: Manual, time-consuming
-git checkout feature-branch
-npm test
-# Read error, find file, understand code, write fix...
-git add . && git commit -m "fix" && git push
-
-# Tomorrow: Intent-driven
-> "Fix the type error causing CI failure on PR #234"
-> "Address all of John's review comments"
-> "Merge all approved PRs with green CI"
-> "Create a PR implementing feature described in issue #567"
-```
-
-### Where CodeLobby Is Heading
+CodeLobby puts these questions at the center, with AI assistance to help answer them.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  CodeLobby AI                                    🌙 ⚙️ 👤   │
+│  CodeLobby                                       🌙 ⚙️ 👤   │
 ├─────────────────────────────────────────────────────────────┤
 │ ┌─── portal ────────┐ ┌─── api ─────────┐ ┌─── sdk ──────┐ │
 │ │ PR #234 ❌ Failed │ │ PR #567 ✅     │ │ PR #89 💬 3  │ │
 │ │ PR #235 💬 Review │ │ PR #568 🔄     │ │              │ │
 │ └───────────────────┘ └─────────────────┘ └──────────────┘ │
 ├─────────────────────────────────────────────────────────────┤
-│ 🤖 What would you like to do?                               │
+│ 🤖 AI Assistant                                             │
 │ ┌─────────────────────────────────────────────────────────┐ │
-│ │ > Fix the null pointer error on portal PR #234          │ │
+│ │ > Why is PR #234 failing?                               │ │
 │ └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │ 🔍 Analyzing CI logs...                                     │
 │ 💡 Found: TypeError at src/utils/parser.ts:45               │
-│ 🛠️  Generating fix...                                       │
 │                                                             │
-│ ┌─ Proposed Change ───────────────────────────────────────┐ │
-│ │ - const value = obj.data.value                          │ │
-│ │ + const value = obj?.data?.value ?? defaultValue        │ │
-│ └─────────────────────────────────────────────────────────┘ │
+│ ┌─ Analysis ────────────────────────────────────────────┐   │
+│ │ The test fails because `obj.data` can be undefined.   │   │
+│ │ The PR author needs to add null checking.             │   │
+│ └───────────────────────────────────────────────────────┘   │
 │                                                             │
-│        [✅ Apply & Push]  [✏️ Edit]  [❌ Reject]             │
+│        [📝 Generate Review]  [💬 Comment]  [✅ Approve]     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### The Philosophy
+## What CodeLobby Does
 
-**Code is an implementation detail.** 
-
-What matters is:
-- What problem are you solving?
-- What feedback have you received?
-- What's blocking the merge?
-
-CodeLobby puts these questions—not files and syntax—at the center of your workflow.
+- **Aggregates PRs** across all your repositories in one view
+- **Shows full context** — CI status, comments, reviews, file changes — without tab switching
+- **Integrates Claude AI** for PR analysis, review generation, and CI failure diagnosis
+- **Enables actions** — approve, merge, comment — directly from the app
 
 ---
 
-## 🌟 What CodeLobby Is Today
+## Table of Contents
 
-A beautiful, powerful PR monitoring dashboard that serves as the foundation for this vision. Every feature we build today is a step toward the intent-driven future:
-
-- **PR-centric navigation**: Your repos and PRs, not folders and files
-- **Rich context display**: CI logs, comments, reviews—all the data AI needs
-- **Action-oriented UI**: See what needs attention, not just what exists
-- **Customizable workspace**: Arrange your view around your priorities
-
-**This is the lobby where code meets intent. Welcome.**
-
----
-
-## 📋 Table of Contents
-
-- [Overview](#-overview)
-- [Features](#-features)
-- [Installation](#-installation)
-- [Getting Started](#-getting-started)
-- [User Interface Guide](#-user-interface-guide)
-- [Technical Architecture](#-technical-architecture)
-- [Configuration](#-configuration)
-- [Building for Production](#-building-for-production)
-- [Troubleshooting](#-troubleshooting)
+- [Features](#features)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [User Interface](#user-interface)
+- [Technical Architecture](#technical-architecture)
+- [Configuration](#configuration)
+- [Building for Production](#building-for-production)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🌟 Overview
+## Features
 
-CodeLobby reimagines how developers interact with their work. Instead of diving into code editors and navigating file trees, you see what actually matters: **Pull Requests as work units**, with all their context, feedback, and status in one place.
-
-It's not just a PR dashboard—it's the foundation for intent-driven development.
-
-### Why CodeLobby?
-
-- **🎯 PR-Centric**: PRs are the center of your universe, not files
-- **📊 Full Context**: CI logs, comments, reviews—everything in one view
-- **🎨 Visual Workspace**: Arrange repos spatially, like thoughts on a whiteboard
-- **⚡ Efficient**: One GraphQL query fetches everything
-- **🔮 Future-Ready**: Built as the foundation for AI-assisted development
-- **💻 Native**: Runs as a desktop app on macOS, Windows, and Linux
-
----
-
-## ✨ Features
-
-### 🔐 Authentication
+### Authentication
 
 - **Personal Access Token**: Secure authentication using GitHub PAT
-- **Encrypted Storage**: Your token is encrypted and stored locally using `electron-store`
+- **Local Storage**: Token stored locally via TanStack Query persistence
 - **One-Click Token Creation**: Direct link to GitHub with pre-filled settings
-- **Step-by-Step Guide**: Built-in instructions for creating a token
 
-### 📊 Dashboard
+### Dashboard
 
 #### Free-Form Canvas
 - **Drag & Drop**: Move repo cards anywhere on the canvas
@@ -174,12 +95,12 @@ It's not just a PR dashboard—it's the foundation for intent-driven development
 - **Infinite Canvas**: Canvas expands as you place cards beyond the viewport
 
 #### Layout Tools
-- **🔒 Lock/Unlock**: Prevent accidental layout changes
-- **📐 Grid**: Auto-arrange cards in a neat grid pattern
-- **⬜ Fill**: Make all cards fill the container equally
-- **💾 Persistent**: Your layout is saved and restored on restart
+- **Lock/Unlock**: Prevent accidental layout changes
+- **Grid**: Auto-arrange cards in a neat grid pattern
+- **Fill**: Make all cards fill the container equally
+- **Persistent**: Your layout is saved and restored on restart
 
-### 📁 Repository Cards
+### Repository Cards
 
 Each card displays:
 - **Repository Info**: Name, owner avatar, language, star count
@@ -189,7 +110,7 @@ Each card displays:
 - **PR List**: Scrollable list of open Pull Requests
 - **Quick Links**: Direct link to repository on GitHub
 
-### 🔍 PR Detail Panel
+### PR Detail Panel
 
 Click any PR to open a detailed side panel with:
 
@@ -219,10 +140,10 @@ Click any PR to open a detailed side panel with:
 - Full comment text with proper word wrapping
 
 #### Resizable Panel
-- Drag the left edge to resize (300px - 800px)
+- Drag the left edge to resize (minimum 300px)
 - Visual feedback during resize
 
-### 🎯 Header Bar
+### Header Bar
 
 From left to right:
 - **Logo & Name**: CodeLobby branding
@@ -233,13 +154,13 @@ From left to right:
   - Red (80%+): Warning
   - Hover for detailed stats (used/remaining/reset time)
 - **Refreshing Indicator**: Shows when data is being fetched
-- **🔄 Refresh Button**: Manually refresh all data
-- **🌙/☀️ Theme Toggle**: Switch between dark and light mode
-- **📊 Activity Stream**: Open popover with recent activity
-- **👤 User Avatar**: Your GitHub profile picture
-- **🚪 Logout**: Sign out and clear stored token
+- **Refresh Button**: Manually refresh all data
+- **Theme Toggle**: Switch between dark and light mode
+- **Activity Stream**: Open popover with recent activity
+- **User Avatar**: Your GitHub profile picture
+- **Logout**: Sign out and clear stored token
 
-### 📡 Activity Stream
+### Activity Stream
 
 A popover showing recent activity across all your PRs:
 - Comments on PRs
@@ -247,29 +168,33 @@ A popover showing recent activity across all your PRs:
 - Approval/rejection notifications
 - Click any event to jump to the PR
 
-### 🎨 Theming
+### Theming
 
 - **Dark Mode**: Default theme with GitHub-inspired colors
 - **Light Mode**: Clean, bright alternative
 - **Persistent**: Theme preference is saved locally
 - **System-aware**: Follows your OS preference on first launch
 
-### ⚡ Performance
+### Performance
 
 - **GraphQL API**: Single query fetches PRs, repos, checks, comments, and reviews
-- **Smart Caching**: 10-second cache prevents redundant requests
-- **Window Focus Refresh**: Data updates when you return to the app
+- **Tiered Caching**:
+  - Pull Requests: 15-minute stale time
+  - Repositories: 1-hour stale time
+  - Settings/UI: Never stale (Infinity)
+- **Manual Refresh**: Click refresh button to update data (no auto-refresh on window focus)
 - **No Polling**: Saves API quota by not constantly polling
 - **Rate Limit Aware**: Visual indicator helps you stay within limits
+- **Persistence**: All data persisted to localStorage, survives app restart
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
+- Node.js 18+
+- pnpm 10+
 - Git
 
 ### Clone & Install
@@ -279,16 +204,16 @@ A popover showing recent activity across all your PRs:
 git clone https://github.com/yourusername/codelobby.git
 cd codelobby
 
-# Install dependencies
-npm install
+# Install dependencies (requires pnpm)
+pnpm install
 
 # Start development server
-npm run dev
+pnpm run dev
 ```
 
 ---
 
-## 🏁 Getting Started
+## Getting Started
 
 ### 1. Create a GitHub Personal Access Token
 
@@ -316,30 +241,26 @@ npm run dev
 
 ---
 
-## 🖥️ User Interface Guide
+## User Interface
 
-### Keyboard Shortcuts
-
-| Action | Shortcut |
-|--------|----------|
-| Refresh Data | Click refresh button |
-| Toggle Theme | Click sun/moon icon |
-
-### Mouse Interactions
+### Interactions
 
 | Action | How |
 |--------|-----|
-| Move Card | Drag from "Drag to move" handle |
+| Move Card | Drag from card header |
 | Resize Card | Drag any edge or corner |
 | Open PR Details | Click on a PR |
-| Close PR Details | Click X or outside panel |
+| Close PR Details | Click X button |
 | Resize Detail Panel | Drag left edge |
 | Open on GitHub | Click external link icon |
 | Expand/Collapse Job Group | Click group header |
+| Send AI Message | Press Enter |
+| Multi-line AI Message | Shift+Enter |
+| Save Custom Prompt | Cmd/Ctrl+Enter |
 
 ---
 
-## 🏗️ Technical Architecture
+## Technical Architecture
 
 ### Tech Stack
 
@@ -354,7 +275,7 @@ npm run dev
 | State & Data | TanStack Query 5 |
 | GitHub API | Direct GraphQL fetch |
 | AI Integration | Anthropic Claude SDK |
-| Persistence | localStorage + TanStack Query Persist |
+| Persistence | localStorage (TanStack Query) + electron-store |
 | Drag & Resize | react-rnd |
 
 ### Project Structure
@@ -503,6 +424,365 @@ tsconfig.json (root)
 - **TanStack Query is the single source of truth** — All state in cache
 - **Automatic persistence** — Settings & AI data persist to localStorage
 
+### Module Interaction Architecture
+
+The following diagram illustrates how all CodeLobby modules interact with each other:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              EXTERNAL SERVICES                                   │
+│    ┌─────────────────────────┐              ┌─────────────────────────┐         │
+│    │    GitHub API           │              │     Claude API          │         │
+│    │  (GraphQL + REST)       │              │    (REST + Streaming)   │         │
+│    └───────────┬─────────────┘              └───────────┬─────────────┘         │
+└────────────────┼────────────────────────────────────────┼───────────────────────┘
+                 │ fetch() direct                          │ Anthropic SDK
+                 │                                         │
+┌────────────────┼─────────────────────────────────────────┼───────────────────────┐
+│                │           ELECTRON MAIN PROCESS          │                       │
+│                │              (src/main/)                 ▼                       │
+│                │         ┌────────────────────────────────────┐                  │
+│                │         │  claude-api.ts (streaming)         │                  │
+│                │         │  store.ts (electron-store)         │                  │
+│                │         │  prompts/ (system prompts)         │                  │
+│                │         └──────────────┬─────────────────────┘                  │
+└────────────────┼────────────────────────┼────────────────────────────────────────┘
+                 │                        │ IPC (window.electron)
+                 │                        │
+┌────────────────┼────────────────────────┼────────────────────────────────────────┐
+│                │     ELECTRON PRELOAD    │        (src/preload/)                  │
+│                │    ┌────────────────────┴────────────────────┐                  │
+│                │    │  Secure IPC Bridge (OS operations)      │                  │
+│                │    │  • Theme control  • Fullscreen          │                  │
+│                │    │  • AI streaming   • Notifications       │                  │
+│                │    └────────────────────┬────────────────────┘                  │
+└────────────────┼─────────────────────────┼───────────────────────────────────────┘
+                 │                         │
+                 ▼                         ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                        RENDERER PROCESS (React)                                   │
+│                                                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                    INFRASTRUCTURE LAYER                                      │ │
+│  │                                                                              │ │
+│  │  ┌──────────────────────────────────────────────────────────────────────┐   │ │
+│  │  │                    @data (--module-data/)                            │   │ │
+│  │  │                   ════════════════════════                           │   │ │
+│  │  │          🔑 THE CORE - Single Source of Truth                        │   │ │
+│  │  │                                                                      │   │ │
+│  │  │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 │   │ │
+│  │  │   │  github.ts  │  │  queries/*  │  │ mutations/* │                 │   │ │
+│  │  │   │  (API fns)  │  │ (useQuery)  │  │(useMutation)│                 │   │ │
+│  │  │   └─────────────┘  └─────────────┘  └─────────────┘                 │   │ │
+│  │  │                                                                      │   │ │
+│  │  │   TanStack Query Cache: GitHub data, Settings, AI state, UI state   │   │ │
+│  │  └──────────────────────────────────────────────────────────────────────┘   │ │
+│  │           ▲                                                                  │ │
+│  │           │ import @data                                                     │ │
+│  │  ┌────────┴────────────────────────────────────────────────────────────┐    │ │
+│  │  │                                                                     │    │ │
+│  │  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │    │ │
+│  │  │  │  @slot-system    │  │    @ui-kit       │  │    @logger       │  │    │ │
+│  │  │  │ ──────────────── │  │ ──────────────── │  │ ──────────────── │  │    │ │
+│  │  │  │ registerToSlot() │  │ Button, Input,   │  │ Structured logs  │  │    │ │
+│  │  │  │ <Slot name="x"/> │  │ Card, Dialog,    │  │ for main/renderer│  │    │ │
+│  │  │  │                  │  │ Tooltip, etc.    │  │                  │  │    │ │
+│  │  │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │    │ │
+│  │  │                                                                     │    │ │
+│  │  └─────────────────────────────────────────────────────────────────────┘    │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                       APPLICATION LAYER                                      │ │
+│  │                                                                              │ │
+│  │  ┌──────────────────────────────────────────────────────────────────────┐   │ │
+│  │  │                    @app (--module-app/)                              │   │ │
+│  │  │   App Shell - Renders named <Slot> components                        │   │ │
+│  │  │   bootstrap.ts - Imports & initializes all modules                   │   │ │
+│  │  └──────────────────────────────────────────────────────────────────────┘   │ │
+│  │                               │                                              │ │
+│  │               ┌───────────────┼───────────────┐                             │ │
+│  │               ▼               ▼               ▼                             │ │
+│  │  ┌────────────────────────────────────────────────────────────────────┐     │ │
+│  │  │                   SLOT-BASED UI MODULES                            │     │ │
+│  │  │          (Self-registering, zero cross-imports)                    │     │ │
+│  │  │                                                                    │     │ │
+│  │  │   ┌─────────────────────────────────────────────────────────────┐ │     │ │
+│  │  │   │                    slot: "header"                           │ │     │ │
+│  │  │   │  ┌────────────────────────────────────────────────────────┐ │ │     │ │
+│  │  │   │  │ @header (--module-header/)                             │ │ │     │ │
+│  │  │   │  │  • Header bar, logo, rate limit gauge                  │ │ │     │ │
+│  │  │   │  │  • Theme toggle, user avatar, logout                   │ │ │     │ │
+│  │  │   │  │  • Refresh button, activity stream                     │ │ │     │ │
+│  │  │   │  │  • LogsViewer, AboutDialog, AICostIndicator            │ │ │     │ │
+│  │  │   │  └────────────────────────────────────────────────────────┘ │ │     │ │
+│  │  │   └─────────────────────────────────────────────────────────────┘ │     │ │
+│  │  │                                                                    │     │ │
+│  │  │   ┌─────────────────────────────────────────────────────────────┐ │     │ │
+│  │  │   │                   slot: "left-panel"                        │ │     │ │
+│  │  │   │  ┌────────────────────────────────────────────────────────┐ │ │     │ │
+│  │  │   │  │ @explorer (--module-explorer/)                         │ │ │     │ │
+│  │  │   │  │  • IDE-style tree view (repo → PR hierarchy)           │ │ │     │ │
+│  │  │   │  │  • Only visible in IDE view mode                       │ │ │     │ │
+│  │  │   │  └────────────────────────────────────────────────────────┘ │ │     │ │
+│  │  │   └─────────────────────────────────────────────────────────────┘ │     │ │
+│  │  │                                                                    │     │ │
+│  │  │   ┌─────────────────────────────────────────────────────────────┐ │     │ │
+│  │  │   │                     slot: "main"                            │ │     │ │
+│  │  │   │  ┌────────────────────────────────────────────────────────┐ │ │     │ │
+│  │  │   │  │ @canvas (--module-canvas/)                             │ │ │     │ │
+│  │  │   │  │  • Free-form draggable PR card canvas                  │ │ │     │ │
+│  │  │   │  │  • PRGrid, PRCard, RepoCard components                 │ │ │     │ │
+│  │  │   │  │  • Grid/fill layout tools, lock/unlock                 │ │ │     │ │
+│  │  │   │  └────────────────────────────────────────────────────────┘ │ │     │ │
+│  │  │   └─────────────────────────────────────────────────────────────┘ │     │ │
+│  │  │                                                                    │     │ │
+│  │  │   ┌─────────────────────────────────────────────────────────────┐ │     │ │
+│  │  │   │               slot: "pr-detail-panel"                       │ │     │ │
+│  │  │   │  ┌────────────────────────────────────────────────────────┐ │ │     │ │
+│  │  │   │  │ @pr-detail (--module-pr-detail/)                       │ │ │     │ │
+│  │  │   │  │  • PR detail side panel with full context              │ │ │     │ │
+│  │  │   │  │  • CI checks, comments, reviews, file changes          │ │ │     │ │
+│  │  │   │  │  • AI quick actions (analyze, review, CI analysis)     │ │ │     │ │
+│  │  │   │  │  • Approve & Merge PR actions                          │ │ │     │ │
+│  │  │   │  └────────────────────────────────────────────────────────┘ │ │     │ │
+│  │  │   └─────────────────────────────────────────────────────────────┘ │     │ │
+│  │  │                                                                    │     │ │
+│  │  │   ┌─────────────────────────────────────────────────────────────┐ │     │ │
+│  │  │   │                  slot: "ai-panel"                           │ │     │ │
+│  │  │   │  ┌────────────────────────────────────────────────────────┐ │ │     │ │
+│  │  │   │  │ @ai-chat (--module-ai-chat/)                           │ │ │     │ │
+│  │  │   │  │  • Claude AI chat panel with streaming                 │ │ │     │ │
+│  │  │   │  │  • PR-specific and general conversations               │ │ │     │ │
+│  │  │   │  │  • Quick actions, custom prompts                       │ │ │     │ │
+│  │  │   │  │  • AI-generated PR review submission                   │ │ │     │ │
+│  │  │   │  │  • Extended thinking visualization                     │ │ │     │ │
+│  │  │   │  └────────────────────────────────────────────────────────┘ │ │     │ │
+│  │  │   └─────────────────────────────────────────────────────────────┘ │     │ │
+│  │  │                                                                    │     │ │
+│  │  │   ┌─────────────────────────────────────────────────────────────┐ │     │ │
+│  │  │   │                slot: "network-panel"                        │ │     │ │
+│  │  │   │  ┌────────────────────────────────────────────────────────┐ │ │     │ │
+│  │  │   │  │ @network (--module-network/)                           │ │ │     │ │
+│  │  │   │  │  • HTTP request monitoring & debugging                 │ │ │     │ │
+│  │  │   │  │  • Request/response inspection                         │ │ │     │ │
+│  │  │   │  │  • Fetch interception for all API calls                │ │ │     │ │
+│  │  │   │  └────────────────────────────────────────────────────────┘ │ │     │ │
+│  │  │   └─────────────────────────────────────────────────────────────┘ │     │ │
+│  │  │                                                                    │     │ │
+│  │  └────────────────────────────────────────────────────────────────────┘     │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                   │
+└───────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Module Dependency Graph
+
+**Allowed imports flow DOWN. Modules cannot import from siblings or upward.**
+
+```
+                              ┌─────────────┐
+                              │   @data     │  ← TanStack Query, state, GitHub API
+                              └──────┬──────┘
+                                     │
+          ┌──────────────────────────┼──────────────────────────┐
+          │                          │                          │
+          ▼                          ▼                          ▼
+   ┌─────────────┐           ┌─────────────┐           ┌─────────────┐
+   │  @ui-kit    │           │@slot-system │           │  @logger    │
+   └─────────────┘           └─────────────┘           └─────────────┘
+          │                          │                          │
+          └──────────────────────────┼──────────────────────────┘
+                                     │
+                                     ▼
+   ┌─────────────────────────────────────────────────────────────────┐
+   │                      UI FEATURE MODULES                         │
+   │                                                                 │
+   │   @header    @canvas    @explorer    @pr-detail    @ai-chat     │
+   │                                                                 │
+   │                            @network                             │
+   │                                                                 │
+   │   ❌ These modules CANNOT import from each other ❌              │
+   └─────────────────────────────────────────────────────────────────┘
+```
+
+### Import Rules (Simple Version)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  MODULE           │  CAN IMPORT                │  CANNOT IMPORT    │
+├────────────────────────────────────────────────────────────────────┤
+│                   │                            │                   │
+│  @header          │  @data                     │  @canvas          │
+│  @canvas          │  @ui-kit                   │  @header          │
+│  @explorer        │  @slot-system              │  @explorer        │
+│  @pr-detail   ───▶│  @logger                   │  @pr-detail       │
+│  @ai-chat         │  react, lucide-react       │  @ai-chat         │
+│  @network         │  ./internal files          │  @network         │
+│                   │                            │                   │
+├────────────────────────────────────────────────────────────────────┤
+│                   │                            │                   │
+│  @data        ───▶│  @tanstack/react-query     │  @ui-kit          │
+│                   │  @logger                   │  @slot-system     │
+│                   │                            │  Any UI module    │
+│                   │                            │                   │
+├────────────────────────────────────────────────────────────────────┤
+│                   │                            │                   │
+│  @ui-kit      ───▶│  react                     │  @data            │
+│                   │  @radix-ui/*               │  @slot-system     │
+│                   │  tailwind-merge, clsx      │  @logger          │
+│                   │                            │  Any UI module    │
+│                   │                            │                   │
+├────────────────────────────────────────────────────────────────────┤
+│                   │                            │                   │
+│  @slot-system ───▶│  react                     │  Everything else  │
+│                   │                            │                   │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Forbidden Imports (Examples)
+
+```typescript
+// ❌ FORBIDDEN — UI module importing another UI module
+import { Header } from '@header'           // ❌ in @canvas
+import { PRCard } from '@canvas'           // ❌ in @pr-detail
+import { AIChat } from '@ai-chat'          // ❌ in @network
+
+// ❌ FORBIDDEN — @ui-kit importing @data
+import { useTheme } from '@data'           // ❌ in @ui-kit
+
+// ❌ FORBIDDEN — @data importing @ui-kit
+import { Button } from '@ui-kit'           // ❌ in @data
+
+// ✅ ALLOWED — UI module imports
+import { useSelectedPR } from '@data'      // ✅ state hooks
+import { Card, Button } from '@ui-kit'     // ✅ components
+import { registerToSlot } from '@slot-system'  // ✅ registration
+```
+
+### Why?
+
+| Rule | Benefit |
+|------|---------|
+| UI modules can't import each other | No circular dependencies |
+| All state flows through `@data` | Single source of truth |
+| `@ui-kit` has no dependencies | Pure, reusable components |
+| Modules self-register via slots | Hot-swappable, testable |
+
+### Communication Flow Between Modules
+
+Since UI modules cannot import from each other, all communication happens through `@data`:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     MODULE COMMUNICATION VIA @data                       │
+│                                                                          │
+│   ┌──────────────┐          ┌──────────────┐          ┌──────────────┐  │
+│   │   @canvas    │          │    @data     │          │  @pr-detail  │  │
+│   │              │          │              │          │              │  │
+│   │  User clicks │──────────│ useMutation: │──────────│ Panel opens  │  │
+│   │  on a PR     │  mutate  │ selectPR()   │  reacts  │ showing PR   │  │
+│   │              │──────────▶│              │──────────▶│ details      │  │
+│   └──────────────┘          │  ┌────────┐  │          └──────────────┘  │
+│                             │  │ Cache  │  │                             │
+│   ┌──────────────┐          │  │        │  │          ┌──────────────┐  │
+│   │   @header    │          │  │selected│  │          │  @ai-chat    │  │
+│   │              │◀─────────│  │   PR   │  │──────────▶│              │  │
+│   │ Shows PR #   │  useQuery│  │        │  │  useQuery │ Loads PR     │  │
+│   │ in breadcrumb│          │  └────────┘  │          │ chat context │  │
+│   └──────────────┘          └──────────────┘          └──────────────┘  │
+│                                                                          │
+│   All modules READ from the same cache and WRITE through mutations       │
+│   No direct module-to-module communication                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Module Registration Flow
+
+Modules self-register to slots at import time via `bootstrap.ts`:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        BOOTSTRAP PROCESS                                 │
+│                                                                          │
+│   main.tsx                                                               │
+│      │                                                                   │
+│      ▼                                                                   │
+│   bootstrap.ts (imports all modules)                                     │
+│      │                                                                   │
+│      ├──▶ import '@header'    ──▶ registerToSlot({ slot: 'header' })    │
+│      ├──▶ import '@explorer'  ──▶ registerToSlot({ slot: 'left-panel' })│
+│      ├──▶ import '@canvas'    ──▶ registerToSlot({ slot: 'main' })      │
+│      ├──▶ import '@pr-detail' ──▶ registerToSlot({ slot: 'pr-detail' }) │
+│      ├──▶ import '@ai-chat'   ──▶ registerToSlot({ slot: 'ai-panel' })  │
+│      └──▶ import '@network'   ──▶ registerToSlot({ slot: 'network' })   │
+│                                                                          │
+│      ▼                                                                   │
+│   App.tsx (renders slots)                                                │
+│      │                                                                   │
+│      ├──▶ <Slot name="header" />      ──▶ Renders Header component      │
+│      ├──▶ <Slot name="left-panel" />  ──▶ Renders Explorer (IDE mode)   │
+│      ├──▶ <Slot name="main" />        ──▶ Renders Canvas/PRGrid         │
+│      ├──▶ <Slot name="pr-detail" />   ──▶ Renders PRDetail panel        │
+│      ├──▶ <Slot name="ai-panel" />    ──▶ Renders AIChat panel          │
+│      └──▶ <Slot name="network" />     ──▶ Renders Network panel         │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### State Categories in @data
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TANSTACK QUERY CACHE CONTENTS                         │
+│                                                                          │
+│   ┌────────────────────────────────────────────────────────────────────┐│
+│   │ GITHUB DATA (fetched, persisted to localStorage)                   ││
+│   │   keys.repos            → User's repositories (1h cache)           ││
+│   │   keys.prsForRepo(repo) → PRs per repo (15min cache)               ││
+│   │   keys.prDetail(r,n)    → Single PR full details                   ││
+│   │   keys.prFiles(r,n)     → PR changed files with diffs              ││
+│   │   keys.user             → Authenticated user info                  ││
+│   │   keys.rateLimit        → GitHub API rate limit                    ││
+│   └────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│   ┌────────────────────────────────────────────────────────────────────┐│
+│   │ SETTINGS (persisted, staleTime: Infinity)                          ││
+│   │   keys.selectedRepos    → Which repos to show                      ││
+│   │   keys.viewMode         → 'canvas' | 'ide'                         ││
+│   │   keys.githubToken      → GitHub PAT                               ││
+│   │   keys.cardLayouts      → Canvas card positions                    ││
+│   │   keys.aiPanel          → AI panel open state + width              ││
+│   │   keys.prDetailPanel    → PR detail panel state                    ││
+│   └────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│   ┌────────────────────────────────────────────────────────────────────┐│
+│   │ AI STATE (persisted, staleTime: Infinity)                          ││
+│   │   keys.claudeApiKey     → Claude API key                           ││
+│   │   keys.selectedModel    → Selected Claude model                    ││
+│   │   keys.enableThinking   → Extended thinking toggle                 ││
+│   │   keys.enableWebFetch   → Web fetch tool toggle                    ││
+│   │   keys.prChatMessages   → PR-specific chat histories               ││
+│   │   keys.customPrompts    → User-created quick prompts               ││
+│   └────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│   ┌────────────────────────────────────────────────────────────────────┐│
+│   │ LOCAL UI STATE (persisted)                                         ││
+│   │   keys.local.selectedPRId      → Currently selected PR             ││
+│   │   keys.local.networkPanelOpen  → Network panel visibility          ││
+│   │   keys.local.networkPanelHeight→ Network panel size                ││
+│   └────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│   ┌────────────────────────────────────────────────────────────────────┐│
+│   │ SYSTEM STATE (runtime only, not persisted)                         ││
+│   │   keys.system.fullscreen → Fullscreen mode                         ││
+│   │   keys.system.theme      → OS theme                                ││
+│   └────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ### GraphQL Queries
 
 GitHub data is fetched via GraphQL for efficiency:
@@ -536,53 +816,37 @@ query GetPRsForRepos($repos: [String!]!) {
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Storage Locations
 
-| Data | Location |
-|------|----------|
-| Token & Settings | `~/Library/Application Support/codelobby/` (macOS) |
-| Theme Preference | `localStorage` |
-
-### Stored Data
-
-```typescript
-interface StoredData {
-  token: string | null          // Encrypted GitHub PAT
-  user: GitHubUser | null       // Cached user info
-  settings: {
-    notifications: boolean
-    pollInterval: number
-    theme: 'light' | 'dark' | 'system'
-  }
-  repoOrder: string[]           // Legacy repo ordering
-  cardLayouts: LayoutItem[]     // Card positions & sizes
-}
-
-interface LayoutItem {
-  i: string    // Repo full_name
-  x: number    // X position (pixels)
-  y: number    // Y position (pixels)  
-  w: number    // Width (pixels)
-  h: number    // Height (pixels)
-}
-```
+| Data | Location | Details |
+|------|----------|---------|
+| GitHub Token | `localStorage` | Persisted via TanStack Query |
+| Theme | `localStorage` | Direct key: `codelobby-theme` |
+| View Mode, Selected Repos | `localStorage` | TanStack Query persistence |
+| Card Layouts, Repo Colors, Minimized Repos | `localStorage` | TanStack Query persistence (settings keys) |
+| Claude API Key | `~/Library/Application Support/codelobby/` | Encrypted via electron-store |
+| AI Settings (model, thinking, web fetch) | `~/Library/Application Support/codelobby/` | electron-store |
+| General Chat History | `~/Library/Application Support/codelobby/` | electron-store |
+| PR-Specific Chats, PR Analyses | `~/Library/Application Support/codelobby/` | electron-store |
+| AI Usage Tracking (cost/tokens) | `~/Library/Application Support/codelobby/` | electron-store |
+| Custom Quick Prompts | `~/Library/Application Support/codelobby/` | electron-store |
 
 ---
 
-## 📦 Building for Production
+## Building for Production
 
 ### Build Commands
 
 ```bash
 # Build for current platform
-npm run build
+pnpm run build
 
 # Build for specific platforms
-npm run build:mac     # macOS (.dmg)
-npm run build:win     # Windows (.exe)
-npm run build:linux   # Linux (.AppImage)
+pnpm run build:mac     # macOS (.dmg)
+pnpm run build:win     # Windows (.exe)
+pnpm run build:linux   # Linux (.AppImage)
 ```
 
 ### Output
@@ -614,7 +878,7 @@ For distribution, you'll need to:
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -636,9 +900,9 @@ For distribution, you'll need to:
 ```bash
 # Clear cache and reinstall
 rm -rf node_modules
-rm package-lock.json
-npm install
-npm run dev
+rm pnpm-lock.yaml
+pnpm install
+pnpm run dev
 ```
 
 #### White Screen / Blank Window
@@ -648,16 +912,6 @@ npm run dev
   ```bash
   rm -rf ~/Library/Application\ Support/codelobby/
   ```
-
-### Debug Mode
-
-To enable verbose logging:
-
-```bash
-# Set environment variable
-export DEBUG=codelobby:*
-npm run dev
-```
 
 ### Reporting Issues
 
@@ -670,13 +924,13 @@ When reporting bugs, please include:
 
 ---
 
-## 📄 License
+## License
 
 MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Electron](https://www.electronjs.org/) - Desktop app framework
 - [React](https://reactjs.org/) - UI library
@@ -688,42 +942,30 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-## 🚀 Roadmap: Toward Intent-Driven Development
+## Roadmap
 
-### Now ✅
-- PR monitoring dashboard
-- Full context display (CI, comments, reviews)
+### Current
+- PR monitoring dashboard with full context (CI, comments, reviews)
 - Customizable spatial layout (Canvas & IDE views)
-- All PRs view (not just yours)
-- AI-powered PR analysis ("Why is this PR still open?")
+- AI-powered PR analysis and CI failure diagnosis
 - PR-specific AI chat with full code diff context
-- **AI PR Review Generation** — Generate full reviews with inline comments
-- **PR Actions** — Approve and Merge PRs directly
-- **AI CI Failure Analysis** — Understand why CI failed with AI
-- **Web Fetch Tool** — Claude can fetch URLs for context
-- **Network Panel** — Debug HTTP requests in real-time
-- **Custom Quick Prompts** — Save your own AI prompts
+- AI review generation with inline comments (Approve, Request Changes, Comment)
+- PR actions (approve, merge, request changes) directly from the app
+- Network panel for debugging HTTP requests
+- Custom quick prompts
+- AI usage tracking (tokens/cost stored, UI pending)
 
-### Next 🔜
-- Smart suggestions ("This comment is asking for X")
-- Natural language search ("Show me PRs touching the auth module")
-- Request Changes review action
+### Next
+- AI cost indicator display in header
+- Smart suggestions based on comment content
+- Natural language PR search
+- Comment on PRs directly from the app
 
-### Future 🔮
-- AI command center ("Fix this CI failure")
-- Deep AI Code Review with full codebase access
+### Future
+- AI-assisted code fixes
+- Deep code review with full codebase access
 - Automated actions with human approval
-- Cross-repo orchestration
-- Intent-to-code execution
 
 ---
 
-<div align="center">
-
-**The lobby where code meets intent.**
-
-*Built for developers who see the bigger picture.*
-
-[Report Bug](https://github.com/yourusername/codelobby/issues) • [Request Feature](https://github.com/yourusername/codelobby/issues) • [Discuss the Vision](https://github.com/yourusername/codelobby/discussions)
-
-</div>
+[Report Bug](https://github.com/yourusername/codelobby/issues) • [Request Feature](https://github.com/yourusername/codelobby/issues)

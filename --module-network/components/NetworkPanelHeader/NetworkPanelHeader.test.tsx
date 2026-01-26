@@ -1,13 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '@test-utils'
 import userEvent from '@testing-library/user-event'
-import { TooltipProvider } from '@ui-kit'
 import { describe, expect, it, vi } from 'vitest'
 import { NetworkPanelHeader } from './NetworkPanelHeader'
-
-// Wrapper component to provide TooltipProvider context
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <TooltipProvider>{children}</TooltipProvider>
-}
 
 describe('NetworkPanelHeader', () => {
   const defaultProps = {
@@ -18,11 +12,7 @@ describe('NetworkPanelHeader', () => {
   }
 
   it('should render the header with title', () => {
-    render(
-      <TestWrapper>
-        <NetworkPanelHeader {...defaultProps} />
-      </TestWrapper>
-    )
+    render(<NetworkPanelHeader {...defaultProps} />)
 
     expect(screen.getByTestId('network-panel-header')).toBeInTheDocument()
     expect(screen.getByText('Network')).toBeInTheDocument()
@@ -31,21 +21,13 @@ describe('NetworkPanelHeader', () => {
 
   describe('Total Cost Display', () => {
     it('should not display cost when totalCost is 0', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} totalCost={0} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} totalCost={0} />)
 
       expect(screen.queryByTestId('total-cost')).not.toBeInTheDocument()
     })
 
     it('should display cost when totalCost > 0', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} totalCost={25} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} totalCost={25} />)
 
       const costElement = screen.getByTestId('total-cost')
       expect(costElement).toBeInTheDocument()
@@ -53,11 +35,7 @@ describe('NetworkPanelHeader', () => {
     })
 
     it('should display large cost values correctly', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} totalCost={1234} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} totalCost={1234} />)
 
       expect(screen.getByTestId('total-cost')).toHaveTextContent('1234 pts')
     })
@@ -65,21 +43,13 @@ describe('NetworkPanelHeader', () => {
 
   describe('Clear Button', () => {
     it('should not render clear button when showClearButton is false', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} showClearButton={false} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} showClearButton={false} />)
 
       expect(screen.queryByTestId('clear-button')).not.toBeInTheDocument()
     })
 
     it('should render clear button when showClearButton is true', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} showClearButton={true} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} showClearButton={true} />)
 
       expect(screen.getByTestId('clear-button')).toBeInTheDocument()
     })
@@ -88,22 +58,14 @@ describe('NetworkPanelHeader', () => {
       const user = userEvent.setup()
       const onClear = vi.fn()
 
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} showClearButton={true} onClear={onClear} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} showClearButton={true} onClear={onClear} />)
 
       await user.click(screen.getByTestId('clear-button'))
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
     it('should have accessible label for clear button', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} showClearButton={true} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} showClearButton={true} />)
 
       expect(screen.getByRole('button', { name: /clear all requests/i })).toBeInTheDocument()
     })
@@ -111,11 +73,7 @@ describe('NetworkPanelHeader', () => {
 
   describe('Close Button', () => {
     it('should always render close button', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} />)
 
       expect(screen.getByTestId('close-button')).toBeInTheDocument()
     })
@@ -124,22 +82,14 @@ describe('NetworkPanelHeader', () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
 
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} onClose={onClose} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} onClose={onClose} />)
 
       await user.click(screen.getByTestId('close-button'))
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
     it('should have accessible label for close button', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} />)
 
       expect(screen.getByRole('button', { name: /close network panel/i })).toBeInTheDocument()
     })
@@ -147,22 +97,14 @@ describe('NetworkPanelHeader', () => {
 
   describe('Styling', () => {
     it('should have correct border, background, and elevation classes', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} />)
 
       const header = screen.getByTestId('network-panel-header')
       expect(header).toHaveClass('border-b', 'border-border', 'bg-card/80', 'backdrop-blur-sm')
     })
 
     it('should have flex layout', () => {
-      render(
-        <TestWrapper>
-          <NetworkPanelHeader {...defaultProps} />
-        </TestWrapper>
-      )
+      render(<NetworkPanelHeader {...defaultProps} />)
 
       const header = screen.getByTestId('network-panel-header')
       expect(header).toHaveClass('flex', 'items-center', 'justify-between')

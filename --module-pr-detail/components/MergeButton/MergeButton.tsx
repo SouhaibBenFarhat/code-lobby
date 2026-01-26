@@ -5,7 +5,16 @@
  */
 
 import { type MergeMethod, useMergePR } from '@data'
-import { Button, Col, cn, Row, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
+import {
+  Button,
+  cn,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from '@ui-kit'
 import { AlertCircle, Check, GitMerge, Loader2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSelectedPR } from '../../hooks'
@@ -167,27 +176,28 @@ export function MergeButton(): React.JSX.Element | null {
   const isDisabled = !canMerge || isMerging || isComputing
 
   return (
-    <div className="relative">
+    <Popover open={showConfirm} onOpenChange={setShowConfirm}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant={canMerge ? 'default' : variant}
-            size="sm"
-            className={cn(
-              'h-7 px-3 gap-1.5 font-medium',
-              canMerge && 'bg-success hover:bg-success/90 text-success-foreground',
-              isComputing && 'animate-pulse'
-            )}
-            onClick={() => canMerge && setShowConfirm(true)}
-            disabled={isDisabled}
-          >
-            {isMerging || isComputing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <GitMerge className="w-3.5 h-3.5" />
-            )}
-            <span className="text-xs">{isMerging ? 'Merging...' : 'Merge'}</span>
-          </Button>
+          <PopoverTrigger asChild>
+            <Button
+              variant={canMerge ? 'default' : variant}
+              size="sm"
+              className={cn(
+                'h-7 px-3 gap-1.5 font-medium',
+                canMerge && 'bg-success hover:bg-success/90 text-success-foreground',
+                isComputing && 'animate-pulse'
+              )}
+              disabled={isDisabled}
+            >
+              {isMerging || isComputing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <GitMerge className="w-3.5 h-3.5" />
+              )}
+              <span className="text-xs">{isMerging ? 'Merging...' : 'Merge'}</span>
+            </Button>
+          </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[240px]">
           {canMerge ? (
@@ -201,122 +211,82 @@ export function MergeButton(): React.JSX.Element | null {
         </TooltipContent>
       </Tooltip>
 
-      {/* Merge confirmation popover */}
-      {showConfirm && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-72 p-3 bg-popover border border-border rounded-lg shadow-lg">
-          <Row gutter="md" className="flex-col">
-            <Col span="full">
-              <Row gutter="sm" align="center" justify="between">
-                <Col>
-                  <span className="text-sm font-medium">Confirm Merge</span>
-                </Col>
-                <Col span="auto">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => setShowConfirm(false)}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                </Col>
-              </Row>
-            </Col>
+      <PopoverContent side="bottom" align="end" className="w-72 p-3">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Confirm Merge</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setShowConfirm(false)}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
 
-            <Col span="full">
-              <p className="text-xs text-muted-foreground">
-                This will merge <span className="font-mono">{pr.head.ref}</span> into{' '}
-                <span className="font-mono">{pr.base.ref}</span>
-              </p>
-            </Col>
+          <p className="text-xs text-muted-foreground">
+            This will merge <span className="font-mono">{pr.head.ref}</span> into{' '}
+            <span className="font-mono">{pr.base.ref}</span>
+          </p>
 
-            {/* Merge method selection */}
-            <Col span="full">
-              <fieldset className="border-0 p-0 m-0">
-                <Row gutter="xs" className="flex-col">
-                  <Col span="full">
-                    <legend className="text-xs font-medium">Merge method</legend>
-                  </Col>
-                  <Col span="full">
-                    <Row gutter="xs">
-                      {(['SQUASH', 'MERGE', 'REBASE'] as MergeMethod[]).map((method) => (
-                        <Col key={method}>
-                          <Button
-                            variant={mergeMethod === method ? 'default' : 'outline'}
-                            size="sm"
-                            className="w-full h-7 text-xs"
-                            onClick={() => setMergeMethod(method)}
-                          >
-                            {method === 'SQUASH'
-                              ? 'Squash'
-                              : method === 'MERGE'
-                                ? 'Merge'
-                                : 'Rebase'}
-                          </Button>
-                        </Col>
-                      ))}
-                    </Row>
-                  </Col>
-                </Row>
-              </fieldset>
-            </Col>
-
-            {mergeError && (
-              <Col span="full">
-                <Row
-                  gutter="sm"
-                  align="start"
-                  className="p-2 bg-destructive/10 rounded text-xs text-destructive"
+          {/* Merge method selection */}
+          <fieldset className="border-0 p-0 m-0">
+            <legend className="text-xs font-medium mb-1.5">Merge method</legend>
+            <div className="flex gap-1.5">
+              {(['SQUASH', 'MERGE', 'REBASE'] as MergeMethod[]).map((method) => (
+                <Button
+                  key={method}
+                  variant={mergeMethod === method ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 h-7 text-xs"
+                  onClick={() => setMergeMethod(method)}
                 >
-                  <Col span="auto">
-                    <AlertCircle className="w-3.5 h-3.5 mt-0.5" />
-                  </Col>
-                  <Col>
-                    <span>{mergeError}</span>
-                  </Col>
-                </Row>
-              </Col>
-            )}
+                  {method === 'SQUASH' ? 'Squash' : method === 'MERGE' ? 'Merge' : 'Rebase'}
+                </Button>
+              ))}
+            </div>
+          </fieldset>
 
-            <Col span="full">
-              <Row gutter="sm">
-                <Col>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setShowConfirm(false)}
-                    disabled={isMerging}
-                  >
-                    Cancel
-                  </Button>
-                </Col>
-                <Col>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="w-full bg-success hover:bg-success/90"
-                    onClick={handleMerge}
-                    disabled={isMerging}
-                  >
-                    {isMerging ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                        Merging...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-3.5 h-3.5 mr-1.5" />
-                        Confirm
-                      </>
-                    )}
-                  </Button>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
+          {mergeError && (
+            <div className="flex items-start gap-2 p-2 bg-destructive/10 rounded text-xs text-destructive">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{mergeError}</span>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setShowConfirm(false)}
+              disabled={isMerging}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="flex-1 bg-success hover:bg-success/90"
+              onClick={handleMerge}
+              disabled={isMerging}
+            >
+              {isMerging ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  Merging...
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1.5" />
+                  Confirm
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }

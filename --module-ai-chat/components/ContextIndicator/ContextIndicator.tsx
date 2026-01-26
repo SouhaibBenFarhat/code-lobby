@@ -2,7 +2,7 @@
  * ContextIndicator - Shows the context window usage for the current chat
  */
 
-import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui-kit'
+import { cn, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import { CONTEXT_WINDOWS, DEFAULT_CONTEXT_WINDOW } from '../../constants'
 import type { ChatMessage } from '../../types'
 import { calculateTotalTokens, estimateTokens } from '../../utils/tokens'
@@ -43,26 +43,24 @@ export function ContextIndicator({
   }
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 cursor-help">
-            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className={cn('h-full rounded-full transition-all duration-300', getColor())}
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-            {percentage >= 95 && <span className="text-[10px] text-red-500">⚠️</span>}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1.5 cursor-help">
+          <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-300', getColor())}
+              style={{ width: `${percentage}%` }}
+            />
           </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs px-2 py-1">
-          <span>
-            {percentage.toFixed(1)}% • {formatTokens(usedTokens)} / {formatTokens(maxTokens)}{' '}
-            context used
-          </span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          {percentage >= 95 && <span className="text-[10px] text-red-500">⚠️</span>}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs px-2 py-1">
+        <span>
+          {percentage.toFixed(1)}% • {formatTokens(usedTokens)} / {formatTokens(maxTokens)} context
+          used
+        </span>
+      </TooltipContent>
+    </Tooltip>
   )
 }

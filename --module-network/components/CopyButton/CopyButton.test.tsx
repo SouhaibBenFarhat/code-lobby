@@ -1,13 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@test-utils'
 import userEvent from '@testing-library/user-event'
-import { TooltipProvider } from '@ui-kit'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CopyButton } from './CopyButton'
-
-// Wrapper component to provide TooltipProvider context
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <TooltipProvider>{children}</TooltipProvider>
-}
 
 describe('CopyButton', () => {
   let mockWriteText: ReturnType<typeof vi.fn>
@@ -27,11 +21,7 @@ describe('CopyButton', () => {
   })
 
   it('should render copy icon initially', () => {
-    render(
-      <TestWrapper>
-        <CopyButton text="test" label="test" />
-      </TestWrapper>
-    )
+    render(<CopyButton text="test" label="test" />)
 
     const button = screen.getByRole('button', { name: /copy test/i })
     expect(button).toBeInTheDocument()
@@ -41,11 +31,7 @@ describe('CopyButton', () => {
     const user = userEvent.setup()
     const textToCopy = 'Hello, World!'
 
-    render(
-      <TestWrapper>
-        <CopyButton text={textToCopy} label="content" />
-      </TestWrapper>
-    )
+    render(<CopyButton text={textToCopy} label="content" />)
 
     const button = screen.getByRole('button', { name: /copy content/i })
     await user.click(button)
@@ -59,11 +45,7 @@ describe('CopyButton', () => {
   it('should show checkmark icon after successful copy', async () => {
     const user = userEvent.setup()
 
-    render(
-      <TestWrapper>
-        <CopyButton text="test" label="test" />
-      </TestWrapper>
-    )
+    render(<CopyButton text="test" label="test" />)
 
     const button = screen.getByRole('button', { name: /copy test/i })
     await user.click(button)
@@ -78,14 +60,14 @@ describe('CopyButton', () => {
     const user = userEvent.setup()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    // Override with a rejecting mock
-    mockWriteText.mockRejectedValue(new Error('Clipboard error'))
+    // Override with a rejecting mock (create new clipboard object to ensure rejection is used)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('Clipboard error')) },
+      writable: true,
+      configurable: true
+    })
 
-    render(
-      <TestWrapper>
-        <CopyButton text="test" label="test" />
-      </TestWrapper>
-    )
+    render(<CopyButton text="test" label="test" />)
 
     const button = screen.getByRole('button', { name: /copy test/i })
     await user.click(button)
@@ -99,22 +81,14 @@ describe('CopyButton', () => {
   })
 
   it('should have correct styling classes', () => {
-    render(
-      <TestWrapper>
-        <CopyButton text="test" label="test" />
-      </TestWrapper>
-    )
+    render(<CopyButton text="test" label="test" />)
 
     const button = screen.getByRole('button')
     expect(button).toHaveClass('h-5', 'w-5', 'opacity-60')
   })
 
   it('should use custom label in aria-label', () => {
-    render(
-      <TestWrapper>
-        <CopyButton text="test" label="response" />
-      </TestWrapper>
-    )
+    render(<CopyButton text="test" label="response" />)
 
     expect(screen.getByRole('button', { name: /copy response/i })).toBeInTheDocument()
   })

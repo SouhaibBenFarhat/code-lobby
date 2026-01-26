@@ -1,17 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@test-utils'
 import userEvent from '@testing-library/user-event'
-import { TooltipProvider } from '@ui-kit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatInput } from './ChatInput'
-
-// Helper to render with TooltipProvider
-function renderChatInput(props: React.ComponentProps<typeof ChatInput>) {
-  return render(
-    <TooltipProvider>
-      <ChatInput {...props} />
-    </TooltipProvider>
-  )
-}
 
 describe('ChatInput', () => {
   const defaultProps = {
@@ -46,14 +36,14 @@ describe('ChatInput', () => {
 
   describe('API key input mode', () => {
     it('shows API key input when no apiKey', () => {
-      renderChatInput({ ...defaultProps, apiKey: null })
+      render(<ChatInput {...defaultProps} apiKey={null} />)
 
       expect(screen.getByPlaceholderText(/Enter Claude API key/)).toBeInTheDocument()
       expect(screen.getByText(/console.anthropic.com/)).toBeInTheDocument()
     })
 
     it('calls onApiKeyInputChange when typing API key', async () => {
-      renderChatInput({ ...defaultProps, apiKey: null })
+      render(<ChatInput {...defaultProps} apiKey={null} />)
 
       const input = screen.getByPlaceholderText(/Enter Claude API key/)
       await userEvent.type(input, 'sk-ant-test123')
@@ -62,7 +52,7 @@ describe('ChatInput', () => {
     })
 
     it('calls onSetApiKey when Enter pressed in API key input', async () => {
-      renderChatInput({ ...defaultProps, apiKey: null, apiKeyInput: 'sk-ant-test123' })
+      render(<ChatInput {...defaultProps} apiKey={null} apiKeyInput="sk-ant-test123" />)
 
       const input = screen.getByPlaceholderText(/Enter Claude API key/)
       fireEvent.keyDown(input, { key: 'Enter' })
@@ -71,7 +61,7 @@ describe('ChatInput', () => {
     })
 
     it('calls onSetApiKey when key button clicked', async () => {
-      renderChatInput({ ...defaultProps, apiKey: null, apiKeyInput: 'sk-ant-test123' })
+      render(<ChatInput {...defaultProps} apiKey={null} apiKeyInput="sk-ant-test123" />)
 
       const buttons = screen.getAllByRole('button')
       await userEvent.click(buttons[0])
@@ -80,19 +70,16 @@ describe('ChatInput', () => {
     })
 
     it('disables button when API key input is empty', () => {
-      renderChatInput({ ...defaultProps, apiKey: null, apiKeyInput: '' })
+      render(<ChatInput {...defaultProps} apiKey={null} apiKeyInput="" />)
 
       const buttons = screen.getAllByRole('button')
       expect(buttons[0]).toBeDisabled()
     })
 
     it('disables button when setting key', () => {
-      renderChatInput({
-        ...defaultProps,
-        apiKey: null,
-        apiKeyInput: 'sk-ant-test',
-        isSettingKey: true
-      })
+      render(
+        <ChatInput {...defaultProps} apiKey={null} apiKeyInput="sk-ant-test" isSettingKey={true} />
+      )
 
       const buttons = screen.getAllByRole('button')
       expect(buttons[0]).toBeDisabled()
@@ -101,25 +88,25 @@ describe('ChatInput', () => {
 
   describe('message input mode', () => {
     it('shows textarea when API key exists', () => {
-      renderChatInput({ ...defaultProps })
+      render(<ChatInput {...defaultProps} />)
 
       expect(screen.getByPlaceholderText(/Type a message/)).toBeInTheDocument()
     })
 
     it('shows PR-specific placeholder when linkedPRChat', () => {
-      renderChatInput({ ...defaultProps, linkedPRChat: true })
+      render(<ChatInput {...defaultProps} linkedPRChat={true} />)
 
       expect(screen.getByPlaceholderText(/Ask about this PR/)).toBeInTheDocument()
     })
 
     it('shows queue placeholder when sending', () => {
-      renderChatInput({ ...defaultProps, isSending: true })
+      render(<ChatInput {...defaultProps} isSending={true} />)
 
       expect(screen.getByPlaceholderText(/Type to queue/)).toBeInTheDocument()
     })
 
     it('calls onInputChange when typing message', async () => {
-      renderChatInput({ ...defaultProps })
+      render(<ChatInput {...defaultProps} />)
 
       const textarea = screen.getByPlaceholderText(/Type a message/)
       await userEvent.type(textarea, 'Hello')
@@ -128,7 +115,7 @@ describe('ChatInput', () => {
     })
 
     it('calls onSendMessage when Enter pressed (without Shift)', async () => {
-      renderChatInput({ ...defaultProps, input: 'Hello' })
+      render(<ChatInput {...defaultProps} input="Hello" />)
 
       const textarea = screen.getByPlaceholderText(/Type a message/)
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
@@ -137,7 +124,7 @@ describe('ChatInput', () => {
     })
 
     it('does not call onSendMessage when Shift+Enter pressed', async () => {
-      renderChatInput({ ...defaultProps, input: 'Hello' })
+      render(<ChatInput {...defaultProps} input="Hello" />)
 
       const textarea = screen.getByPlaceholderText(/Type a message/)
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
@@ -146,7 +133,7 @@ describe('ChatInput', () => {
     })
 
     it('calls onSendMessage when send button clicked', async () => {
-      renderChatInput({ ...defaultProps, input: 'Hello' })
+      render(<ChatInput {...defaultProps} input="Hello" />)
 
       const sendButton = screen.getByTitle(/Send message/)
       await userEvent.click(sendButton)
@@ -155,7 +142,7 @@ describe('ChatInput', () => {
     })
 
     it('disables send button when input is empty', () => {
-      renderChatInput({ ...defaultProps, input: '' })
+      render(<ChatInput {...defaultProps} input="" />)
 
       const sendButton = screen.getByTitle(/Send message/)
       expect(sendButton).toBeDisabled()
@@ -164,13 +151,13 @@ describe('ChatInput', () => {
 
   describe('quick actions', () => {
     it('renders QuickActions component', () => {
-      renderChatInput({ ...defaultProps })
+      render(<ChatInput {...defaultProps} />)
 
       expect(screen.getByText('Test Prompt')).toBeInTheDocument()
     })
 
     it('applies disabled styling to QuickActions when sending', () => {
-      renderChatInput({ ...defaultProps, isSending: true })
+      render(<ChatInput {...defaultProps} isSending={true} />)
 
       // Quick action buttons receive disabled styling (opacity-50 and cursor-not-allowed)
       const button = screen.getByText('Test Prompt').closest('button')
@@ -179,10 +166,12 @@ describe('ChatInput', () => {
     })
 
     it('applies disabled styling to QuickActions when streaming', () => {
-      renderChatInput({
-        ...defaultProps,
-        streaming: { content: 'test', thinking: '', isStreaming: true }
-      })
+      render(
+        <ChatInput
+          {...defaultProps}
+          streaming={{ content: 'test', thinking: '', isStreaming: true }}
+        />
+      )
 
       const button = screen.getByText('Test Prompt').closest('button')
       expect(button).toHaveClass('opacity-50')
@@ -190,7 +179,7 @@ describe('ChatInput', () => {
     })
 
     it('applies disabled styling to QuickActions when context invalid for PR chat', () => {
-      renderChatInput({ ...defaultProps, linkedPRChat: true, isContextValid: false })
+      render(<ChatInput {...defaultProps} linkedPRChat={true} isContextValid={false} />)
 
       const button = screen.getByText('Test Prompt').closest('button')
       expect(button).toHaveClass('opacity-50')
@@ -200,14 +189,14 @@ describe('ChatInput', () => {
 
   describe('context indicator', () => {
     it('renders ContextIndicator', () => {
-      renderChatInput({ ...defaultProps })
+      render(<ChatInput {...defaultProps} />)
 
       // The ContextIndicator should be present (shows token count)
       expect(screen.getByText(/Enter to send/)).toBeInTheDocument()
     })
 
     it('shows queue hint when sending', () => {
-      renderChatInput({ ...defaultProps, isSending: true })
+      render(<ChatInput {...defaultProps} isSending={true} />)
 
       expect(screen.getByText(/Enter to queue/)).toBeInTheDocument()
     })
@@ -215,7 +204,7 @@ describe('ChatInput', () => {
 
   describe('web fetch toggle', () => {
     it('renders web fetch toggle button', () => {
-      renderChatInput({ ...defaultProps })
+      render(<ChatInput {...defaultProps} />)
 
       // The globe icon button should be present
       const buttons = screen.getAllByRole('button')
@@ -224,7 +213,7 @@ describe('ChatInput', () => {
     })
 
     it('shows enabled styling when web fetch is enabled', () => {
-      renderChatInput({ ...defaultProps, enableWebFetch: true })
+      render(<ChatInput {...defaultProps} enableWebFetch={true} />)
 
       const buttons = screen.getAllByRole('button')
       const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
@@ -232,7 +221,7 @@ describe('ChatInput', () => {
     })
 
     it('shows ghost styling when web fetch is disabled', () => {
-      renderChatInput({ ...defaultProps, enableWebFetch: false })
+      render(<ChatInput {...defaultProps} enableWebFetch={false} />)
 
       const buttons = screen.getAllByRole('button')
       const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
@@ -240,7 +229,7 @@ describe('ChatInput', () => {
     })
 
     it('calls onWebFetchChange when toggle clicked', async () => {
-      renderChatInput({ ...defaultProps, enableWebFetch: false })
+      render(<ChatInput {...defaultProps} enableWebFetch={false} />)
 
       const buttons = screen.getAllByRole('button')
       const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
@@ -250,7 +239,7 @@ describe('ChatInput', () => {
     })
 
     it('toggles from enabled to disabled', async () => {
-      renderChatInput({ ...defaultProps, enableWebFetch: true })
+      render(<ChatInput {...defaultProps} enableWebFetch={true} />)
 
       const buttons = screen.getAllByRole('button')
       const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
@@ -270,7 +259,7 @@ describe('ChatInput', () => {
           createdAt: new Date().toISOString()
         }
       ]
-      renderChatInput({ ...defaultProps, customPrompts })
+      render(<ChatInput {...defaultProps} customPrompts={customPrompts} />)
 
       expect(screen.getByText('My Custom')).toBeInTheDocument()
     })
@@ -278,7 +267,7 @@ describe('ChatInput', () => {
     it('calls onAddCustomPrompt handler', async () => {
       // This would be tested via QuickActions, but we verify the prop is passed
       const onAddCustomPrompt = vi.fn()
-      renderChatInput({ ...defaultProps, onAddCustomPrompt })
+      render(<ChatInput {...defaultProps} onAddCustomPrompt={onAddCustomPrompt} />)
 
       // Verify the prop was passed (callback is available for QuickActions)
       expect(onAddCustomPrompt).toBeDefined()

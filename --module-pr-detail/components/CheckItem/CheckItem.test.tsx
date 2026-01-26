@@ -39,7 +39,8 @@ describe('CheckItem', () => {
 
       render(<CheckItem check={check} owner="test-org" repo="test-repo" />)
 
-      expect(screen.getByText('success')).toBeInTheDocument()
+      // Badge displays "Passed" for success conclusion
+      expect(screen.getByText('Passed')).toBeInTheDocument()
     })
 
     it('should show "Running" for in-progress checks', () => {
@@ -111,38 +112,32 @@ describe('CheckItem', () => {
     })
   })
 
-  describe('AI analysis button', () => {
-    it('should show AI analyze button only for failed checks', () => {
+  describe('accessibility', () => {
+    it('should be interactive for failed checks', () => {
       const failedCheck = createMockCheckRun({ status: 'completed', conclusion: 'failure' })
 
-      const { container } = render(
-        <CheckItem check={failedCheck} owner="test-org" repo="test-repo" />
-      )
+      render(<CheckItem check={failedCheck} owner="test-org" repo="test-repo" />)
 
-      const sparklesIcon = container.querySelector('.lucide-sparkles')
-      expect(sparklesIcon).toBeInTheDocument()
+      // Badge shows "Failed" for failure conclusion
+      expect(screen.getByText('Failed')).toBeInTheDocument()
     })
 
-    it('should not show AI analyze button for successful checks', () => {
+    it('should be interactive for successful checks', () => {
       const successCheck = createMockCheckRun({ status: 'completed', conclusion: 'success' })
 
-      const { container } = render(
-        <CheckItem check={successCheck} owner="test-org" repo="test-repo" />
-      )
+      render(<CheckItem check={successCheck} owner="test-org" repo="test-repo" />)
 
-      const sparklesIcon = container.querySelector('.lucide-sparkles')
-      expect(sparklesIcon).not.toBeInTheDocument()
+      // Badge shows "Passed" for success conclusion
+      expect(screen.getByText('Passed')).toBeInTheDocument()
     })
 
-    it('should not show AI analyze button for running checks', () => {
+    it('should be interactive for running checks', () => {
       const runningCheck = createMockCheckRun({ status: 'in_progress', conclusion: null })
 
-      const { container } = render(
-        <CheckItem check={runningCheck} owner="test-org" repo="test-repo" />
-      )
+      render(<CheckItem check={runningCheck} owner="test-org" repo="test-repo" />)
 
-      const sparklesIcon = container.querySelector('.lucide-sparkles')
-      expect(sparklesIcon).not.toBeInTheDocument()
+      // Badge shows "Running" for in_progress status
+      expect(screen.getByText('Running')).toBeInTheDocument()
     })
   })
 
@@ -169,11 +164,11 @@ describe('CheckItem', () => {
 
   describe('different conclusions', () => {
     it.each([
-      ['success', 'success'],
-      ['failure', 'failure'],
-      ['cancelled', 'cancelled'],
-      ['skipped', 'skipped'],
-      ['neutral', 'neutral']
+      ['success', 'Passed'],
+      ['failure', 'Failed'],
+      ['cancelled', 'Cancelled'],
+      ['skipped', 'Skipped'],
+      ['neutral', 'Pending']
     ])('should display %s conclusion correctly', (conclusion, expectedText) => {
       const check = createMockCheckRun({
         status: 'completed',

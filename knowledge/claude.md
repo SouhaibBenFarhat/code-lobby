@@ -479,15 +479,15 @@ Tailwind classes can be overridden by CSS. For complex states, use CSS classes i
 
 ### Starting Development
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### Building for Production
 ```bash
-npm run build        # Build only
-npm run build:mac    # Build for macOS
-npm run build:win    # Build for Windows
-npm run build:linux  # Build for Linux
+pnpm run build        # Build only
+pnpm run build:mac    # Build for macOS
+pnpm run build:win    # Build for Windows
+pnpm run build:linux  # Build for Linux
 ```
 
 ### Project Scripts
@@ -1001,13 +1001,13 @@ CodeLobby uses **Biome** for fast linting and formatting.
 
 ### Commands
 ```bash
-npm run lint        # Check for issues
-npm run lint:fix    # Auto-fix issues  
-npm run format      # Format code
+pnpm run lint        # Check for issues
+pnpm run lint:fix    # Auto-fix issues  
+pnpm run format      # Format code
 ```
 
 ### Pre-commit Hook
-The `.husky/pre-commit` hook runs `npm run lint` and `npm test` before each commit. Both must pass.
+The `.husky/pre-commit` hook runs `pnpm run lint` and `npm test` before each commit. Both must pass.
 
 ### Rules Configuration
 
@@ -1352,7 +1352,7 @@ When refactoring any module:
 - [ ] Keep the Wrapper component that connects to TanStack Query
 - [ ] Verify no cross-module imports added
 - [ ] Test that module appears in the correct slot after refactor
-- [ ] Check `npm run dev` shows the module rendering correctly
+- [ ] Check `pnpm run dev` shows the module rendering correctly
 
 ### 🎯 Dumb Component Pattern (When Splitting Components)
 

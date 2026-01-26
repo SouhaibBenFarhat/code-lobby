@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.12/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -54,5 +54,397 @@
       "semicolons": "asNeeded",
       "trailingCommas": "none"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["--module-logger/**/*.ts", "--module-logger/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ui-kit": "Level 0 (@logger) cannot import from Level 1",
+                  "@ui-kit/*": "Level 0 (@logger) cannot import from Level 1",
+                  "@data": "Level 0 (@logger) cannot import from Level 1",
+                  "@data/*": "Level 0 (@logger) cannot import from Level 1",
+                  "@slot-system": "Level 0 (@logger) cannot import from Level 2",
+                  "@slot-system/*": "Level 0 (@logger) cannot import from Level 2",
+                  "@test-utils": "Level 0 (@logger) cannot import from Level 2",
+                  "@test-utils/*": "Level 0 (@logger) cannot import from Level 2",
+                  "@header": "Level 0 (@logger) cannot import from Level 3",
+                  "@canvas": "Level 0 (@logger) cannot import from Level 3",
+                  "@pr-detail": "Level 0 (@logger) cannot import from Level 3",
+                  "@ai-chat": "Level 0 (@logger) cannot import from Level 3",
+                  "@network": "Level 0 (@logger) cannot import from Level 3",
+                  "@explorer": "Level 0 (@logger) cannot import from Level 3",
+                  "@app": "Level 0 (@logger) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-ui-kit/**/*.ts", "--module-ui-kit/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@data": "Level 1 modules cannot import from each other (@ui-kit ↔ @data)",
+                  "@data/*": "Level 1 modules cannot import from each other (@ui-kit ↔ @data)",
+                  "@slot-system": "Level 1 (@ui-kit) cannot import from Level 2",
+                  "@slot-system/*": "Level 1 (@ui-kit) cannot import from Level 2",
+                  "@test-utils": "Level 1 (@ui-kit) cannot import from Level 2",
+                  "@test-utils/*": "Level 1 (@ui-kit) cannot import from Level 2",
+                  "@header": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@canvas": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@pr-detail": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@ai-chat": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@network": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@explorer": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@app": "Level 1 (@ui-kit) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-data/**/*.ts", "--module-data/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ui-kit": "Level 1 modules cannot import from each other (@data ↔ @ui-kit)",
+                  "@ui-kit/*": "Level 1 modules cannot import from each other (@data ↔ @ui-kit)",
+                  "@slot-system": "Level 1 (@data) cannot import from Level 2",
+                  "@slot-system/*": "Level 1 (@data) cannot import from Level 2",
+                  "@test-utils": "Level 1 (@data) cannot import from Level 2",
+                  "@test-utils/*": "Level 1 (@data) cannot import from Level 2",
+                  "@header": "Level 1 (@data) cannot import from Level 3",
+                  "@canvas": "Level 1 (@data) cannot import from Level 3",
+                  "@pr-detail": "Level 1 (@data) cannot import from Level 3",
+                  "@ai-chat": "Level 1 (@data) cannot import from Level 3",
+                  "@network": "Level 1 (@data) cannot import from Level 3",
+                  "@explorer": "Level 1 (@data) cannot import from Level 3",
+                  "@app": "Level 1 (@data) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-slot-system/**/*.ts", "--module-slot-system/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@test-utils": "Level 2 modules cannot import from each other (@slot-system ↔ @test-utils)",
+                  "@test-utils/*": "Level 2 modules cannot import from each other (@slot-system ↔ @test-utils)",
+                  "@header": "Level 2 (@slot-system) cannot import from Level 3",
+                  "@canvas": "Level 2 (@slot-system) cannot import from Level 3",
+                  "@pr-detail": "Level 2 (@slot-system) cannot import from Level 3",
+                  "@ai-chat": "Level 2 (@slot-system) cannot import from Level 3",
+                  "@network": "Level 2 (@slot-system) cannot import from Level 3",
+                  "@explorer": "Level 2 (@slot-system) cannot import from Level 3",
+                  "@app": "Level 2 (@slot-system) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-test-utils/**/*.ts", "--module-test-utils/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@slot-system": "Level 2 modules cannot import from each other (@test-utils ↔ @slot-system)",
+                  "@slot-system/*": "Level 2 modules cannot import from each other (@test-utils ↔ @slot-system)",
+                  "@header": "Level 2 (@test-utils) cannot import from Level 3",
+                  "@canvas": "Level 2 (@test-utils) cannot import from Level 3",
+                  "@pr-detail": "Level 2 (@test-utils) cannot import from Level 3",
+                  "@ai-chat": "Level 2 (@test-utils) cannot import from Level 3",
+                  "@network": "Level 2 (@test-utils) cannot import from Level 3",
+                  "@explorer": "Level 2 (@test-utils) cannot import from Level 3",
+                  "@app": "Level 2 (@test-utils) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-header/**/*.ts", "--module-header/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@canvas": "Level 3 modules cannot import from each other",
+                  "@canvas/*": "Level 3 modules cannot import from each other",
+                  "@pr-detail": "Level 3 modules cannot import from each other",
+                  "@pr-detail/*": "Level 3 modules cannot import from each other",
+                  "@ai-chat": "Level 3 modules cannot import from each other",
+                  "@ai-chat/*": "Level 3 modules cannot import from each other",
+                  "@network": "Level 3 modules cannot import from each other",
+                  "@network/*": "Level 3 modules cannot import from each other",
+                  "@explorer": "Level 3 modules cannot import from each other",
+                  "@explorer/*": "Level 3 modules cannot import from each other",
+                  "@app": "Level 3 (@header) cannot import from Level 4",
+                  "@app/*": "Level 3 (@header) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-canvas/**/*.ts", "--module-canvas/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@header": "Level 3 modules cannot import from each other",
+                  "@header/*": "Level 3 modules cannot import from each other",
+                  "@pr-detail": "Level 3 modules cannot import from each other",
+                  "@pr-detail/*": "Level 3 modules cannot import from each other",
+                  "@ai-chat": "Level 3 modules cannot import from each other",
+                  "@ai-chat/*": "Level 3 modules cannot import from each other",
+                  "@network": "Level 3 modules cannot import from each other",
+                  "@network/*": "Level 3 modules cannot import from each other",
+                  "@explorer": "Level 3 modules cannot import from each other",
+                  "@explorer/*": "Level 3 modules cannot import from each other",
+                  "@app": "Level 3 (@canvas) cannot import from Level 4",
+                  "@app/*": "Level 3 (@canvas) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-pr-detail/**/*.ts", "--module-pr-detail/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@header": "Level 3 modules cannot import from each other",
+                  "@header/*": "Level 3 modules cannot import from each other",
+                  "@canvas": "Level 3 modules cannot import from each other",
+                  "@canvas/*": "Level 3 modules cannot import from each other",
+                  "@ai-chat": "Level 3 modules cannot import from each other",
+                  "@ai-chat/*": "Level 3 modules cannot import from each other",
+                  "@network": "Level 3 modules cannot import from each other",
+                  "@network/*": "Level 3 modules cannot import from each other",
+                  "@explorer": "Level 3 modules cannot import from each other",
+                  "@explorer/*": "Level 3 modules cannot import from each other",
+                  "@app": "Level 3 (@pr-detail) cannot import from Level 4",
+                  "@app/*": "Level 3 (@pr-detail) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-ai-chat/**/*.ts", "--module-ai-chat/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@header": "Level 3 modules cannot import from each other",
+                  "@header/*": "Level 3 modules cannot import from each other",
+                  "@canvas": "Level 3 modules cannot import from each other",
+                  "@canvas/*": "Level 3 modules cannot import from each other",
+                  "@pr-detail": "Level 3 modules cannot import from each other",
+                  "@pr-detail/*": "Level 3 modules cannot import from each other",
+                  "@network": "Level 3 modules cannot import from each other",
+                  "@network/*": "Level 3 modules cannot import from each other",
+                  "@explorer": "Level 3 modules cannot import from each other",
+                  "@explorer/*": "Level 3 modules cannot import from each other",
+                  "@app": "Level 3 (@ai-chat) cannot import from Level 4",
+                  "@app/*": "Level 3 (@ai-chat) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-network/**/*.ts", "--module-network/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@header": "Level 3 modules cannot import from each other",
+                  "@header/*": "Level 3 modules cannot import from each other",
+                  "@canvas": "Level 3 modules cannot import from each other",
+                  "@canvas/*": "Level 3 modules cannot import from each other",
+                  "@pr-detail": "Level 3 modules cannot import from each other",
+                  "@pr-detail/*": "Level 3 modules cannot import from each other",
+                  "@ai-chat": "Level 3 modules cannot import from each other",
+                  "@ai-chat/*": "Level 3 modules cannot import from each other",
+                  "@explorer": "Level 3 modules cannot import from each other",
+                  "@explorer/*": "Level 3 modules cannot import from each other",
+                  "@app": "Level 3 (@network) cannot import from Level 4",
+                  "@app/*": "Level 3 (@network) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-explorer/**/*.ts", "--module-explorer/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@header": "Level 3 modules cannot import from each other",
+                  "@header/*": "Level 3 modules cannot import from each other",
+                  "@canvas": "Level 3 modules cannot import from each other",
+                  "@canvas/*": "Level 3 modules cannot import from each other",
+                  "@pr-detail": "Level 3 modules cannot import from each other",
+                  "@pr-detail/*": "Level 3 modules cannot import from each other",
+                  "@ai-chat": "Level 3 modules cannot import from each other",
+                  "@ai-chat/*": "Level 3 modules cannot import from each other",
+                  "@network": "Level 3 modules cannot import from each other",
+                  "@network/*": "Level 3 modules cannot import from each other",
+                  "@app": "Level 3 (@explorer) cannot import from Level 4",
+                  "@app/*": "Level 3 (@explorer) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-logger/**/*.test.ts", "--module-logger/**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ui-kit": "Level 0 (@logger) cannot import from Level 1",
+                  "@ui-kit/*": "Level 0 (@logger) cannot import from Level 1",
+                  "@data": "Level 0 (@logger) cannot import from Level 1",
+                  "@data/*": "Level 0 (@logger) cannot import from Level 1",
+                  "@slot-system": "Level 0 (@logger) cannot import from Level 2",
+                  "@slot-system/*": "Level 0 (@logger) cannot import from Level 2",
+                  "@header": "Level 0 (@logger) cannot import from Level 3",
+                  "@canvas": "Level 0 (@logger) cannot import from Level 3",
+                  "@pr-detail": "Level 0 (@logger) cannot import from Level 3",
+                  "@ai-chat": "Level 0 (@logger) cannot import from Level 3",
+                  "@network": "Level 0 (@logger) cannot import from Level 3",
+                  "@explorer": "Level 0 (@logger) cannot import from Level 3",
+                  "@app": "Level 0 (@logger) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-ui-kit/**/*.test.ts", "--module-ui-kit/**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@data": "Level 1 modules cannot import from each other (@ui-kit ↔ @data)",
+                  "@data/*": "Level 1 modules cannot import from each other (@ui-kit ↔ @data)",
+                  "@slot-system": "Level 1 (@ui-kit) cannot import from Level 2",
+                  "@slot-system/*": "Level 1 (@ui-kit) cannot import from Level 2",
+                  "@header": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@canvas": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@pr-detail": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@ai-chat": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@network": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@explorer": "Level 1 (@ui-kit) cannot import from Level 3",
+                  "@app": "Level 1 (@ui-kit) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["--module-data/**/*.test.ts", "--module-data/**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ui-kit": "Level 1 modules cannot import from each other (@data ↔ @ui-kit)",
+                  "@ui-kit/*": "Level 1 modules cannot import from each other (@data ↔ @ui-kit)",
+                  "@slot-system": "Level 1 (@data) cannot import from Level 2",
+                  "@slot-system/*": "Level 1 (@data) cannot import from Level 2",
+                  "@header": "Level 1 (@data) cannot import from Level 3",
+                  "@canvas": "Level 1 (@data) cannot import from Level 3",
+                  "@pr-detail": "Level 1 (@data) cannot import from Level 3",
+                  "@ai-chat": "Level 1 (@data) cannot import from Level 3",
+                  "@network": "Level 1 (@data) cannot import from Level 3",
+                  "@explorer": "Level 1 (@data) cannot import from Level 3",
+                  "@app": "Level 1 (@data) cannot import from Level 4"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

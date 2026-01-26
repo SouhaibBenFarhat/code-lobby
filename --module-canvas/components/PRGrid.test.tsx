@@ -21,7 +21,7 @@ let mockMinimizedRepos: string[] = []
 const mockSetCardLayoutsMutation = vi.fn()
 const mockSetSelectedReposMutation = vi.fn()
 
-vi.mock('@codelobby/queries', () => ({
+vi.mock('@data', () => ({
   useRepos: () => ({
     data: mockRepos,
     isLoading: false,
@@ -58,7 +58,19 @@ vi.mock('@codelobby/queries', () => ({
     refetch: vi.fn()
   }),
   useQueryClient: () => ({
-    refetchQueries: vi.fn()
+    refetchQueries: vi.fn(),
+    invalidateQueries: vi.fn()
+  }),
+  useUser: () => ({
+    data: { user: { login: 'testuser' } },
+    isLoading: false
+  }),
+  useMyPRsRepos: () => ({
+    data: [],
+    isLoading: false
+  }),
+  useToggleMyPRsFilter: () => ({
+    mutate: vi.fn()
   })
 }))
 

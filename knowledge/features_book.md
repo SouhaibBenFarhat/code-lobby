@@ -618,7 +618,7 @@ GitHub has API limits. CodeLobby respects them:
 
 - **Visual Gauge** — See your remaining API calls
 - **Reset Timer** — Know when limits refresh
-- **Smart Caching** — Data is cached for 30 minutes
+- **Tiered Caching** — PRs cached for 15 minutes, repos for 1 hour
 - **Graceful Handling** — Clear messages when limits are reached
 
 Never wonder why data isn't loading.

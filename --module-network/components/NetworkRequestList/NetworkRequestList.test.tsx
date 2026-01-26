@@ -1,13 +1,7 @@
 import type { NetworkRequest } from '@data'
-import { render, screen } from '@testing-library/react'
-import { TooltipProvider } from '@ui-kit'
+import { render, screen } from '@test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NetworkRequestList } from './NetworkRequestList'
-
-// Wrapper component to provide TooltipProvider context
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <TooltipProvider>{children}</TooltipProvider>
-}
 
 const createMockRequest = (
   id: string,
@@ -39,11 +33,7 @@ describe('NetworkRequestList', () => {
 
   describe('Empty State', () => {
     it('should show empty state when no requests', () => {
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={[]} filteredRequests={[]} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={[]} filteredRequests={[]} />)
 
       expect(screen.getByTestId('empty-state')).toBeInTheDocument()
       expect(screen.getByText('No requests yet')).toBeInTheDocument()
@@ -51,11 +41,7 @@ describe('NetworkRequestList', () => {
 
     it('should not show empty state when there are requests', () => {
       const requests = [createMockRequest('1')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
     })
@@ -64,11 +50,7 @@ describe('NetworkRequestList', () => {
   describe('No Match State', () => {
     it('should show no match state when requests exist but none match filter', () => {
       const requests = [createMockRequest('1')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={[]} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={[]} />)
 
       expect(screen.getByTestId('no-match-state')).toBeInTheDocument()
       expect(screen.getByText('No matching requests')).toBeInTheDocument()
@@ -77,11 +59,7 @@ describe('NetworkRequestList', () => {
 
     it('should not show no match state when filter matches some requests', () => {
       const requests = [createMockRequest('1'), createMockRequest('2')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={[requests[0]]} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={[requests[0]]} />)
 
       expect(screen.queryByTestId('no-match-state')).not.toBeInTheDocument()
     })
@@ -90,11 +68,7 @@ describe('NetworkRequestList', () => {
   describe('Request Items', () => {
     it('should render request items when there are filtered requests', () => {
       const requests = [createMockRequest('1'), createMockRequest('2'), createMockRequest('3')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       expect(screen.getByTestId('request-items')).toBeInTheDocument()
       expect(screen.getAllByTestId('network-request-item')).toHaveLength(3)
@@ -106,11 +80,7 @@ describe('NetworkRequestList', () => {
         createMockRequest('2', { url: 'https://second.com' }),
         createMockRequest('3', { url: 'https://third.com' })
       ]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       const items = screen.getAllByTestId('network-request-item')
       // Chronological order: first in array is first in list (oldest first, newest last)
@@ -127,11 +97,7 @@ describe('NetworkRequestList', () => {
       ]
       const filteredRequests = [requests[0], requests[2]]
 
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={filteredRequests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={filteredRequests} />)
 
       const items = screen.getAllByTestId('network-request-item')
       expect(items).toHaveLength(2)
@@ -142,11 +108,7 @@ describe('NetworkRequestList', () => {
   describe('ScrollArea', () => {
     it('should render within a ScrollArea', () => {
       const requests = [createMockRequest('1')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       expect(screen.getByTestId('network-request-list')).toBeInTheDocument()
     })
@@ -155,11 +117,7 @@ describe('NetworkRequestList', () => {
   describe('Timeline Format', () => {
     it('should pass isLast=true to the last item', () => {
       const requests = [createMockRequest('1'), createMockRequest('2'), createMockRequest('3')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       // All items should have timeline indicators
       const items = screen.getAllByTestId('timeline-indicator')
@@ -168,11 +126,7 @@ describe('NetworkRequestList', () => {
 
     it('should have timeline dots for each request', () => {
       const requests = [createMockRequest('1'), createMockRequest('2')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       const dots = screen.getAllByTestId('timeline-dot')
       expect(dots).toHaveLength(2)
@@ -182,22 +136,14 @@ describe('NetworkRequestList', () => {
   describe('Edge Cases', () => {
     it('should handle single request', () => {
       const requests = [createMockRequest('1')]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       expect(screen.getAllByTestId('network-request-item')).toHaveLength(1)
     })
 
     it('should handle many requests', () => {
       const requests = Array.from({ length: 50 }, (_, i) => createMockRequest(`${i}`))
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       expect(screen.getAllByTestId('network-request-item')).toHaveLength(50)
     })
@@ -208,11 +154,7 @@ describe('NetworkRequestList', () => {
         createMockRequest('2', { status: 'error' }),
         createMockRequest('3', { status: 'pending' })
       ]
-      render(
-        <TestWrapper>
-          <NetworkRequestList requests={requests} filteredRequests={requests} />
-        </TestWrapper>
-      )
+      render(<NetworkRequestList requests={requests} filteredRequests={requests} />)
 
       // All items should render regardless of status
       expect(screen.getAllByTestId('network-request-item')).toHaveLength(3)

@@ -78,7 +78,8 @@ describe('ChangedFilesSection', () => {
       defaultOptions: {
         queries: {
           retry: false,
-          gcTime: Infinity, staleTime: Infinity
+          gcTime: Infinity,
+          staleTime: Infinity
         }
       }
     })
@@ -374,7 +375,8 @@ describe('ChangedFilesSection', () => {
         <ChangedFilesSection repoFullName="my-org/my-repo" prNumber={42} totalChanged={10} />
       )
 
-      expect(mockUsePRFiles).toHaveBeenCalledWith('my-org/my-repo', 42)
+      // usePRFiles is called with (repoFullName, prNumber, totalChanged)
+      expect(mockUsePRFiles).toHaveBeenCalledWith('my-org/my-repo', 42, 10)
     })
   })
 })

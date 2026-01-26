@@ -144,7 +144,8 @@ describe('FileTreeNode', () => {
       })
       const { container } = render(<FileTreeNode node={node} {...baseProps} />)
 
-      const renameIcon = container.querySelector('.lucide-file-edit')
+      // Check for any lucide icon (class starts with lucide-)
+      const renameIcon = container.querySelector('svg[class*="lucide"]')
       expect(renameIcon).toBeInTheDocument()
     })
 

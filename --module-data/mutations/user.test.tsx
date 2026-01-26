@@ -118,8 +118,8 @@ describe('User Mutations', () => {
       // Token should be cleared
       expect(queryClient.getQueryData(keys.githubToken)).toBeUndefined()
 
-      // User should be null
-      expect(queryClient.getQueryData(keys.user)).toBeNull()
+      // User should be cleared (undefined when removed from cache)
+      expect(queryClient.getQueryData(keys.user)).toBeUndefined()
 
       // Repos should be cleared
       expect(queryClient.getQueryData(keys.repos)).toBeUndefined()

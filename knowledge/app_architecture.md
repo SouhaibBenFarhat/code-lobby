@@ -583,11 +583,11 @@ export function useSetMyNewState() {
 ### Key Commands
 
 ```bash
-npm run dev          # Start development
-npm run build        # Build for production
-npm run lint         # Run Biome linter
-npm run lint:fix     # Auto-fix lint issues
-npm run test         # Run tests
+pnpm run dev          # Start development
+pnpm run build        # Build for production
+pnpm run lint         # Run Biome linter
+pnpm run lint:fix     # Auto-fix lint issues
+pnpm run test         # Run tests
 ```
 
 ### Key Principles Summary
