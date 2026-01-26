@@ -160,7 +160,11 @@ export function MergeButton(): React.JSX.Element | null {
     mergeMutation.mutate(
       { prNodeId: pr.id, mergeMethod },
       {
-        onSuccess: () => setShowConfirm(false)
+        onSuccess: () => setShowConfirm(false),
+        onError: () => {
+          // Error is already captured in mergeMutation.error
+          // Just ensure popover stays open so user sees the error
+        }
       }
     )
   }
