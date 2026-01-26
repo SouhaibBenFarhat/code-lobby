@@ -240,7 +240,7 @@ describe('MergeButton', () => {
 
     it('should disable confirm button during submission', async () => {
       const pr = createMockMergeablePR()
-      let resolvePromise: (value: { success: boolean }) => void
+      let resolvePromise!: (value: { success: boolean }) => void
       const promise = new Promise<{ success: boolean }>((resolve) => {
         resolvePromise = resolve
       })

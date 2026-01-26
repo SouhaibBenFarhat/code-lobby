@@ -384,9 +384,9 @@ describe('GitHub API', () => {
 
       expect(result.number).toBe(42)
       expect(result.commentsList).toHaveLength(1)
-      expect(result.commentsList[0].body).toBe('Great work!')
+      expect(result.commentsList?.[0]?.body).toBe('Great work!')
       expect(result.reviews).toHaveLength(1)
-      expect(result.reviews[0].state).toBe('approved')
+      expect(result.reviews?.[0]?.state).toBe('approved')
     })
   })
 

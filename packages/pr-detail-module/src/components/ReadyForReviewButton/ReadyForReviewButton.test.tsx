@@ -29,28 +29,28 @@ describe('ReadyForReviewButton', () => {
 
   describe('visibility', () => {
     it('should render for draft PRs', () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       render(<ReadyForReviewButton />, { initialSelectedPR: pr })
 
       expect(screen.getByRole('button', { name: /Ready for Review/i })).toBeInTheDocument()
     })
 
     it('should NOT render for non-draft PRs', () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: false })
+      const pr = createMockPullRequest({ state: 'open', draft: false })
       const { container } = render(<ReadyForReviewButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
     })
 
     it('should NOT render for closed draft PRs', () => {
-      const pr = createMockPullRequest({ state: 'CLOSED', draft: true })
+      const pr = createMockPullRequest({ state: 'closed', draft: true })
       const { container } = render(<ReadyForReviewButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
     })
 
     it('should NOT render for merged PRs', () => {
-      const pr = createMockPullRequest({ state: 'MERGED', draft: false })
+      const pr = createMockPullRequest({ state: undefined, draft: false })
       const { container } = render(<ReadyForReviewButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
@@ -65,7 +65,7 @@ describe('ReadyForReviewButton', () => {
 
   describe('button states', () => {
     it('should be enabled for draft PRs', () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       render(<ReadyForReviewButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Ready for Review/i })
@@ -73,7 +73,7 @@ describe('ReadyForReviewButton', () => {
     })
 
     it('should render eye icon', () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       const { container } = render(<ReadyForReviewButton />, { initialSelectedPR: pr })
 
       const eyeIcon = container.querySelector('.lucide-eye')
@@ -83,7 +83,7 @@ describe('ReadyForReviewButton', () => {
 
   describe('mark ready submission', () => {
     it('should call markPRReady on click', async () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       window.electron.markPRReady = vi.fn().mockResolvedValue({ success: true })
 
       render(<ReadyForReviewButton />, { initialSelectedPR: pr })
@@ -97,7 +97,7 @@ describe('ReadyForReviewButton', () => {
     })
 
     it('should show loading state during submission', async () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       window.electron.markPRReady = vi
         .fn()
         .mockImplementation(
@@ -115,7 +115,7 @@ describe('ReadyForReviewButton', () => {
     })
 
     it('should show success state after marking ready', async () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       window.electron.markPRReady = vi.fn().mockResolvedValue({ success: true })
 
       render(<ReadyForReviewButton />, { initialSelectedPR: pr })
@@ -129,7 +129,7 @@ describe('ReadyForReviewButton', () => {
     })
 
     it('should handle errors gracefully', async () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       window.electron.markPRReady = vi
         .fn()
         .mockResolvedValue({ success: false, error: 'Permission denied' })

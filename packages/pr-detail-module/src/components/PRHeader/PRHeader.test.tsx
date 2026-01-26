@@ -5,7 +5,7 @@
  * Components subscribe to store directly - use initialSelectedPR option in render.
  */
 
-import type { GitHubUser } from '@codelobby/shared-store'
+import type { GitHubUser } from '@codelobby/data'
 import {
   createMockPullRequest,
   fireEvent,
@@ -23,7 +23,8 @@ describe('PRHeader', () => {
   const mockUser: GitHubUser = {
     login: 'testuser',
     avatar_url: 'https://example.com/avatar.png',
-    name: 'Test User'
+    name: 'Test User',
+    html_url: 'https://github.com/testuser'
   }
 
   beforeEach(() => {

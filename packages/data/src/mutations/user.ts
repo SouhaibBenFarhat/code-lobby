@@ -26,9 +26,10 @@ export function useSignIn() {
       console.log('[useSignIn] onSuccess - setting token and user')
       // Store token in TanStack cache (persisted to localStorage)
       qc.setQueryData(keys.githubToken, token)
+      const cachedToken = qc.getQueryData<string>(keys.githubToken)
       console.log(
         '[useSignIn] Token set in cache:',
-        `${qc.getQueryData(keys.githubToken)?.substring(0, 10)}...`
+        `${typeof cachedToken === 'string' ? cachedToken.substring(0, 10) : ''}...`
       )
       // Store user data as AuthData format { user, token }
       qc.setQueryData(keys.user, { user, token })

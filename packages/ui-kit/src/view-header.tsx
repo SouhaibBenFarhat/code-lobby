@@ -12,7 +12,7 @@
 import * as React from 'react'
 import { cn } from './utils'
 
-export interface ViewHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ViewHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   /** Size variant - affects height and padding */
   size?: 'sm' | 'md' | 'lg'
   /** Whether to show elevation shadow */
@@ -23,7 +23,7 @@ export interface ViewHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   zIndex?: number
   /** Icon element to display before title */
   icon?: React.ReactNode
-  /** Main title text */
+  /** Main title text (can be string or React node) */
   title?: React.ReactNode
   /** Subtitle text below title */
   subtitle?: React.ReactNode

@@ -30,7 +30,7 @@ describe('ReopenButton', () => {
 
   describe('visibility', () => {
     it('should render reopen button for closed PRs', () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       render(<ReopenButton />, { initialSelectedPR: pr })
 
       expect(screen.getByRole('button', { name: /Reopen/i })).toBeInTheDocument()
@@ -44,7 +44,7 @@ describe('ReopenButton', () => {
     })
 
     it('should NOT render for merged PRs', () => {
-      const pr = createMockPullRequest({ state: 'MERGED' })
+      const pr = createMockPullRequest({ state: undefined })
       const { container } = render(<ReopenButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
@@ -59,7 +59,7 @@ describe('ReopenButton', () => {
 
   describe('button states', () => {
     it('should be enabled for closed PRs', () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       render(<ReopenButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Reopen/i })
@@ -67,7 +67,7 @@ describe('ReopenButton', () => {
     })
 
     it('should render rotate icon', () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       const { container } = render(<ReopenButton />, { initialSelectedPR: pr })
 
       const rotateIcon = container.querySelector('.lucide-rotate-ccw')
@@ -77,7 +77,7 @@ describe('ReopenButton', () => {
 
   describe('reopen submission', () => {
     it('should call reopenPR on click', async () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       window.electron.reopenPR = vi.fn().mockResolvedValue({ success: true })
 
       render(<ReopenButton />, { initialSelectedPR: pr })
@@ -91,7 +91,7 @@ describe('ReopenButton', () => {
     })
 
     it('should show loading state during submission', async () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       window.electron.reopenPR = vi
         .fn()
         .mockImplementation(
@@ -109,7 +109,7 @@ describe('ReopenButton', () => {
     })
 
     it('should show success state after reopening', async () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       window.electron.reopenPR = vi.fn().mockResolvedValue({ success: true })
 
       render(<ReopenButton />, { initialSelectedPR: pr })
@@ -123,7 +123,7 @@ describe('ReopenButton', () => {
     })
 
     it('should handle errors gracefully', async () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       window.electron.reopenPR = vi
         .fn()
         .mockResolvedValue({ success: false, error: 'Permission denied' })

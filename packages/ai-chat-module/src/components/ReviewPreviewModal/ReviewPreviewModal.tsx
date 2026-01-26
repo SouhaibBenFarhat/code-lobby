@@ -64,7 +64,7 @@ export function ReviewPreviewModal({
   repoFullName,
   onSubmit,
   isSubmitting = false
-}: ReviewPreviewModalProps): React.JSX.Element {
+}: ReviewPreviewModalProps): React.JSX.Element | null {
   // Local state for editing
   const [summary, setSummary] = useState(review?.summary || '')
   const [verdict, setVerdict] = useState<ReviewVerdict>(review?.verdict || 'comment')

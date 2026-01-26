@@ -7,7 +7,7 @@
  * Components subscribe to store directly - use initialSelectedPR and initialUser options.
  */
 
-import type { GitHubUser } from '@codelobby/shared-store'
+import type { GitHubUser } from '@codelobby/data'
 import {
   createMockApproval,
   createMockApprovedPR,
@@ -45,12 +45,14 @@ describe('PRDetail', () => {
   const mockUser: GitHubUser = {
     login: 'testuser',
     avatar_url: 'https://example.com/avatar.png',
-    name: 'Test User'
+    name: 'Test User',
+    html_url: 'https://github.com/testuser'
   }
   const mockReviewer: GitHubUser = {
     login: 'reviewer',
     avatar_url: 'https://github.com/reviewer.png',
-    name: 'Reviewer User'
+    name: 'Reviewer User',
+    html_url: 'https://github.com/reviewer'
   }
 
   beforeEach(() => {
@@ -719,7 +721,7 @@ describe('PRDetail', () => {
     it('should show loading state while merging', async () => {
       const pr = createMockMergeablePR()
       // Create a promise that we can control
-      let resolvePromise: (value: { success: boolean }) => void
+      let resolvePromise!: (value: { success: boolean }) => void
       const mergePromise = new Promise<{ success: boolean }>((resolve) => {
         resolvePromise = resolve
       })
@@ -870,7 +872,7 @@ describe('PRDetail', () => {
     it('should show loading state while approving', async () => {
       const pr = createMockNeedsReviewPR({ user: createMockUser({ login: 'author' }) })
       // Create a promise that we can control
-      let resolvePromise: (value: { success: boolean; state?: string }) => void
+      let resolvePromise!: (value: { success: boolean; state?: string }) => void
       const approvePromise = new Promise<{ success: boolean; state?: string }>((resolve) => {
         resolvePromise = resolve
       })

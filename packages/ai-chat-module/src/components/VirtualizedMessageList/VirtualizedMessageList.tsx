@@ -9,8 +9,8 @@ import React, { useLayoutEffect, useMemo } from 'react'
 import type {
   ChatMessage,
   GitHubUser,
-  LinkedPRChat,
   QueuedMessage,
+  ReviewData,
   StreamingState
 } from '../../types'
 import { MessageBubble } from '../MessageBubble'
@@ -29,12 +29,7 @@ export interface VirtualizedMessageListProps {
   onScroll: () => void
   onVirtualizerReady: (scrollToEnd: () => void) => void
   user?: GitHubUser | null
-  linkedPRChat?: LinkedPRChat | null
-  onPostComment?: (
-    file: string,
-    line: number,
-    body: string
-  ) => Promise<{ success: boolean; commentUrl?: string }>
+  onOpenReview?: (review: ReviewData) => void
 }
 
 export function VirtualizedMessageList({
@@ -49,8 +44,7 @@ export function VirtualizedMessageList({
   onScroll,
   onVirtualizerReady,
   user,
-  linkedPRChat,
-  onPostComment
+  onOpenReview
 }: VirtualizedMessageListProps): React.JSX.Element {
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
@@ -135,8 +129,7 @@ export function VirtualizedMessageList({
                   expandedThinking={expandedThinking}
                   toggleThinkingExpanded={toggleThinkingExpanded}
                   user={user}
-                  linkedPRChat={linkedPRChat}
-                  onPostComment={onPostComment}
+                  onOpenReview={onOpenReview}
                 />
               )}
 

@@ -58,7 +58,7 @@ describe('FileTreeNode', () => {
           changeType: 'MODIFIED',
           additions: 25,
           deletions: 0,
-          patch: null
+          patch: undefined
         }
       })
       render(<FileTreeNode node={node} {...baseProps} />)
@@ -73,7 +73,7 @@ describe('FileTreeNode', () => {
           changeType: 'MODIFIED',
           additions: 0,
           deletions: 15,
-          patch: null
+          patch: undefined
         }
       })
       render(<FileTreeNode node={node} {...baseProps} />)
@@ -107,7 +107,7 @@ describe('FileTreeNode', () => {
           changeType: 'ADDED',
           additions: 10,
           deletions: 0,
-          patch: null
+          patch: undefined
         }
       })
       const { container } = render(<FileTreeNode node={node} {...baseProps} />)
@@ -123,7 +123,7 @@ describe('FileTreeNode', () => {
           changeType: 'DELETED',
           additions: 0,
           deletions: 10,
-          patch: null
+          patch: undefined
         }
       })
       const { container } = render(<FileTreeNode node={node} {...baseProps} />)
@@ -139,7 +139,7 @@ describe('FileTreeNode', () => {
           changeType: 'RENAMED',
           additions: 0,
           deletions: 0,
-          patch: null
+          patch: undefined
         }
       })
       const { container } = render(<FileTreeNode node={node} {...baseProps} />)
@@ -290,7 +290,7 @@ describe('FileTreeNode', () => {
           changeType: 'ADDED',
           additions: 0,
           deletions: 0,
-          patch: null
+          patch: undefined
         }
       })
       const expandedFiles = new Set(['src/test.ts'])

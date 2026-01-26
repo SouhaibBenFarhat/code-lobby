@@ -610,6 +610,12 @@ export interface ElectronAPI {
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
+  toggleFullscreen: () => Promise<boolean>
+
+  // Shell operations
+  shell: {
+    openExternal: (url: string) => Promise<void>
+  }
 }
 
 declare global {

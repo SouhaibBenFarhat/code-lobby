@@ -12,13 +12,11 @@ import { CIChecksSection } from './CIChecksSection'
 // Helper to create mock check runs
 function createMockCheckRun(overrides: Partial<CheckRun> = {}): CheckRun {
   return {
-    id: Math.random(),
+    id: String(Math.random()),
     name: 'Test Check',
     status: 'completed',
     conclusion: 'success',
     html_url: 'https://github.com/test/check/1',
-    started_at: new Date().toISOString(),
-    completed_at: new Date().toISOString(),
     ...overrides
   }
 }

@@ -87,15 +87,13 @@ export function useNetworkTracking(): void {
         const isSuccess = response.ok
         updateRequest.mutate({
           id: requestId,
-          updates: {
-            status: isSuccess ? 'success' : 'error',
-            statusCode: response.status,
-            endTime,
-            durationMs,
-            responseBody,
-            responseSize,
-            error: isSuccess ? undefined : `HTTP ${response.status} ${response.statusText}`
-          }
+          status: isSuccess ? 'success' : 'error',
+          statusCode: response.status,
+          endTime,
+          durationMs,
+          responseBody,
+          responseSize,
+          error: isSuccess ? undefined : `HTTP ${response.status} ${response.statusText}`
         })
 
         return response
@@ -106,12 +104,10 @@ export function useNetworkTracking(): void {
         // Update with network error
         updateRequest.mutate({
           id: requestId,
-          updates: {
-            status: 'error',
-            endTime,
-            durationMs,
-            error: error instanceof Error ? error.message : String(error)
-          }
+          status: 'error',
+          endTime,
+          durationMs,
+          error: error instanceof Error ? error.message : String(error)
         })
 
         throw error

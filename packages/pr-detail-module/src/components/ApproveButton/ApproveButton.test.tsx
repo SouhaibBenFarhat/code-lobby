@@ -5,7 +5,7 @@
  * Components subscribe to store directly - use initialSelectedPR and initialUser options.
  */
 
-import type { GitHubUser } from '@codelobby/shared-store'
+import type { GitHubUser } from '@codelobby/data'
 import {
   createMockApprovedPR,
   createMockDraftPR,
@@ -26,7 +26,8 @@ describe('ApproveButton', () => {
   const mockUser: GitHubUser = {
     login: currentUser,
     avatar_url: 'https://example.com/avatar.png',
-    name: 'Test User'
+    name: 'Test User',
+    html_url: 'https://github.com/testuser'
   }
 
   beforeEach(() => {
@@ -146,7 +147,7 @@ describe('ApproveButton', () => {
 
     it('should show loading text during submission', async () => {
       const pr = createMockNeedsReviewPR()
-      let resolvePromise: (value: { success: boolean }) => void
+      let resolvePromise!: (value: { success: boolean }) => void
       const promise = new Promise<{ success: boolean }>((resolve) => {
         resolvePromise = resolve
       })

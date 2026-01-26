@@ -84,13 +84,16 @@ export function CloseButton(): React.JSX.Element | null {
   const error = closeMutation.error?.message || null
 
   // Reset comment when popover closes
-  const handleOpenChange = useCallback((open: boolean) => {
-    setShowConfirm(open)
-    if (!open) {
-      setComment('')
-      setError(null)
-    }
-  }, [])
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setShowConfirm(open)
+      if (!open) {
+        setComment('')
+        closeMutation.reset() // Reset mutation state (including error)
+      }
+    },
+    [closeMutation]
+  )
 
   // Early return AFTER all hooks
   if (!pr) return null

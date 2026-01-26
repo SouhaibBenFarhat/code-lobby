@@ -60,6 +60,11 @@ const Button: ForwardRefComponent<HTMLButtonElement, ButtonProps> = React.forwar
   // When disabled, wrap in a span that receives hover events for tooltips
   // (the button itself has pointer-events: none when disabled)
   if (disabled) {
+    // Extract event handlers with proper typing for the span wrapper
+    type SpanMouseEvent = React.MouseEventHandler<HTMLSpanElement>
+    type SpanPointerEvent = React.PointerEventHandler<HTMLSpanElement>
+    type SpanFocusEvent = React.FocusEventHandler<HTMLSpanElement>
+
     const {
       // Extract all pointer/mouse/focus events for the wrapper
       onMouseEnter,
@@ -85,23 +90,23 @@ const Button: ForwardRefComponent<HTMLButtonElement, ButtonProps> = React.forwar
       // biome-ignore lint/a11y/noStaticElementInteractions: Wrapper only catches hover events for tooltip on disabled button
       <span
         className={cn('inline-flex cursor-not-allowed', isFullWidth && 'w-full')}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onMouseMove={onMouseMove}
-        onMouseOver={onMouseOver}
-        onMouseOut={onMouseOut}
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
-        onPointerMove={onPointerMove}
-        onPointerOver={onPointerOver}
-        onPointerOut={onPointerOut}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onMouseEnter={onMouseEnter as SpanMouseEvent | undefined}
+        onMouseLeave={onMouseLeave as SpanMouseEvent | undefined}
+        onMouseMove={onMouseMove as SpanMouseEvent | undefined}
+        onMouseOver={onMouseOver as SpanMouseEvent | undefined}
+        onMouseOut={onMouseOut as SpanMouseEvent | undefined}
+        onPointerEnter={onPointerEnter as SpanPointerEvent | undefined}
+        onPointerLeave={onPointerLeave as SpanPointerEvent | undefined}
+        onPointerMove={onPointerMove as SpanPointerEvent | undefined}
+        onPointerOver={onPointerOver as SpanPointerEvent | undefined}
+        onPointerOut={onPointerOut as SpanPointerEvent | undefined}
+        onFocus={onFocus as SpanFocusEvent | undefined}
+        onBlur={onBlur as SpanFocusEvent | undefined}
       >
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
           ref={ref}
-          disabled={disabled}
+          disabled={disabled as boolean}
           {...buttonProps}
         />
       </span>
@@ -112,7 +117,7 @@ const Button: ForwardRefComponent<HTMLButtonElement, ButtonProps> = React.forwar
     <Comp
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
-      disabled={disabled}
+      disabled={disabled as boolean | undefined}
       {...props}
     />
   )

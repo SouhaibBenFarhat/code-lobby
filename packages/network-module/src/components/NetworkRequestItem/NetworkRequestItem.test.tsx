@@ -1,4 +1,4 @@
-import type { NetworkRequest } from '@codelobby/shared-store'
+import type { NetworkRequest } from '@codelobby/data'
 import { TooltipProvider } from '@codelobby/ui-kit'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

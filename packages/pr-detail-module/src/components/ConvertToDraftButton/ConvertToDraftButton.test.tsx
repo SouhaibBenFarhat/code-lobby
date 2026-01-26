@@ -30,28 +30,28 @@ describe('ConvertToDraftButton', () => {
 
   describe('visibility', () => {
     it('should render for open non-draft PRs', () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' }) // open and not draft
+      const pr = createMockMergeablePR({ state: 'open' }) // open and not draft
       render(<ConvertToDraftButton />, { initialSelectedPR: pr })
 
       expect(screen.getByRole('button', { name: /Convert to Draft/i })).toBeInTheDocument()
     })
 
     it('should NOT render for draft PRs', () => {
-      const pr = createMockPullRequest({ state: 'OPEN', draft: true })
+      const pr = createMockPullRequest({ state: 'open', draft: true })
       const { container } = render(<ConvertToDraftButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
     })
 
     it('should NOT render for closed PRs', () => {
-      const pr = createMockPullRequest({ state: 'CLOSED', draft: false })
+      const pr = createMockPullRequest({ state: 'closed', draft: false })
       const { container } = render(<ConvertToDraftButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
     })
 
     it('should NOT render for merged PRs', () => {
-      const pr = createMockPullRequest({ state: 'MERGED', draft: false })
+      const pr = createMockPullRequest({ state: undefined, draft: false })
       const { container } = render(<ConvertToDraftButton />, { initialSelectedPR: pr })
 
       expect(container).toBeEmptyDOMElement()
@@ -66,7 +66,7 @@ describe('ConvertToDraftButton', () => {
 
   describe('button states', () => {
     it('should be enabled for open non-draft PRs', () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' })
+      const pr = createMockMergeablePR({ state: 'open' })
       render(<ConvertToDraftButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Convert to Draft/i })
@@ -74,7 +74,7 @@ describe('ConvertToDraftButton', () => {
     })
 
     it('should render file-edit icon', () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' })
+      const pr = createMockMergeablePR({ state: 'open' })
       const { container } = render(<ConvertToDraftButton />, { initialSelectedPR: pr })
 
       const fileEditIcon = container.querySelector('.lucide-file-edit')
@@ -84,7 +84,7 @@ describe('ConvertToDraftButton', () => {
 
   describe('convert submission', () => {
     it('should call convertPRToDraft on click', async () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' })
+      const pr = createMockMergeablePR({ state: 'open' })
       window.electron.convertPRToDraft = vi.fn().mockResolvedValue({ success: true })
 
       render(<ConvertToDraftButton />, { initialSelectedPR: pr })
@@ -98,7 +98,7 @@ describe('ConvertToDraftButton', () => {
     })
 
     it('should show loading state during submission', async () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' })
+      const pr = createMockMergeablePR({ state: 'open' })
       window.electron.convertPRToDraft = vi
         .fn()
         .mockImplementation(
@@ -116,7 +116,7 @@ describe('ConvertToDraftButton', () => {
     })
 
     it('should show success state after converting', async () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' })
+      const pr = createMockMergeablePR({ state: 'open' })
       window.electron.convertPRToDraft = vi.fn().mockResolvedValue({ success: true })
 
       render(<ConvertToDraftButton />, { initialSelectedPR: pr })
@@ -130,7 +130,7 @@ describe('ConvertToDraftButton', () => {
     })
 
     it('should handle errors gracefully', async () => {
-      const pr = createMockMergeablePR({ state: 'OPEN' })
+      const pr = createMockMergeablePR({ state: 'open' })
       window.electron.convertPRToDraft = vi
         .fn()
         .mockResolvedValue({ success: false, error: 'Permission denied' })

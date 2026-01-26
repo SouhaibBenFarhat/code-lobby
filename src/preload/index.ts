@@ -501,6 +501,12 @@ const electronAPI: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('fullscreen-change', handler)
     }
+  },
+  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+
+  // Shell operations
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell-open-external', url)
   }
 }
 

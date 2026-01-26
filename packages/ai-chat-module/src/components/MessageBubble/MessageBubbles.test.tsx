@@ -13,7 +13,7 @@ import { MessageBubble } from './MessageBubble'
 describe('MessageBubble', () => {
   const mockExpandedThinking = new Set<string>()
   const mockToggleThinking = vi.fn()
-  const mockOnPostComment = vi.fn()
+  const mockOnOpenReview = vi.fn()
 
   const userMessage: ChatMessage = {
     id: 'user-1',
@@ -126,34 +126,24 @@ describe('MessageBubble', () => {
     expect(screen.getByText('Let me think about this...')).toBeInTheDocument()
   })
 
-  it('should render postable button when message has postable metadata', () => {
-    const messageWithPostable: ChatMessage = {
-      id: 'post-1',
+  it('should render Open Review button when message contains review JSON', () => {
+    const messageWithReview: ChatMessage = {
+      id: 'review-1',
       role: 'assistant',
-      content: 'Bug found\n<!--POSTABLE:{"file":"test.ts","line":42}-->',
+      content: `Here is my review:\n\`\`\`json:review\n{"summary":"Good changes","comments":[],"verdict":"approve"}\n\`\`\``,
       timestamp: new Date().toISOString()
-    }
-
-    const linkedPRChat = {
-      prId: 'owner/repo#123',
-      prNumber: 123,
-      prTitle: 'Test PR',
-      repoFullName: 'owner/repo'
     }
 
     render(
       <MessageBubble
-        message={messageWithPostable}
+        message={messageWithReview}
         expandedThinking={mockExpandedThinking}
         toggleThinkingExpanded={mockToggleThinking}
-        linkedPRChat={linkedPRChat}
-        onPostComment={mockOnPostComment}
+        onOpenReview={mockOnOpenReview}
       />
     )
 
-    expect(screen.getByText('Post to PR')).toBeInTheDocument()
-    expect(screen.getByText('test.ts')).toBeInTheDocument()
-    expect(screen.getByText('L42')).toBeInTheDocument()
+    expect(screen.getByText('Open Review')).toBeInTheDocument()
   })
 })
 

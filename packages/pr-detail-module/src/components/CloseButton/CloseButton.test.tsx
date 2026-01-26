@@ -60,7 +60,7 @@ describe('CloseButton', () => {
     })
 
     it('should be disabled for already closed PRs', () => {
-      const pr = createMockPullRequest({ state: 'CLOSED' })
+      const pr = createMockPullRequest({ state: 'closed' })
       render(<CloseButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Closed/i })
@@ -68,7 +68,7 @@ describe('CloseButton', () => {
     })
 
     it('should be disabled for merged PRs', () => {
-      const pr = createMockPullRequest({ state: 'MERGED' })
+      const pr = createMockPullRequest({ state: undefined })
       render(<CloseButton />, { initialSelectedPR: pr })
 
       const button = screen.getByRole('button', { name: /Close/i })

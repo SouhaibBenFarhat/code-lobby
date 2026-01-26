@@ -24,16 +24,16 @@ interface RateLimitResult {
   percentage: number
 }
 
-interface MutationResult {
+export interface MutationResult {
   success: boolean
 }
 
-interface MergeResult extends MutationResult {
+export interface MergeResult extends MutationResult {
   mergedAt: string
   sha: string | undefined
 }
 
-interface ReviewResult extends MutationResult {
+export interface ReviewResult extends MutationResult {
   reviewId: string
   state: string
 }
