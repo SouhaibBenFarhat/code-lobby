@@ -16,7 +16,7 @@ global.ResizeObserver = class ResizeObserver {
 }
 
 // Create a fresh QueryClient for each test
-export function createTestQueryClient() {
+export function createTestQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {

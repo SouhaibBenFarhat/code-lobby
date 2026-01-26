@@ -14,7 +14,7 @@
     "useDefineForClassFields": true,
     "declaration": true,
     "declarationMap": true,
-    "isolatedDeclarations": false,
+    "isolatedDeclarations": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/renderer/*"],

@@ -2,7 +2,7 @@
  * Rate Limit Queries
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import * as github from '../github'
 import { keys } from '../keys'
 import type { RateLimit } from '../types'
@@ -11,7 +11,7 @@ import { useGitHubToken } from './settings'
 /**
  * Fetch GitHub API rate limit
  */
-export function useRateLimit() {
+export function useRateLimit(): UseQueryResult<RateLimit, Error> {
   const { data: token } = useGitHubToken()
 
   return useQuery({

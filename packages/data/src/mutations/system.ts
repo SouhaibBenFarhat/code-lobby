@@ -4,13 +4,13 @@
  * TanStack mutations for system/OS operations like fullscreen, theme, shell, etc.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
 
 /**
  * Toggle fullscreen mode
  */
-export function useToggleFullscreen() {
+export function useToggleFullscreen(): UseMutationResult<boolean, Error, void> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -30,7 +30,7 @@ export function useToggleFullscreen() {
 /**
  * Set theme (dark/light mode)
  */
-export function useSetTheme() {
+export function useSetTheme(): UseMutationResult<'dark' | 'light', Error, 'dark' | 'light'> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -48,7 +48,7 @@ export function useSetTheme() {
 /**
  * Open external URL in default browser
  */
-export function useOpenExternal() {
+export function useOpenExternal(): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (url: string) => {
       if (window.electron?.shell?.openExternal) {
@@ -63,7 +63,7 @@ export function useOpenExternal() {
 /**
  * Set network panel open state
  */
-export function useSetNetworkPanel() {
+export function useSetNetworkPanel(): UseMutationResult<boolean, Error, boolean> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -80,7 +80,7 @@ export function useSetNetworkPanel() {
 /**
  * Set network panel height
  */
-export function useSetNetworkPanelHeight() {
+export function useSetNetworkPanelHeight(): UseMutationResult<number, Error, number> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -97,7 +97,11 @@ export function useSetNetworkPanelHeight() {
 /**
  * Show native notification
  */
-export function useShowNotification() {
+export function useShowNotification(): UseMutationResult<
+  { success: boolean } | undefined,
+  Error,
+  { title: string; body: string }
+> {
   return useMutation({
     mutationFn: async ({ title, body }: { title: string; body: string }) => {
       if (window.electron?.showNotification) {

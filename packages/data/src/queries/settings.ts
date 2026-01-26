@@ -2,7 +2,7 @@
  * Settings Queries - Data persisted via TanStack Query persistence
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
 import { keys } from '../keys'
 import type { CardLayout, ViewMode } from '../types'
@@ -16,7 +16,7 @@ function getPersisted<T>(key: readonly string[], defaultValue: T): T {
  * Get the GitHub token from cache
  * This is THE source of truth for the token - used by all API calls
  */
-export function useGitHubToken() {
+export function useGitHubToken(): UseQueryResult<string | null, Error> {
   return useQuery({
     queryKey: keys.githubToken,
     queryFn: (): string | null => getPersisted(keys.githubToken, null),
@@ -32,7 +32,7 @@ export function getGitHubToken(): string | null {
   return queryClient.getQueryData<string>(keys.githubToken) ?? null
 }
 
-export function useSelectedRepos() {
+export function useSelectedRepos(): UseQueryResult<string[] | null, Error> {
   return useQuery({
     queryKey: keys.selectedRepos,
     queryFn: (): string[] | null => getPersisted(keys.selectedRepos, null),
@@ -40,7 +40,7 @@ export function useSelectedRepos() {
   })
 }
 
-export function useViewMode() {
+export function useViewMode(): UseQueryResult<ViewMode, Error> {
   return useQuery({
     queryKey: keys.viewMode,
     queryFn: (): ViewMode => getPersisted(keys.viewMode, 'canvas'),
@@ -48,7 +48,7 @@ export function useViewMode() {
   })
 }
 
-export function useAIPanel() {
+export function useAIPanel(): UseQueryResult<{ isOpen: boolean; width: number }, Error> {
   return useQuery({
     queryKey: keys.aiPanel,
     queryFn: () => getPersisted(keys.aiPanel, { isOpen: false, width: 400 }),
@@ -56,7 +56,7 @@ export function useAIPanel() {
   })
 }
 
-export function usePRDetailPanel() {
+export function usePRDetailPanel(): UseQueryResult<{ isOpen: boolean; width: number }, Error> {
   return useQuery({
     queryKey: keys.prDetailPanel,
     queryFn: () => getPersisted(keys.prDetailPanel, { isOpen: false, width: 400 }),
@@ -64,7 +64,10 @@ export function usePRDetailPanel() {
   })
 }
 
-export function useIDESettings() {
+export function useIDESettings(): UseQueryResult<
+  { sidebarWidth: number; expandedRepos: string[] },
+  Error
+> {
   return useQuery({
     queryKey: keys.ideSettings,
     queryFn: () => getPersisted(keys.ideSettings, { sidebarWidth: 280, expandedRepos: [] }),
@@ -72,7 +75,7 @@ export function useIDESettings() {
   })
 }
 
-export function useCardLayouts() {
+export function useCardLayouts(): UseQueryResult<CardLayout[], Error> {
   return useQuery({
     queryKey: keys.cardLayouts,
     queryFn: (): CardLayout[] => getPersisted(keys.cardLayouts, []),
@@ -80,7 +83,7 @@ export function useCardLayouts() {
   })
 }
 
-export function useRepoColors() {
+export function useRepoColors(): UseQueryResult<Record<string, string>, Error> {
   return useQuery({
     queryKey: keys.repoColors,
     queryFn: () => getPersisted<Record<string, string>>(keys.repoColors, {}),
@@ -88,7 +91,7 @@ export function useRepoColors() {
   })
 }
 
-export function useMinimizedRepos() {
+export function useMinimizedRepos(): UseQueryResult<string[], Error> {
   return useQuery({
     queryKey: keys.minimizedRepos,
     queryFn: () => getPersisted<string[]>(keys.minimizedRepos, []),
@@ -96,7 +99,7 @@ export function useMinimizedRepos() {
   })
 }
 
-export function useMyPRsRepos() {
+export function useMyPRsRepos(): UseQueryResult<string[], Error> {
   return useQuery({
     queryKey: keys.myPRsRepos,
     queryFn: () => getPersisted<string[]>(keys.myPRsRepos, []),

@@ -4,7 +4,7 @@
  * TanStack queries for system/OS state like fullscreen, theme, etc.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { type UseQueryResult, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { keys } from '../keys'
 
@@ -12,7 +12,7 @@ import { keys } from '../keys'
  * Query for fullscreen state
  * Subscribes to fullscreen changes via window.electron
  */
-export function useIsFullscreen() {
+export function useIsFullscreen(): UseQueryResult<boolean, Error> {
   const qc = useQueryClient()
 
   // Subscribe to fullscreen changes
@@ -39,7 +39,7 @@ export function useIsFullscreen() {
 /**
  * Query for theme (dark/light mode)
  */
-export function useTheme() {
+export function useTheme(): UseQueryResult<'dark' | 'light', Error> {
   return useQuery({
     queryKey: keys.system.theme,
     queryFn: () => {
@@ -53,7 +53,7 @@ export function useTheme() {
 /**
  * Query for network panel state
  */
-export function useNetworkPanel() {
+export function useNetworkPanel(): UseQueryResult<boolean, Error> {
   return useQuery({
     queryKey: keys.local.networkPanelOpen,
     queryFn: () => {
@@ -67,7 +67,7 @@ export function useNetworkPanel() {
 /**
  * Query for network panel height
  */
-export function useNetworkPanelHeight() {
+export function useNetworkPanelHeight(): UseQueryResult<number, Error> {
   return useQuery({
     queryKey: keys.local.networkPanelHeight,
     queryFn: () => {

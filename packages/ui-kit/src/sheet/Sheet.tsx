@@ -9,7 +9,7 @@
  */
 
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
@@ -20,17 +20,20 @@ interface SheetProps extends React.ComponentPropsWithoutRef<typeof DialogPrimiti
   modal?: boolean
 }
 
-const Sheet = ({ modal = true, ...props }: SheetProps) => (
+const Sheet: React.FC<SheetProps> = ({ modal = true, ...props }: SheetProps) => (
   <DialogPrimitive.Root modal={modal} {...props} />
 )
 
-const SheetTrigger = DialogPrimitive.Trigger
+const SheetTrigger: typeof DialogPrimitive.Trigger = DialogPrimitive.Trigger
 
-const SheetClose = DialogPrimitive.Close
+const SheetClose: typeof DialogPrimitive.Close = DialogPrimitive.Close
 
-const SheetPortal = DialogPrimitive.Portal
+const SheetPortal: typeof DialogPrimitive.Portal = DialogPrimitive.Portal
 
-const SheetOverlay = React.forwardRef<
+const SheetOverlay: React.ForwardRefExoticComponent<
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> &
+    React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Overlay>>
+> = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
@@ -46,7 +49,8 @@ const SheetOverlay = React.forwardRef<
 ))
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const sheetVariants = cva('fixed z-50 gap-4 bg-background p-6 shadow-xl border-border', {
+// Define variant config separately for type inference
+const sheetVariantsConfig = {
   variants: {
     side: {
       top: 'inset-x-0 top-14 border-b data-[state=open]:animate-slide-in-from-top data-[state=closed]:animate-slide-out-to-top',
@@ -60,21 +64,33 @@ const sheetVariants = cva('fixed z-50 gap-4 bg-background p-6 shadow-xl border-b
   defaultVariants: {
     side: 'right'
   }
-})
+} as const
+
+type SheetVariantsFn = (
+  props?: { side?: 'top' | 'bottom' | 'left' | 'right' | null | undefined } | undefined
+) => string
+
+const sheetVariants: SheetVariantsFn = cva(
+  'fixed z-50 gap-4 bg-background p-6 shadow-xl border-border',
+  sheetVariantsConfig
+)
+
+interface SheetContentVariantProps {
+  side?: 'top' | 'bottom' | 'left' | 'right' | null | undefined
+}
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {
+    SheetContentVariantProps {
   /** When false, no overlay is shown and clicking outside doesn't close the sheet */
   showOverlay?: boolean
   /** When true, hides the default close button (use your own in the header) */
   hideCloseButton?: boolean
 }
 
-const SheetContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  SheetContentProps
->(
+const SheetContent: React.ForwardRefExoticComponent<
+  SheetContentProps & React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Content>>
+> = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, SheetContentProps>(
   (
     {
       side = 'right',
@@ -108,12 +124,18 @@ const SheetContent = React.forwardRef<
 )
 SheetContent.displayName = DialogPrimitive.Content.displayName
 
-const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+const SheetHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex flex-col space-y-2 text-center sm:text-left', className)} {...props} />
 )
 SheetHeader.displayName = 'SheetHeader'
 
-const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+const SheetFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
     {...props}
@@ -121,7 +143,10 @@ const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 )
 SheetFooter.displayName = 'SheetFooter'
 
-const SheetTitle = React.forwardRef<
+const SheetTitle: React.ForwardRefExoticComponent<
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title> &
+    React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Title>>
+> = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
@@ -133,7 +158,10 @@ const SheetTitle = React.forwardRef<
 ))
 SheetTitle.displayName = DialogPrimitive.Title.displayName
 
-const SheetDescription = React.forwardRef<
+const SheetDescription: React.ForwardRefExoticComponent<
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description> &
+    React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Description>>
+> = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (

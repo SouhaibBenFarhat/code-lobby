@@ -130,26 +130,28 @@ function generateResponsiveClasses<T>(
   return classes.join(' ')
 }
 
-export const Col = React.forwardRef<HTMLDivElement, ColProps>(
-  ({ className, span, offset, order, children, ...props }, ref) => {
-    // Generate responsive span classes
-    const spanClasses =
-      span !== undefined ? generateResponsiveClasses(span, getSpanClass) : 'flex-1 min-w-0' // Default: grow to fill space
+export const Col: React.ForwardRefExoticComponent<ColProps & React.RefAttributes<HTMLDivElement>> =
+  React.forwardRef<HTMLDivElement, ColProps>(
+    ({ className, span, offset, order, children, ...props }, ref) => {
+      // Generate responsive span classes
+      const spanClasses =
+        span !== undefined ? generateResponsiveClasses(span, getSpanClass) : 'flex-1 min-w-0' // Default: grow to fill space
 
-    // Generate responsive offset classes
-    const offsetClasses =
-      offset !== undefined ? generateResponsiveClasses(offset, getOffsetClass) : ''
+      // Generate responsive offset classes
+      const offsetClasses =
+        offset !== undefined ? generateResponsiveClasses(offset, getOffsetClass) : ''
 
-    // Generate responsive order classes
-    const orderClasses = order !== undefined ? generateResponsiveClasses(order, getOrderClass) : ''
+      // Generate responsive order classes
+      const orderClasses =
+        order !== undefined ? generateResponsiveClasses(order, getOrderClass) : ''
 
-    const colClasses = cn(spanClasses, offsetClasses, orderClasses, className)
+      const colClasses = cn(spanClasses, offsetClasses, orderClasses, className)
 
-    return (
-      <div ref={ref} className={colClasses} {...props}>
-        {children}
-      </div>
-    )
-  }
-)
+      return (
+        <div ref={ref} className={colClasses} {...props}>
+          {children}
+        </div>
+      )
+    }
+  )
 Col.displayName = 'Col'

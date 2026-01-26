@@ -68,7 +68,9 @@ const sizeConfig = {
   }
 }
 
-export const ViewHeader = React.forwardRef<HTMLDivElement, ViewHeaderProps>(
+export const ViewHeader: React.ForwardRefExoticComponent<
+  ViewHeaderProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ViewHeaderProps>(
   (
     {
       size = 'md',
@@ -202,7 +204,9 @@ const gapConfig = {
   md: 'gap-2'
 }
 
-export const ViewHeaderActions = React.forwardRef<HTMLDivElement, ViewHeaderActionsProps>(
+export const ViewHeaderActions: React.ForwardRefExoticComponent<
+  ViewHeaderActionsProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ViewHeaderActionsProps>(
   ({ gap = 'sm', className, children, ...props }, ref) => {
     return (
       <div ref={ref} className={cn('flex items-center', gapConfig[gap], className)} {...props}>
@@ -228,7 +232,9 @@ const dividerSizeConfig = {
   lg: 'h-6'
 }
 
-export const ViewHeaderDivider = React.forwardRef<HTMLDivElement, ViewHeaderDividerProps>(
+export const ViewHeaderDivider: React.ForwardRefExoticComponent<
+  ViewHeaderDividerProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ViewHeaderDividerProps>(
   ({ size = 'md', className, ...props }, ref) => {
     return (
       <div

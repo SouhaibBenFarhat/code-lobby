@@ -30,7 +30,9 @@ const containerMaxWidthClasses: Record<string, string> = {
   '2xl': 'max-w-[1536px]'
 }
 
-export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
+export const Container: React.ForwardRefExoticComponent<
+  ContainerProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ContainerProps>(
   ({ className, fluid = false, maxWidth, children, ...props }, ref) => {
     const containerClasses = cn(
       'w-full mx-auto px-4',

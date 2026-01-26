@@ -16,15 +16,15 @@ interface ListMenuProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
 }
 
-const ListMenu = React.forwardRef<HTMLDivElement, ListMenuProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn('overflow-hidden', className)} role="menu" {...props}>
-        {children}
-      </div>
-    )
-  }
-)
+const ListMenu: React.ForwardRefExoticComponent<
+  ListMenuProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ListMenuProps>(({ className, children, ...props }, ref) => {
+  return (
+    <div ref={ref} className={cn('overflow-hidden', className)} role="menu" {...props}>
+      {children}
+    </div>
+  )
+})
 ListMenu.displayName = 'ListMenu'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -35,7 +35,9 @@ interface ListMenuHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
 }
 
-const ListMenuHeader = React.forwardRef<HTMLDivElement, ListMenuHeaderProps>(
+const ListMenuHeader: React.ForwardRefExoticComponent<
+  ListMenuHeaderProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ListMenuHeaderProps>(
   ({ className, children, ...props }, ref) => {
     return (
       <div ref={ref} className={cn('px-3 py-2 border-b border-border', className)} {...props}>
@@ -55,7 +57,9 @@ interface ListMenuContentProps extends React.HTMLAttributes<HTMLDivElement> {
   maxHeight?: string
 }
 
-const ListMenuContent = React.forwardRef<HTMLDivElement, ListMenuContentProps>(
+const ListMenuContent: React.ForwardRefExoticComponent<
+  ListMenuContentProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ListMenuContentProps>(
   ({ className, children, maxHeight = '300px', ...props }, ref) => {
     return (
       <div
@@ -80,7 +84,9 @@ interface ListMenuGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
 }
 
-const ListMenuGroup = React.forwardRef<HTMLDivElement, ListMenuGroupProps>(
+const ListMenuGroup: React.ForwardRefExoticComponent<
+  ListMenuGroupProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, ListMenuGroupProps>(
   ({ className, label, children, ...props }, ref) => {
     return (
       <div ref={ref} className={cn('', className)} {...props}>
@@ -119,7 +125,9 @@ interface ListMenuItemProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
   actionTitle?: string
 }
 
-const ListMenuItem = React.forwardRef<HTMLButtonElement, ListMenuItemProps>(
+const ListMenuItem: React.ForwardRefExoticComponent<
+  ListMenuItemProps & React.RefAttributes<HTMLButtonElement>
+> = React.forwardRef<HTMLButtonElement, ListMenuItemProps>(
   (
     {
       className,
@@ -190,11 +198,11 @@ ListMenuItem.displayName = 'ListMenuItem'
 
 interface ListMenuSeparatorProps extends React.HTMLAttributes<HTMLHRElement> {}
 
-const ListMenuSeparator = React.forwardRef<HTMLHRElement, ListMenuSeparatorProps>(
-  ({ className, ...props }, ref) => {
-    return <hr ref={ref} className={cn('h-px bg-border my-1 border-0', className)} {...props} />
-  }
-)
+const ListMenuSeparator: React.ForwardRefExoticComponent<
+  ListMenuSeparatorProps & React.RefAttributes<HTMLHRElement>
+> = React.forwardRef<HTMLHRElement, ListMenuSeparatorProps>(({ className, ...props }, ref) => {
+  return <hr ref={ref} className={cn('h-px bg-border my-1 border-0', className)} {...props} />
+})
 ListMenuSeparator.displayName = 'ListMenuSeparator'
 
 export { ListMenu, ListMenuHeader, ListMenuContent, ListMenuGroup, ListMenuItem, ListMenuSeparator }

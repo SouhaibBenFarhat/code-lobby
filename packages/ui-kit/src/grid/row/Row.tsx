@@ -97,50 +97,51 @@ const alignClasses: Record<AlignItems, string> = {
   stretch: 'items-stretch'
 }
 
-export const Row = React.forwardRef<HTMLDivElement, RowProps>(
-  (
-    {
-      className,
-      gutter = 'md',
-      gutterX,
-      gutterY,
-      justify,
-      align,
-      wrap = true,
-      reverse = false,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    // Determine gutter classes
-    let gapClasses: string
-    if (gutterX !== undefined || gutterY !== undefined) {
-      // Use individual axis gutters if specified
-      gapClasses = cn(
-        gutterX !== undefined && gutterXClasses[gutterX],
-        gutterY !== undefined && gutterYClasses[gutterY]
+export const Row: React.ForwardRefExoticComponent<RowProps & React.RefAttributes<HTMLDivElement>> =
+  React.forwardRef<HTMLDivElement, RowProps>(
+    (
+      {
+        className,
+        gutter = 'md',
+        gutterX,
+        gutterY,
+        justify,
+        align,
+        wrap = true,
+        reverse = false,
+        children,
+        ...props
+      },
+      ref
+    ) => {
+      // Determine gutter classes
+      let gapClasses: string
+      if (gutterX !== undefined || gutterY !== undefined) {
+        // Use individual axis gutters if specified
+        gapClasses = cn(
+          gutterX !== undefined && gutterXClasses[gutterX],
+          gutterY !== undefined && gutterYClasses[gutterY]
+        )
+      } else {
+        // Use combined gutter
+        gapClasses = gutterClasses[gutter]
+      }
+
+      const rowClasses = cn(
+        'flex',
+        wrap ? 'flex-wrap' : 'flex-nowrap',
+        reverse && 'flex-row-reverse',
+        gapClasses,
+        justify && justifyClasses[justify],
+        align && alignClasses[align],
+        className
       )
-    } else {
-      // Use combined gutter
-      gapClasses = gutterClasses[gutter]
+
+      return (
+        <div ref={ref} className={rowClasses} {...props}>
+          {children}
+        </div>
+      )
     }
-
-    const rowClasses = cn(
-      'flex',
-      wrap ? 'flex-wrap' : 'flex-nowrap',
-      reverse && 'flex-row-reverse',
-      gapClasses,
-      justify && justifyClasses[justify],
-      align && alignClasses[align],
-      className
-    )
-
-    return (
-      <div ref={ref} className={rowClasses} {...props}>
-        {children}
-      </div>
-    )
-  }
-)
+  )
 Row.displayName = 'Row'

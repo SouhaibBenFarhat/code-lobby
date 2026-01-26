@@ -3,8 +3,8 @@
  * All mutations get token from TanStack cache
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { MergeMethod, ReviewEvent } from '../github'
+import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { MergeMethod, MergeResult, MutationResult, ReviewEvent, ReviewResult } from '../github'
 import * as github from '../github'
 import { keys } from '../keys'
 import type { PRIdentifier } from '../types'
@@ -21,7 +21,7 @@ function getToken(qc: ReturnType<typeof useQueryClient>): string {
 /**
  * Select a PR (sets local state)
  */
-export function useSelectPR() {
+export function useSelectPR(): UseMutationResult<PRIdentifier | null, Error, PRIdentifier | null> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -35,7 +35,11 @@ export function useSelectPR() {
 /**
  * Close a PR
  */
-export function useClosePR() {
+export function useClosePR(): UseMutationResult<
+  MutationResult,
+  Error,
+  { prNodeId: string; comment?: string }
+> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -61,7 +65,7 @@ export function useClosePR() {
 /**
  * Reopen a PR
  */
-export function useReopenPR() {
+export function useReopenPR(): UseMutationResult<MutationResult, Error, string> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -84,7 +88,7 @@ export function useReopenPR() {
 /**
  * Mark PR as ready for review
  */
-export function useMarkPRReady() {
+export function useMarkPRReady(): UseMutationResult<MutationResult, Error, string> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -106,7 +110,7 @@ export function useMarkPRReady() {
 /**
  * Convert PR to draft
  */
-export function useConvertPRToDraft() {
+export function useConvertPRToDraft(): UseMutationResult<MutationResult, Error, string> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -129,7 +133,11 @@ export function useConvertPRToDraft() {
  * Add comment to PR
  * Invalidates all PR-related queries (detail, files, etc.) on success
  */
-export function useAddPRComment() {
+export function useAddPRComment(): UseMutationResult<
+  MutationResult,
+  Error,
+  { prNodeId: string; body: string; repoFullName: string; prNumber: number }
+> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -157,7 +165,11 @@ export function useAddPRComment() {
 /**
  * Merge a PR
  */
-export function useMergePR() {
+export function useMergePR(): UseMutationResult<
+  MergeResult,
+  Error,
+  { prNodeId: string; mergeMethod?: MergeMethod; commitHeadline?: string; commitBody?: string }
+> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -190,7 +202,11 @@ export function useMergePR() {
 /**
  * Submit PR review (approve, request changes, or comment)
  */
-export function useSubmitPRReview() {
+export function useSubmitPRReview(): UseMutationResult<
+  ReviewResult,
+  Error,
+  { prNodeId: string; event: ReviewEvent; body?: string }
+> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -229,7 +245,18 @@ export interface ReviewCommentInput {
 /**
  * Submit PR review with inline comments
  */
-export function useSubmitPRReviewWithComments() {
+export function useSubmitPRReviewWithComments(): UseMutationResult<
+  ReviewResult,
+  Error,
+  {
+    owner: string
+    repo: string
+    prNumber: number
+    event: ReviewEvent
+    body: string
+    comments: ReviewCommentInput[]
+  }
+> {
   const qc = useQueryClient()
 
   return useMutation({

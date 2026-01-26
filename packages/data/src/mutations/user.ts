@@ -3,12 +3,12 @@
  * Token is stored in TanStack Query cache and passed to API functions
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as github from '../github'
 import { keys } from '../keys'
 import type { GitHubUser } from '../types'
 
-export function useSignIn() {
+export function useSignIn(): UseMutationResult<{ token: string; user: GitHubUser }, Error, string> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -41,7 +41,7 @@ export function useSignIn() {
   })
 }
 
-export function useSignOut() {
+export function useSignOut(): UseMutationResult<void, Error, void> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -63,7 +63,11 @@ export function useSignOut() {
 /**
  * Validate a new token (e.g. from user input)
  */
-export function useValidateToken() {
+export function useValidateToken(): UseMutationResult<
+  { token: string; valid: boolean; user: GitHubUser | undefined },
+  Error,
+  string
+> {
   const qc = useQueryClient()
 
   return useMutation({
@@ -87,7 +91,11 @@ export function useValidateToken() {
  * Validate the persisted token from cache (for app startup)
  * Checks if the token stored in cache is still valid
  */
-export function useValidatePersistedToken() {
+export function useValidatePersistedToken(): UseMutationResult<
+  { token: string | null; valid: boolean; user: GitHubUser | undefined },
+  Error,
+  void
+> {
   const qc = useQueryClient()
 
   return useMutation({
