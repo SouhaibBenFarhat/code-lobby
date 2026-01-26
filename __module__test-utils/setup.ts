@@ -4,7 +4,7 @@
  * Global setup for all tests.
  */
 
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 import { QueryClient } from '@tanstack/react-query'
 import { resetMockElectron, setupMockElectron } from './mocks/electron'
 
