@@ -31,11 +31,11 @@ CodeLobby is an **Electron desktop application** using **TanStack Query as the s
 
 | Directory | Purpose |
 |-----------|---------|
-| `packages/data/` | **THE CORE** - TanStack Query state, queries, mutations, GitHub API |
-| `packages/app/` | App shell with slot rendering |
-| `packages/ui-kit/` | Shared shadcn/ui components |
-| `packages/slot-system/` | Module registration system |
-| `packages/*-module/` | UI feature modules (header, canvas, explorer, pr-detail, ai-chat, network) |
+| `--module-data/` | **THE CORE** - TanStack Query state, queries, mutations, GitHub API |
+| `--module-app/` | App shell with slot rendering |
+| `--module-ui-kit/` | Shared shadcn/ui components |
+| `--module-slot-system/` | Module registration system |
+| `--module-header/`, `--module-canvas/`, etc. | UI feature modules (header, canvas, explorer, pr-detail, ai-chat, network) |
 | `src/main/` | Electron main process - Claude AI streaming, IPC handlers |
 | `src/preload/` | Secure IPC bridge (OS operations only) |
 | `src/renderer/` | React entry point only |
@@ -158,22 +158,22 @@ const isBot = author?.__typename === 'Bot' ||
 
 **ALL state lives in TanStack Query cache - no signals, no Redux, no custom stores:**
 
-1. **Read state**: `useQuery` hooks from `@codelobby/data`
-2. **Write state**: `useMutation` hooks from `@codelobby/data`
+1. **Read state**: `useQuery` hooks from `@data`
+2. **Write state**: `useMutation` hooks from `@data`
 3. **Local UI state**: `useState` for component-specific state only
 4. **Persisted state**: Automatic via TanStack Query Persist to localStorage
 
 ### TanStack Query Usage
 ```typescript
 // Reading state
-import { useSelectedPR, usePRs, useViewMode } from '@codelobby/data'
+import { useSelectedPR, usePRs, useViewMode } from '@data'
 
 const { data: selectedPR } = useSelectedPR()
 const { data: prs, isLoading } = usePRs()
 const { data: viewMode } = useViewMode()
 
 // Writing state
-import { useSelectPR, useSetViewMode } from '@codelobby/data'
+import { useSelectPR, useSetViewMode } from '@data'
 
 const selectPR = useSelectPR()
 const setViewMode = useSetViewMode()
@@ -244,7 +244,7 @@ For complex state-based styling (like `.pr-card-item.selected`), define in `glob
 
 ### Always Use UI-Kit Components
 
-**NEVER create raw HTML elements when a component exists in `@codelobby/ui-kit`.**
+**NEVER create raw HTML elements when a component exists in `@ui-kit`.**
 
 ```tsx
 // ❌ BAD - Raw HTML input
@@ -255,7 +255,7 @@ For complex state-based styling (like `.pr-card-item.selected`), define in `glob
 />
 
 // ✅ GOOD - Use the Input component from ui-kit
-import { Input } from '@codelobby/ui-kit'
+import { Input } from '@ui-kit'
 
 <Input
   type="text"
@@ -264,7 +264,7 @@ import { Input } from '@codelobby/ui-kit'
 />
 ```
 
-**Available UI-Kit components (check `packages/ui-kit/src/index.ts` for full list):**
+**Available UI-Kit components (check `--module-ui-kit/index.ts` for full list):**
 - `Input` - Text inputs with Apple-style styling
 - `Button` - All button variants
 - `Badge` - Status badges and labels
@@ -286,10 +286,10 @@ import { Input } from '@codelobby/ui-kit'
 
 ### Use the Built-in Grid System
 
-**For any UI requiring grid layouts, use the built-in 12-column grid system from `@codelobby/ui-kit`.**
+**For any UI requiring grid layouts, use the built-in 12-column grid system from `@ui-kit`.**
 
 ```tsx
-import { Container, Row, Col } from '@codelobby/ui-kit'
+import { Container, Row, Col } from '@ui-kit'
 
 // Responsive card grid (full on mobile, 2 cols on tablet, 4 cols on desktop)
 <Container>
@@ -1241,10 +1241,10 @@ CodeLobby uses a **slot-based module system** that enables **zero cross-imports 
 Every UI module MUST follow this pattern:
 
 ```typescript
-// packages/my-module/src/index.tsx
+// --module-my/src/index.tsx
 
-import { useMyPanelState, useSetMyPanelState } from '@codelobby/data'
-import { registerToSlot } from '@codelobby/slot-system'
+import { useMyPanelState, useSetMyPanelState } from '@data'
+import { registerToSlot } from '@slot-system'
 import { MyComponent } from './components/MyComponent'
 
 // Wrapper connects component to TanStack Query state
@@ -1269,10 +1269,10 @@ registerToSlot({
 ### Allowed Dependencies Per Module
 
 Each module can ONLY import from:
-- ✅ `@codelobby/data` - TanStack Query hooks (useQuery, useMutation)
-- ✅ `@codelobby/slot-system` - Slot registration
-- ✅ `@codelobby/ui-kit` - Shared UI components
-- ✅ `@codelobby/test-utils` - Test utilities
+- ✅ `@data` - TanStack Query hooks (useQuery, useMutation)
+- ✅ `@slot-system` - Slot registration
+- ✅ `@ui-kit` - Shared UI components
+- ✅ `@test-utils` - Test utilities
 - ✅ Its own internal components (`./components/...`)
 
 ### ❌ FORBIDDEN Imports
@@ -1280,22 +1280,22 @@ Each module can ONLY import from:
 **Never import one UI module from another:**
 ```typescript
 // ❌ NEVER DO THIS
-import { SomeComponent } from '@codelobby/canvas-module'
-import { AnotherComponent } from '@codelobby/header-module'
+import { SomeComponent } from '@canvas'
+import { AnotherComponent } from '@header'
 ```
 
 ### State Updates via Mutations Only
 
-**All state updates go through `useMutation` hooks from `@codelobby/data`:**
+**All state updates go through `useMutation` hooks from `@data`:**
 
 ```typescript
 // ❌ NEVER manipulate query cache directly in UI modules
-import { useQueryClient } from '@codelobby/data'
+import { useQueryClient } from '@data'
 const qc = useQueryClient()
 qc.setQueryData(['some-key'], newData)  // FORBIDDEN in UI modules!
 
 // ✅ CORRECT - Use mutation hooks
-import { useSelectPR, useSetViewMode } from '@codelobby/data'
+import { useSelectPR, useSetViewMode } from '@data'
 const selectPR = useSelectPR()
 selectPR.mutate({ repoFullName: 'org/repo', prNumber: 123 })
 ```
@@ -1333,15 +1333,15 @@ registerToSlot({
 
 ### Bootstrap Process
 
-Modules are loaded in `packages/app/src/bootstrap.ts`:
+Modules are loaded in `--module-app/bootstrap.ts`:
 ```typescript
 // Each import triggers the module's registerToSlot() call
-import '@codelobby/header-module'
-import '@codelobby/explorer-module'
-import '@codelobby/canvas-module'
-import '@codelobby/pr-detail-module'
-import '@codelobby/ai-chat-module'
-import '@codelobby/network-module'
+import '@header'
+import '@explorer'
+import '@canvas'
+import '@pr-detail'
+import '@ai-chat'
+import '@network'
 ```
 
 ### Refactoring Checklist
@@ -1362,7 +1362,7 @@ When extracting smaller components from a larger one, keep them **"dumb" (presen
 - Receive all data via **props**
 - Receive all handlers via **callback props**
 - Only import from:
-  - `@codelobby/ui-kit` (shared UI components)
+  - `@ui-kit` (shared UI components)
   - `lucide-react` or other icon libraries
   - `react` and React hooks
   - Internal types (`../types`)
@@ -1370,7 +1370,7 @@ When extracting smaller components from a larger one, keep them **"dumb" (presen
 
 **❌ Dumb components should NOT:**
 - Call `window.electron` directly
-- Import `@codelobby/data` hooks (useQuery, useMutation)
+- Import `@data` hooks (useQuery, useMutation)
 - Manage global state
 - Make API calls
 
@@ -1378,7 +1378,7 @@ When extracting smaller components from a larger one, keep them **"dumb" (presen
 ```typescript
 // ✅ GOOD - Dumb presentational component
 // ChatHeader.tsx
-import { Button, ClaudeIcon } from '@codelobby/ui-kit'
+import { Button, ClaudeIcon } from '@ui-kit'
 import { Settings } from 'lucide-react'
 import type { LinkedPRChat } from '../types'
 
@@ -1401,7 +1401,7 @@ export function ChatHeader({ linkedPRChat, onClose, onClearHistory }: ChatHeader
 ```typescript
 // ❌ BAD - Component reaching outside for data/actions
 // ChatHeader.tsx
-import { useClearChat, useSelectedPR } from '@codelobby/data'  // ❌ Direct data access
+import { useClearChat, useSelectedPR } from '@data'  // ❌ Direct data access
 
 export function ChatHeader() {
   const { data: selectedPR } = useSelectedPR()  // ❌ Should receive via props
@@ -1419,7 +1419,7 @@ export function ChatHeader() {
 ```
 ┌─────────────────────────────────────────────────────┐
 │  index.tsx (Wrapper)                                │
-│  - Uses TanStack Query hooks from @codelobby/data   │
+│  - Uses TanStack Query hooks from @data   │
 │  - Controls panel visibility                        │
 └─────────────────────┬───────────────────────────────┘
                       │
@@ -1456,7 +1456,7 @@ The `ai-chat-module` is split into small, focused, testable components. Each com
 Each component is in its own folder with source and test file co-located:
 
 ```
-packages/ai-chat-module/src/
+--module-ai-chat/
 ├── index.tsx                              # Module entry + slot registration
 ├── components/
 │   ├── index.ts                           # Barrel exports
@@ -1562,8 +1562,8 @@ components/
 ```
 
 This applies to ALL components:
-- UI-Kit components (`packages/ui-kit/src/button/Button.tsx`)
-- Module components (`packages/ai-chat-module/src/components/ChatInput/ChatInput.tsx`)
+- UI-Kit components (`--module-ui-kit/button/Button.tsx`)
+- Module components (`--module-ai-chat/components/ChatInput/ChatInput.tsx`)
 - App-level components
 
 #### Rule 2: Never Create Multiple Components in One File

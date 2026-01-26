@@ -30,7 +30,7 @@ CodeLobby uses a **simplified 3-layer architecture**:
                     │ fetch()                   │ Anthropic SDK
                     │ (direct)                  │ (via IPC)
 ┌───────────────────┴───────────────┬───────────┴──────────────┐
-│        @codelobby/data            │      Main Process        │
+│        @data            │      Main Process        │
 │  ┌─────────────────────────────┐  │  ┌────────────────────┐  │
 │  │  github.ts (API functions)  │  │  │   claude-api.ts    │  │
 │  │  queries/* (useQuery hooks) │  │  │   (streaming AI)   │  │

@@ -106,70 +106,69 @@ Electron runs two separate processes:
 
 ---
 
-## 3. Package Structure (Monorepo)
+## 3. Module Structure (Flat Architecture)
+
+Modules are prefixed with `--module-` and live at the project root:
 
 ```
-packages/
-├── app/                    # App shell (renders slots)
-│   └── src/
-│       ├── App.tsx         # Main layout with <Slot> components
-│       ├── bootstrap.ts    # Module registration & initialization
-│       └── index.ts
-│
-├── data/                   # 🔑 THE CORE - TanStack Query state
-│   └── src/
-│       ├── client.ts       # QueryClient + persistence config
-│       ├── keys.ts         # All query keys (organized by category)
-│       ├── types.ts        # Shared TypeScript types
-│       ├── github.ts       # GitHub API functions (direct fetch)
-│       ├── queries/        # useQuery hooks
-│       │   ├── repository.ts
-│       │   ├── pull-request.ts
-│       │   ├── user.ts
-│       │   ├── settings.ts
-│       │   ├── ai.ts
-│       │   ├── system.ts
-│       │   └── network.ts
-│       └── mutations/      # useMutation hooks
-│           ├── pull-request.ts
-│           ├── user.ts
-│           ├── settings.ts
-│           ├── ai.ts
-│           ├── system.ts
-│           └── network.ts
-│
-├── slot-system/            # Module registration
-│   └── src/index.tsx       # registerToSlot, <Slot>
-│
-├── ui-kit/                 # Shared UI components (shadcn/ui)
-│   └── src/                # Button, Input, Card, etc.
-│
-├── logger/                 # Structured logging
-│
-├── test-utils/             # Test utilities & mocks
-│
-└── [ui-modules]/           # Feature modules (self-registering)
-    ├── header-module/
-    ├── explorer-module/
-    ├── canvas-module/
-    ├── pr-detail-module/
-    ├── ai-chat-module/
-    └── network-module/
+--module-app/               # App shell (renders slots)
+├── App.tsx                 # Main layout with <Slot> components
+├── bootstrap.ts            # Module registration & initialization
+└── index.ts
+
+--module-data/              # 🔑 THE CORE - TanStack Query state
+├── client.ts               # QueryClient + persistence config
+├── keys.ts                 # All query keys (organized by category)
+├── types.ts                # Shared TypeScript types
+├── github.ts               # GitHub API functions (direct fetch)
+├── queries/                # useQuery hooks
+│   ├── repository.ts
+│   ├── pull-request.ts
+│   ├── user.ts
+│   ├── settings.ts
+│   ├── ai.ts
+│   ├── system.ts
+│   └── network.ts
+└── mutations/              # useMutation hooks
+    ├── pull-request.ts
+    ├── user.ts
+    ├── settings.ts
+    ├── ai.ts
+    ├── system.ts
+    └── network.ts
+
+--module-slot-system/       # Module registration
+└── index.tsx               # registerToSlot, <Slot>
+
+--module-ui-kit/            # Shared UI components (shadcn/ui)
+                            # Button, Input, Card, etc.
+
+--module-logger/            # Structured logging
+
+--module-test-utils/        # Test utilities & mocks
+
+# UI Feature Modules (self-registering)
+--module-header/
+--module-explorer/
+--module-canvas/
+--module-pr-detail/
+--module-ai-chat/
+--module-network/
 ```
 
-### Package Dependencies (Allowed Imports)
+### Module Dependencies (Allowed Imports)
 
-| Package | Can Import |
-|---------|------------|
-| UI modules | `@codelobby/data`, `@codelobby/slot-system`, `@codelobby/ui-kit` |
-| `@codelobby/data` | `@tanstack/react-query`, types |
-| `@codelobby/slot-system` | React |
+| Module | Can Import |
+|--------|------------|
+| UI modules | `@data`, `@slot-system`, `@ui-kit` |
+| `@data` | `@tanstack/react-query`, types |
+| `@slot-system` | React |
 
 ### ❌ FORBIDDEN Imports
 
 ```typescript
 // ❌ NEVER import one UI module from another
-import { SomeComponent } from '@codelobby/canvas-module'
+import { SomeComponent } from '@canvas'
 ```
 
 ---
@@ -197,7 +196,7 @@ selectPR.mutate({ owner: 'org', repo: 'app', number: 123 })
 ### Query Cache as State Store
 
 ```typescript
-// @codelobby/data/src/queries/settings.ts
+// @data/src/queries/settings.ts
 export function useViewMode() {
   const qc = useQueryClient()
   return useQuery({
@@ -207,7 +206,7 @@ export function useViewMode() {
   })
 }
 
-// @codelobby/data/src/mutations/settings.ts
+// @data/src/mutations/settings.ts
 export function useSetViewMode() {
   const qc = useQueryClient()
   return useMutation({
@@ -233,7 +232,7 @@ Actions.selectPR(pr)         // Action emit
 **New:**
 ```typescript
 // ✅ NEW - Use this
-import { useSelectedPR, useSelectPR } from '@codelobby/data'
+import { useSelectedPR, useSelectPR } from '@data'
 const { data: selectedPR } = useSelectedPR()  // Read
 const selectPR = useSelectPR()
 selectPR.mutate(prIdentifier)                  // Write
@@ -259,9 +258,9 @@ The slot system remains unchanged — modules self-register to named slots.
 ### Module Registration Pattern
 
 ```typescript
-// packages/my-module/src/index.tsx
-import { registerToSlot } from '@codelobby/slot-system'
-import { useNetworkPanel } from '@codelobby/data'
+// --module-network/index.tsx
+import { registerToSlot } from '@slot-system'
+import { useNetworkPanel } from '@data'
 import { MyComponent } from './components/MyComponent'
 
 function MyComponentWrapper() {
@@ -293,7 +292,7 @@ registerToSlot({
                               │ fetch() (direct from renderer)
                               │
 ┌─────────────────────────────┴───────────────────────────────┐
-│                    @codelobby/data                           │
+│                    @data                           │
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │  github.ts - API functions (fetchRepos, fetchPRs, etc.) ││
 │  └─────────────────────────────────────────────────────────┘│
@@ -354,7 +353,7 @@ export async function fetchPRsForRepos(token: string, repos: string[]) {
 ### Key Organization
 
 ```typescript
-// @codelobby/data/src/keys.ts
+// @data/src/keys.ts
 export const keys = {
   // GitHub (NOT persisted - fetched fresh)
   repos: ['github', 'repos'],
@@ -389,7 +388,7 @@ export const keys = {
 ### Persistence Configuration
 
 ```typescript
-// @codelobby/data/src/client.ts
+// @data/src/client.ts
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
   key: 'codelobby-cache'
@@ -415,7 +414,7 @@ persistQueryClient({
 ### Reading State
 
 ```typescript
-import { useSelectedPR, useViewMode, useTheme } from '@codelobby/data'
+import { useSelectedPR, useViewMode, useTheme } from '@data'
 
 function MyComponent() {
   const { data: selectedPR } = useSelectedPR()
@@ -429,7 +428,7 @@ function MyComponent() {
 ### Writing State
 
 ```typescript
-import { useSelectPR, useSetViewMode } from '@codelobby/data'
+import { useSelectPR, useSetViewMode } from '@data'
 
 function MyComponent() {
   const selectPR = useSelectPR()
@@ -519,10 +518,10 @@ export const MyComponent: React.ForwardRefExoticComponent<
 {
   "compilerOptions": {
     "paths": {
-      "@codelobby/data": ["packages/data/src/index.ts"],
-      "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"],
-      "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
-      "@codelobby/header-module": ["packages/header-module/src/index.tsx"],
+      "@data": ["./--module-data/index.ts"],
+      "@ui-kit": ["./--module-ui-kit/index.ts"],
+      "@slot-system": ["./--module-slot-system/index.tsx"],
+      "@header": ["./--module-header/index.tsx"],
       // ... etc
     }
   }
@@ -572,8 +571,8 @@ export function useSetMyNewState() {
 
 ### Adding a New UI Module
 
-1. Create `packages/my-module/` with standard structure
-2. Import hooks from `@codelobby/data`
+1. Create `--module-my/` with standard structure
+2. Import hooks from `@data`
 3. Register to slot via `registerToSlot()`
 4. Import in `bootstrap.ts`
 
@@ -597,7 +596,7 @@ npm run test         # Run tests
 2. **useQuery for reads, useMutation for writes** — Consistent patterns
 3. **Direct fetch() for GitHub** — No IPC layer for data fetching
 4. **Settings/AI persisted, GitHub fresh** — Selective persistence
-5. **Zero cross-imports between UI modules** — Use @codelobby/data
+5. **Zero cross-imports between UI modules** — Use @data
 6. **Slot system for module composition** — Self-registering modules
 
 ---

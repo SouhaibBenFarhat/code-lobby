@@ -15,18 +15,18 @@
 | Before | After |
 |--------|-------|
 | `@codelobby/shared-store` (signals) | **Deleted** — TanStack Query cache |
-| `@codelobby/data-module` (action listeners) | **Deleted** — useMutation hooks |
+| `@data-module` (action listeners) | **Deleted** — useMutation hooks |
 | `@codelobby/api` (IPC wrapper) | **Deleted** — direct fetch() |
-| `@codelobby/queries` | **Renamed** → `@codelobby/data` |
+| `@codelobby/queries` | **Renamed** → `@data` |
 | GitHub API via IPC | **Direct fetch()** from renderer |
 | Actions system (event emitters) | **useMutation** hooks |
 
 ### Key Files:
 
-- `packages/data/` — All state management, queries, mutations
-- `packages/data/src/github.ts` — Direct GitHub API calls
-- `packages/data/src/keys.ts` — Query key organization
-- `packages/data/src/client.ts` — QueryClient + persistence
+- `--module-data/` — All state management, queries, mutations
+- `--module-data/src/github.ts` — Direct GitHub API calls
+- `--module-data/src/keys.ts` — Query key organization
+- `--module-data/src/client.ts` — QueryClient + persistence
 
 ### Migration Benefits:
 
@@ -82,7 +82,7 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | **Infrastructure** | TanStack Query state management | ✅ Complete |
 | | Direct GitHub fetch (no IPC) | ✅ Complete |
 | | localStorage persistence | ✅ Complete |
-| | Centralized logging (@codelobby/logger) | ✅ Complete |
+| | Centralized logging (@logger) | ✅ Complete |
 | | Global fetch interception (network panel) | ✅ Complete |
 | | Error handling | ✅ Complete |
 | | Test coverage (~80%) | ✅ Complete |
@@ -528,7 +528,7 @@ Show all files changed in a PR with their change status (added, modified, delete
 | `src/preload/index.ts` | Added `fetchPRFiles` method to Electron API |
 | `src/preload/electron-api.d.ts` | Added type definition for `fetchPRFiles` |
 | `packages/queries/src/index.ts` | Added `PRFile` type, `prFiles` query key, `usePRFiles` hook |
-| `packages/pr-detail-module/src/components/PRDetail.tsx` | Added `ChangedFilesSection` component |
+| `--module-pr-detail/src/components/PRDetail.tsx` | Added `ChangedFilesSection` component |
 
 **UI Features:**
 ```
@@ -742,7 +742,7 @@ interface Workspace {
 > Real-time HTTP request monitoring and debugging
 
 **Implementation Summary:**
-- Full `@codelobby/network-module` package with components
+- Full `@network` package with components
 - Tracks all HTTP requests (GitHub API, Claude API)
 - Shows request/response timing, status codes, and payloads
 - Integrates into right sidebar (stacked with AI panel)
@@ -1087,9 +1087,9 @@ Users have a general AI chat and can create PR-specific chat sessions. Each chat
 ```
 
 **Files Changed:**
-- `packages/ai-chat-module/src/components/AIChat/AIChat.tsx` - PR chat state management
-- `packages/ai-chat-module/src/components/ChatHeader/ChatHeader.tsx` - Simplified header UI
-- `packages/app/src/App.tsx` - PR chat context and navigation
+- `--module-ai-chat/src/components/AIChat/AIChat.tsx` - PR chat state management
+- `--module-ai-chat/src/components/ChatHeader/ChatHeader.tsx` - Simplified header UI
+- `--module-app/src/App.tsx` - PR chat context and navigation
 
 **Data Model:**
 ```typescript
@@ -2242,8 +2242,8 @@ Track AI token usage (input/output) across all Claude API calls and display the 
 - `src/preload/index.ts` — Exposed new methods
 - `src/preload/electron-api.d.ts` — Type definitions
 - `packages/api/src/namespaces/ai.ts` — Client methods
-- `packages/header-module/src/components/AICostIndicator.tsx` — UI component
-- `packages/header-module/src/components/Header.tsx` — Integrated indicator
+- `--module-header/src/components/AICostIndicator.tsx` — UI component
+- `--module-header/src/components/Header.tsx` — Integrated indicator
 
 **Tests:**
 - `src/main/ai-pricing.test.ts` — 18 tests for pricing calculations

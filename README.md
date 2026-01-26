@@ -359,7 +359,7 @@ npm run dev
 
 ### Project Structure
 
-CodeLobby uses a **modular monorepo architecture** with npm workspaces. Each UI feature is an independent module that registers itself to the app shell via a slot system.
+CodeLobby uses a **flat modular architecture**. Each UI feature is an independent module that registers itself to the app shell via a slot system. Modules are prefixed with `--module-` for easy identification.
 
 ```
 codelobby/
@@ -379,29 +379,28 @@ codelobby/
 │       ├── main.tsx               # Bootstraps the app
 │       └── styles/globals.css     # Global styles & Tailwind
 │
-├── packages/                      # 📦 Modular UI packages
-│   ├── app/                       # App shell (renders slots)
-│   ├── data/                      # 🔑 TanStack Query state (THE CORE)
-│   │   ├── client.ts              # QueryClient + persistence
-│   │   ├── keys.ts                # Query keys
-│   │   ├── github.ts              # GitHub API functions
-│   │   ├── queries/               # useQuery hooks
-│   │   └── mutations/             # useMutation hooks
-│   ├── slot-system/               # Module registration system
-│   ├── logger/                    # Structured logging (main/renderer)
-│   ├── ui-kit/                    # Shared UI components (shadcn/ui)
-│   ├── header-module/             # Header bar, settings, rate limit
-│   ├── canvas-module/             # Free-form PR card canvas
-│   ├── explorer-module/           # IDE-style tree view
-│   ├── network-module/            # HTTP request monitoring panel
-│   ├── pr-detail-module/          # PR detail side panel
-│   ├── ai-chat-module/            # Claude AI chat panel
-│   └── test-utils/                # Shared test utilities & mocks
+├── --module-app/                  # App shell (renders slots)
+├── --module-data/                 # 🔑 TanStack Query state (THE CORE)
+│   ├── client.ts                  # QueryClient + persistence
+│   ├── keys.ts                    # Query keys
+│   ├── github.ts                  # GitHub API functions
+│   ├── queries/                   # useQuery hooks
+│   └── mutations/                 # useMutation hooks
+├── --module-slot-system/          # Module registration system
+├── --module-logger/               # Structured logging (main/renderer)
+├── --module-ui-kit/               # Shared UI components (shadcn/ui)
+├── --module-header/               # Header bar, settings, rate limit
+├── --module-canvas/               # Free-form PR card canvas
+├── --module-explorer/             # IDE-style tree view
+├── --module-network/              # HTTP request monitoring panel
+├── --module-pr-detail/            # PR detail side panel
+├── --module-ai-chat/              # Claude AI chat panel
+├── --module-test-utils/           # Shared test utilities & mocks
 │
 ├── tsconfig.json                  # Project references root
-├── tsconfig.web.json              # Renderer + packages config
+├── tsconfig.web.json              # Renderer + modules config
 ├── tsconfig.node.json             # Main process config
-└── package.json                   # Workspaces: ["packages/*"]
+└── package.json                   # Build scripts
 ```
 
 ### Modular Architecture
@@ -410,8 +409,8 @@ The app uses **TanStack Query as the single source of truth** for ALL state. Mod
 
 ```typescript
 // Each module registers to a slot at import time
-// packages/header-module/src/index.tsx
-import { registerToSlot } from '@codelobby/slot-system'
+// --module-header/index.tsx
+import { registerToSlot } from '@slot-system'
 import { Header } from './components/Header'
 
 registerToSlot({
@@ -424,7 +423,7 @@ registerToSlot({
 **Key Principles:**
 - **Zero cross-imports** between UI modules
 - **TanStack Query for all state** — reads via useQuery, writes via useMutation
-- **Shared types and hooks** via `@codelobby/data`
+- **Shared types and hooks** via `@data`
 - **Test files colocated** with source (e.g., `Header.tsx` + `Header.test.tsx`)
 
 ### TypeScript Configuration
@@ -440,15 +439,16 @@ tsconfig.json (root)
 | Config | Purpose | Includes |
 |--------|---------|----------|
 | `tsconfig.json` | Root with project references | `"files": []` (delegates to children) |
-| `tsconfig.web.json` | Browser/renderer context | `packages/**/*`, `src/renderer/**/*` |
+| `tsconfig.web.json` | Browser/renderer context | `--module-*/**/*`, `src/renderer/**/*` |
 | `tsconfig.node.json` | Node.js/main process | `src/main/**/*`, `src/preload/**/*` |
 
 **Path Aliases** (defined in `tsconfig.web.json`):
 ```json
 {
-  "@codelobby/shared-store": ["packages/shared-store/src/index.ts"],
-  "@codelobby/ui-kit": ["packages/ui-kit/src/index.ts"],
-  "@codelobby/slot-system": ["packages/slot-system/src/index.tsx"],
+  "@ui-kit": ["./--module-ui-kit/index.ts"],
+  "@data": ["./--module-data/index.ts"],
+  "@slot-system": ["./--module-slot-system/index.tsx"],
+  "@header": ["./--module-header/index.tsx"],
   // ... etc
 }
 ```
@@ -473,7 +473,7 @@ tsconfig.json (root)
             │ fetch() (direct)                 │ IPC (streaming)
             │                                  │
 ┌───────────┴────────────────────────┬─────────┴───────────────┐
-│       @codelobby/data              │      Main Process       │
+│       @data              │      Main Process       │
 │  ┌──────────────────────────────┐  │  ┌───────────────────┐  │
 │  │  github.ts (API functions)   │  │  │  claude-api.ts    │  │
 │  │  queries/* (useQuery hooks)  │  │  │  (streaming AI)   │  │
