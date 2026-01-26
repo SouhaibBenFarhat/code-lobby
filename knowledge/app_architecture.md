@@ -483,6 +483,36 @@ tsconfig.json (root)
 └── references → tsconfig.node.json   # Main process
 ```
 
+### Isolated Declarations (tsconfig.web.json)
+
+The project uses `isolatedDeclarations: true` for faster declaration generation. This requires **explicit type annotations** on all exported functions and variables:
+
+```typescript
+// ❌ BAD - Missing explicit return type
+export function useMyQuery() {
+  return useQuery({ ... })
+}
+
+// ✅ GOOD - Explicit return type
+export function useMyQuery(): UseQueryResult<MyType, Error> {
+  return useQuery({ ... })
+}
+
+// ❌ BAD - Missing variable type
+export const myClient = new QueryClient({ ... })
+
+// ✅ GOOD - Explicit type annotation
+export const myClient: QueryClient = new QueryClient({ ... })
+
+// ❌ BAD - React.forwardRef without type
+export const MyComponent = React.forwardRef<HTMLDivElement, Props>(...)
+
+// ✅ GOOD - With ForwardRefExoticComponent type
+export const MyComponent: React.ForwardRefExoticComponent<
+  Props & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, Props>(...)
+```
+
 ### Path Aliases (tsconfig.web.json)
 
 ```json

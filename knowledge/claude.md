@@ -510,6 +510,29 @@ npm run build:linux  # Build for Linux
 4. **Imports**: Group by external → internal → types
 5. **Comments**: Explain "why", not "what"
 
+### Isolated Declarations Requirement
+
+The project uses `isolatedDeclarations: true` which requires **explicit type annotations** on all exported functions and variables:
+
+```typescript
+// TanStack Query hooks need explicit return types
+export function useMyQuery(): UseQueryResult<MyType, Error> {
+  return useQuery({ ... })
+}
+
+export function useMyMutation(): UseMutationResult<TData, Error, TVariables> {
+  return useMutation({ ... })
+}
+
+// React.forwardRef components need ForwardRefExoticComponent type
+export const Button: React.ForwardRefExoticComponent<
+  ButtonProps & React.RefAttributes<HTMLButtonElement>
+> = React.forwardRef<HTMLButtonElement, ButtonProps>((props, ref) => { ... })
+
+// Exported constants need explicit types
+export const queryClient: QueryClient = new QueryClient({ ... })
+```
+
 ---
 
 ## 🐛 Debugging Rules
