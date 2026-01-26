@@ -293,6 +293,10 @@ function transformPR(pr: any): PullRequest {
       }
     },
     labels: (pr.labels?.nodes || []).map((l: any) => ({ name: l.name, color: l.color })),
+    assignees: (pr.assignees?.nodes || []).map((a: any) => ({
+      login: a.login,
+      avatar_url: a.avatarUrl
+    })),
     comments: pr.comments?.totalCount || 0,
     review_comments: pr.reviewThreads?.totalCount || 0,
     additions: pr.additions || 0,
@@ -343,6 +347,7 @@ export async function fetchPRsForRepos(
               owner { login avatarUrl }
             }
             labels(first: 10) { nodes { name color } }
+            assignees(first: 10) { nodes { login avatarUrl } }
             comments { totalCount }
             reviewThreads { totalCount }
             additions
@@ -426,6 +431,7 @@ export async function fetchSinglePR(
             owner { login avatarUrl }
           }
           labels(first: 10) { nodes { name color } }
+          assignees(first: 10) { nodes { login avatarUrl } }
           comments(first: 100) {
             nodes {
               id

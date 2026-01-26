@@ -158,20 +158,52 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
       {/* Stats */}
       <Row gutter="md" align="center" className="pt-3 text-xs">
         <Col span="auto">
-          <Row gutter="xs" align="center">
-            <Col span="auto">
-              <Avatar className="w-4 h-4">
-                <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
-                <AvatarFallback className="text-[8px]">
-                  {pr.user.login.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Col>
-            <Col span="auto">
-              <span className="truncate max-w-[80px]">{pr.user.login}</span>
-            </Col>
-          </Row>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 cursor-default">
+                <Avatar className="w-4 h-4">
+                  <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
+                  <AvatarFallback className="text-[8px]">
+                    {pr.user.login.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate max-w-[80px]">{pr.user.login}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Author</TooltipContent>
+          </Tooltip>
         </Col>
+        {pr.assignees && pr.assignees.length > 0 && (
+          <Col span="auto">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 cursor-default">
+                  <div className="flex -space-x-1">
+                    {pr.assignees.slice(0, 3).map((assignee) => (
+                      <Avatar key={assignee.login} className="w-4 h-4 border border-background">
+                        <AvatarImage src={assignee.avatar_url} alt={assignee.login} />
+                        <AvatarFallback className="text-[6px]">
+                          {assignee.login.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </div>
+                  {pr.assignees.length > 3 && (
+                    <span className="text-muted-foreground">+{pr.assignees.length - 3}</span>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-medium mb-1">Assignees</p>
+                {pr.assignees.map((a) => (
+                  <p key={a.login} className="text-xs text-muted-foreground">
+                    {a.login}
+                  </p>
+                ))}
+              </TooltipContent>
+            </Tooltip>
+          </Col>
+        )}
         <Col span="auto">
           <Row gutter="xs" align="center">
             <Col span="auto">

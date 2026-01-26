@@ -136,6 +136,10 @@ export interface PullRequest {
     name: string
     color: string
   }>
+  assignees: Array<{
+    login: string
+    avatar_url: string
+  }>
   comments: number
   review_comments: number
   additions: number

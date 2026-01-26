@@ -70,6 +70,7 @@ export interface MockPullRequest {
     sha: string
   }
   labels: Array<{ name: string; color: string }>
+  assignees: Array<{ login: string; avatar_url: string }>
   additions: number
   deletions: number
   changed_files: number
@@ -267,6 +268,7 @@ export function createMockPullRequest(overrides: Partial<MockPullRequest> = {}):
       sha: `head-sha-${id}`
     },
     labels: [],
+    assignees: [],
     additions: Math.floor(Math.random() * 500),
     deletions: Math.floor(Math.random() * 200),
     changed_files: Math.floor(Math.random() * 20) + 1,
