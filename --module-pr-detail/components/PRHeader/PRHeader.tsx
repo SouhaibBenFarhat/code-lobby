@@ -167,7 +167,7 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
                     {pr.user.login.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="truncate max-w-[80px]">{pr.user.login}</span>
+                <span>{pr.user.login}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent>Author</TooltipContent>
