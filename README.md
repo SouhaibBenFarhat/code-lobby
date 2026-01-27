@@ -942,6 +942,17 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
+## Contributors
+
+<a href="https://github.com/souhaibparcellab/code-lobby/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=souhaibparcellab/code-lobby" />
+</a>
+
+<!-- readme: contributors -start -->
+<!-- readme: contributors -end -->
+
+---
+
 ## Roadmap
 
 ### Current
