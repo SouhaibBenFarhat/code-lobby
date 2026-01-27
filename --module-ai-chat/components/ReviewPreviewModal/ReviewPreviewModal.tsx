@@ -19,7 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
   type DiffComment,
-  DiffViewer
+  DiffViewer,
+  MarkdownEditor
 } from '@ui-kit'
 import {
   AlertCircle,
@@ -209,12 +210,13 @@ export function ReviewPreviewModal({
             <label htmlFor="review-summary" className="text-sm font-medium">
               Review Summary
             </label>
-            <textarea
-              id="review-summary"
+            <MarkdownEditor
               value={summary}
-              onChange={(e) => setSummary(e.target.value)}
+              onChange={setSummary}
               placeholder="Enter your review summary..."
-              className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              height={150}
+              id="review-summary"
+              data-testid="review-summary-editor"
             />
           </div>
 

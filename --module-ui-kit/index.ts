@@ -56,6 +56,7 @@ export {
   ListMenuSeparator
 } from './list-menu'
 export { MarkdownContent } from './markdown-content'
+export { type EditorTab, MarkdownEditor, type MarkdownEditorProps } from './markdown-editor'
 export { MatchedAvatars, type MatchedAvatarsProps, type MatchedUser } from './matched-avatars'
 export { Popover, PopoverContent, PopoverTrigger } from './popover'
 export { ScrollArea, ScrollBar } from './scroll-area'

@@ -590,3 +590,126 @@ button, a, input, select, textarea {
 .dark .markdown-content .hljs-selector-class {
   color: #7ee787;
 }
+
+/* MarkdownEditor - consistent styling between Write and Preview modes */
+.markdown-editor-wrapper {
+  /* Ensure consistent font across the entire editor */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Enable relative positioning for toolbar repositioning */
+  position: relative;
+}
+
+/* MDEditor overrides for consistency */
+.markdown-editor-wrapper .w-md-editor {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: inherit !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-text-pre,
+.markdown-editor-wrapper .w-md-editor-text-input,
+.markdown-editor-wrapper .w-md-editor-text {
+  font-size: 14px !important;
+  line-height: 1.625 !important;
+  font-family: inherit !important;
+}
+
+/* Toolbar styling */
+.markdown-editor-wrapper .w-md-editor-toolbar {
+  background: hsl(var(--muted) / 0.3) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  padding: 4px 8px !important;
+  min-height: auto !important;
+  height: auto !important;
+}
+
+/* Custom Write/Preview toolbar buttons */
+.markdown-editor-wrapper .w-md-editor-toolbar li > button.custom-toolbar-button {
+  width: auto !important;
+  padding: 4px 8px !important;
+  border-radius: 5px !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-toolbar li > button.custom-toolbar-button.active {
+  background: hsl(var(--primary) / 0.1) !important;
+  color: hsl(var(--primary)) !important;
+}
+
+/* Preview mode toolbar */
+.markdown-editor-wrapper .markdown-editor-preview-toolbar {
+  min-height: 36px;
+}
+
+.markdown-editor-wrapper .markdown-editor-preview-toolbar .custom-toolbar-button {
+  height: 26px;
+}
+
+.markdown-editor-wrapper .w-md-editor-toolbar ul {
+  gap: 1px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-toolbar li > button {
+  height: 26px !important;
+  width: 26px !important;
+  padding: 4px !important;
+  border-radius: 5px !important;
+  color: hsl(var(--muted-foreground)) !important;
+  transition: all 0.15s ease !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-toolbar li > button:hover {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-toolbar li > button:active,
+.markdown-editor-wrapper .w-md-editor-toolbar li.active > button {
+  background: hsl(var(--primary) / 0.1) !important;
+  color: hsl(var(--primary)) !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-toolbar li > button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Toolbar divider */
+.markdown-editor-wrapper .w-md-editor-toolbar-divider {
+  background: hsl(var(--border)) !important;
+  height: 16px !important;
+  margin: 0 4px !important;
+}
+
+/* Editor content area */
+.markdown-editor-wrapper .w-md-editor-content {
+  background: transparent !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-area {
+  background: transparent !important;
+}
+
+/* Textarea placeholder */
+.markdown-editor-wrapper .w-md-editor-text-input::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 1 !important;
+}
+
+/* Dark mode specific overrides */
+.dark .markdown-editor-wrapper .w-md-editor {
+  --color-border-default: hsl(var(--border)) !important;
+  --color-fg-default: hsl(var(--foreground)) !important;
+  --color-canvas-default: transparent !important;
+  --color-canvas-subtle: hsl(var(--muted)) !important;
+}
+
+/* Light mode specific overrides */
+:root .markdown-editor-wrapper .w-md-editor {
+  --color-border-default: hsl(var(--border)) !important;
+  --color-fg-default: hsl(var(--foreground)) !important;
+  --color-canvas-default: transparent !important;
+  --color-canvas-subtle: hsl(var(--muted)) !important;
+}
