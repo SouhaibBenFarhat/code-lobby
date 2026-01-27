@@ -18,6 +18,7 @@ export {
   type ConvertToDraftButtonProps
 } from './ConvertToDraftButton'
 export { FileTreeNode, type FileTreeNodeProps } from './FileTreeNode'
+export { FindPreviewButton } from './FindPreviewButton'
 export { MergeButton, type MergeButtonProps } from './MergeButton'
 export { PRDescription, type PRDescriptionProps } from './PRDescription'
 // Main component

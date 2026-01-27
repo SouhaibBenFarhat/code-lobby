@@ -30,6 +30,7 @@ export { keys } from './keys'
 export {
   type ReviewCommentInput,
   // AI Mutations
+  useAddAIUsage,
   useAddCustomPrompt,
   // Network
   useAddNetworkRequest,
@@ -48,6 +49,7 @@ export {
   // System
   useOpenExternal,
   useReopenPR,
+  useResetAIUsage,
   useSaveMessage,
   useSelectPR,
   useSetAIPanel,
@@ -84,8 +86,12 @@ export {
 export {
   // User / Auth
   type AuthData,
+  // AI
+  type FindPreviewUrlParams,
   // Settings
   useAIPanel,
+  // AI
+  useAIUsage,
   useCardLayouts,
   useClaudeApiKey,
   useClaudeModels,
@@ -93,6 +99,7 @@ export {
   useCustomPrompts,
   useEnableThinking,
   useEnableWebFetch,
+  useFindPreviewUrl,
   useGitHubToken,
   useIDESettings,
   useIsAuthenticated,
@@ -125,6 +132,7 @@ export {
 } from './queries'
 // Types
 export type {
+  AIUsage,
   CardLayout,
   ChatMessage,
   CheckStatus,

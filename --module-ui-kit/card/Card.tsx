@@ -11,8 +11,13 @@ const Card: ForwardRefComponent<
     <div
       ref={ref}
       className={cn(
-        // Apple-style card: larger radius, subtle shadow, clean border
-        'rounded-[12px] border border-border/50 bg-card text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]',
+        // Apple-style card: larger radius, visible shadow for separation, clean border
+        'rounded-[12px] border border-border bg-card text-card-foreground',
+        'shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06)]',
+        'dark:shadow-[0_2px_12px_rgba(0,0,0,0.4),0_1px_4px_rgba(0,0,0,0.3)]',
+        'transition-shadow duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]',
+        'hover:shadow-[0_4px_16px_rgba(0,0,0,0.12),0_2px_6px_rgba(0,0,0,0.08)]',
+        'dark:hover:shadow-[0_6px_24px_rgba(0,0,0,0.5),0_3px_8px_rgba(0,0,0,0.35)]',
         className
       )}
       {...props}

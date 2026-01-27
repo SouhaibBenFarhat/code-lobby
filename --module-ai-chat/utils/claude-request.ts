@@ -416,3 +416,56 @@ export function buildClaudeHeaders(apiKey: string): Record<string, string> {
     'anthropic-dangerous-direct-browser-access': 'true'
   }
 }
+
+/**
+ * Model pricing (USD per million tokens)
+ * Source: https://www.anthropic.com/pricing
+ */
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  // Latest models (2025)
+  'claude-opus-4-5': { input: 5, output: 25 }, // Opus 4.5 - 67% cheaper than Opus 4
+  'claude-opus-4': { input: 15, output: 75 },
+  'claude-sonnet-4': { input: 3, output: 15 },
+  // Older models
+  'claude-3-7-sonnet': { input: 3, output: 15 },
+  'claude-3-5-sonnet': { input: 3, output: 15 },
+  'claude-3-5-haiku': { input: 0.25, output: 1.25 },
+  'claude-3-opus': { input: 15, output: 75 },
+  'claude-3-sonnet': { input: 3, output: 15 },
+  'claude-3-haiku': { input: 0.25, output: 1.25 }
+}
+
+// Default pricing for unknown models (use Sonnet pricing)
+const DEFAULT_PRICING = { input: 3, output: 15 }
+
+export interface TokenCost {
+  inputCostUsd: number
+  outputCostUsd: number
+  totalCostUsd: number
+}
+
+/**
+ * Calculate cost in USD for token usage
+ */
+export function calculateTokenCost(
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number
+): TokenCost {
+  // Find matching pricing by checking if model ID includes any prefix
+  let pricing = DEFAULT_PRICING
+  for (const [prefix, p] of Object.entries(MODEL_PRICING)) {
+    if (modelId.includes(prefix)) {
+      pricing = p
+      break
+    }
+  }
+
+  const inputCostUsd = (inputTokens / 1_000_000) * pricing.input
+  const outputCostUsd = (outputTokens / 1_000_000) * pricing.output
+  return {
+    inputCostUsd,
+    outputCostUsd,
+    totalCostUsd: inputCostUsd + outputCostUsd
+  }
+}

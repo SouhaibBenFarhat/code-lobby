@@ -154,7 +154,7 @@ describe('applyStreamEvent', () => {
   })
 
   it('preserves accumulator on unknown events', () => {
-    const acc = { content: 'existing', thinking: 'thoughts', messageId: 'id' }
+    const acc = { content: 'existing', thinking: 'thoughts', messageId: 'id', usage: null }
     const result = applyStreamEvent(acc, { type: 'unknown' })
 
     expect(result).toEqual(acc)

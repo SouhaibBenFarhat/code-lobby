@@ -60,9 +60,13 @@ export const keys = {
   enableThinking: ['ai', 'enable-thinking'] as const,
   enableWebFetch: ['ai', 'enable-web-fetch'] as const,
   customPrompts: ['ai', 'custom-prompts'] as const,
+  aiUsage: ['ai', 'usage'] as const,
   // Per-PR chat messages (each PR has its own cache entry)
   prChatMessages: (prId: string): readonly ['ai', 'pr-chat', string] =>
     ['ai', 'pr-chat', prId] as const,
+  // Per-PR preview URL (persisted forever)
+  previewUrl: (prId: string): readonly ['ai', 'preview-url', string] =>
+    ['ai', 'preview-url', prId] as const,
 
   // Network (NOT persisted - runtime only)
   networkRequests: ['network', 'requests'] as const,

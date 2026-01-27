@@ -494,30 +494,6 @@ describe('PRDetail', () => {
     })
   })
 
-  describe('Start AI Chat Button', () => {
-    it('should render the Start AI Chat button', () => {
-      const pr = createMockPullRequest()
-      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
-
-      // The button should have the Claude icon (ClaudeIcon has aria-label="Claude AI")
-      const claudeIcon = screen.getByLabelText('Claude AI')
-      expect(claudeIcon).toBeInTheDocument()
-    })
-
-    it('should render AI chat button that is clickable', async () => {
-      const pr = createMockPullRequest({ number: 123, title: 'Test PR' })
-
-      render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
-
-      // Find and click the Claude icon's parent button
-      const claudeIcon = screen.getByLabelText('Claude AI')
-      const claudeButton = claudeIcon.closest('button')
-
-      expect(claudeButton).toBeTruthy()
-      expect(claudeButton).not.toBeDisabled()
-    })
-  })
-
   describe('Merge Button', () => {
     it('should render merge button for a mergeable PR', () => {
       const pr = createMockMergeablePR()

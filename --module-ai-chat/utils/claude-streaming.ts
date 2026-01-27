@@ -3,11 +3,17 @@
  * Parses Server-Sent Events (SSE) from Claude's streaming API
  */
 
+export interface ClaudeUsage {
+  inputTokens: number
+  outputTokens: number
+}
+
 export interface ClaudeStreamEvent {
-  type: 'message_start' | 'content_block_delta' | 'message_stop' | 'unknown'
+  type: 'message_start' | 'content_block_delta' | 'message_delta' | 'message_stop' | 'unknown'
   messageId?: string
   textDelta?: string
   thinkingDelta?: string
+  usage?: ClaudeUsage
 }
 
 /**
@@ -50,6 +56,17 @@ export function parseSSELine(line: string): ClaudeStreamEvent | null {
       }
     }
 
+    // message_delta contains usage info at the end of the stream
+    if (event.type === 'message_delta' && event.usage) {
+      return {
+        type: 'message_delta',
+        usage: {
+          inputTokens: event.usage.input_tokens || 0,
+          outputTokens: event.usage.output_tokens || 0
+        }
+      }
+    }
+
     return { type: 'unknown' }
   } catch {
     // Partial JSON or invalid data - ignore
@@ -77,19 +94,21 @@ export function parseSSEChunk(chunk: string): ClaudeStreamEvent[] {
 
 /**
  * Accumulator for streaming content
- * Tracks full content and thinking as deltas arrive
+ * Tracks full content, thinking, and usage as deltas arrive
  */
 export interface StreamAccumulator {
   content: string
   thinking: string
   messageId: string
+  usage: ClaudeUsage | null
 }
 
 export function createStreamAccumulator(): StreamAccumulator {
   return {
     content: '',
     thinking: '',
-    messageId: crypto.randomUUID()
+    messageId: crypto.randomUUID(),
+    usage: null
   }
 }
 
@@ -109,9 +128,14 @@ export function applyStreamEvent(
       }
     case 'content_block_delta':
       return {
+        ...accumulator,
         content: accumulator.content + (event.textDelta || ''),
-        thinking: accumulator.thinking + (event.thinkingDelta || ''),
-        messageId: accumulator.messageId
+        thinking: accumulator.thinking + (event.thinkingDelta || '')
+      }
+    case 'message_delta':
+      return {
+        ...accumulator,
+        usage: event.usage || accumulator.usage
       }
     default:
       return accumulator

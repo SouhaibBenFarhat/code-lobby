@@ -9,6 +9,7 @@ import {
   usePRDetailPanel,
   useSelectedPRId,
   useSelectPR,
+  useSetPRDetailPanel,
   useViewMode
 } from '@data'
 import { registerToSlot } from '@slot-system'
@@ -74,6 +75,7 @@ function CanvasPRDetail() {
   const { data: viewMode } = useViewMode()
   const { data: prDetailPanel } = usePRDetailPanel()
   const selectPR = useSelectPR()
+  const setPRDetailPanel = useSetPRDetailPanel()
 
   // Only render in canvas mode with panel open and PR selected
   if (viewMode !== 'canvas' || !prDetailPanel?.isOpen || !selectedPRId) {
@@ -81,7 +83,9 @@ function CanvasPRDetail() {
   }
 
   const handleClose = () => {
+    // In canvas mode, close both deselects the PR and closes the panel
     selectPR.mutate(null)
+    setPRDetailPanel.mutate({ isOpen: false })
   }
 
   return <PRDetail onClose={handleClose} />

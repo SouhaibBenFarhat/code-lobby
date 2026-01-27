@@ -32,7 +32,8 @@ vi.mock('@data', () => ({
   useToggleMyPRsFilter: () => ({ mutate: vi.fn() }),
   // PRCard hooks
   useSelectedPRId: () => ({ data: null }),
-  useSelectPR: () => ({ mutate: vi.fn() })
+  useSelectPR: () => ({ mutate: vi.fn() }),
+  useSetPRDetailPanel: () => ({ mutate: vi.fn() })
 }))
 
 describe('RepoCard', () => {

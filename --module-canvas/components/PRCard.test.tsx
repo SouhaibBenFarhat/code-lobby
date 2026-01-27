@@ -20,7 +20,8 @@ import { PRCard } from './PRCard'
 // Mock the data module
 vi.mock('@data', () => ({
   useSelectedPRId: () => ({ data: null }),
-  useSelectPR: () => ({ mutate: vi.fn() })
+  useSelectPR: () => ({ mutate: vi.fn() }),
+  useSetPRDetailPanel: () => ({ mutate: vi.fn() })
 }))
 
 describe('PRCard', () => {

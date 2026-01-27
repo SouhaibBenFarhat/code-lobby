@@ -12,7 +12,7 @@
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
-import type { ChatMessage, CustomPrompt } from '../types'
+import type { AIUsage, ChatMessage, CustomPrompt } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SETTINGS MUTATIONS
@@ -128,6 +128,55 @@ export function useClearChat(): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (prId: string) => {
       qc.setQueryData(keys.prChatMessages(prId), [])
+    }
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI USAGE TRACKING MUTATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface AddAIUsageParams {
+  inputTokens: number
+  outputTokens: number
+  inputCostUsd: number
+  outputCostUsd: number
+}
+
+const DEFAULT_AI_USAGE: AIUsage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  inputCostUsd: 0,
+  outputCostUsd: 0,
+  costUsd: 0
+}
+
+export function useAddAIUsage(): UseMutationResult<AIUsage, Error, AddAIUsageParams> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ inputTokens, outputTokens, inputCostUsd, outputCostUsd }: AddAIUsageParams) => {
+      const current = qc.getQueryData<AIUsage>(keys.aiUsage) || DEFAULT_AI_USAGE
+      const updated: AIUsage = {
+        inputTokens: current.inputTokens + inputTokens,
+        outputTokens: current.outputTokens + outputTokens,
+        inputCostUsd: current.inputCostUsd + inputCostUsd,
+        outputCostUsd: current.outputCostUsd + outputCostUsd,
+        costUsd: current.costUsd + inputCostUsd + outputCostUsd
+      }
+      return Promise.resolve(updated)
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(keys.aiUsage, updated)
+    }
+  })
+}
+
+export function useResetAIUsage(): UseMutationResult<AIUsage, Error, void> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => Promise.resolve(DEFAULT_AI_USAGE),
+    onSuccess: () => {
+      qc.setQueryData(keys.aiUsage, DEFAULT_AI_USAGE)
     }
   })
 }

@@ -3,7 +3,7 @@
  * Uses TanStack Query for all data.
  */
 
-import { type PullRequest, useSelectedPRId, useSelectPR } from '@data'
+import { type PullRequest, useSelectedPRId, useSelectPR, useSetPRDetailPanel } from '@data'
 import {
   Avatar,
   AvatarFallback,
@@ -37,6 +37,7 @@ interface PRCardProps {
 export function PRCard({ pr }: PRCardProps): React.JSX.Element {
   const { data: selectedPRId } = useSelectedPRId()
   const selectPR = useSelectPR()
+  const setPRDetailPanel = useSetPRDetailPanel()
 
   const isSelected =
     selectedPRId?.repoFullName === pr.base.repo.full_name && selectedPRId?.prNumber === pr.number
@@ -46,6 +47,8 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
       repoFullName: pr.base.repo.full_name,
       prNumber: pr.number
     })
+    // Open the PR detail panel when selecting a PR
+    setPRDetailPanel.mutate({ isOpen: true })
   }
 
   const checks = pr.checks

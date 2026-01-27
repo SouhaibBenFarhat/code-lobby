@@ -207,6 +207,14 @@ export interface ClaudeModel {
   type?: string
 }
 
+export interface AIUsage {
+  inputTokens: number
+  outputTokens: number
+  inputCostUsd: number
+  outputCostUsd: number
+  costUsd: number
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // LAYOUT TYPES
 // ═══════════════════════════════════════════════════════════════════════════

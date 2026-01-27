@@ -73,6 +73,15 @@ vi.mock('@data', () => ({
   useIsFullscreen: vi.fn(() => mockQueryResult(false)),
   useTheme: vi.fn(() => mockQueryResult('dark')),
   useNetworkPanel: vi.fn(() => mockQueryResult(false)),
+  useAIUsage: vi.fn(() =>
+    mockQueryResult({
+      inputTokens: 0,
+      outputTokens: 0,
+      inputCostUsd: 0,
+      outputCostUsd: 0,
+      costUsd: 0
+    })
+  ),
   // Mutation hooks
   useSetSelectedRepos: vi.fn(() => mockMutationResult()),
   useClearCacheAndRefresh: vi.fn(() => mockMutationResult()),
@@ -80,7 +89,8 @@ vi.mock('@data', () => ({
   useToggleNetworkPanel: vi.fn(() => mockMutationResult()),
   useFactoryReset: vi.fn(() => mockMutationResult()),
   useSignOut: vi.fn(() => mockMutationResult()),
-  useClearCache: vi.fn(() => mockMutationResult())
+  useClearCache: vi.fn(() => mockMutationResult()),
+  useResetAIUsage: vi.fn(() => mockMutationResult())
 }))
 
 describe('Header', () => {

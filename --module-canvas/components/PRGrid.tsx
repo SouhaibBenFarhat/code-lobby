@@ -535,7 +535,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
         </Tooltip>
       </div>
 
-      <div ref={containerRef} className="h-full w-full overflow-auto bg-muted/20">
+      <div ref={containerRef} className="h-full w-full overflow-auto bg-muted/50 dark:bg-black/30">
         <div
           className="relative"
           style={{
@@ -546,7 +546,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
           }}
         >
           <div
-            className="absolute inset-0 pointer-events-none opacity-30"
+            className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
             style={{
               backgroundImage: `
                 linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),

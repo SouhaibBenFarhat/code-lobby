@@ -4,9 +4,11 @@
 
 // AI
 export {
+  useAddAIUsage,
   useAddCustomPrompt,
   useClearChat,
   useDeleteCustomPrompt,
+  useResetAIUsage,
   useSaveMessage,
   useSetClaudeApiKey,
   useSetEnableThinking,

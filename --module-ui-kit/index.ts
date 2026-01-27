@@ -1,6 +1,7 @@
 // Utilities
 
 // Components
+export { Alert, AlertDescription, AlertTitle } from './alert'
 export { Avatar, AvatarFallback, AvatarImage } from './avatar'
 export { Badge, type BadgeProps, badgeVariants } from './badge'
 export { Button, type ButtonProps, buttonVariants } from './button'

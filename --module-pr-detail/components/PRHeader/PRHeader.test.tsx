@@ -197,20 +197,6 @@ describe('PRHeader', () => {
     })
   })
 
-  describe('AI Chat button', () => {
-    it('should render AI Chat button with Claude icon', () => {
-      const pr = createPR()
-      const { container } = render(<PRHeader onClose={mockOnClose} />, {
-        initialSelectedPR: pr,
-        initialUser: mockUser
-      })
-
-      // Claude icon doesn't have lucide class, look for svg with specific viewBox or path
-      const svgs = container.querySelectorAll('button svg')
-      expect(svgs.length).toBeGreaterThan(0)
-    })
-  })
-
   describe('Preview button', () => {
     it('should render header buttons', () => {
       const pr = createPR()

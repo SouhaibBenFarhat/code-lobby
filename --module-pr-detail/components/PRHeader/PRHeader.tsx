@@ -3,11 +3,10 @@
  * Uses TanStack Query hooks.
  */
 
-import { type PullRequest, useSetAIPanel } from '@data'
+import type { PullRequest } from '@data'
 import {
   Badge,
   Button,
-  ClaudeIcon,
   Col,
   cn,
   formatRelativeTime,
@@ -37,6 +36,7 @@ import { useSelectedPR } from '../../hooks'
 import { ApproveButton } from '../ApproveButton'
 import { CloseButton } from '../CloseButton'
 import { ConvertToDraftButton } from '../ConvertToDraftButton'
+import { FindPreviewButton } from '../FindPreviewButton'
 import { MergeButton } from '../MergeButton'
 import { ReadyForReviewButton } from '../ReadyForReviewButton'
 import { ReopenButton } from '../ReopenButton'
@@ -99,15 +99,6 @@ function PRTitleSection({ pr }: { pr: PullRequest }) {
 
 export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
   const { pr, refresh, isRefreshing } = useSelectedPR()
-  const setAIPanel = useSetAIPanel()
-
-  const openPRInChat = useCallback(
-    (_pr: PullRequest) => {
-      // Just open the AI panel - the AIChat component will use the selected PR
-      setAIPanel.mutate({ isOpen: true })
-    },
-    [setAIPanel]
-  )
 
   if (!pr) return null
 
@@ -116,24 +107,6 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
       <div className="flex items-start justify-between gap-3">
         <PRTitleSection pr={pr} />
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => openPRInChat(pr)}
-              >
-                <ClaudeIcon className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-[240px] text-center">
-              <p className="font-medium">Start AI Chat</p>
-              <p className="text-xs text-muted-foreground">
-                Open AI assistant with this PR's context
-              </p>
-            </TooltipContent>
-          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -165,6 +138,8 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
             </TooltipTrigger>
             <TooltipContent>Open in GitHub</TooltipContent>
           </Tooltip>
+          <Separator orientation="vertical" className="h-5 mx-1" />
+          <FindPreviewButton />
           <Separator orientation="vertical" className="h-5 mx-1" />
           <ApproveButton />
           <MergeButton />

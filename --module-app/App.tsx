@@ -19,7 +19,7 @@ import {
 } from '@data'
 import { Slot } from '@slot-system'
 import { Button, Toaster, TooltipProvider } from '@ui-kit'
-import { MousePointerClick, PanelRight, PanelRightClose } from 'lucide-react'
+import { MousePointerClick, PanelRightClose } from 'lucide-react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenInput } from './TokenInput'
 
@@ -215,8 +215,8 @@ export function App(): React.JSX.Element {
     setNetworkPanelHeight
   ])
 
-  const togglePRPanel = () => {
-    setPRDetailPanel.mutate({ isOpen: !prDetailOpen })
+  const closePRPanel = () => {
+    setPRDetailPanel.mutate({ isOpen: false })
   }
 
   if (isAuthLoading) {
@@ -251,17 +251,6 @@ export function App(): React.JSX.Element {
             <Slot name="main" wrapInContainer={false} />
           </main>
 
-          {viewMode === 'canvas' && !prDetailOpen && (
-            <Button
-              variant="unstyled"
-              size="none"
-              onClick={togglePRPanel}
-              className="absolute right-2 bottom-4 z-20 p-2 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-            >
-              <PanelRight className="w-5 h-5" />
-            </Button>
-          )}
-
           {viewMode === 'canvas' && prDetailOpen && (
             <aside
               ref={prPanelRef}
@@ -285,7 +274,7 @@ export function App(): React.JSX.Element {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={togglePRPanel}
+                        onClick={closePRPanel}
                       >
                         <PanelRightClose className="w-4 h-4" />
                       </Button>

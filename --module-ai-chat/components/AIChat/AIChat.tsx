@@ -9,6 +9,7 @@
 
 import type { ChatMessage, ReviewCommentInput } from '@data'
 import {
+  useAddAIUsage,
   useAddCustomPrompt,
   useClaudeApiKey,
   useClaudeModels,
@@ -39,6 +40,7 @@ import {
   buildClaudeRequestBody,
   buildSystemPrompt,
   CLAUDE_API_URL,
+  calculateTokenCost,
   createStreamAccumulator,
   DEFAULT_MODEL,
   formatMessagesForClaude,
@@ -117,6 +119,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   const addCustomPrompt = useAddCustomPrompt()
   const deleteCustomPrompt = useDeleteCustomPrompt()
   const submitReview = useSubmitPRReviewWithComments()
+  const addAIUsage = useAddAIUsage()
 
   // ═══════════════════════════════════════════════════════════════════════════
   // LOCAL STATE
@@ -268,6 +271,21 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           return
         }
 
+        // Track AI usage if we have token counts
+        if (accumulator.usage) {
+          const { inputCostUsd, outputCostUsd } = calculateTokenCost(
+            currentModel,
+            accumulator.usage.inputTokens,
+            accumulator.usage.outputTokens
+          )
+          addAIUsage.mutate({
+            inputTokens: accumulator.usage.inputTokens,
+            outputTokens: accumulator.usage.outputTokens,
+            inputCostUsd,
+            outputCostUsd
+          })
+        }
+
         setStreaming({ content: '', thinking: '', isStreaming: false })
         const assistantMessage: ChatMessage = {
           id: accumulator.messageId,
@@ -288,7 +306,17 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
       xhr.send(JSON.stringify(requestBody))
     },
-    [prId, apiKey, prContext, messages, currentModel, enableThinking, saveMessage, scrollToBottom]
+    [
+      prId,
+      apiKey,
+      prContext,
+      messages,
+      currentModel,
+      enableThinking,
+      saveMessage,
+      scrollToBottom,
+      addAIUsage
+    ]
   )
 
   // Cleanup XHR on unmount
