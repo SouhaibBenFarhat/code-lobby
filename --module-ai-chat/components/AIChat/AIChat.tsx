@@ -79,14 +79,32 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // Pass changed_files count to enable parallel fetching for large PRs
   const { data: prFiles = [] } = usePRFiles(repoFullName, prNumber, selectedPR?.changed_files)
 
-  // Build PR context with full details including file diffs
+  // Build PR context with full details including file diffs, comments, and CI status
   const prContext = selectedPR
     ? {
         prNumber: selectedPR.number,
         prTitle: selectedPR.title,
         prBody: selectedPR.body,
         repoFullName: selectedPR.base.repo.full_name,
-        files: prFiles
+        // Branch info
+        headBranch: selectedPR.head?.ref,
+        baseBranch: selectedPR.base?.ref,
+        // PR metadata
+        author: selectedPR.user?.login,
+        isDraft: selectedPR.draft,
+        labels: selectedPR.labels?.map((l) => l.name),
+        // Stats
+        additions: selectedPR.additions,
+        deletions: selectedPR.deletions,
+        changedFiles: selectedPR.changed_files,
+        // Review status
+        reviewDecision: selectedPR.reviewDecision,
+        // Detailed data
+        files: prFiles,
+        comments: selectedPR.commentsList,
+        reviews: selectedPR.reviews,
+        reviewThreads: selectedPR.reviewThreads,
+        checks: selectedPR.checks
       }
     : undefined
 

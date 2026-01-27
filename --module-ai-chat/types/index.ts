@@ -2,9 +2,22 @@
  * Shared types for the AI Chat module
  */
 
-// Chat message structure (re-export from @codelobby/data for compatibility)
-// Claude model info (re-export from @codelobby/data for compatibility)
-export type { ChatMessage, ClaudeModel } from '@data'
+import type {
+  CheckStatus as CheckStatusType,
+  PRComment as PRCommentType,
+  PRReview as PRReviewType,
+  ReviewThread as ReviewThreadType
+} from '@data'
+
+// Re-export types from @data for compatibility
+export type {
+  ChatMessage,
+  CheckStatus,
+  ClaudeModel,
+  PRComment,
+  PRReview,
+  ReviewThread
+} from '@data'
 
 // GitHub user for avatar display
 export interface GitHubUser {
@@ -13,17 +26,24 @@ export interface GitHubUser {
   name: string | null
 }
 
-// Selected PR details
+// Selected PR details - includes all fields needed for AI context
 export interface SelectedPR {
   id: string // GraphQL node ID for mutations
   number: number
   title: string
   body?: string
-  changed_files?: number
+  // Author
+  user?: {
+    login: string
+    avatar_url: string
+  }
+  // Branch info
   head: {
+    ref?: string
     sha: string
   }
   base: {
+    ref?: string
     repo: {
       full_name: string
       owner: {
@@ -32,10 +52,21 @@ export interface SelectedPR {
       name: string
     }
   }
-  checks?: {
-    state: 'pending' | 'success' | 'failure' | 'error'
-    total_count: number
-  }
+  // PR metadata
+  draft?: boolean
+  labels?: Array<{ name: string; color: string }>
+  // Stats
+  additions?: number
+  deletions?: number
+  changed_files?: number
+  // Review status
+  reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
+  // CI status
+  checks?: CheckStatusType
+  // PR discussion and reviews (for AI context)
+  commentsList?: PRCommentType[]
+  reviews?: PRReviewType[]
+  reviewThreads?: ReviewThreadType[]
 }
 
 // Streaming state for the current assistant message being generated

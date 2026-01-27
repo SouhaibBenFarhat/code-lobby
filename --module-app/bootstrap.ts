@@ -18,5 +18,5 @@ import '@network'
  * Just imports modules - data is handled by TanStack Query.
  */
 export function bootstrap(): void {
-  console.log('[bootstrap] CodeLobby initialized')
+  // App initialized
 }

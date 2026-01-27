@@ -58,8 +58,6 @@ async function graphql<T>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
-  console.log('[graphql] Making request to GitHub API...')
-
   const response = await http.post<{ data: T; errors?: Array<{ message: string }> }>(
     GITHUB_GRAPHQL,
     { query, variables },
@@ -71,7 +69,6 @@ async function graphql<T>(
     throw new Error(response.errors.map((e) => e.message).join(', '))
   }
 
-  console.log('[graphql] Response received')
   return response.data
 }
 
@@ -150,8 +147,6 @@ export async function fetchRateLimit(token: string): Promise<RateLimitResult> {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function fetchRepos(token: string): Promise<Repository[]> {
-  console.log('[fetchRepos] Starting fetch with token:', `${token.substring(0, 10)}...`)
-
   // Fetch all repos from organizations the user belongs to
   const query = `
     query {
@@ -205,15 +200,6 @@ export async function fetchRepos(token: string): Promise<Repository[]> {
 
   // Flatten all org repos into a single array
   const allRepos = data.viewer.organizations.nodes.flatMap((org) => org.repositories.nodes)
-
-  console.log(
-    '[fetchRepos] API Response - viewer:',
-    data.viewer.login,
-    'orgs:',
-    data.viewer.organizations.nodes.length,
-    'total repos:',
-    allRepos.length
-  )
 
   return allRepos.map((r) => ({
     id: r.id,

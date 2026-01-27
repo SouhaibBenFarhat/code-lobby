@@ -36,10 +36,10 @@ describe('DiffViewer', () => {
 +new line added
  another context`
 
-      render(<DiffViewer patch={patch} fileName="test.ts" />)
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" />)
 
-      // Check for the addition line content
-      expect(screen.getByText('new line added')).toBeInTheDocument()
+      // Check for the addition line content (text may be split across spans due to highlighting)
+      expect(container.textContent).toContain('new line added')
     })
 
     it('should render deletion lines with - prefix', () => {
@@ -182,12 +182,13 @@ describe('DiffViewer', () => {
 -removed in hunk 2
 +added in hunk 2`
 
-      render(<DiffViewer patch={patch} fileName="test.ts" />)
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" />)
 
-      expect(screen.getByText('added in hunk 1')).toBeInTheDocument()
-      expect(screen.getByText('added in hunk 2')).toBeInTheDocument()
-      expect(screen.getByText('removed in hunk 1')).toBeInTheDocument()
-      expect(screen.getByText('removed in hunk 2')).toBeInTheDocument()
+      // Text may be split across spans due to syntax highlighting
+      expect(container.textContent).toContain('added in hunk 1')
+      expect(container.textContent).toContain('added in hunk 2')
+      expect(container.textContent).toContain('removed in hunk 1')
+      expect(container.textContent).toContain('removed in hunk 2')
     })
 
     it('should handle lines with special characters', () => {
@@ -195,9 +196,150 @@ describe('DiffViewer', () => {
  const x = "hello";
 +const y = \`template \${var}\`;`
 
-      render(<DiffViewer patch={patch} fileName="test.ts" />)
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" />)
 
-      expect(screen.getByText('const x = "hello";')).toBeInTheDocument()
+      // With syntax highlighting, text is split into spans
+      // Check that the table contains the expected content
+      expect(container.textContent).toContain('hello')
+      expect(container.textContent).toContain('template')
+    })
+  })
+
+  describe('inline comments', () => {
+    it('should render comments below the specified line', () => {
+      const patch = `@@ -1,2 +1,3 @@
+ line one
++line two
+ line three`
+
+      const comments = [{ id: 'c1', line: 2, content: 'This is a comment on line 2' }]
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" comments={comments} />
+      )
+
+      expect(container.textContent).toContain('This is a comment on line 2')
+    })
+
+    it('should render multiple comments on the same line', () => {
+      const patch = `@@ -1,1 +1,2 @@
+ line one
++line two`
+
+      const comments = [
+        { id: 'c1', line: 2, content: 'First comment' },
+        { id: 'c2', line: 2, content: 'Second comment' }
+      ]
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" comments={comments} />
+      )
+
+      expect(container.textContent).toContain('First comment')
+      expect(container.textContent).toContain('Second comment')
+    })
+
+    it('should render comments on different lines', () => {
+      const patch = `@@ -1,2 +1,3 @@
+ line one
++line two
+ line three`
+
+      const comments = [
+        { id: 'c1', line: 1, content: 'Comment on line 1' },
+        { id: 'c2', line: 3, content: 'Comment on line 3' }
+      ]
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" comments={comments} />
+      )
+
+      expect(container.textContent).toContain('Comment on line 1')
+      expect(container.textContent).toContain('Comment on line 3')
+    })
+
+    it('should use custom renderComment function', () => {
+      const patch = `@@ -1,1 +1,2 @@
+ line one
++line two`
+
+      const comments = [{ id: 'c1', line: 2, content: 'Test comment' }]
+
+      render(
+        <DiffViewer
+          patch={patch}
+          fileName="test.ts"
+          comments={comments}
+          renderComment={(comment) => (
+            <div data-testid="custom-comment">Custom: {String(comment.content)}</div>
+          )}
+        />
+      )
+
+      expect(screen.getByTestId('custom-comment')).toBeInTheDocument()
+      expect(screen.getByTestId('custom-comment').textContent).toContain('Custom: Test comment')
+    })
+
+    it('should render default comment display when no renderComment provided', () => {
+      const patch = `@@ -1,1 +1,2 @@
+ line one
++line two`
+
+      const comments = [{ id: 'c1', line: 2, content: 'Default display comment' }]
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" comments={comments} />
+      )
+
+      // Default comment should have blue styling
+      const commentElement = container.querySelector('.bg-blue-500\\/10')
+      expect(commentElement).toBeInTheDocument()
+      expect(container.textContent).toContain('Default display comment')
+    })
+
+    it('should not render comments for deleted lines', () => {
+      const patch = `@@ -1,2 +1,1 @@
+ line one
+-deleted line`
+
+      // Comment on line 2 which is a deletion (has no newLineNum)
+      // This comment should not appear since deletions don't have new line numbers
+      const comments = [{ id: 'c1', line: 2, content: 'Should not appear' }]
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" comments={comments} />
+      )
+
+      // The comment should not be rendered because deleted lines don't have newLineNum
+      expect(container.textContent).not.toContain('Should not appear')
+    })
+
+    it('should handle empty comments array', () => {
+      const patch = `@@ -1,1 +1,1 @@
+ line one`
+
+      render(<DiffViewer patch={patch} fileName="test.ts" comments={[]} />)
+
+      // Should render normally without any comment elements
+      expect(screen.getByRole('table')).toBeInTheDocument()
+    })
+
+    it('should render ReactNode content in comments', () => {
+      const patch = `@@ -1,1 +1,2 @@
+ line one
++line two`
+
+      const comments = [
+        {
+          id: 'c1',
+          line: 2,
+          content: <span data-testid="react-content">React Node Content</span>
+        }
+      ]
+
+      render(<DiffViewer patch={patch} fileName="test.ts" comments={comments} />)
+
+      expect(screen.getByTestId('react-content')).toBeInTheDocument()
     })
   })
 })

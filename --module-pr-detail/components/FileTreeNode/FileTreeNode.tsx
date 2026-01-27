@@ -3,7 +3,7 @@
  */
 
 import type { PRFile } from '@data'
-import { Badge, Button } from '@ui-kit'
+import { Badge, Button, DiffViewer } from '@ui-kit'
 import {
   ChevronDown,
   ChevronRight,
@@ -13,7 +13,6 @@ import {
   FilePlus,
   FolderOpen
 } from 'lucide-react'
-import { DiffViewer } from '../DiffViewer'
 import type { FileTreeNode as FileTreeNodeType } from '../types'
 
 export interface FileTreeNodeProps {

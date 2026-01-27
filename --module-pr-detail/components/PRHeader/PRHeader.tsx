@@ -5,24 +5,23 @@
 
 import { type PullRequest, useSetAIPanel } from '@data'
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Badge,
   Button,
   ClaudeIcon,
   Col,
   cn,
   formatRelativeTime,
+  MatchedAvatars,
   Row,
   Separator,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  truncate
+  TooltipTrigger
 } from '@ui-kit'
 import {
+  Check,
   Clock,
+  Copy,
   ExternalLink,
   FileEdit,
   GitBranch,
@@ -32,7 +31,7 @@ import {
   RefreshCw,
   X
 } from 'lucide-react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 import { useSelectedPR } from '../../hooks'
 import { ApproveButton } from '../ApproveButton'
@@ -47,6 +46,14 @@ export interface PRHeaderProps {
 }
 
 function PRTitleSection({ pr }: { pr: PullRequest }) {
+  const [copied, setCopied] = useState(false)
+
+  const copyBranchName = useCallback(async () => {
+    await navigator.clipboard.writeText(pr.head.ref)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [pr.head.ref])
+
   return (
     <div className="flex-1 min-w-0 overflow-hidden">
       <div className="flex items-center gap-2 mb-1">
@@ -64,11 +71,27 @@ function PRTitleSection({ pr }: { pr: PullRequest }) {
         )}
       </div>
       <h2 className="font-semibold text-sm leading-tight line-clamp-2 break-words">{pr.title}</h2>
-      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground overflow-hidden">
+      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
         <GitBranch className="w-3 h-3 flex-shrink-0" />
-        <span className="font-mono truncate max-w-[100px]">{truncate(pr.head.ref, 25)}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={copyBranchName}
+              className="font-mono hover:text-foreground transition-colors flex items-center gap-1 group"
+            >
+              {pr.head.ref}
+              {copied ? (
+                <Check className="w-3 h-3 text-success" />
+              ) : (
+                <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{copied ? 'Copied!' : 'Copy branch name'}</TooltipContent>
+        </Tooltip>
         <span className="flex-shrink-0">→</span>
-        <span className="font-mono truncate max-w-[80px]">{truncate(pr.base.ref, 15)}</span>
+        <span className="font-mono">{pr.base.ref}</span>
       </div>
     </div>
   )
@@ -158,50 +181,47 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
       {/* Stats */}
       <Row gutter="md" align="center" className="pt-3 text-xs">
         <Col span="auto">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 cursor-default">
-                <Avatar className="w-4 h-4">
-                  <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
-                  <AvatarFallback className="text-[8px]">
-                    {pr.user.login.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span>{pr.user.login}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Author</TooltipContent>
-          </Tooltip>
+          <MatchedAvatars
+            author={{ login: pr.user.login, avatar_url: pr.user.avatar_url }}
+            assignees={pr.assignees}
+            size="md"
+            showNames
+          />
         </Col>
-        {pr.assignees && pr.assignees.length > 0 && (
+        {pr.labels && pr.labels.length > 0 && (
           <Col span="auto">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 cursor-default">
-                  <div className="flex -space-x-1">
-                    {pr.assignees.slice(0, 3).map((assignee) => (
-                      <Avatar key={assignee.login} className="w-4 h-4 border border-background">
-                        <AvatarImage src={assignee.avatar_url} alt={assignee.login} />
-                        <AvatarFallback className="text-[6px]">
-                          {assignee.login.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+            <div className="flex items-center gap-1 flex-wrap">
+              {pr.labels.slice(0, 3).map((label) => (
+                <span
+                  key={label.name}
+                  className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                  style={{
+                    backgroundColor: `#${label.color}20`,
+                    color: `#${label.color}`,
+                    border: `1px solid #${label.color}40`
+                  }}
+                >
+                  {label.name}
+                </span>
+              ))}
+              {pr.labels.length > 3 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-[10px] text-muted-foreground cursor-default">
+                      +{pr.labels.length - 3}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-medium mb-1">All Labels</p>
+                    {pr.labels.map((l) => (
+                      <p key={l.name} className="text-xs" style={{ color: `#${l.color}` }}>
+                        {l.name}
+                      </p>
                     ))}
-                  </div>
-                  {pr.assignees.length > 3 && (
-                    <span className="text-muted-foreground">+{pr.assignees.length - 3}</span>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="font-medium mb-1">Assignees</p>
-                {pr.assignees.map((a) => (
-                  <p key={a.login} className="text-xs text-muted-foreground">
-                    {a.login}
-                  </p>
-                ))}
-              </TooltipContent>
-            </Tooltip>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </Col>
         )}
         <Col span="auto">

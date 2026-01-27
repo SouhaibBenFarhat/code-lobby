@@ -246,9 +246,10 @@ describe('ReviewerCard', () => {
     })
 
     it('should show diff hunk preview when available', () => {
-      render(<ReviewerCard reviewer={reviewerWithComments} prUrl={prUrl} />)
+      const { container } = render(<ReviewerCard reviewer={reviewerWithComments} prUrl={prUrl} />)
 
-      expect(screen.getByText(/new line/)).toBeInTheDocument()
+      // Text may be split across spans due to syntax highlighting
+      expect(container.textContent).toContain('new line')
     })
   })
 

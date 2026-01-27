@@ -68,15 +68,6 @@ export function useIsAuthenticated(): AuthStatus {
   const token = qc.getQueryData<string>(keys.githubToken)
   const isAuthenticated = !!authData?.user || !!token
 
-  console.log(
-    '[useIsAuthenticated] authData:',
-    authData?.user?.login ?? 'null',
-    'token:',
-    token?.substring(0, 10) ?? 'null',
-    'isAuthenticated:',
-    isAuthenticated
-  )
-
   return {
     isAuthenticated,
     isLoading,

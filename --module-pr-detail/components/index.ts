@@ -4,6 +4,9 @@
  * Each component is in its own folder following the folder-per-component pattern.
  */
 
+// DiffViewer is now in @ui-kit - re-export for backwards compatibility
+export { type DiffLine, DiffViewer, type DiffViewerProps } from '@ui-kit'
+
 // Sub-components (for reuse if needed)
 export { ApproveButton, type ApproveButtonProps } from './ApproveButton'
 export { ChangedFilesSection, type ChangedFilesSectionProps } from './ChangedFilesSection'
@@ -14,7 +17,6 @@ export {
   ConvertToDraftButton,
   type ConvertToDraftButtonProps
 } from './ConvertToDraftButton'
-export { DiffViewer, type DiffViewerProps } from './DiffViewer'
 export { FileTreeNode, type FileTreeNodeProps } from './FileTreeNode'
 export { MergeButton, type MergeButtonProps } from './MergeButton'
 export { PRDescription, type PRDescriptionProps } from './PRDescription'
@@ -28,11 +30,10 @@ export {
 export { ReopenButton, type ReopenButtonProps } from './ReopenButton'
 export { ReviewerCard, type ReviewerCardProps } from './ReviewerCard'
 
-// Types
+// Types (DiffLine is now in @ui-kit)
 export type {
   CheckRun,
   CommentData,
-  DiffLine,
   FileTreeNode as FileTreeNodeType,
   GroupedChecks,
   ReviewerFeedback

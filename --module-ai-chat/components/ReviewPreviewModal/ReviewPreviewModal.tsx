@@ -3,14 +3,24 @@
  *
  * Features:
  * - File tree with collapsible sections (files with comments expanded by default)
- * - Inline diff view with comments positioned at the correct lines
+ * - Inline diff view with comments positioned at the correct lines (with syntax highlighting)
  * - Editable summary
  * - Verdict selection (Approve, Request Changes, Comment)
  * - Delete comments before submission
  */
 
 import type { PRFile, ReviewCommentInput } from '@data'
-import { Button, cn, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@ui-kit'
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  type DiffComment,
+  DiffViewer
+} from '@ui-kit'
 import {
   AlertCircle,
   Check,
@@ -155,6 +165,27 @@ export function ReviewPreviewModal({
         : 'border-border bg-background hover:bg-muted text-muted-foreground'
     )
 
+  // Convert ReviewComment[] to DiffComment[] for DiffViewer
+  const convertToDiffComments = useCallback((reviewComments: ReviewComment[]): DiffComment[] => {
+    return reviewComments.map((c) => ({
+      id: c.id,
+      line: c.line,
+      content: c.body
+    }))
+  }, [])
+
+  // Custom render function for comments in diff view
+  const renderDiffComment = useCallback(
+    (comment: DiffComment) => (
+      <InlineComment
+        id={comment.id}
+        body={String(comment.content || '')}
+        onDelete={() => deleteComment(comment.id)}
+      />
+    ),
+    [deleteComment]
+  )
+
   if (!review) {
     return null
   }
@@ -256,14 +287,15 @@ export function ReviewPreviewModal({
                       </span>
                     </button>
 
-                    {/* File Content with Comments */}
+                    {/* File Content with Comments - now using @ui-kit DiffViewer */}
                     {expandedFiles.has(fileData.file) && (
                       <div className="bg-background">
                         {fileData.patch ? (
-                          <DiffWithComments
+                          <DiffViewer
                             patch={fileData.patch}
-                            comments={fileData.comments}
-                            onDeleteComment={deleteComment}
+                            fileName={fileData.file}
+                            comments={convertToDiffComments(fileData.comments)}
+                            renderComment={renderDiffComment}
                           />
                         ) : (
                           <div className="p-3 space-y-2">
@@ -327,107 +359,21 @@ export function ReviewPreviewModal({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DIFF WITH INLINE COMMENTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface DiffWithCommentsProps {
-  patch: string
-  comments: ReviewComment[]
-  onDeleteComment: (id: string) => void
-}
-
-function DiffWithComments({
-  patch,
-  comments,
-  onDeleteComment
-}: DiffWithCommentsProps): React.JSX.Element {
-  // Parse diff lines and inject comments at the right positions
-  const lines = patch.split('\n')
-
-  // Build a map of line numbers to comments
-  const commentsByLine = new Map<number, ReviewComment[]>()
-  for (const comment of comments) {
-    const existing = commentsByLine.get(comment.line) || []
-    existing.push(comment)
-    commentsByLine.set(comment.line, existing)
-  }
-
-  // Track line numbers from the diff header
-  let currentLine = 0
-
-  return (
-    <div className="font-mono text-xs overflow-x-auto">
-      {lines.map((line, idx) => {
-        // Parse diff header for line numbers: @@ -a,b +c,d @@
-        const headerMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
-        if (headerMatch) {
-          currentLine = parseInt(headerMatch[1], 10) - 1
-        }
-
-        // Determine line type and increment line number for non-removed lines
-        const isAddition = line.startsWith('+') && !line.startsWith('+++')
-        const isDeletion = line.startsWith('-') && !line.startsWith('---')
-        const isHeader =
-          line.startsWith('@@') ||
-          line.startsWith('diff') ||
-          line.startsWith('index') ||
-          line.startsWith('---') ||
-          line.startsWith('+++')
-
-        if (!isDeletion && !isHeader) {
-          currentLine++
-        }
-
-        const lineComments = commentsByLine.get(currentLine) || []
-
-        // Use line number + hash of content for stable key
-        const lineKey = `${currentLine}-${idx}`
-
-        return (
-          <React.Fragment key={lineKey}>
-            <div
-              className={cn(
-                'px-3 py-0.5 border-l-2 whitespace-pre',
-                isAddition && 'bg-green-500/10 border-green-500',
-                isDeletion && 'bg-red-500/10 border-red-500',
-                isHeader && 'bg-muted/50 border-transparent text-muted-foreground',
-                !isAddition && !isDeletion && !isHeader && 'border-transparent'
-              )}
-            >
-              <span className="text-muted-foreground/60 mr-3 select-none w-8 inline-block text-right">
-                {!isHeader && !isDeletion ? currentLine : ''}
-              </span>
-              {line || ' '}
-            </div>
-            {lineComments.map((comment) => (
-              <InlineComment
-                key={comment.id}
-                comment={comment}
-                onDelete={() => onDeleteComment(comment.id)}
-              />
-            ))}
-          </React.Fragment>
-        )
-      })}
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// INLINE COMMENT (in diff)
+// INLINE COMMENT (used with DiffViewer renderComment)
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface InlineCommentProps {
-  comment: ReviewComment
+  id: string
+  body: string
   onDelete: () => void
 }
 
-function InlineComment({ comment, onDelete }: InlineCommentProps): React.JSX.Element {
+function InlineComment({ body, onDelete }: InlineCommentProps): React.JSX.Element {
   return (
     <div className="mx-3 my-2 bg-blue-500/10 border border-blue-500/30 rounded-lg overflow-hidden">
       <div className="flex items-start gap-2 p-3">
         <MessageSquare className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-        <div className="flex-1 text-sm font-sans whitespace-pre-wrap">{comment.body}</div>
+        <div className="flex-1 text-sm font-sans whitespace-pre-wrap">{body}</div>
         <button
           type="button"
           onClick={onDelete}

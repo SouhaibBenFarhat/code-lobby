@@ -13,6 +13,7 @@ export {
   CardTitle
 } from './card'
 export { ClaudeIcon, ClaudeLogoIcon } from './claude-icon'
+export { CodeHighlight, type CodeHighlightProps, getLanguageFromFileName } from './code-highlight'
 export { CodeLobbyIcon, CodeLobbyLogo, CodeLobbyLogoAnimated } from './codelobby-logo'
 export {
   Dialog,
@@ -26,6 +27,12 @@ export {
   DialogTitle,
   DialogTrigger
 } from './dialog'
+export {
+  type DiffComment,
+  type DiffLine,
+  DiffViewer,
+  type DiffViewerProps
+} from './diff-viewer'
 export {
   Col,
   type ColOffset,
@@ -49,6 +56,7 @@ export {
   ListMenuSeparator
 } from './list-menu'
 export { MarkdownContent } from './markdown-content'
+export { MatchedAvatars, type MatchedAvatarsProps, type MatchedUser } from './matched-avatars'
 export { Popover, PopoverContent, PopoverTrigger } from './popover'
 export { ScrollArea, ScrollBar } from './scroll-area'
 export {

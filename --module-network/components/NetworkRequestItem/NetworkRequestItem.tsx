@@ -6,7 +6,7 @@
  */
 
 import type { NetworkRequest } from '@data'
-import { Badge, Button, cn, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
+import { Badge, Button, CodeHighlight, cn, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import { ChevronDown, Zap } from 'lucide-react'
 import { useState } from 'react'
 import { formatDuration, formatJsonBody, getMethodColor } from '../../utils'
@@ -20,18 +20,24 @@ export interface NetworkRequestItemProps {
 }
 
 /**
- * Request body display with copy button
+ * Request body display with copy button and syntax highlighting
  */
 function RequestBodySection({ body, label }: { body: string; label: string }): React.JSX.Element {
+  const formattedBody = formatJsonBody(body)
+
   return (
     <div className="mb-2">
       <div className="flex items-center justify-between mb-1">
         <p className="text-[9px] font-medium text-muted-foreground">{label}:</p>
         <CopyButton text={body} label={label.toLowerCase()} />
       </div>
-      <pre className="text-[9px] font-mono whitespace-pre-wrap break-words bg-zinc-900/80 text-zinc-100 p-3 rounded-md max-h-[300px] overflow-auto border border-zinc-700/50">
-        {formatJsonBody(body)}
-      </pre>
+      <div className="max-h-[300px] overflow-auto border border-zinc-700/50 rounded-md">
+        <CodeHighlight
+          code={formattedBody}
+          language="json"
+          className="text-[9px] !p-2 !rounded-none"
+        />
+      </div>
     </div>
   )
 }

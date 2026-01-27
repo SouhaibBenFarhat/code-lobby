@@ -18,12 +18,10 @@ import {
   useToggleRepoExpanded
 } from '@data'
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
   cn,
   formatRelativeTime,
+  MatchedAvatars,
   ScrollArea,
   Tooltip,
   TooltipContent,
@@ -248,12 +246,12 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
           pr.draft ? 'text-muted-foreground' : isSelected ? 'text-primary' : 'text-blue-500'
         )}
       />
-      <Avatar className="w-4 h-4 flex-shrink-0">
-        <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
-        <AvatarFallback className="text-[6px]">
-          <User className="w-2.5 h-2.5" />
-        </AvatarFallback>
-      </Avatar>
+      <MatchedAvatars
+        author={{ login: pr.user.login, avatar_url: pr.user.avatar_url }}
+        assignees={pr.assignees}
+        size="sm"
+        className="flex-shrink-0"
+      />
       <div className="flex-1 min-w-0 flex items-center">
         <span className="text-xs font-mono text-muted-foreground">#{pr.number}</span>
         <span className={cn('text-sm truncate ml-1.5', isSelected && 'font-medium')}>

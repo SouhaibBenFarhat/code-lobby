@@ -9,6 +9,7 @@ import {
   Badge,
   Button,
   cn,
+  DiffViewer,
   formatRelativeTime,
   MarkdownContent
 } from '@ui-kit'
@@ -219,11 +220,15 @@ export function ReviewerCard({ reviewer, prUrl }: ReviewerCardProps): React.JSX.
                         </span>
                       </div>
 
-                      {/* Diff hunk preview */}
+                      {/* Diff hunk preview with syntax highlighting */}
                       {comment.diffHunk && (
-                        <pre className="p-1.5 mb-1.5 bg-muted/60 dark:bg-muted/70 text-[9px] font-mono overflow-x-auto rounded max-h-16 overflow-y-auto border border-border/50">
-                          {comment.diffHunk.split('\n').slice(-4).join('\n')}
-                        </pre>
+                        <div className="mb-1.5 max-h-24 overflow-y-auto rounded border border-border/50">
+                          <DiffViewer
+                            patch={comment.diffHunk}
+                            fileName={comment.path}
+                            className="text-[9px] rounded"
+                          />
+                        </div>
                       )}
 
                       <div className="text-xs text-foreground/80 dark:text-foreground/70">

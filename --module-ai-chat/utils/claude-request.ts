@@ -2,7 +2,7 @@
  * Claude API request building utilities
  */
 
-import type { ChatMessage, PRFile } from '@data'
+import type { ChatMessage, CheckStatus, PRComment, PRFile, PRReview, ReviewThread } from '@data'
 
 export const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 export const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
@@ -77,7 +77,25 @@ export interface PRContext {
   prTitle: string
   prBody?: string
   repoFullName: string
+  // Branch info
+  headBranch?: string
+  baseBranch?: string
+  // PR metadata
+  author?: string
+  isDraft?: boolean
+  labels?: string[]
+  // Stats
+  additions?: number
+  deletions?: number
+  changedFiles?: number
+  // Review status
+  reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
+  // Detailed data
   files?: PRFile[]
+  comments?: PRComment[]
+  reviews?: PRReview[]
+  reviewThreads?: ReviewThread[]
+  checks?: CheckStatus
 }
 
 /**
@@ -86,7 +104,19 @@ export interface PRContext {
 function formatFileChanges(files: PRFile[]): string {
   if (!files.length) return ''
 
+  const filesWithPatches = files.filter((f) => f.patch).length
+  const filesWithoutPatches = files.length - filesWithPatches
+
   let result = '\n\n## Changed Files\n\n'
+
+  // Add explicit summary so Claude knows exactly what it has access to
+  result += `**📊 You have access to ${files.length} files total.**\n`
+  if (filesWithPatches === files.length) {
+    result += `All ${files.length} files include their full diff/patch content below.\n\n`
+  } else {
+    result += `- ${filesWithPatches} files with full diff content\n`
+    result += `- ${filesWithoutPatches} files without diff (binary/large/renamed)\n\n`
+  }
 
   for (const file of files) {
     const changeIcon =
@@ -107,12 +137,178 @@ function formatFileChanges(files: PRFile[]): string {
   return result
 }
 
+/**
+ * Format CI/checks status for inclusion in the system prompt
+ */
+function formatCIStatus(checks: CheckStatus): string {
+  const stateEmoji =
+    checks.state === 'success'
+      ? '✅'
+      : checks.state === 'failure'
+        ? '❌'
+        : checks.state === 'error'
+          ? '⚠️'
+          : '⏳'
+
+  let result = `\n\n## CI Status: ${stateEmoji} ${checks.state.toUpperCase()}\n\n`
+
+  if (checks.check_runs.length > 0) {
+    result += '| Check | Status | Conclusion |\n|-------|--------|------------|\n'
+    for (const run of checks.check_runs) {
+      const conclusionEmoji =
+        run.conclusion === 'success'
+          ? '✅'
+          : run.conclusion === 'failure'
+            ? '❌'
+            : run.conclusion === 'skipped'
+              ? '⏭️'
+              : '⏳'
+      result += `| ${run.name} | ${run.status} | ${conclusionEmoji} ${run.conclusion || 'pending'} |\n`
+    }
+  }
+
+  return result
+}
+
+/**
+ * Format PR discussion comments for inclusion in the system prompt
+ */
+function formatComments(comments: PRComment[]): string {
+  if (!comments.length) return ''
+
+  // Filter out bot comments for cleaner context
+  const humanComments = comments.filter((c) => !c.author.isBot)
+  if (!humanComments.length) return ''
+
+  let result = '\n\n## PR Discussion\n\n'
+
+  for (const comment of humanComments.slice(-10)) {
+    // Last 10 comments
+    const date = new Date(comment.created_at).toLocaleDateString()
+    result += `**@${comment.author.login}** (${date}):\n> ${comment.body.split('\n').join('\n> ')}\n\n`
+  }
+
+  return result
+}
+
+/**
+ * Format code reviews for inclusion in the system prompt
+ */
+function formatReviews(reviews: PRReview[]): string {
+  if (!reviews.length) return ''
+
+  // Filter out bot reviews
+  const humanReviews = reviews.filter((r) => !r.author.isBot)
+  if (!humanReviews.length) return ''
+
+  let result = '\n\n## Code Reviews\n\n'
+
+  for (const review of humanReviews) {
+    const stateEmoji =
+      review.state === 'approved'
+        ? '✅'
+        : review.state === 'changes_requested'
+          ? '🔴'
+          : review.state === 'commented'
+            ? '💬'
+            : '📝'
+    const date = new Date(review.created_at).toLocaleDateString()
+    result += `**@${review.author.login}** ${stateEmoji} ${review.state.toUpperCase()} (${date})`
+    if (review.body) {
+      result += `\n> ${review.body.split('\n').join('\n> ')}`
+    }
+    result += '\n\n'
+  }
+
+  return result
+}
+
+/**
+ * Format inline review threads for inclusion in the system prompt
+ */
+function formatReviewThreads(threads: ReviewThread[]): string {
+  if (!threads.length) return ''
+
+  // Only include unresolved threads - these are the active discussions
+  const unresolvedThreads = threads.filter((t) => !t.isResolved)
+  if (!unresolvedThreads.length) return ''
+
+  let result = '\n\n## Active Review Threads (Unresolved)\n\n'
+
+  for (const thread of unresolvedThreads.slice(0, 10)) {
+    // Limit to 10 threads
+    result += `### ${thread.path}${thread.line ? `:${thread.line}` : ''}\n`
+    for (const comment of thread.comments) {
+      if (comment.author.isBot) continue
+      result += `**@${comment.author.login}**: ${comment.body}\n`
+    }
+    result += '\n'
+  }
+
+  return result
+}
+
+/**
+ * Format PR metadata (labels, branches, stats) for inclusion in the system prompt
+ */
+function formatPRMetadata(ctx: PRContext): string {
+  const parts: string[] = []
+
+  // Branch info
+  if (ctx.headBranch && ctx.baseBranch) {
+    parts.push(`**Branch:** \`${ctx.headBranch}\` → \`${ctx.baseBranch}\``)
+  }
+
+  // Author
+  if (ctx.author) {
+    parts.push(`**Author:** @${ctx.author}`)
+  }
+
+  // Draft status
+  if (ctx.isDraft) {
+    parts.push(`**Status:** 🚧 Draft`)
+  }
+
+  // Review decision
+  if (ctx.reviewDecision) {
+    const decisionEmoji =
+      ctx.reviewDecision === 'APPROVED'
+        ? '✅'
+        : ctx.reviewDecision === 'CHANGES_REQUESTED'
+          ? '🔴'
+          : '⏳'
+    parts.push(`**Review Status:** ${decisionEmoji} ${ctx.reviewDecision.replace('_', ' ')}`)
+  }
+
+  // Labels
+  if (ctx.labels && ctx.labels.length > 0) {
+    parts.push(`**Labels:** ${ctx.labels.map((l) => `\`${l}\``).join(', ')}`)
+  }
+
+  // Stats
+  if (
+    ctx.additions !== undefined ||
+    ctx.deletions !== undefined ||
+    ctx.changedFiles !== undefined
+  ) {
+    const stats: string[] = []
+    if (ctx.additions !== undefined) stats.push(`+${ctx.additions}`)
+    if (ctx.deletions !== undefined) stats.push(`-${ctx.deletions}`)
+    if (ctx.changedFiles !== undefined) stats.push(`${ctx.changedFiles} files`)
+    parts.push(`**Changes:** ${stats.join(', ')}`)
+  }
+
+  if (parts.length === 0) return ''
+
+  return `\n\n${parts.join('\n')}`
+}
+
 export interface BuildSystemPromptOptions {
   prContext?: PRContext
 }
 
 /**
- * Build the system prompt with optional PR context including file diffs
+ * Build the system prompt with optional PR context including file diffs, comments, and CI status
  */
 export function buildSystemPrompt(options?: BuildSystemPromptOptions): string {
   const { prContext } = options || {}
@@ -125,9 +321,32 @@ export function buildSystemPrompt(options?: BuildSystemPromptOptions): string {
   // Build context section for PR
   let contextSection = `You are helping with PR #${prContext.prNumber}: "${prContext.prTitle}" in ${prContext.repoFullName}.`
 
+  // Add PR metadata (labels, branches, stats, review status)
+  contextSection += formatPRMetadata(prContext)
+
   // Add PR description if available
   if (prContext.prBody?.trim()) {
     contextSection += `\n\n## PR Description\n\n${prContext.prBody}`
+  }
+
+  // Add CI status if available
+  if (prContext.checks) {
+    contextSection += formatCIStatus(prContext.checks)
+  }
+
+  // Add code reviews if available
+  if (prContext.reviews?.length) {
+    contextSection += formatReviews(prContext.reviews)
+  }
+
+  // Add unresolved review threads if available
+  if (prContext.reviewThreads?.length) {
+    contextSection += formatReviewThreads(prContext.reviewThreads)
+  }
+
+  // Add PR discussion comments if available
+  if (prContext.comments?.length) {
+    contextSection += formatComments(prContext.comments)
   }
 
   // Add file changes if available

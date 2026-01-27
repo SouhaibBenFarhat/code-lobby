@@ -121,7 +121,16 @@ export function useSelectedPR(): UseQueryResult<PullRequest | null> {
       const pr = await github.fetchSinglePR(token, selectedPRId.repoFullName, selectedPRId.prNumber)
       return pr as PullRequest
     },
-    enabled: !!token && !!selectedPRId
+    enabled: !!token && !!selectedPRId,
+    // Poll every 3 seconds while GitHub is computing merge status (returns UNKNOWN)
+    // Stop polling once we get an actual status
+    refetchInterval: (query) => {
+      const pr = query.state.data
+      if (pr?.mergeable === 'UNKNOWN' || pr?.mergeStateStatus === 'UNKNOWN') {
+        return 3000 // Poll every 3 seconds
+      }
+      return false // Stop polling
+    }
   })
 }
 
