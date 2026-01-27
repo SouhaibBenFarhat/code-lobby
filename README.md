@@ -949,6 +949,19 @@ MIT License - See [LICENSE](LICENSE) for details.
 </a>
 
 <!-- readme: contributors -start -->
+<table>
+	<tbody>
+		<tr>
+            <td align="center">
+                <a href="https://github.com/souhaibparcellab">
+                    <img src="https://avatars.githubusercontent.com/u/196962925?v=4" width="64;" alt="souhaibparcellab"/>
+                    <br />
+                    <sub><b>souhaibparcellab</b></sub>
+                </a>
+            </td>
+		</tr>
+	<tbody>
+</table>
 <!-- readme: contributors -end -->
 
 ---
