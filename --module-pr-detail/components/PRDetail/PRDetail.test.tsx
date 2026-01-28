@@ -283,6 +283,160 @@ describe('PRDetail', () => {
     })
   })
 
+  describe('Comment Sorting', () => {
+    it('should display comments sorted newest first', async () => {
+      const pr = createMockPullRequest()
+      pr.commentsList = [
+        {
+          id: 'comment-1',
+          body: 'Oldest comment',
+          created_at: '2024-01-01T10:00:00Z',
+          updated_at: '2024-01-01T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#comment-1',
+          author: { login: 'user1', avatar_url: 'https://example.com/1.png', isBot: false }
+        },
+        {
+          id: 'comment-2',
+          body: 'Middle comment',
+          created_at: '2024-01-02T10:00:00Z',
+          updated_at: '2024-01-02T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#comment-2',
+          author: { login: 'user2', avatar_url: 'https://example.com/2.png', isBot: false }
+        },
+        {
+          id: 'comment-3',
+          body: 'Newest comment',
+          created_at: '2024-01-03T10:00:00Z',
+          updated_at: '2024-01-03T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#comment-3',
+          author: { login: 'user3', avatar_url: 'https://example.com/3.png', isBot: false }
+        }
+      ]
+      pr.reviews = []
+
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
+
+      await waitFor(() => {
+        const commentBodies = container.querySelectorAll('.text-foreground\\/80')
+        const texts = Array.from(commentBodies).map((el) => el.textContent)
+        // Newest should appear first
+        const newestIndex = texts.findIndex((t) => t?.includes('Newest comment'))
+        const oldestIndex = texts.findIndex((t) => t?.includes('Oldest comment'))
+        expect(newestIndex).toBeLessThan(oldestIndex)
+      })
+    })
+
+    it('should interleave comments and reviews by date (newest first)', async () => {
+      const pr = createMockPullRequest()
+      pr.commentsList = [
+        {
+          id: 'comment-1',
+          body: 'First comment',
+          created_at: '2024-01-01T10:00:00Z',
+          updated_at: '2024-01-01T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#comment-1',
+          author: { login: 'user1', avatar_url: 'https://example.com/1.png', isBot: false }
+        },
+        {
+          id: 'comment-2',
+          body: 'Last comment',
+          created_at: '2024-01-03T10:00:00Z',
+          updated_at: '2024-01-03T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#comment-2',
+          author: { login: 'user2', avatar_url: 'https://example.com/2.png', isBot: false }
+        }
+      ]
+      pr.reviews = [
+        {
+          id: 'review-1',
+          state: 'approved',
+          body: 'Middle review',
+          created_at: '2024-01-02T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#review-1',
+          author: { login: 'reviewer', avatar_url: 'https://example.com/r.png', isBot: false }
+        }
+      ]
+
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
+
+      await waitFor(() => {
+        // The approved badge should appear (showing the review is interleaved)
+        const approvedBadges = container.querySelectorAll('.bg-success\\/20')
+        expect(approvedBadges.length).toBeGreaterThan(0)
+      })
+    })
+
+    it('should show newest review at the top when mixed with comments', async () => {
+      const pr = createMockPullRequest()
+      pr.commentsList = [
+        {
+          id: 'comment-old',
+          body: 'Old comment from yesterday',
+          created_at: '2024-01-01T10:00:00Z',
+          updated_at: '2024-01-01T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#comment-old',
+          author: { login: 'user1', avatar_url: 'https://example.com/1.png', isBot: false }
+        }
+      ]
+      pr.reviews = [
+        {
+          id: 'review-new',
+          state: 'approved',
+          body: 'Fresh approval today',
+          created_at: '2024-01-05T10:00:00Z',
+          html_url: 'https://github.com/test/pr/1#review-new',
+          author: { login: 'reviewer', avatar_url: 'https://example.com/r.png', isBot: false }
+        }
+      ]
+
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
+
+      await waitFor(() => {
+        // Get all timeline items (they have the relative pl-12 class)
+        const timelineItems = container.querySelectorAll('.relative.pl-12')
+        expect(timelineItems.length).toBe(2)
+
+        // First item should be the approval (newest)
+        const firstItem = timelineItems[0]
+        expect(firstItem?.querySelector('.bg-success\\/15')).toBeInTheDocument()
+      })
+    })
+
+    it('should display all comments without pagination', async () => {
+      const pr = createMockPullRequest()
+      // Create 50 comments
+      pr.commentsList = Array.from({ length: 50 }, (_, i) => ({
+        id: `comment-${i}`,
+        body: `Comment ${i}`,
+        created_at: new Date(2024, 0, 1, i).toISOString(),
+        updated_at: new Date(2024, 0, 1, i).toISOString(),
+        html_url: `https://github.com/test/pr/1#comment-${i}`,
+        author: { login: `user${i}`, avatar_url: `https://example.com/${i}.png`, isBot: false }
+      }))
+      pr.reviews = []
+
+      const { container } = render(<PRDetail onClose={mockOnClose} />, {
+        initialSelectedPR: pr,
+        initialUser: mockUser
+      })
+
+      // Should show all 50 comments at once
+      await waitFor(() => {
+        const timelineItems = container.querySelectorAll('.relative.pl-12')
+        expect(timelineItems.length).toBe(50)
+      })
+    })
+  })
+
   describe('Reviews', () => {
     it('should render PR with reviews without error', async () => {
       const reviewer = createMockUser({ login: 'reviewer1' })

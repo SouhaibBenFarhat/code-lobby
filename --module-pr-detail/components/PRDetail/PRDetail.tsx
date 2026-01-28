@@ -54,7 +54,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
               ? ('changes_requested' as const)
               : ('reviewed' as const)
       }))
-    ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }, [pr])
 
   // Filter comments based on selected tab
@@ -131,19 +131,25 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
       }
     }
 
-    // Sort inline comments by date for each reviewer
+    // Sort inline comments by date for each reviewer (newest first)
     for (const group of reviewerMap.values()) {
       group.inlineComments.sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     }
 
-    // Convert to array and sort by review state (approved last, changes_requested first)
+    // Convert to array and sort by review date (newest first)
     return Array.from(reviewerMap.values()).sort((a, b) => {
-      const stateOrder: Record<string, number> = { changes_requested: 0, commented: 1, approved: 2 }
-      const aOrder = a.reviewState ? (stateOrder[a.reviewState] ?? 3) : 3
-      const bOrder = b.reviewState ? (stateOrder[b.reviewState] ?? 3) : 3
-      return aOrder - bOrder
+      // Get the latest activity date for each reviewer (review date or latest inline comment)
+      const aLatest = Math.max(
+        a.reviewDate ? new Date(a.reviewDate).getTime() : 0,
+        a.inlineComments[0] ? new Date(a.inlineComments[0].created_at).getTime() : 0
+      )
+      const bLatest = Math.max(
+        b.reviewDate ? new Date(b.reviewDate).getTime() : 0,
+        b.inlineComments[0] ? new Date(b.inlineComments[0].created_at).getTime() : 0
+      )
+      return bLatest - aLatest // Newest first
     })
   }, [pr])
 
@@ -294,7 +300,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                         <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
 
                         <div className="space-y-0 pt-4">
-                          {comments.slice(0, 30).map((comment, index) => (
+                          {comments.map((comment, index) => (
                             <div
                               key={`${comment.id}-${index}`}
                               className="relative pl-12 pb-5 group"
@@ -344,12 +350,6 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
 
                         {/* End marker */}
                         <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
-
-                        {comments.length > 30 && (
-                          <p className="text-xs text-muted-foreground text-center py-2 pl-12 mt-2">
-                            Showing 30 of {comments.length} comments
-                          </p>
-                        )}
                       </div>
                     ) : (
                       <div className="text-center py-6 text-sm text-muted-foreground">
@@ -412,13 +412,64 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                           </div>
                         </div>
 
-                        <Row gutter="sm" className="flex-col">
-                          {reviewsByReviewer.map((reviewer) => (
-                            <Col key={reviewer.login} span="full">
-                              <ReviewerCard reviewer={reviewer} prUrl={pr.html_url} />
-                            </Col>
-                          ))}
-                        </Row>
+                        <div className="relative ml-2">
+                          {/* Timeline line */}
+                          <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
+                          {/* Start marker */}
+                          <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+
+                          <div className="space-y-0 pt-4">
+                            {reviewsByReviewer.map((reviewer, index) => (
+                              <div
+                                key={`${reviewer.login}-${index}`}
+                                className="relative pl-12 pb-5 group"
+                              >
+                                {/* Timeline dot */}
+                                <div
+                                  className={cn(
+                                    'absolute left-[4px] top-3 w-[26px] h-[26px] rounded-full border-[3px] bg-background flex items-center justify-center shadow-sm transition-transform group-hover:scale-110',
+                                    reviewer.reviewState === 'approved'
+                                      ? 'border-success'
+                                      : reviewer.reviewState === 'changes_requested'
+                                        ? 'border-destructive'
+                                        : reviewer.isBot
+                                          ? 'border-purple-500'
+                                          : 'border-primary'
+                                  )}
+                                >
+                                  {reviewer.reviewState === 'approved' ? (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                                  ) : reviewer.reviewState === 'changes_requested' ? (
+                                    <XCircle className="w-3.5 h-3.5 text-destructive" />
+                                  ) : reviewer.isBot ? (
+                                    <Bot className="w-3.5 h-3.5 text-purple-500" />
+                                  ) : (
+                                    <FileCode className="w-3.5 h-3.5 text-primary" />
+                                  )}
+                                </div>
+
+                                {/* Connector line from dot to card */}
+                                <div
+                                  className={cn(
+                                    'absolute left-[30px] top-[22px] w-[18px] h-[2px]',
+                                    reviewer.reviewState === 'approved'
+                                      ? 'bg-success/50'
+                                      : reviewer.reviewState === 'changes_requested'
+                                        ? 'bg-destructive/50'
+                                        : reviewer.isBot
+                                          ? 'bg-purple-500/50'
+                                          : 'bg-primary/50'
+                                  )}
+                                />
+
+                                <ReviewerCard reviewer={reviewer} prUrl={pr.html_url} />
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* End marker */}
+                          <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+                        </div>
                       </div>
                     ) : (
                       <Row

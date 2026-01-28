@@ -4,7 +4,11 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: ['electron-store', 'conf', 'env-paths', 'atomically', 'ajv', 'ajv-formats']
+      })
+    ],
     resolve: {
       alias: {
         '@logger/main': resolve('--module-logger/main.ts'),
