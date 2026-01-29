@@ -6,14 +6,18 @@
 
 import {
   useAIPanel,
+  useIDESettings,
   useIsAuthenticated,
   useNetworkPanel,
   useNetworkPanelHeight,
   usePRDetailPanel,
   useSelectedPRId,
   useSetAIPanel,
+  useSetIDESettings,
   useSetNetworkPanelHeight,
   useSetPRDetailPanel,
+  useSetUserProfilePanel,
+  useUserProfilePanel,
   useValidatePersistedToken,
   useViewMode
 } from '@data'
@@ -29,6 +33,7 @@ const DEFAULT_PANEL_WIDTH = 400
 const DEFAULT_AI_PANEL_WIDTH = 380
 const MIN_PANEL_HEIGHT = 80
 const DEFAULT_NETWORK_PANEL_HEIGHT = 200
+const DEFAULT_USER_PROFILE_HEIGHT = 250
 
 export function App(): React.JSX.Element {
   // Read data from TanStack Query
@@ -47,10 +52,21 @@ export function App(): React.JSX.Element {
   const { data: networkPanelOpen } = useNetworkPanel()
   const { data: networkPanelHeight = DEFAULT_NETWORK_PANEL_HEIGHT } = useNetworkPanelHeight()
 
+  // User profile panel state
+  const { data: userProfilePanelData } = useUserProfilePanel()
+  const userProfileOpen = userProfilePanelData?.isOpen ?? false
+  const userProfileHeight = userProfilePanelData?.height ?? DEFAULT_USER_PROFILE_HEIGHT
+
+  // Explorer width (from IDE settings, controlled by IDEView)
+  const { data: ideSettings } = useIDESettings()
+  const explorerWidth = ideSettings?.sidebarWidth ?? 280
+
   // Mutations
   const setPRDetailPanel = useSetPRDetailPanel()
   const setAIPanel = useSetAIPanel()
+  const setIDESettings = useSetIDESettings()
   const setNetworkPanelHeight = useSetNetworkPanelHeight()
+  const setUserProfilePanel = useSetUserProfilePanel()
   const { mutate: validatePersistedToken } = useValidatePersistedToken()
 
   // On app startup, validate persisted token and restore user data
@@ -62,19 +78,29 @@ export function App(): React.JSX.Element {
   const [isPRResizing, setIsPRResizing] = useState(false)
   const [isAIResizing, setIsAIResizing] = useState(false)
   const [isNetworkResizing, setIsNetworkResizing] = useState(false)
+  const [isUserProfileResizing, setIsUserProfileResizing] = useState(false)
+  const [isExplorerResizing, setIsExplorerResizing] = useState(false)
 
   const prPanelRef = useRef<HTMLElement>(null)
   const rightSidebarRef = useRef<HTMLElement>(null)
   const networkPanelRef = useRef<HTMLDivElement>(null)
+  const leftSidebarRef = useRef<HTMLElement>(null)
+  const userProfilePanelRef = useRef<HTMLDivElement>(null)
   const prWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   const aiWidthRef = useRef(DEFAULT_AI_PANEL_WIDTH)
+  const explorerWidthRef = useRef(280)
   const networkHeightRef = useRef(DEFAULT_NETWORK_PANEL_HEIGHT)
+  const userProfileHeightRef = useRef(DEFAULT_USER_PROFILE_HEIGHT)
   const prRafRef = useRef<number | null>(null)
   const aiRafRef = useRef<number | null>(null)
+  const explorerRafRef = useRef<number | null>(null)
   const networkRafRef = useRef<number | null>(null)
+  const userProfileRafRef = useRef<number | null>(null)
   const prResizeStart = useRef<{ startX: number; startWidth: number } | null>(null)
   const aiResizeStart = useRef<{ startX: number; startWidth: number } | null>(null)
+  const explorerResizeStart = useRef<{ startX: number; startWidth: number } | null>(null)
   const networkResizeStart = useRef<{ startY: number; startHeight: number } | null>(null)
+  const userProfileResizeStart = useRef<{ startY: number; startHeight: number } | null>(null)
 
   const handlePRResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -104,6 +130,26 @@ export function App(): React.JSX.Element {
       networkHeightRef.current = networkPanelHeight
     },
     [networkPanelHeight]
+  )
+
+  const handleExplorerResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsExplorerResizing(true)
+      explorerResizeStart.current = { startX: e.clientX, startWidth: explorerWidth }
+      explorerWidthRef.current = explorerWidth
+    },
+    [explorerWidth]
+  )
+
+  const handleUserProfileResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsUserProfileResizing(true)
+      userProfileResizeStart.current = { startY: e.clientY, startHeight: userProfileHeight }
+      userProfileHeightRef.current = userProfileHeight
+    },
+    [userProfileHeight]
   )
 
   useEffect(() => {
@@ -140,6 +186,23 @@ export function App(): React.JSX.Element {
         })
       }
 
+      // Explorer (left sidebar) width resize - dragging right increases width
+      if (isExplorerResizing && explorerResizeStart.current && leftSidebarRef.current) {
+        if (explorerRafRef.current) cancelAnimationFrame(explorerRafRef.current)
+        explorerRafRef.current = requestAnimationFrame(() => {
+          if (!explorerResizeStart.current || !leftSidebarRef.current) return
+          const delta = e.clientX - explorerResizeStart.current.startX
+          const newWidth = Math.min(
+            500,
+            Math.max(200, explorerResizeStart.current.startWidth + delta)
+          )
+          leftSidebarRef.current.style.width = `${newWidth}px`
+          leftSidebarRef.current.style.minWidth = `${newWidth}px`
+          leftSidebarRef.current.style.maxWidth = `${newWidth}px`
+          explorerWidthRef.current = newWidth
+        })
+      }
+
       if (
         isNetworkResizing &&
         networkResizeStart.current &&
@@ -163,12 +226,43 @@ export function App(): React.JSX.Element {
           networkHeightRef.current = newHeight
         })
       }
+
+      // User profile panel resize (dragging up increases height)
+      if (
+        isUserProfileResizing &&
+        userProfileResizeStart.current &&
+        userProfilePanelRef.current &&
+        leftSidebarRef.current
+      ) {
+        if (userProfileRafRef.current) cancelAnimationFrame(userProfileRafRef.current)
+        userProfileRafRef.current = requestAnimationFrame(() => {
+          if (
+            !userProfileResizeStart.current ||
+            !userProfilePanelRef.current ||
+            !leftSidebarRef.current
+          )
+            return
+          // Dragging up increases height, dragging down decreases height
+          const delta = userProfileResizeStart.current.startY - e.clientY
+          // Max height is sidebar height minus minimum space for explorer
+          const sidebarHeight = leftSidebarRef.current.clientHeight
+          const maxHeight = sidebarHeight - MIN_PANEL_HEIGHT
+          const newHeight = Math.min(
+            maxHeight,
+            Math.max(MIN_PANEL_HEIGHT, userProfileResizeStart.current.startHeight + delta)
+          )
+          userProfilePanelRef.current.style.height = `${newHeight}px`
+          userProfileHeightRef.current = newHeight
+        })
+      }
     }
 
     const handleMouseUp = () => {
       if (prRafRef.current) cancelAnimationFrame(prRafRef.current)
       if (aiRafRef.current) cancelAnimationFrame(aiRafRef.current)
+      if (explorerRafRef.current) cancelAnimationFrame(explorerRafRef.current)
       if (networkRafRef.current) cancelAnimationFrame(networkRafRef.current)
+      if (userProfileRafRef.current) cancelAnimationFrame(userProfileRafRef.current)
 
       if (isPRResizing) {
         setPRDetailPanel.mutate({ width: prWidthRef.current })
@@ -176,24 +270,34 @@ export function App(): React.JSX.Element {
       if (isAIResizing) {
         setAIPanel.mutate({ width: aiWidthRef.current })
       }
+      if (isExplorerResizing) {
+        setIDESettings.mutate({ sidebarWidth: explorerWidthRef.current })
+      }
       if (isNetworkResizing) {
         setNetworkPanelHeight.mutate(networkHeightRef.current)
+      }
+      if (isUserProfileResizing) {
+        setUserProfilePanel.mutate({ height: userProfileHeightRef.current })
       }
 
       setIsPRResizing(false)
       setIsAIResizing(false)
+      setIsExplorerResizing(false)
       setIsNetworkResizing(false)
+      setIsUserProfileResizing(false)
       prResizeStart.current = null
       aiResizeStart.current = null
+      explorerResizeStart.current = null
       networkResizeStart.current = null
+      userProfileResizeStart.current = null
     }
 
-    if (isPRResizing || isAIResizing) {
+    if (isPRResizing || isAIResizing || isExplorerResizing) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       document.body.style.cursor = 'col-resize'
       document.body.style.userSelect = 'none'
-    } else if (isNetworkResizing) {
+    } else if (isNetworkResizing || isUserProfileResizing) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       document.body.style.cursor = 'row-resize'
@@ -209,10 +313,14 @@ export function App(): React.JSX.Element {
   }, [
     isPRResizing,
     isAIResizing,
+    isExplorerResizing,
     isNetworkResizing,
+    isUserProfileResizing,
     setPRDetailPanel,
     setAIPanel,
-    setNetworkPanelHeight
+    setIDESettings,
+    setNetworkPanelHeight,
+    setUserProfilePanel
   ])
 
   const closePRPanel = () => {
@@ -245,7 +353,43 @@ export function App(): React.JSX.Element {
         <Slot name="header" wrapInContainer={false} />
 
         <div className="flex-1 flex overflow-hidden">
-          <Slot name="left-panel" className="flex-shrink-0" />
+          {/* Left sidebar: Explorer + User Profile (mirrors right sidebar: AI + Network) */}
+          <aside
+            ref={leftSidebarRef}
+            className="apple-sidebar overflow-hidden flex relative flex-shrink-0"
+            style={{ width: explorerWidth, minWidth: explorerWidth, maxWidth: explorerWidth }}
+          >
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              <div
+                className={userProfileOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'}
+              >
+                <Slot name="left-panel" wrapInContainer={false} />
+              </div>
+              {viewMode === 'ide' && userProfileOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Resize user profile panel"
+                    className={`h-1 w-full cursor-row-resize p-0 flex-shrink-0 transition-colors border-t border-border ${isUserProfileResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+                    onMouseDown={handleUserProfileResizeStart}
+                  />
+                  <div
+                    ref={userProfilePanelRef}
+                    className="flex-shrink-0 overflow-hidden"
+                    style={{ height: userProfileHeight }}
+                  >
+                    <Slot name="user-profile" wrapInContainer={false} />
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              type="button"
+              aria-label="Resize sidebar"
+              className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-20 border-0 p-0 transition-colors ${isExplorerResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+              onMouseDown={handleExplorerResizeStart}
+            />
+          </aside>
 
           <main className="flex-1 overflow-auto bg-muted/20">
             <Slot name="main" wrapInContainer={false} />

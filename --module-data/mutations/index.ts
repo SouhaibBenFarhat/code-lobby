@@ -36,7 +36,9 @@ export {
   useReopenPR,
   useSelectPR,
   useSubmitPRReview,
-  useSubmitPRReviewWithComments
+  useSubmitPRReviewWithComments,
+  useUpdatePRBody,
+  useUpdatePRBranch
 } from './pull-request'
 // Settings
 export {
@@ -49,6 +51,7 @@ export {
   useSetRepoColor,
   useSetRepoMinimized,
   useSetSelectedRepos,
+  useSetUserProfilePanel,
   useSetViewMode,
   useToggleMyPRsFilter,
   useToggleRepoExpanded

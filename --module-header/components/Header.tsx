@@ -6,8 +6,10 @@ import {
   useRateLimit,
   useRepos,
   useSetTheme,
+  useSetUserProfilePanel,
   useTheme,
   useToggleNetworkPanel,
+  useUserProfilePanel,
   type ViewMode
 } from '@data'
 import {
@@ -43,6 +45,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { AboutDialog } from './AboutDialog'
 import { AICostIndicator } from './AICostIndicator'
+import { ContributionsModal } from './ContributionsModal'
 import { EventStream } from './EventStream'
 import { LogsViewer } from './LogsViewer'
 import { RepoSelector } from './RepoSelector'
@@ -112,6 +115,15 @@ export function Header({
   // Network panel
   const { data: networkPanelOpen } = useNetworkPanel()
   const toggleNetworkPanel = useToggleNetworkPanel()
+
+  // User profile panel
+  const { data: userProfilePanelData } = useUserProfilePanel()
+  const setUserProfilePanel = useSetUserProfilePanel()
+  const userProfileOpen = userProfilePanelData?.isOpen ?? false
+
+  const toggleUserProfile = () => {
+    setUserProfilePanel.mutate({ isOpen: !userProfileOpen })
+  }
 
   const [, setTick] = useState(0)
 
@@ -398,15 +410,29 @@ export function Header({
 
         <Separator orientation="vertical" className="h-6" />
 
-        {user?.login && (
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={user.avatar_url} alt={user.login} />
-              <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium">{user.login}</span>
-          </div>
+        {user?.login && viewMode === 'ide' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleUserProfile}
+                className={cn(
+                  'flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity rounded-md px-2 py-1',
+                  userProfileOpen && 'bg-muted'
+                )}
+              >
+                <Avatar className="h-6 w-6 ring-2 ring-transparent hover:ring-primary/50 transition-all">
+                  <AvatarImage src={user.avatar_url} alt={user.login} />
+                  <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{user.login}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{userProfileOpen ? 'Hide Profile' : 'Show Profile'}</TooltipContent>
+          </Tooltip>
         )}
+
+        {user?.login && viewMode !== 'ide' && <ContributionsModal user={user} />}
 
         <Tooltip>
           <TooltipTrigger asChild>

@@ -5,6 +5,9 @@
 
 import type { PullRequest } from '@data'
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
   Badge,
   Button,
   Col,
@@ -23,6 +26,7 @@ import {
   Copy,
   ExternalLink,
   FileEdit,
+  FileSearch,
   GitBranch,
   GitPullRequest,
   Loader2,
@@ -40,6 +44,7 @@ import { FindPreviewButton } from '../FindPreviewButton'
 import { MergeButton } from '../MergeButton'
 import { ReadyForReviewButton } from '../ReadyForReviewButton'
 import { ReopenButton } from '../ReopenButton'
+import { UpdateBranchButton } from '../UpdateBranchButton'
 
 export interface PRHeaderProps {
   onClose: () => void
@@ -142,6 +147,7 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
           <FindPreviewButton />
           <Separator orientation="vertical" className="h-5 mx-1" />
           <ApproveButton />
+          <UpdateBranchButton />
           <MergeButton />
           <ReadyForReviewButton />
           <ConvertToDraftButton />
@@ -223,14 +229,109 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
           </Row>
         </Col>
         <Col span="auto">
-          <Row gutter="xs" align="center">
-            <Col span="auto">
-              <MessageSquare className="w-3 h-3 text-muted-foreground" />
-            </Col>
-            <Col span="auto">
-              <span>{pr.comments + pr.review_comments}</span>
-            </Col>
-          </Row>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Row gutter="xs" align="center">
+                  <Col span="auto">
+                    <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                  </Col>
+                  <Col span="auto">
+                    <span>{pr.comments + pr.review_comments}</span>
+                  </Col>
+                </Row>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Comments</TooltipContent>
+          </Tooltip>
+        </Col>
+        <Col span="auto">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Row gutter="xs" align="center">
+                  <Col span="auto">
+                    <FileSearch className="w-3 h-3 text-muted-foreground" />
+                  </Col>
+                  {(() => {
+                    // Get unique reviewers with their latest review state
+                    const uniqueReviewers = Array.from(
+                      new Map(
+                        (pr.reviews || []).map((r) => [
+                          r.author.login,
+                          { author: r.author, state: r.state }
+                        ])
+                      ).values()
+                    )
+                    return (
+                      <>
+                        <Col span="auto">
+                          <span>{uniqueReviewers.length}</span>
+                        </Col>
+                        {uniqueReviewers.length > 0 && (
+                          <Col span="auto">
+                            <div className="flex items-center -space-x-1.5 ml-1">
+                              {uniqueReviewers.slice(0, 3).map(({ author, state }) => (
+                                <Avatar
+                                  key={author.login}
+                                  className={cn(
+                                    'w-4 h-4 ring-2',
+                                    state === 'approved'
+                                      ? 'ring-emerald-500'
+                                      : state === 'changes_requested'
+                                        ? 'ring-red-500'
+                                        : 'ring-gray-400'
+                                  )}
+                                >
+                                  <AvatarImage src={author.avatar_url} alt={author.login} />
+                                  <AvatarFallback className="text-[6px]">
+                                    {author.login.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {uniqueReviewers.length > 3 && (
+                                <span className="text-[10px] text-muted-foreground ml-1">
+                                  +{uniqueReviewers.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </Col>
+                        )}
+                      </>
+                    )
+                  })()}
+                </Row>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {pr.reviews && pr.reviews.length > 0 ? (
+                <div>
+                  <p className="font-medium mb-1">Reviewers</p>
+                  {Array.from(
+                    new Map(
+                      pr.reviews.map((r) => [r.author.login, { author: r.author, state: r.state }])
+                    ).values()
+                  ).map(({ author, state }) => (
+                    <p key={author.login} className="text-xs flex items-center gap-1">
+                      <span
+                        className={cn(
+                          'w-2 h-2 rounded-full',
+                          state === 'approved'
+                            ? 'bg-emerald-500'
+                            : state === 'changes_requested'
+                              ? 'bg-red-500'
+                              : 'bg-gray-400'
+                        )}
+                      />
+                      {author.login}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                'No reviews yet'
+              )}
+            </TooltipContent>
+          </Tooltip>
         </Col>
       </Row>
     </div>

@@ -17,6 +17,7 @@ import { registerToSlot } from '@slot-system'
 import { Header } from './components/Header'
 
 export { AboutDialog } from './components/AboutDialog'
+export { ContributionsModal } from './components/ContributionsModal'
 export { EventStream } from './components/EventStream'
 export { Header } from './components/Header'
 export { LogsViewer } from './components/LogsViewer'

@@ -88,10 +88,11 @@ CodeLobby is a **PR-centric development dashboard** built with Electron, React, 
 | | Test coverage (~80%) | ✅ Complete |
 | **PR Actions** | Merge PR (squash/merge/rebase methods) | ✅ Complete |
 | | Approve PR | ✅ Complete |
+| | Post Comment | ✅ Complete |
 | **Advanced AI** | CI Failure Analysis (streaming) | ✅ Complete |
 | | Web Fetch Tool (Claude can fetch URLs) | ✅ Complete |
 | | AI PR Review Generation (with inline comments) | ✅ Complete |
-| | Review Preview Modal (edit before submit) | ✅ Complete |
+| | Review Preview Modal (edit/delete comments, sidebar nav) | ✅ Complete |
 | | Context Load Indicator | ✅ Complete |
 | | AI Chat Navigation (general & PR chats) | ✅ Complete |
 | | Custom Quick Prompts | ✅ Complete |
@@ -567,6 +568,7 @@ Show all files changed in a PR with their change status (added, modified, delete
 
 - [x] **Approve PR** - Submit approval review via `submitPullRequestReview` GraphQL mutation
 - [x] **Merge PR** - Merge with configurable strategies (MERGE, SQUASH, REBASE) via `mergePullRequest` mutation
+- [x] **Post Comment** - Add comments to PRs via `addComment` GraphQL mutation
 - [ ] **Request Changes** - Submit review requesting changes (GraphQL ready, needs UI)
 - [ ] **Close PR** - Close without merging
 - [ ] **Add Label** - Apply labels to PR
@@ -575,6 +577,7 @@ Show all files changed in a PR with their change status (added, modified, delete
 **Completed (January 2026):**
 - `MergeButton` component with merge method dropdown (Squash, Merge, Rebase)
 - `ApproveButton` component with state-aware UI
+- `PostCommentForm` component with expandable form and keyboard shortcuts
 - Confirmation dialogs for merge action
 - Loading states and error handling
 - Auto-refresh PR data after action
@@ -585,15 +588,40 @@ Show all files changed in a PR with their change status (added, modified, delete
 - Need confirmation dialogs for destructive actions
 - Consider optimistic updates with rollback
 
-### 1.3 Comment System 🔴 Not Started
+### 1.3 Comment System 🟡 Partially Complete
 > Enable commenting directly from the app
 
 - [ ] **Reply to comments** - Inline reply to PR comments
 - [ ] **Reply to review threads** - Respond to review discussions
-- [ ] **Create new comment** - Post new general comment
+- [x] **Create new comment** - Post new general comment ✅ Complete (January 29, 2026)
 - [ ] **Markdown editor** - Rich text editing with preview
 - [ ] **@mentions** - Autocomplete for team members
 - [ ] **Emoji reactions** - React to comments
+
+**✅ Completed: Post Comment Feature (January 29, 2026)**
+
+**Implementation Summary:**
+- `PostCommentForm` component added to PR Detail Discussion section
+- Expandable form - collapsed by default, expands on click
+- Textarea input with Markdown support hint
+- Keyboard shortcuts: ⌘/Ctrl+Enter to submit, Escape to cancel
+- Success feedback with auto-clear
+- Auto-refresh PR data after posting
+
+**Technical Details:**
+- Uses existing `addPRComment` GraphQL mutation from `github.ts`
+- Uses existing `useAddPRComment` hook from `mutations/pull-request.ts`
+- Invalidates PR queries on success for auto-refresh
+- Clean component with proper error/loading states
+
+**Files Created:**
+- `--module-pr-detail/components/PostCommentForm/PostCommentForm.tsx` - Main component
+- `--module-pr-detail/components/PostCommentForm/PostCommentForm.test.tsx` - 17 tests
+- `--module-pr-detail/components/PostCommentForm/index.ts` - Export
+
+**Files Modified:**
+- `--module-pr-detail/components/PRDetail/PRDetail.tsx` - Added PostCommentForm to Discussion section
+- `--module-pr-detail/components/index.ts` - Added export
 
 **Technical Notes:**
 - Use GitHub's comment GraphQL mutations

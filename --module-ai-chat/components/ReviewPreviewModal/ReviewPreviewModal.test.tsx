@@ -55,6 +55,12 @@ vi.mock('@ui-kit', async () => {
           )
         )}
       </div>
+    ),
+    // Mock ScrollArea
+    ScrollArea: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+      <div className={className} data-testid="scroll-area">
+        {children}
+      </div>
     )
   }
 })
@@ -131,6 +137,27 @@ describe('ReviewPreviewModal', () => {
     it('should display comment count', () => {
       render(<ReviewPreviewModal {...defaultProps} />)
       expect(screen.getByText('Review Comments (2)')).toBeInTheDocument()
+    })
+  })
+
+  describe('sidebar navigation', () => {
+    it('should show file navigation sidebar when there are comments', () => {
+      render(<ReviewPreviewModal {...defaultProps} />)
+      expect(screen.getByText('Files (2)')).toBeInTheDocument()
+    })
+
+    it('should show file names in sidebar', () => {
+      render(<ReviewPreviewModal {...defaultProps} />)
+      // File names are truncated to show just the filename
+      expect(screen.getByText('utils.ts')).toBeInTheDocument()
+      expect(screen.getByText('api.ts')).toBeInTheDocument()
+    })
+
+    it('should show comment count badges in sidebar', () => {
+      render(<ReviewPreviewModal {...defaultProps} />)
+      // Each file has 1 comment, shown as badge
+      const badges = screen.getAllByText('1')
+      expect(badges.length).toBeGreaterThanOrEqual(2)
     })
   })
 
@@ -259,6 +286,25 @@ describe('ReviewPreviewModal', () => {
     })
   })
 
+  describe('comment editing', () => {
+    it('should show editors for all comments by default', () => {
+      render(<ReviewPreviewModal {...defaultProps} />)
+      const editors = screen.getAllByTestId('edit-comment-editor')
+      expect(editors.length).toBe(2) // One for each comment
+    })
+
+    it('should allow direct editing of comments', async () => {
+      const user = userEvent.setup()
+      render(<ReviewPreviewModal {...defaultProps} />)
+
+      const editors = screen.getAllByTestId('edit-comment-editor')
+      await user.clear(editors[0])
+      await user.type(editors[0], 'Updated comment body')
+
+      expect(editors[0]).toHaveValue('Updated comment body')
+    })
+  })
+
   describe('submission', () => {
     it('should call onSubmit with correct data when Submit Review is clicked', async () => {
       const user = userEvent.setup()
@@ -324,6 +370,28 @@ describe('ReviewPreviewModal', () => {
       render(<ReviewPreviewModal {...defaultProps} isSubmitting={true} />)
       expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled()
     })
+
+    it('should submit with edited comment', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue({ success: true })
+      render(<ReviewPreviewModal {...defaultProps} onSubmit={onSubmit} />)
+
+      // Edit first comment directly in the editor
+      const editors = screen.getAllByTestId('edit-comment-editor')
+      await user.clear(editors[0])
+      await user.type(editors[0], 'Edited comment body')
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: /submit review/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          'This is a test review summary',
+          'approve',
+          expect.arrayContaining([expect.objectContaining({ body: 'Edited comment body' })])
+        )
+      })
+    })
   })
 
   describe('cancel', () => {
@@ -349,6 +417,11 @@ describe('ReviewPreviewModal', () => {
       expect(
         screen.getByText('No inline comments - only summary will be posted')
       ).toBeInTheDocument()
+    })
+
+    it('should not show sidebar when no comments', () => {
+      render(<ReviewPreviewModal {...defaultProps} review={createMockReview({ comments: [] })} />)
+      expect(screen.queryByText('Files (0)')).not.toBeInTheDocument()
     })
   })
 
@@ -385,6 +458,28 @@ describe('ReviewPreviewModal', () => {
       )
 
       expect(screen.getByTestId('review-summary-editor')).toHaveValue('New summary')
+    })
+
+    it('should reset comments when modal reopens with new review', () => {
+      const { rerender } = render(<ReviewPreviewModal {...defaultProps} />)
+
+      // Check initial comments
+      expect(screen.getAllByTestId('edit-comment-editor')).toHaveLength(2)
+
+      // Close and reopen with different review
+      rerender(<ReviewPreviewModal {...defaultProps} isOpen={false} />)
+      rerender(
+        <ReviewPreviewModal
+          {...defaultProps}
+          isOpen={true}
+          review={createMockReview({
+            comments: [{ id: 'c3', file: 'new.ts', line: 1, body: 'New comment' }]
+          })}
+        />
+      )
+
+      // Should show only the new comment
+      expect(screen.getAllByTestId('edit-comment-editor')).toHaveLength(1)
     })
   })
 })

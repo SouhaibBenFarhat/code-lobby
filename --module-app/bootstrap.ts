@@ -8,6 +8,7 @@
 // Import modules to trigger their self-registration to slots
 import '@header'
 import '@explorer'
+import '@user-profile'
 import '@canvas'
 import '@pr-detail'
 import '@ai-chat'

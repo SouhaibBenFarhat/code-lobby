@@ -20,6 +20,7 @@ export {
 export { FileTreeNode, type FileTreeNodeProps } from './FileTreeNode'
 export { FindPreviewButton } from './FindPreviewButton'
 export { MergeButton, type MergeButtonProps } from './MergeButton'
+export { PostCommentForm, type PostCommentFormProps } from './PostCommentForm'
 export { PRDescription, type PRDescriptionProps } from './PRDescription'
 // Main component
 export { PRDetail, type PRDetailProps } from './PRDetail'
@@ -30,7 +31,6 @@ export {
 } from './ReadyForReviewButton'
 export { ReopenButton, type ReopenButtonProps } from './ReopenButton'
 export { ReviewerCard, type ReviewerCardProps } from './ReviewerCard'
-
 // Types (DiffLine is now in @ui-kit)
 export type {
   CheckRun,
@@ -39,3 +39,4 @@ export type {
   GroupedChecks,
   ReviewerFeedback
 } from './types'
+export { UpdateBranchButton, type UpdateBranchButtonProps } from './UpdateBranchButton'

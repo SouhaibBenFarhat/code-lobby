@@ -4,8 +4,18 @@
  * Uses useSelectedPR hook to subscribe to store instead of receiving pr prop.
  */
 
-import { Button, Col, cn, Row, ScrollArea, Separator } from '@ui-kit'
-import { Bot, CheckCircle2, FileCode, MessageSquare, Users, XCircle } from 'lucide-react'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  Col,
+  cn,
+  Row,
+  ScrollArea,
+  Separator
+} from '@ui-kit'
+import { Bot, CheckCircle2, FileSearch, MessageSquare, Users, XCircle } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
 import { useSelectedPR } from '../../hooks'
@@ -13,6 +23,7 @@ import { useSelectedPR } from '../../hooks'
 import { ChangedFilesSection } from '../ChangedFilesSection'
 import { CIChecksSection } from '../CIChecksSection'
 import { CommentItem } from '../CommentItem'
+import { PostCommentForm } from '../PostCommentForm'
 import { PRDescription } from '../PRDescription'
 import { PRDetailSkeleton } from '../PRDetailSkeleton'
 import { PRHeader } from '../PRHeader'
@@ -68,6 +79,40 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
   // Count bots and humans
   const botComments = allComments.filter((c) => c.actor.isBot).length
   const humanComments = allComments.filter((c) => !c.actor.isBot).length
+
+  // Count unique reviewers (not total review submissions)
+  const uniqueReviewersCount = useMemo(() => {
+    if (!pr?.reviews) return 0
+    return new Set(pr.reviews.map((r) => r.author.login)).size
+  }, [pr?.reviews])
+
+  // Get unique reviewers with their latest state for avatars
+  const uniqueReviewers = useMemo(() => {
+    if (!pr?.reviews) return []
+    return Array.from(
+      new Map(
+        pr.reviews.map((r) => [r.author.login, { author: r.author, state: r.state }])
+      ).values()
+    )
+  }, [pr?.reviews])
+
+  // Get unique humans who commented
+  const uniqueHumans = useMemo(() => {
+    return Array.from(
+      new Map(
+        allComments.filter((c) => !c.actor.isBot).map((c) => [c.actor.login, c.actor])
+      ).values()
+    )
+  }, [allComments])
+
+  // Get unique bots who commented
+  const uniqueBots = useMemo(() => {
+    return Array.from(
+      new Map(
+        allComments.filter((c) => c.actor.isBot).map((c) => [c.actor.login, c.actor])
+      ).values()
+    )
+  }, [allComments])
 
   // Group code review comments by reviewer
   const reviewsByReviewer = useMemo<ReviewerFeedback[]>(() => {
@@ -179,7 +224,12 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
           <Row gutter="xl" className="flex-col">
             {/* PR Description Section */}
             <Col span="full">
-              <PRDescription body={pr.body} prUrl={pr.html_url} />
+              <PRDescription
+                body={pr.body}
+                prNodeId={pr.id}
+                repoFullName={`${pr.base.repo.owner.login}/${pr.base.repo.name}`}
+                prNumber={pr.number}
+              />
             </Col>
 
             <Col span="full">
@@ -227,6 +277,11 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                   </Row>
                 </Col>
 
+                {/* Post Comment Form - at top since comments are newest first */}
+                <Col span="full">
+                  <PostCommentForm />
+                </Col>
+
                 {/* Tab filter - All, People, Bots, Reviews */}
                 <Col span="full">
                   <div className="flex gap-1 p-1 bg-muted/60 dark:bg-muted/70 rounded-lg">
@@ -256,7 +311,25 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                       )}
                     >
                       <Users className="w-3 h-3" />
-                      People ({humanComments})
+                      <span>People ({humanComments})</span>
+                      {uniqueHumans.length > 0 && (
+                        <div className="flex items-center -space-x-1 ml-0.5">
+                          {uniqueHumans.slice(0, 3).map((actor) => (
+                            <Avatar
+                              key={actor.login}
+                              className="w-3.5 h-3.5 ring-1 ring-background"
+                            >
+                              <AvatarImage src={actor.avatar_url} alt={actor.login} />
+                              <AvatarFallback className="text-[5px]">
+                                {actor.login.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {uniqueHumans.length > 3 && (
+                            <span className="text-[9px] ml-0.5">+{uniqueHumans.length - 3}</span>
+                          )}
+                        </div>
+                      )}
                     </Button>
                     <Button
                       variant="unstyled"
@@ -270,7 +343,25 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                       )}
                     >
                       <Bot className="w-3 h-3" />
-                      Bots ({botComments})
+                      <span>Bots ({botComments})</span>
+                      {uniqueBots.length > 0 && (
+                        <div className="flex items-center -space-x-1 ml-0.5">
+                          {uniqueBots.slice(0, 3).map((actor) => (
+                            <Avatar
+                              key={actor.login}
+                              className="w-3.5 h-3.5 ring-1 ring-purple-400"
+                            >
+                              <AvatarImage src={actor.avatar_url} alt={actor.login} />
+                              <AvatarFallback className="text-[5px]">
+                                {actor.login.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {uniqueBots.length > 3 && (
+                            <span className="text-[9px] ml-0.5">+{uniqueBots.length - 3}</span>
+                          )}
+                        </div>
+                      )}
                     </Button>
                     <Button
                       variant="unstyled"
@@ -283,8 +374,33 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                           : 'text-muted-foreground hover:text-foreground'
                       )}
                     >
-                      <FileCode className="w-3 h-3" />
-                      Code ({pr.reviewThreads?.length || 0})
+                      <FileSearch className="w-3 h-3" />
+                      <span>Reviews ({uniqueReviewersCount})</span>
+                      {uniqueReviewers.length > 0 && (
+                        <div className="flex items-center -space-x-1 ml-0.5">
+                          {uniqueReviewers.slice(0, 3).map(({ author, state }) => (
+                            <Avatar
+                              key={author.login}
+                              className={cn(
+                                'w-3.5 h-3.5 ring-1',
+                                state === 'approved'
+                                  ? 'ring-emerald-500'
+                                  : state === 'changes_requested'
+                                    ? 'ring-red-500'
+                                    : 'ring-gray-400'
+                              )}
+                            >
+                              <AvatarImage src={author.avatar_url} alt={author.login} />
+                              <AvatarFallback className="text-[5px]">
+                                {author.login.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {uniqueReviewers.length > 3 && (
+                            <span className="text-[9px] ml-0.5">+{uniqueReviewers.length - 3}</span>
+                          )}
+                        </div>
+                      )}
                     </Button>
                   </div>
                 </Col>
@@ -374,7 +490,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                   </Col>
                 )}
 
-                {/* Code Reviews content (Code tab) - Grouped by Reviewer */}
+                {/* Reviews content (Reviews tab) - Grouped by Reviewer */}
                 {commentTab === 'reviews' && (
                   <Col span="full">
                     {reviewsByReviewer.length > 0 ? (
@@ -444,7 +560,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                                   ) : reviewer.isBot ? (
                                     <Bot className="w-3.5 h-3.5 text-purple-500" />
                                   ) : (
-                                    <FileCode className="w-3.5 h-3.5 text-primary" />
+                                    <FileSearch className="w-3.5 h-3.5 text-primary" />
                                   )}
                                 </div>
 
@@ -479,9 +595,9 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                         className="flex-col py-6 text-sm text-muted-foreground"
                       >
                         <Col span="auto">
-                          <FileCode className="w-5 h-5 opacity-50" />
+                          <FileSearch className="w-5 h-5 opacity-50" />
                         </Col>
-                        <Col span="auto">No code reviews yet</Col>
+                        <Col span="auto">No reviews yet</Col>
                       </Row>
                     )}
                   </Col>

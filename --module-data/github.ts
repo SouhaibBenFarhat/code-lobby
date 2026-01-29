@@ -419,6 +419,7 @@ export async function fetchSinglePR(
           labels(first: 10) { nodes { name color } }
           assignees(first: 10) { nodes { login avatarUrl } }
           comments(first: 100) {
+            totalCount
             nodes {
               id
               body
@@ -436,6 +437,7 @@ export async function fetchSinglePR(
             }
           }
           reviewThreads(first: 50) {
+            totalCount
             nodes {
               id
               isResolved
@@ -683,6 +685,22 @@ export async function convertPRToDraft(token: string, prNodeId: string): Promise
   return { success: true }
 }
 
+export async function updatePRBody(
+  token: string,
+  prNodeId: string,
+  body: string
+): Promise<MutationResult> {
+  const mutation = `
+    mutation($id: ID!, $body: String!) {
+      updatePullRequest(input: { pullRequestId: $id, body: $body }) {
+        pullRequest { id body }
+      }
+    }
+  `
+  await graphql(token, mutation, { id: prNodeId, body })
+  return { success: true }
+}
+
 export async function addPRComment(
   token: string,
   prNodeId: string,
@@ -817,4 +835,375 @@ export async function submitPRReviewWithComments(
     reviewId: String(response.id),
     state: response.state
   }
+}
+
+/**
+ * Update a PR branch with the base branch (like GitHub's "Update branch" button)
+ * Uses PUT /repos/{owner}/{repo}/pulls/{pull_number}/update-branch
+ */
+export async function updatePRBranch(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<MutationResult> {
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}/update-branch`
+
+  await http.put(url, {}, authHeaders(token))
+
+  return { success: true }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTRIBUTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ContributionDay {
+  date: string
+  contributionCount: number
+  weekday: number
+}
+
+export interface ContributionWeek {
+  contributionDays: ContributionDay[]
+}
+
+export interface ContributionsData {
+  totalContributions: number
+  weeks: ContributionWeek[]
+  // Breakdown by type
+  totalCommitContributions: number
+  totalPullRequestContributions: number
+  totalPullRequestReviewContributions: number
+  totalIssueContributions: number
+  // Streaks and stats
+  currentStreak: number
+  longestStreak: number
+  averagePerDay: number
+  mostActiveDay: string
+  mostActiveDayCount: number
+}
+
+/**
+ * Fetch user contribution data from GitHub GraphQL API
+ * Includes both public and private contributions
+ */
+export async function fetchContributions(token: string): Promise<ContributionsData> {
+  // Calculate date range for the last year
+  const to = new Date()
+  const from = new Date()
+  from.setFullYear(from.getFullYear() - 1)
+
+  const query = `
+    query($from: DateTime!, $to: DateTime!) {
+      viewer {
+        contributionsCollection(from: $from, to: $to) {
+          contributionCalendar {
+            totalContributions
+            weeks {
+              contributionDays {
+                date
+                contributionCount
+                weekday
+              }
+            }
+          }
+          totalCommitContributions
+          totalPullRequestContributions
+          totalPullRequestReviewContributions
+          totalIssueContributions
+          restrictedContributionsCount
+          hasAnyContributions
+        }
+      }
+    }
+  `
+
+  const data = await graphql<{
+    viewer: {
+      contributionsCollection: {
+        contributionCalendar: {
+          totalContributions: number
+          weeks: ContributionWeek[]
+        }
+        totalCommitContributions: number
+        totalPullRequestContributions: number
+        totalPullRequestReviewContributions: number
+        totalIssueContributions: number
+        restrictedContributionsCount: number
+        hasAnyContributions: boolean
+      }
+    }
+  }>(token, query, {
+    from: from.toISOString(),
+    to: to.toISOString()
+  })
+
+  console.log('[fetchContributions] Raw data:', {
+    totalContributions: data.viewer.contributionsCollection.contributionCalendar.totalContributions,
+    restrictedContributionsCount: data.viewer.contributionsCollection.restrictedContributionsCount,
+    hasAnyContributions: data.viewer.contributionsCollection.hasAnyContributions,
+    totalCommitContributions: data.viewer.contributionsCollection.totalCommitContributions,
+    totalPRContributions: data.viewer.contributionsCollection.totalPullRequestContributions,
+    totalReviewContributions:
+      data.viewer.contributionsCollection.totalPullRequestReviewContributions
+  })
+
+  const collection = data.viewer.contributionsCollection
+  const calendar = collection.contributionCalendar
+
+  // Calculate streaks and stats
+  const allDays = calendar.weeks.flatMap((w) => w.contributionDays)
+  const today = new Date().toISOString().split('T')[0]
+
+  // Current streak
+  let currentStreak = 0
+  for (let i = allDays.length - 1; i >= 0; i--) {
+    const day = allDays[i]
+    // Skip future days
+    if (day.date > today) continue
+    if (day.contributionCount > 0) {
+      currentStreak++
+    } else {
+      // Allow one "grace" day for today if no contributions yet
+      if (day.date === today) continue
+      break
+    }
+  }
+
+  // Longest streak
+  let longestStreak = 0
+  let tempStreak = 0
+  for (const day of allDays) {
+    if (day.contributionCount > 0) {
+      tempStreak++
+      longestStreak = Math.max(longestStreak, tempStreak)
+    } else {
+      tempStreak = 0
+    }
+  }
+
+  // Average per day (only count days up to today)
+  const pastDays = allDays.filter((d) => d.date <= today)
+  const averagePerDay =
+    pastDays.length > 0 ? Math.round((calendar.totalContributions / pastDays.length) * 10) / 10 : 0
+
+  // Most active day
+  let mostActiveDay = ''
+  let mostActiveDayCount = 0
+  for (const day of allDays) {
+    if (day.contributionCount > mostActiveDayCount) {
+      mostActiveDayCount = day.contributionCount
+      mostActiveDay = day.date
+    }
+  }
+
+  return {
+    totalContributions: calendar.totalContributions,
+    weeks: calendar.weeks,
+    totalCommitContributions: collection.totalCommitContributions,
+    totalPullRequestContributions: collection.totalPullRequestContributions,
+    totalPullRequestReviewContributions: collection.totalPullRequestReviewContributions,
+    totalIssueContributions: collection.totalIssueContributions,
+    currentStreak,
+    longestStreak,
+    averagePerDay,
+    mostActiveDay,
+    mostActiveDayCount
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER EVENTS (Daily Activity)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface GitHubEvent {
+  id: string
+  type: string
+  actor: {
+    login: string
+    avatar_url: string
+  }
+  repo: {
+    name: string
+  }
+  payload: {
+    action?: string
+    ref?: string
+    ref_type?: string
+    commits?: Array<{ sha: string; message: string }>
+    pull_request?: {
+      number: number
+      title: string
+      state: string
+    }
+    review?: {
+      state: string
+      body: string
+    }
+    comment?: {
+      body: string
+    }
+    issue?: {
+      number: number
+      title: string
+    }
+  }
+  created_at: string
+}
+
+export interface UserEvent {
+  id: string
+  type: string
+  repoName: string
+  title: string
+  description: string
+  timestamp: string
+  icon: 'commit' | 'pr' | 'review' | 'comment' | 'issue' | 'branch' | 'other'
+}
+
+/**
+ * Fetch user events for today
+ * Uses GET /users/{username}/events endpoint
+ */
+export async function fetchUserEvents(token: string, username: string): Promise<UserEvent[]> {
+  const events = await http.get<GitHubEvent[]>(
+    `${GITHUB_API}/users/${username}/events?per_page=100`,
+    authHeaders(token)
+  )
+
+  if (!events) {
+    return []
+  }
+
+  // Get timestamp from 24 hours ago
+  const twentyFourHoursAgo = new Date()
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+
+  // Filter events from the last 24 hours and transform them
+  const recentEvents = events
+    .filter((event: GitHubEvent) => {
+      const eventDate = new Date(event.created_at)
+      if (eventDate < twentyFourHoursAgo) return false
+
+      // Skip PushEvents with 0 commits (force pushes, branch syncs, etc.)
+      if (event.type === 'PushEvent') {
+        const commits = event.payload.commits || []
+        if (commits.length === 0) return false
+      }
+
+      return true
+    })
+    .map((event: GitHubEvent) => transformEvent(event))
+
+  return recentEvents
+}
+
+function transformEvent(event: GitHubEvent): UserEvent {
+  const base = {
+    id: event.id,
+    repoName: event.repo.name,
+    timestamp: event.created_at
+  }
+
+  switch (event.type) {
+    case 'PushEvent': {
+      const commits = event.payload.commits || []
+      const commitCount = commits.length
+      return {
+        ...base,
+        type: 'Push',
+        title: `Pushed ${commitCount} commit${commitCount !== 1 ? 's' : ''}`,
+        description: commits[0]?.message || '',
+        icon: 'commit'
+      }
+    }
+
+    case 'PullRequestEvent': {
+      const pr = event.payload.pull_request
+      const action = event.payload.action || 'updated'
+      return {
+        ...base,
+        type: 'Pull Request',
+        title: `${capitalizeFirst(action)} PR #${pr?.number}`,
+        description: pr?.title || '',
+        icon: 'pr'
+      }
+    }
+
+    case 'PullRequestReviewEvent': {
+      const pr = event.payload.pull_request
+      const reviewState = event.payload.review?.state || 'reviewed'
+      return {
+        ...base,
+        type: 'Review',
+        title: `${capitalizeFirst(reviewState)} PR #${pr?.number}`,
+        description: pr?.title || '',
+        icon: 'review'
+      }
+    }
+
+    case 'PullRequestReviewCommentEvent':
+    case 'IssueCommentEvent':
+    case 'CommitCommentEvent': {
+      const comment = event.payload.comment?.body || ''
+      const prOrIssue = event.payload.pull_request || event.payload.issue
+      return {
+        ...base,
+        type: 'Comment',
+        title: `Commented on #${prOrIssue?.number || '?'}`,
+        description: comment.slice(0, 100) + (comment.length > 100 ? '...' : ''),
+        icon: 'comment'
+      }
+    }
+
+    case 'CreateEvent': {
+      const refType = event.payload.ref_type || 'reference'
+      const ref = event.payload.ref || ''
+      return {
+        ...base,
+        type: 'Create',
+        title: `Created ${refType}${ref ? `: ${ref}` : ''}`,
+        description: '',
+        icon: 'branch'
+      }
+    }
+
+    case 'DeleteEvent': {
+      const refType = event.payload.ref_type || 'reference'
+      const ref = event.payload.ref || ''
+      return {
+        ...base,
+        type: 'Delete',
+        title: `Deleted ${refType}${ref ? `: ${ref}` : ''}`,
+        description: '',
+        icon: 'branch'
+      }
+    }
+
+    case 'IssuesEvent': {
+      const issue = event.payload.issue
+      const action = event.payload.action || 'updated'
+      return {
+        ...base,
+        type: 'Issue',
+        title: `${capitalizeFirst(action)} issue #${issue?.number}`,
+        description: issue?.title || '',
+        icon: 'issue'
+      }
+    }
+
+    default:
+      return {
+        ...base,
+        type: event.type.replace('Event', ''),
+        title: event.type.replace('Event', ''),
+        description: '',
+        icon: 'other'
+      }
+  }
+}
+
+function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }

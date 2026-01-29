@@ -1,22 +1,44 @@
 /**
- * PRDescription - Collapsible PR description section with copy and edit actions.
+ * PRDescription - Collapsible PR description section with inline editing.
  */
 
-import { Button, Col, cn, MarkdownContent, Row } from '@ui-kit'
-import { Check, ChevronDown, ChevronRight, Copy, Edit, FileText } from 'lucide-react'
-import { useState } from 'react'
+import { useUpdatePRBody } from '@data'
+import { Button, Col, cn, MarkdownContent, MarkdownEditor, Row } from '@ui-kit'
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  FileText,
+  Loader2,
+  Pencil,
+  Sparkles,
+  X
+} from 'lucide-react'
+import { useCallback, useState } from 'react'
 
 export interface PRDescriptionProps {
   body: string | null
-  prUrl: string
+  prNodeId: string
+  repoFullName: string
+  prNumber: number
 }
 
 const DESCRIPTION_PREVIEW_LENGTH = 300
 
-export function PRDescription({ body, prUrl }: PRDescriptionProps): React.JSX.Element {
+export function PRDescription({
+  body,
+  prNodeId,
+  repoFullName,
+  prNumber
+}: PRDescriptionProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(true)
   const [isFullyExpanded, setIsFullyExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(body || '')
+
+  const updatePRBody = useUpdatePRBody()
 
   const shouldTruncate = body && body.length > DESCRIPTION_PREVIEW_LENGTH
 
@@ -47,18 +69,51 @@ export function PRDescription({ body, prUrl }: PRDescriptionProps): React.JSX.El
     }
   }
 
-  const handleEdit = () => {
-    // Open the PR edit page in GitHub
-    window.open(prUrl, '_blank')
-  }
+  const handleStartEdit = useCallback(() => {
+    setEditValue(body || '')
+    setIsEditing(true)
+    setIsOpen(true) // Ensure it's open when editing
+  }, [body])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false)
+    setEditValue(body || '')
+  }, [body])
+
+  const handleSaveEdit = useCallback(async () => {
+    try {
+      await updatePRBody.mutateAsync({
+        prNodeId,
+        body: editValue,
+        repoFullName,
+        prNumber
+      })
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Failed to update PR description:', error)
+    }
+  }, [updatePRBody, prNodeId, editValue, repoFullName, prNumber])
+
+  const handleAIGenerate = useCallback(() => {
+    // TODO: Implement AI description generation
+    console.log('AI generate description - coming soon!')
+  }, [])
+
+  // Calculate editor height based on content
+  const lines = Math.max(editValue.split('\n').length, Math.ceil(editValue.length / 60))
+  const editorHeight = Math.min(Math.max(lines * 22 + 50, 150), 400)
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
+      {/* Header - always visible */}
       <Row
         gutter="sm"
         align="center"
-        className="p-3 hover:bg-muted/60 transition-colors bg-muted/40 dark:bg-muted/50 cursor-pointer"
-        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          'p-3 transition-colors bg-muted/40 dark:bg-muted/50',
+          !isEditing && 'hover:bg-muted/60 cursor-pointer'
+        )}
+        onClick={() => !isEditing && setIsOpen(!isOpen)}
       >
         <Col span="auto">
           {isOpen ? (
@@ -75,7 +130,7 @@ export function PRDescription({ body, prUrl }: PRDescriptionProps): React.JSX.El
         </Col>
         <Col span="auto">
           <Row gutter="xs" align="center">
-            {body && (
+            {!isEditing && body && (
               <Col span="auto">
                 <Button
                   variant="ghost"
@@ -95,27 +150,108 @@ export function PRDescription({ body, prUrl }: PRDescriptionProps): React.JSX.El
                 </Button>
               </Col>
             )}
-            <Col span="auto">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleEdit()
-                }}
-                title="Edit on GitHub"
-              >
-                <Edit className="w-3 h-3 text-muted-foreground hover:text-foreground" />
-              </Button>
-            </Col>
+            {!isEditing && (
+              <Col span="auto">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleStartEdit()
+                  }}
+                  title="Edit description"
+                >
+                  <Pencil className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                </Button>
+              </Col>
+            )}
+            {isEditing && (
+              <>
+                {/* AI Generate Button with ripple effect */}
+                <Col span="auto">
+                  <div className="relative">
+                    {/* Outer ripple rings - positioned outside the button */}
+                    <span className="absolute inset-0 -m-2 flex items-center justify-center pointer-events-none">
+                      <span className="absolute w-10 h-10 rounded-full border border-purple-500/30 animate-[ping_2s_ease-in-out_infinite]" />
+                      <span className="absolute w-8 h-8 rounded-full border border-purple-500/20 animate-[ping_2s_ease-in-out_0.4s_infinite]" />
+                      <span className="absolute w-6 h-6 rounded-full bg-purple-500/10 animate-pulse" />
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 relative z-10 group"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleAIGenerate()
+                      }}
+                      title="Generate with AI (coming soon)"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
+                    </Button>
+                  </div>
+                </Col>
+                <Col span="auto">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCancelEdit()
+                    }}
+                    disabled={updatePRBody.isPending}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    <span className="text-xs">Cancel</span>
+                  </Button>
+                </Col>
+                <Col span="auto">
+                  <Button
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSaveEdit()
+                    }}
+                    disabled={updatePRBody.isPending}
+                  >
+                    {updatePRBody.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="w-3 h-3 mr-1" />
+                        <span className="text-xs">Save</span>
+                      </>
+                    )}
+                  </Button>
+                </Col>
+              </>
+            )}
           </Row>
         </Col>
       </Row>
 
+      {/* Content area */}
       {isOpen && (
-        <div className="border-t border-border p-3">
-          {body ? (
+        <div className={cn('border-t border-border', isEditing ? 'p-0' : 'p-3')}>
+          {isEditing ? (
+            <div>
+              <MarkdownEditor
+                value={editValue}
+                onChange={setEditValue}
+                height={editorHeight}
+                placeholder="Add a description..."
+                data-testid="description-editor"
+                className="border-0 rounded-none"
+              />
+              {updatePRBody.isError && (
+                <p className="text-sm text-destructive p-3 pt-0">
+                  Failed to update description. Please try again.
+                </p>
+              )}
+            </div>
+          ) : body ? (
             <Row gutter="sm" className="flex-col">
               <Col span="full">
                 <div className="text-sm text-foreground/80 dark:text-foreground/70">

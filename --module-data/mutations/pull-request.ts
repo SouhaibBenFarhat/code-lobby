@@ -288,3 +288,73 @@ export function useSubmitPRReviewWithComments(): UseMutationResult<
     }
   })
 }
+
+/**
+ * Update PR body/description
+ */
+export function useUpdatePRBody(): UseMutationResult<
+  MutationResult,
+  Error,
+  { prNodeId: string; body: string; repoFullName: string; prNumber: number }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      prNodeId,
+      body
+    }: {
+      prNodeId: string
+      body: string
+      repoFullName: string
+      prNumber: number
+    }) => {
+      const token = getToken(qc)
+      return github.updatePRBody(token, prNodeId, body)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate PR detail to refresh the body
+      qc.invalidateQueries({
+        queryKey: keys.prDetail(repoFullName, prNumber)
+      })
+    }
+  })
+}
+
+/**
+ * Update PR branch with base branch (sync with main)
+ * Like GitHub's "Update branch" button
+ */
+export function useUpdatePRBranch(): UseMutationResult<
+  MutationResult,
+  Error,
+  { owner: string; repo: string; prNumber: number }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      owner,
+      repo,
+      prNumber
+    }: {
+      owner: string
+      repo: string
+      prNumber: number
+    }) => {
+      const token = getToken(qc)
+      return github.updatePRBranch(token, owner, repo, prNumber)
+    },
+    onSuccess: () => {
+      const selectedPRId = qc.getQueryData<PRIdentifier>(keys.selectedPRId)
+      if (selectedPRId) {
+        // Invalidate PR detail to refresh mergeStateStatus
+        qc.invalidateQueries({
+          queryKey: keys.prDetail(selectedPRId.repoFullName, selectedPRId.prNumber)
+        })
+        // Invalidate PR list
+        qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === 'prs' })
+      }
+    }
+  })
+}

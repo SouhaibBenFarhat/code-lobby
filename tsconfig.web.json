@@ -28,6 +28,8 @@
       "@header/*": ["./--module-header/*"],
       "@explorer": ["./--module-explorer/index.tsx"],
       "@explorer/*": ["./--module-explorer/*"],
+      "@user-profile": ["./--module-user-profile/index.tsx"],
+      "@user-profile/*": ["./--module-user-profile/*"],
       "@canvas": ["./--module-canvas/index.tsx"],
       "@canvas/*": ["./--module-canvas/*"],
       "@pr-detail": ["./--module-pr-detail/index.tsx"],

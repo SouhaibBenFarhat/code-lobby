@@ -1,11 +1,12 @@
 /**
  * IDEView Component Tests
- * Updated for TanStack Query architecture
+ * Tests for the repo-based explorer with PRs grouped by author
  */
 
 import {
   createMockPullRequest,
   createMockRepository,
+  createMockUser,
   fireEvent,
   render,
   resetIdCounter,
@@ -52,7 +53,9 @@ describe('IDEView', () => {
     mockPRsForRepo.mockReturnValue({ data: [], isFetching: false, refetch: vi.fn() })
     mockSelectedRepos.mockReturnValue({ data: [] })
     mockSelectedPRId.mockReturnValue({ data: null })
-    mockIDESettings.mockReturnValue({ data: { sidebarWidth: 280, expandedRepos: [] } })
+    mockIDESettings.mockReturnValue({
+      data: { sidebarWidth: 280, expandedRepos: [], expandedOwners: [] }
+    })
     mockMyPRsRepos.mockReturnValue({ data: [] })
   })
 
@@ -65,7 +68,8 @@ describe('IDEView', () => {
       const { container } = render(<IDEView currentUser="testuser" />)
 
       expect(container.firstChild).toBeInTheDocument()
-      expect(container.querySelector('.apple-sidebar')).toBeInTheDocument()
+      // IDEView now uses flex flex-col h-full (styling handled by App.tsx container)
+      expect(container.firstChild).toHaveClass('flex', 'flex-col')
     })
 
     it('should render the Explorer header', () => {
@@ -99,9 +103,13 @@ describe('IDEView', () => {
     })
 
     it('should render repos when data is available', () => {
-      const repo = createMockRepository({ name: 'frontend', full_name: 'org/frontend' })
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
       mockRepos.mockReturnValue({ data: [repo], isLoading: false })
-      mockSelectedRepos.mockReturnValue({ data: ['org/frontend'] })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
 
       render(<IDEView currentUser="testuser" />)
 
@@ -111,44 +119,127 @@ describe('IDEView', () => {
 
   describe('Interactions', () => {
     it('should call toggleRepoExpanded when repo row is clicked', () => {
-      const repo = createMockRepository({ name: 'frontend', full_name: 'org/frontend' })
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
       mockRepos.mockReturnValue({ data: [repo], isLoading: false })
-      mockSelectedRepos.mockReturnValue({ data: ['org/frontend'] })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
 
       render(<IDEView currentUser="testuser" />)
 
       const repoRow = screen.getByText('frontend').closest('[role="treeitem"]')
       if (repoRow) {
         fireEvent.click(repoRow)
-        expect(mockToggleRepoExpanded).toHaveBeenCalledWith('org/frontend')
+        expect(mockToggleRepoExpanded).toHaveBeenCalledWith('test-org/frontend')
       }
     })
 
-    it('should render PRs when repo is expanded', () => {
-      const repo = createMockRepository({ name: 'frontend', full_name: 'org/frontend' })
+    it('should render PRs grouped by author when repo and author are expanded', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      const pr1 = createMockPullRequest({
+        title: 'Fix bug',
+        user: createMockUser({ login: 'developer1' }),
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+      const pr2 = createMockPullRequest({
+        title: 'Add feature',
+        user: createMockUser({ login: 'developer2' }),
+        base: { repo, ref: 'main', sha: 'def' }
+      })
+
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: {
+          sidebarWidth: 280,
+          expandedRepos: ['test-org/frontend'],
+          expandedOwners: ['test-org/frontend:developer1', 'test-org/frontend:developer2']
+        }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [pr1, pr2], isFetching: false, refetch: vi.fn() })
+
+      render(<IDEView currentUser="testuser" />)
+
+      // Should show author names as section headers
+      expect(screen.getByText('developer1')).toBeInTheDocument()
+      expect(screen.getByText('developer2')).toBeInTheDocument()
+      // Should show PR titles (authors are expanded)
+      expect(screen.getByText('Fix bug')).toBeInTheDocument()
+      expect(screen.getByText('Add feature')).toBeInTheDocument()
+    })
+
+    it('should show author sections collapsed by default (only names visible)', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
       const pr = createMockPullRequest({
         title: 'Fix bug',
+        user: createMockUser({ login: 'developer1' }),
         base: { repo, ref: 'main', sha: 'abc' }
       })
 
       mockRepos.mockReturnValue({ data: [repo], isLoading: false })
-      mockSelectedRepos.mockReturnValue({ data: ['org/frontend'] })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
       mockIDESettings.mockReturnValue({
-        data: { sidebarWidth: 280, expandedRepos: ['org/frontend'] }
+        data: { sidebarWidth: 280, expandedRepos: ['test-org/frontend'], expandedOwners: [] }
       })
       mockPRsForRepo.mockReturnValue({ data: [pr], isFetching: false, refetch: vi.fn() })
 
       render(<IDEView currentUser="testuser" />)
 
-      expect(screen.getByText('Fix bug')).toBeInTheDocument()
+      // Should show author name
+      expect(screen.getByText('developer1')).toBeInTheDocument()
+      // PR title should NOT be visible (author section collapsed)
+      expect(screen.queryByText('Fix bug')).not.toBeInTheDocument()
+    })
+
+    it('should highlight current user in author sections', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      const pr = createMockPullRequest({
+        title: 'My PR',
+        user: createMockUser({ login: 'testuser' }),
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: {
+          sidebarWidth: 280,
+          expandedRepos: ['test-org/frontend'],
+          expandedOwners: ['test-org/frontend:testuser']
+        }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [pr], isFetching: false, refetch: vi.fn() })
+
+      render(<IDEView currentUser="testuser" />)
+
+      expect(screen.getByText('testuser')).toBeInTheDocument()
+      expect(screen.getByText('(you)')).toBeInTheDocument()
     })
 
     it('should call refetch when reload button is clicked', async () => {
       const mockRefetch = vi.fn()
-      const repo = createMockRepository({ name: 'frontend', full_name: 'org/frontend' })
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
 
       mockRepos.mockReturnValue({ data: [repo], isLoading: false })
-      mockSelectedRepos.mockReturnValue({ data: ['org/frontend'] })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
       mockPRsForRepo.mockReturnValue({ data: [], isFetching: false, refetch: mockRefetch })
 
       const { container } = render(<IDEView currentUser="testuser" />)
@@ -162,9 +253,126 @@ describe('IDEView', () => {
     })
   })
 
+  describe('Author grouping', () => {
+    it('should group multiple PRs by the same author together', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      const pr1 = createMockPullRequest({
+        title: 'PR One',
+        user: createMockUser({ login: 'developer1' }),
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+      const pr2 = createMockPullRequest({
+        title: 'PR Two',
+        user: createMockUser({ login: 'developer1' }),
+        base: { repo, ref: 'main', sha: 'def' }
+      })
+
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: {
+          sidebarWidth: 280,
+          expandedRepos: ['test-org/frontend'],
+          expandedOwners: ['test-org/frontend:developer1']
+        }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [pr1, pr2], isFetching: false, refetch: vi.fn() })
+
+      render(<IDEView currentUser="testuser" />)
+
+      // Should show author name once
+      const authorElements = screen.getAllByText('developer1')
+      expect(authorElements.length).toBe(1)
+
+      // Should show both PRs (author is expanded)
+      expect(screen.getByText('PR One')).toBeInTheDocument()
+      expect(screen.getByText('PR Two')).toBeInTheDocument()
+
+      // Should show "2 PRs" count
+      expect(screen.getByText('2 PRs')).toBeInTheDocument()
+    })
+
+    it('should show current user first in author list', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      // Note: PRs ordered with other user first
+      const pr1 = createMockPullRequest({
+        title: 'Other PR',
+        user: createMockUser({ login: 'other-dev' }),
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+      const pr2 = createMockPullRequest({
+        title: 'My PR',
+        user: createMockUser({ login: 'testuser' }),
+        base: { repo, ref: 'main', sha: 'def' }
+      })
+
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: { sidebarWidth: 280, expandedRepos: ['test-org/frontend'], expandedOwners: [] }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [pr1, pr2], isFetching: false, refetch: vi.fn() })
+
+      const { container } = render(<IDEView currentUser="testuser" />)
+
+      // Get all author section headers in order (look for treeitem roles which are author headers)
+      const authorItems = container.querySelectorAll('[role="treeitem"]')
+      // Skip the first one (repo header), get author headers
+      const authorHeaders = Array.from(authorItems).slice(1)
+      const authorNames = authorHeaders.map((el) => {
+        const nameEl = el.querySelector('.font-medium.truncate')
+        return nameEl?.textContent?.replace('(you)', '').trim()
+      })
+
+      // Current user should be first among authors
+      expect(authorNames[0]).toBe('testuser')
+    })
+
+    it('should toggle author section when clicked', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      const pr = createMockPullRequest({
+        title: 'Fix bug',
+        user: createMockUser({ login: 'developer1' }),
+        base: { repo, ref: 'main', sha: 'abc' }
+      })
+
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: { sidebarWidth: 280, expandedRepos: ['test-org/frontend'], expandedOwners: [] }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [pr], isFetching: false, refetch: vi.fn() })
+
+      render(<IDEView currentUser="testuser" />)
+
+      // Click on the author section to expand it
+      const authorRow = screen.getByText('developer1').closest('[role="treeitem"]')
+      if (authorRow) {
+        fireEvent.click(authorRow)
+        expect(mockSetIDESettings).toHaveBeenCalledWith({
+          expandedOwners: ['test-org/frontend:developer1']
+        })
+      }
+    })
+  })
+
   describe('Resize', () => {
     it('should render with correct initial width', () => {
-      mockIDESettings.mockReturnValue({ data: { sidebarWidth: 320, expandedRepos: [] } })
+      mockIDESettings.mockReturnValue({
+        data: { sidebarWidth: 320, expandedRepos: [], expandedOwners: [] }
+      })
 
       const { container } = render(<IDEView currentUser="testuser" />)
 
@@ -172,11 +380,7 @@ describe('IDEView', () => {
       expect(sidebar).toBeInTheDocument()
     })
 
-    it('should have resize handle', () => {
-      const { container } = render(<IDEView currentUser="testuser" />)
-
-      const resizeHandle = container.querySelector('[role="slider"]')
-      expect(resizeHandle).toBeInTheDocument()
-    })
+    // Note: Resize handle is now in App.tsx, not IDEView
+    // The IDEView component no longer manages its own width
   })
 })

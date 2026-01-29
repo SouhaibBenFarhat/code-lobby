@@ -16,6 +16,15 @@ export {
   usePRChatMessages,
   useSelectedModel
 } from './ai'
+// Contributions & Events
+export {
+  type ContributionsData,
+  type UserEvent,
+  useContributions,
+  useRefreshContributions,
+  useRefreshUserEvents,
+  useUserEvents
+} from './contributions'
 // Network
 export { useNetworkRequests } from './network'
 
@@ -27,6 +36,7 @@ export { useRateLimit } from './rate-limit'
 export { useRepos } from './repository'
 // Settings
 export {
+  type UserProfilePanel,
   useAIPanel,
   useCardLayouts,
   useGitHubToken,
@@ -36,6 +46,7 @@ export {
   usePRDetailPanel,
   useRepoColors,
   useSelectedRepos,
+  useUserProfilePanel,
   useViewMode
 } from './settings'
 

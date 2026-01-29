@@ -607,12 +607,38 @@ button, a, input, select, textarea {
   font-family: inherit !important;
 }
 
+/* 
+ * CRITICAL: Both text-pre (display) and text-input (textarea) must have 
+ * EXACTLY the same font settings to prevent cursor misalignment.
+ * The cursor lives in the textarea but the visible text is in the pre.
+ */
 .markdown-editor-wrapper .w-md-editor-text-pre,
 .markdown-editor-wrapper .w-md-editor-text-input,
 .markdown-editor-wrapper .w-md-editor-text {
   font-size: 14px !important;
-  line-height: 1.625 !important;
+  line-height: 1.5 !important;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  letter-spacing: normal !important;
+  font-feature-settings: normal !important;
+  -webkit-font-smoothing: subpixel-antialiased !important;
+  text-rendering: auto !important;
+  word-spacing: normal !important;
+}
+
+/* 
+ * FIX for cursor misalignment: All syntax highlighting tokens must inherit font settings.
+ * Without this, tokens can use different fonts causing cumulative cursor drift.
+ * See: https://github.com/uiwjs/react-md-editor/issues/134
+ */
+.markdown-editor-wrapper .w-md-editor-text-pre > code,
+.markdown-editor-wrapper .w-md-editor-text-pre > code *,
+.markdown-editor-wrapper .w-md-editor-text-pre .token,
+.markdown-editor-wrapper .w-md-editor-text-pre span {
   font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  word-spacing: inherit !important;
 }
 
 /* Toolbar styling */
@@ -690,6 +716,15 @@ button, a, input, select, textarea {
 
 .markdown-editor-wrapper .w-md-editor-area {
   background: transparent !important;
+}
+
+/* Auto-height for review modal editors */
+.markdown-editor-wrapper .w-md-editor-text-input {
+  min-height: 40px !important;
+}
+
+.markdown-editor-wrapper .w-md-editor-text-pre {
+  min-height: 40px !important;
 }
 
 /* Textarea placeholder */

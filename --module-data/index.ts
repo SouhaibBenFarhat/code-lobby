@@ -67,6 +67,7 @@ export {
   useSetSelectedModel,
   useSetSelectedRepos,
   useSetTheme,
+  useSetUserProfilePanel,
   useSetViewMode,
   useShowNotification,
   // User / Auth
@@ -79,6 +80,8 @@ export {
   useToggleNetworkPanel,
   useToggleRepoExpanded,
   useUpdateNetworkRequest,
+  useUpdatePRBody,
+  useUpdatePRBranch,
   useValidatePersistedToken,
   useValidateToken
 } from './mutations'
@@ -86,8 +89,12 @@ export {
 export {
   // User / Auth
   type AuthData,
+  // Contributions & Events
+  type ContributionsData,
   // AI
   type FindPreviewUrlParams,
+  type UserEvent,
+  type UserProfilePanel,
   // Settings
   useAIPanel,
   // AI
@@ -95,6 +102,8 @@ export {
   useCardLayouts,
   useClaudeApiKey,
   useClaudeModels,
+  // Contributions
+  useContributions,
   useCurrentUser,
   useCustomPrompts,
   useEnableThinking,
@@ -119,6 +128,8 @@ export {
   usePRsForRepo,
   // Rate Limit
   useRateLimit,
+  useRefreshContributions,
+  useRefreshUserEvents,
   useRepoColors,
   // Repository
   useRepos,
@@ -128,6 +139,8 @@ export {
   useSelectedRepos,
   useTheme,
   useUser,
+  useUserEvents,
+  useUserProfilePanel,
   useViewMode
 } from './queries'
 // Types

@@ -1,6 +1,7 @@
 /**
  * IDEView - A file-tree style explorer of repositories and their PRs.
  * Uses TanStack Query for all data.
+ * When a repo is expanded, PRs are grouped by author.
  */
 
 import {
@@ -18,10 +19,12 @@ import {
   useToggleRepoExpanded
 } from '@data'
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
   Button,
   cn,
   formatRelativeTime,
-  MatchedAvatars,
   ScrollArea,
   Tooltip,
   TooltipContent,
@@ -48,6 +51,13 @@ interface IDEViewProps {
   currentUser: string | null
 }
 
+/** Group of PRs belonging to the same author within a repo */
+interface AuthorGroup {
+  login: string
+  avatarUrl: string
+  prs: PullRequest[]
+}
+
 interface TreeItemProps {
   repo: Repository
   isExpanded: boolean
@@ -57,6 +67,8 @@ interface TreeItemProps {
   currentUser: string | null
   showOnlyMyPRs: boolean
   onToggleMyPRsFilter: () => void
+  expandedAuthors: string[]
+  onToggleAuthor: (authorKey: string) => void
 }
 
 function TreeItem({
@@ -67,7 +79,9 @@ function TreeItem({
   onSelectPR,
   currentUser,
   showOnlyMyPRs,
-  onToggleMyPRsFilter
+  onToggleMyPRsFilter,
+  expandedAuthors,
+  onToggleAuthor
 }: TreeItemProps) {
   // Fetch PRs for this repo directly (per-repo caching)
   const { data: prs = [], isFetching, refetch } = usePRsForRepo(repo.full_name)
@@ -76,6 +90,33 @@ function TreeItem({
     if (!showOnlyMyPRs || !currentUser) return prs
     return prs.filter((pr) => pr.user.login === currentUser)
   }, [prs, showOnlyMyPRs, currentUser])
+
+  // Group PRs by author
+  const authorGroups = useMemo(() => {
+    const groups: Map<string, AuthorGroup> = new Map()
+
+    for (const pr of filteredPRs) {
+      const login = pr.user.login
+      const existing = groups.get(login)
+
+      if (existing) {
+        existing.prs.push(pr)
+      } else {
+        groups.set(login, {
+          login,
+          avatarUrl: pr.user.avatar_url,
+          prs: [pr]
+        })
+      }
+    }
+
+    // Sort: current user first, then alphabetically
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.login === currentUser) return -1
+      if (b.login === currentUser) return 1
+      return a.login.localeCompare(b.login)
+    })
+  }, [filteredPRs, currentUser])
 
   const hasPRs = prs.length > 0
   const hasFilteredPRs = filteredPRs.length > 0
@@ -179,9 +220,101 @@ function TreeItem({
         )}
       </div>
 
+      {/* PRs grouped by author */}
       {isExpanded && hasFilteredPRs && (
         <div className="ml-4 border-l border-border/50">
-          {filteredPRs.map((pr) => (
+          {authorGroups.map((group) => {
+            // Use repo:author as the key for expanded state
+            const authorKey = `${repo.full_name}:${group.login}`
+            return (
+              <AuthorSection
+                key={group.login}
+                authorGroup={group}
+                isExpanded={expandedAuthors.includes(authorKey)}
+                onToggle={() => onToggleAuthor(authorKey)}
+                selectedPRId={selectedPRId}
+                onSelectPR={onSelectPR}
+                isCurrentUser={group.login === currentUser}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {isExpanded && hasPRs && !hasFilteredPRs && showOnlyMyPRs && (
+        <div className="ml-8 py-2 text-xs text-muted-foreground italic">No PRs by you</div>
+      )}
+    </div>
+  )
+}
+
+interface AuthorSectionProps {
+  authorGroup: AuthorGroup
+  isExpanded: boolean
+  onToggle: () => void
+  selectedPRId: { repoFullName: string; prNumber: number } | null
+  onSelectPR: (pr: PullRequest) => void
+  isCurrentUser: boolean
+}
+
+function AuthorSection({
+  authorGroup,
+  isExpanded,
+  onToggle,
+  selectedPRId,
+  onSelectPR,
+  isCurrentUser
+}: AuthorSectionProps) {
+  const { login, avatarUrl, prs } = authorGroup
+
+  // Sort PRs by updated_at (most recent first)
+  const sortedPRs = useMemo(() => {
+    return [...prs].sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    )
+  }, [prs])
+
+  return (
+    <div className="select-none">
+      {/* Author header - collapsible */}
+      <div
+        role="treeitem"
+        aria-expanded={isExpanded}
+        tabIndex={0}
+        className={cn(
+          'flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer hover:bg-muted/50 rounded transition-colors',
+          isCurrentUser && 'text-primary'
+        )}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+      >
+        <span className="w-3 h-3 flex items-center justify-center text-muted-foreground">
+          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        </span>
+        <Avatar className="w-4 h-4">
+          <AvatarImage src={avatarUrl} alt={login} />
+          <AvatarFallback className="text-[8px]">
+            <User className="w-2.5 h-2.5" />
+          </AvatarFallback>
+        </Avatar>
+        <span className={cn('font-medium truncate flex-1', isCurrentUser && 'text-primary')}>
+          {login}
+          {isCurrentUser && <span className="text-muted-foreground ml-1">(you)</span>}
+        </span>
+        <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+          {prs.length} PR{prs.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* PRs by this author */}
+      {isExpanded && (
+        <div className="ml-4 border-l border-border/30">
+          {sortedPRs.map((pr) => (
             <PRTreeItem
               key={pr.id}
               pr={pr}
@@ -193,10 +326,6 @@ function TreeItem({
             />
           ))}
         </div>
-      )}
-
-      {isExpanded && hasPRs && !hasFilteredPRs && showOnlyMyPRs && (
-        <div className="ml-8 py-2 text-xs text-muted-foreground italic">No PRs by you</div>
       )}
     </div>
   )
@@ -246,12 +375,6 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
           pr.draft ? 'text-muted-foreground' : isSelected ? 'text-primary' : 'text-blue-500'
         )}
       />
-      <MatchedAvatars
-        author={{ login: pr.user.login, avatar_url: pr.user.avatar_url }}
-        assignees={pr.assignees}
-        size="sm"
-        className="flex-shrink-0"
-      />
       <div className="flex-1 min-w-0 flex items-center">
         <span className="text-xs font-mono text-muted-foreground">#{pr.number}</span>
         <span className={cn('text-sm truncate ml-1.5', isSelected && 'font-medium')}>
@@ -277,7 +400,7 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
   const { data: myPRsRepos = [] } = useMyPRsRepos()
 
   const expandedRepos: string[] = ideSettings?.expandedRepos || []
-  const explorerWidth = ideSettings?.sidebarWidth || 280
+  const expandedAuthors: string[] = ideSettings?.expandedOwners || [] // Reuse expandedOwners for authors
 
   // Mutations
   const selectPR = useSelectPR()
@@ -285,13 +408,8 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
   const toggleRepoExpanded = useToggleRepoExpanded()
   const toggleMyPRsFilter = useToggleMyPRsFilter()
 
-  const [isResizing, setIsResizing] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
   const hasAutoExpanded = useRef(false)
-
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const currentWidthRef = useRef(explorerWidth)
-  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     setSettingsLoaded(true)
@@ -304,7 +422,7 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
     return repos.filter((repo) => selectedSet.has(repo.full_name))
   }, [repos, selectedReposData])
 
-  // Sort repos alphabetically (each TreeItem tracks its own PR count now)
+  // Sort repos alphabetically
   const sortedRepos = useMemo(() => {
     return [...filteredRepos].sort((a, b) => a.name.localeCompare(b.name))
   }, [filteredRepos])
@@ -335,53 +453,15 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
     [toggleMyPRsFilter]
   )
 
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      setIsResizing(true)
-      currentWidthRef.current = explorerWidth
+  const handleToggleAuthor = useCallback(
+    (authorKey: string) => {
+      const newExpandedAuthors = expandedAuthors.includes(authorKey)
+        ? expandedAuthors.filter((a) => a !== authorKey)
+        : [...expandedAuthors, authorKey]
+      setIDESettings.mutate({ expandedOwners: newExpandedAuthors })
     },
-    [explorerWidth]
+    [expandedAuthors, setIDESettings]
   )
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      rafRef.current = requestAnimationFrame(() => {
-        const newWidth = Math.min(500, Math.max(200, e.clientX))
-        if (sidebarRef.current) {
-          sidebarRef.current.style.width = `${newWidth}px`
-        }
-        currentWidthRef.current = newWidth
-      })
-    }
-
-    const handleMouseUp = () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-      if (isResizing) {
-        setIDESettings.mutate({ sidebarWidth: currentWidthRef.current })
-      }
-      setIsResizing(false)
-    }
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [isResizing, setIDESettings])
 
   // Auto-expand first few repos on first load
   useEffect(() => {
@@ -392,20 +472,18 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
     if (expandedRepos.length === 0) {
       const reposToExpand = sortedRepos.slice(0, 5).map((r) => r.full_name)
       setIDESettings.mutate({ expandedRepos: reposToExpand })
+
+      // Auto-expand current user's author section in each expanded repo
+      if (currentUser) {
+        const authorsToExpand = reposToExpand.map((repo) => `${repo}:${currentUser}`)
+        setIDESettings.mutate({ expandedOwners: authorsToExpand })
+      }
     }
     hasAutoExpanded.current = true
-  }, [settingsLoaded, sortedRepos, expandedRepos.length, setIDESettings])
+  }, [settingsLoaded, sortedRepos, expandedRepos.length, currentUser, setIDESettings])
 
   return (
-    <div
-      ref={sidebarRef}
-      className="flex-shrink-0 apple-sidebar flex flex-col h-full"
-      style={{
-        width: explorerWidth,
-        willChange: isResizing ? 'width' : 'auto',
-        contain: 'layout style'
-      }}
-    >
+    <div className="flex flex-col h-full">
       <div className="flex items-center h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-primary flex-shrink-0" />
@@ -440,34 +518,13 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
                 currentUser={currentUser}
                 showOnlyMyPRs={myPRsRepos.includes(repo.full_name)}
                 onToggleMyPRsFilter={() => handleToggleMyPRsFilter(repo.full_name)}
+                expandedAuthors={expandedAuthors}
+                onToggleAuthor={handleToggleAuthor}
               />
             ))
           )}
         </div>
       </ScrollArea>
-
-      <div
-        role="slider"
-        aria-orientation="horizontal"
-        aria-label="Resize sidebar"
-        aria-valuemin={200}
-        aria-valuemax={500}
-        aria-valuenow={explorerWidth}
-        tabIndex={0}
-        className={cn(
-          'absolute right-0 top-0 bottom-0 w-1 z-20 cursor-col-resize hover:bg-primary/50 transition-colors',
-          isResizing && 'bg-primary'
-        )}
-        onMouseDown={handleResizeStart}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowLeft') {
-            setIDESettings.mutate({ sidebarWidth: Math.max(200, explorerWidth - 20) })
-          }
-          if (e.key === 'ArrowRight') {
-            setIDESettings.mutate({ sidebarWidth: Math.min(500, explorerWidth + 20) })
-          }
-        }}
-      />
     </div>
   )
 }

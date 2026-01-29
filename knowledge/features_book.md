@@ -284,9 +284,26 @@ Generate complete GitHub PR reviews with the AI assistant. Claude analyzes the c
 |---------|-------------|
 | **Summary Editor** | Edit the overall review summary |
 | **Verdict Selection** | Choose: Approve, Request Changes, or Comment |
-| **File Tree** | Navigate changed files with comment counts |
+| **Sticky Sidebar** | File navigation panel with comment counts per file |
+| **Expand/Collapse All** | Quickly expand or collapse all file sections |
 | **Inline Comments** | View comments in context with the diff |
+| **Edit Comments** | Modify any AI-generated comment before submission |
 | **Delete Comments** | Remove unwanted comments before submission |
+| **Scroll Indicator** | Visual indicator when there's more content to scroll |
+| **Comment Badges** | Total comments across all files shown at top |
+
+**Sidebar Navigation:**
+- Sticky sidebar shows all files with comments
+- Comment count badge per file
+- Click to jump to any file
+- Current file highlighted
+- Directory path shown for context
+
+**Comment Editing:**
+- Click the pencil icon on any comment
+- Edit in a text area
+- Save or Cancel changes
+- Original comment preserved until you save
 
 **Verdict Options:**
 - **Approve** — Code is good to merge
@@ -303,8 +320,9 @@ Generate complete GitHub PR reviews with the AI assistant. Claude analyzes the c
 2. Click "Generate Review" in quick actions
 3. AI responds with JSON review data + "Open Review" button
 4. Review modal shows: summary, verdict, and all inline comments
-5. Edit or delete comments as needed
-6. Click "Submit Review" → Review appears on GitHub
+5. Use sidebar to navigate between files
+6. Edit or delete comments as needed
+7. Click "Submit Review" → Review appears on GitHub
 
 **Best For:**
 - Comprehensive code reviews
@@ -441,6 +459,30 @@ Merge PRs when they're ready:
 - Shows merge status (blocked, conflicts, ready)
 - Confirmation dialog before merge
 - Error handling with clear messages
+
+### 💬 Post Comment
+
+Add comments to PRs directly from CodeLobby:
+
+**How It Works:**
+1. Open a PR in the detail panel
+2. Scroll to the Discussion section
+3. Click "Add a comment..." to expand the form
+4. Write your comment (Markdown supported)
+5. Click **Comment** or press **⌘/Ctrl+Enter** to submit
+
+**Features:**
+- **Expandable Form** — Compact by default, expands when clicked
+- **Markdown Support** — Write rich comments with formatting
+- **Keyboard Shortcuts** — ⌘/Ctrl+Enter to submit, Escape to cancel
+- **Success Feedback** — Visual confirmation when comment is posted
+- **Auto-Refresh** — PR data refreshes automatically after posting
+
+**Perfect For:**
+- Quick feedback on PRs
+- Asking questions about changes
+- Providing context for reviewers
+- Following up on discussions
 
 ---
 
@@ -743,6 +785,7 @@ We're actively building:
 | **Web Fetch Tool** | Claude can fetch URLs for context |
 | **Approve PR** | One-click PR approval |
 | **Merge PR** | Merge with squash/merge/rebase |
+| **Post Comment** | Add comments to PRs directly |
 | **Network Panel** | Debug HTTP requests in real-time |
 | **AI Cost Tracking** | Monitor Claude API costs in real-time |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |

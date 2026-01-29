@@ -18,7 +18,7 @@ import { ChevronDown, ChevronUp, ExternalLink, Key, Loader2, Shield } from 'luci
 import React, { useState } from 'react'
 
 const GITHUB_TOKEN_URL =
-  'https://github.com/settings/tokens/new?scopes=repo,read:org&description=CodeLobby%20App'
+  'https://github.com/settings/tokens/new?scopes=repo,read:org,read:user&description=CodeLobby%20App'
 
 export function TokenInput(): React.JSX.Element {
   const [token, setToken] = useState('')
@@ -153,6 +153,14 @@ export function TokenInput(): React.JSX.Element {
                         <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">read:org</code>
                         <span className="text-muted-foreground ml-1.5">
                           — access to organization repos
+                        </span>
+                      </li>
+                      <li>
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                          read:user
+                        </code>
+                        <span className="text-muted-foreground ml-1.5">
+                          — view contribution history
                         </span>
                       </li>
                     </ul>

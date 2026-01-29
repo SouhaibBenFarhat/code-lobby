@@ -162,13 +162,18 @@ describe('Settings Queries', () => {
       })
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
-      expect(result.current.data).toEqual({ sidebarWidth: 280, expandedRepos: [] })
+      expect(result.current.data).toEqual({
+        sidebarWidth: 280,
+        expandedRepos: [],
+        expandedOwners: []
+      })
     })
 
     it('returns custom values when set', async () => {
       queryClient.setQueryData(keys.ideSettings, {
         sidebarWidth: 320,
-        expandedRepos: ['org/repo-1']
+        expandedRepos: ['org/repo-1'],
+        expandedOwners: ['org']
       })
 
       const { result } = renderHook(() => useIDESettings(), {
@@ -178,7 +183,8 @@ describe('Settings Queries', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
       expect(result.current.data).toEqual({
         sidebarWidth: 320,
-        expandedRepos: ['org/repo-1']
+        expandedRepos: ['org/repo-1'],
+        expandedOwners: ['org']
       })
     })
   })

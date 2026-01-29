@@ -19,6 +19,7 @@ import { type ComponentType, type ReactNode, Suspense, useSyncExternalStore } fr
 export type SlotName =
   | 'header'
   | 'left-panel'
+  | 'user-profile'
   | 'main'
   | 'right-panel'
   | 'pr-detail-panel'

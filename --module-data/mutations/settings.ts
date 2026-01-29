@@ -71,6 +71,7 @@ export function useSetPRDetailPanel(): UseMutationResult<PRDetailPanel, Error, P
 interface IDESettings {
   sidebarWidth?: number
   expandedRepos?: string[]
+  expandedOwners?: string[]
 }
 
 export function useSetIDESettings(): UseMutationResult<IDESettings, Error, IDESettings> {
@@ -79,9 +80,11 @@ export function useSetIDESettings(): UseMutationResult<IDESettings, Error, IDESe
   return useMutation({
     mutationFn: (s: IDESettings) => Promise.resolve(s),
     onSuccess: (s) => {
-      const current = qc.getQueryData<{ sidebarWidth: number; expandedRepos: string[] }>(
-        keys.ideSettings
-      ) || { sidebarWidth: 280, expandedRepos: [] }
+      const current = qc.getQueryData<{
+        sidebarWidth: number
+        expandedRepos: string[]
+        expandedOwners: string[]
+      }>(keys.ideSettings) || { sidebarWidth: 280, expandedRepos: [], expandedOwners: [] }
       qc.setQueryData(keys.ideSettings, { ...current, ...s })
     }
   })
@@ -176,9 +179,11 @@ export function useToggleRepoExpanded(): UseMutationResult<string, Error, string
   return useMutation({
     mutationFn: (repoFullName: string) => Promise.resolve(repoFullName),
     onSuccess: (repoFullName) => {
-      const current = qc.getQueryData<{ sidebarWidth: number; expandedRepos: string[] }>(
-        keys.ideSettings
-      ) || { sidebarWidth: 280, expandedRepos: [] }
+      const current = qc.getQueryData<{
+        sidebarWidth: number
+        expandedRepos: string[]
+        expandedOwners: string[]
+      }>(keys.ideSettings) || { sidebarWidth: 280, expandedRepos: [], expandedOwners: [] }
       const expandedRepos = current.expandedRepos.includes(repoFullName)
         ? current.expandedRepos.filter((r) => r !== repoFullName)
         : [...current.expandedRepos, repoFullName]
@@ -207,6 +212,32 @@ export function useFactoryReset(): UseMutationResult<void, Error, void> {
     onSuccess: () => {
       qc.clear()
       localStorage.clear()
+    }
+  })
+}
+
+interface UserProfilePanel {
+  isOpen?: boolean
+  height?: number
+}
+
+export function useSetUserProfilePanel(): UseMutationResult<
+  UserProfilePanel,
+  Error,
+  UserProfilePanel
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (s: UserProfilePanel) => Promise.resolve(s),
+    onSuccess: (s) => {
+      const current = qc.getQueryData<{ isOpen: boolean; height: number }>(
+        keys.local.userProfilePanel
+      ) || {
+        isOpen: false,
+        height: 250
+      }
+      qc.setQueryData(keys.local.userProfilePanel, { ...current, ...s })
     }
   })
 }

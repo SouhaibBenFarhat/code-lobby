@@ -65,12 +65,13 @@ export function usePRDetailPanel(): UseQueryResult<{ isOpen: boolean; width: num
 }
 
 export function useIDESettings(): UseQueryResult<
-  { sidebarWidth: number; expandedRepos: string[] },
+  { sidebarWidth: number; expandedRepos: string[]; expandedOwners: string[] },
   Error
 > {
   return useQuery({
     queryKey: keys.ideSettings,
-    queryFn: () => getPersisted(keys.ideSettings, { sidebarWidth: 280, expandedRepos: [] }),
+    queryFn: () =>
+      getPersisted(keys.ideSettings, { sidebarWidth: 280, expandedRepos: [], expandedOwners: [] }),
     staleTime: Infinity
   })
 }
@@ -103,6 +104,20 @@ export function useMyPRsRepos(): UseQueryResult<string[], Error> {
   return useQuery({
     queryKey: keys.myPRsRepos,
     queryFn: () => getPersisted<string[]>(keys.myPRsRepos, []),
+    staleTime: Infinity
+  })
+}
+
+export interface UserProfilePanel {
+  isOpen: boolean
+  height: number
+}
+
+export function useUserProfilePanel(): UseQueryResult<UserProfilePanel, Error> {
+  return useQuery({
+    queryKey: keys.local.userProfilePanel,
+    queryFn: () =>
+      getPersisted<UserProfilePanel>(keys.local.userProfilePanel, { isOpen: false, height: 250 }),
     staleTime: Infinity
   })
 }

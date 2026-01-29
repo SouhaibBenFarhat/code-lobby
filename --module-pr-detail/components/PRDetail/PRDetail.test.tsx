@@ -25,8 +25,7 @@ import {
   createMockPRWithComments,
   createMockPRWithMixedComments,
   createMockPullRequest,
-  createMockReviewComment,
-  createMockReviewThread,
+  createMockReview,
   createMockUnstablePR,
   createMockUser,
   fireEvent,
@@ -158,11 +157,11 @@ describe('PRDetail', () => {
       expect(screen.getByRole('button', { name: /Bots/i })).toBeInTheDocument()
     })
 
-    it('should render Code tab', () => {
+    it('should render Reviews tab', () => {
       const pr = createMockPullRequest()
       render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
-      expect(screen.getByRole('button', { name: /Code/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Reviews/i })).toBeInTheDocument()
     })
   })
 
@@ -486,8 +485,8 @@ describe('PRDetail', () => {
     })
   })
 
-  describe('Code Reviews Tab', () => {
-    it('should render PR with code reviews without error', async () => {
+  describe('Reviews Tab', () => {
+    it('should render PR with reviews without error', async () => {
       const pr = createMockPRWithCodeReviews()
 
       const { container } = render(<PRDetail onClose={mockOnClose} />, {
@@ -499,56 +498,61 @@ describe('PRDetail', () => {
         expect(container.firstChild).toBeInTheDocument()
       })
 
-      // Verify the Code tab shows correct count
-      expect(screen.getByText(/Code \(2\)/)).toBeInTheDocument()
+      // Verify the Reviews tab shows correct count (unique reviewers, not review submissions)
+      // createMockPRWithCodeReviews creates 2 reviews from 2 different authors
+      expect(screen.getByText(/Reviews \(2\)/)).toBeInTheDocument()
     })
 
-    it('should display reviewer info from review threads', async () => {
+    it('should display reviewer count from unique reviewers', async () => {
       const reviewer = createMockUser({ login: 'code-reviewer' })
       const pr = createMockPullRequest()
-      pr.reviewThreads = [
-        createMockReviewThread({
-          path: 'src/test.ts',
-          comments: [
-            createMockReviewComment({
-              author: { login: reviewer.login, avatar_url: reviewer.avatar_url, isBot: false },
-              body: 'Nice code!'
-            })
-          ]
+      pr.reviews = [
+        createMockReview({
+          author: { login: reviewer.login, avatar_url: reviewer.avatar_url, isBot: false },
+          state: 'approved'
         })
       ]
 
       render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
-      // The Code tab should show count of 1
+      // The Reviews tab should show count of 1 unique reviewer
       await waitFor(() => {
-        expect(screen.getByText(/Code \(1\)/)).toBeInTheDocument()
+        expect(screen.getByText(/Reviews \(1\)/)).toBeInTheDocument()
       })
     })
 
-    it('should handle PR with multiple review threads', async () => {
+    it('should handle PR with multiple reviewers', async () => {
       const pr = createMockPullRequest()
-      pr.reviewThreads = [
-        createMockReviewThread({ path: 'src/file1.ts', line: 10 }),
-        createMockReviewThread({ path: 'src/file2.ts', line: 20 }),
-        createMockReviewThread({ path: 'src/file3.ts', line: 30 })
+      pr.reviews = [
+        createMockReview({
+          author: { login: 'reviewer1', avatar_url: 'https://example.com/1.png', isBot: false },
+          state: 'approved'
+        }),
+        createMockReview({
+          author: { login: 'reviewer2', avatar_url: 'https://example.com/2.png', isBot: false },
+          state: 'changes_requested'
+        }),
+        createMockReview({
+          author: { login: 'reviewer3', avatar_url: 'https://example.com/3.png', isBot: false },
+          state: 'commented'
+        })
       ]
 
       render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       await waitFor(() => {
-        expect(screen.getByText(/Code \(3\)/)).toBeInTheDocument()
+        expect(screen.getByText(/Reviews \(3\)/)).toBeInTheDocument()
       })
     })
 
-    it('should handle PR without any review threads', async () => {
+    it('should handle PR without any reviews', async () => {
       const pr = createMockPullRequest()
-      pr.reviewThreads = []
+      pr.reviews = []
 
       render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
       await waitFor(() => {
-        expect(screen.getByText(/Code \(0\)/)).toBeInTheDocument()
+        expect(screen.getByText(/Reviews \(0\)/)).toBeInTheDocument()
       })
     })
   })

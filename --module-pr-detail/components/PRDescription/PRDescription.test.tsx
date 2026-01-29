@@ -1,21 +1,51 @@
 /**
  * PRDescription Component Tests
  *
- * Tests for PR description display, collapsing/expanding, and actions.
+ * Tests for PR description display, collapsing/expanding, and inline editing.
  */
 
 import { fireEvent, render, screen, waitFor } from '@test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PRDescription } from './PRDescription'
 
+// Mock the mutation hook
+const mockMutateAsync = vi.fn()
+vi.mock('@data', () => ({
+  useUpdatePRBody: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+    isError: false
+  })
+}))
+
+// Mock MarkdownEditor
+vi.mock('@ui-kit', async () => {
+  const actual = await vi.importActual<typeof import('@ui-kit')>('@ui-kit')
+  return {
+    ...actual,
+    MarkdownEditor: ({
+      value,
+      onChange,
+      'data-testid': testId
+    }: {
+      value: string
+      onChange: (value: string) => void
+      'data-testid'?: string
+    }) => <textarea value={value} onChange={(e) => onChange(e.target.value)} data-testid={testId} />
+  }
+})
+
 describe('PRDescription', () => {
   const defaultProps = {
     body: 'This is the PR description body text.',
-    prUrl: 'https://github.com/test-org/repo/pull/1'
+    prNodeId: 'PR_kwDOTest123',
+    repoFullName: 'test-org/repo',
+    prNumber: 1
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockMutateAsync.mockResolvedValue({ success: true })
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined)
@@ -44,15 +74,16 @@ describe('PRDescription', () => {
     })
 
     it('should show "No description provided" when body is null', () => {
-      render(<PRDescription body={null} prUrl={defaultProps.prUrl} />)
+      render(<PRDescription {...defaultProps} body={null} />)
 
       expect(screen.getByText('No description provided')).toBeInTheDocument()
     })
 
-    it('should show "No description provided" when body is empty string', () => {
-      render(<PRDescription body="" prUrl={defaultProps.prUrl} />)
+    it('should show Edit button when body is null', () => {
+      render(<PRDescription {...defaultProps} body={null} />)
 
-      expect(screen.getByText('No description provided')).toBeInTheDocument()
+      // The Edit (pencil) button should be visible to add a description
+      expect(screen.getByTitle('Edit description')).toBeInTheDocument()
     })
   })
 
@@ -158,28 +189,136 @@ describe('PRDescription', () => {
     })
 
     it('should not show copy button when body is null', () => {
-      render(<PRDescription body={null} prUrl={defaultProps.prUrl} />)
+      render(<PRDescription {...defaultProps} body={null} />)
 
       const copyIcon = document.querySelector('.lucide-copy')
       expect(copyIcon).not.toBeInTheDocument()
     })
   })
 
-  describe('edit functionality', () => {
-    it('should open PR URL when edit button is clicked', () => {
-      const mockOpen = vi.fn()
-      vi.spyOn(window, 'open').mockImplementation(mockOpen)
-
+  describe('inline editing', () => {
+    it('should show edit button in header', () => {
       render(<PRDescription {...defaultProps} />)
 
-      const editIcon = document.querySelector('.lucide-edit')
+      const editIcon = document.querySelector('.lucide-pencil')
+      expect(editIcon).toBeInTheDocument()
+    })
+
+    it('should enter edit mode when edit button is clicked', async () => {
+      render(<PRDescription {...defaultProps} />)
+
+      const editIcon = document.querySelector('.lucide-pencil')
       const editButton = editIcon?.closest('button')
 
       if (editButton) {
         fireEvent.click(editButton)
 
-        expect(mockOpen).toHaveBeenCalledWith(defaultProps.prUrl, '_blank')
+        await waitFor(() => {
+          expect(screen.getByTestId('description-editor')).toBeInTheDocument()
+        })
       }
+    })
+
+    it('should show Save and Cancel buttons in edit mode', async () => {
+      render(<PRDescription {...defaultProps} />)
+
+      const editIcon = document.querySelector('.lucide-pencil')
+      const editButton = editIcon?.closest('button')
+
+      if (editButton) {
+        fireEvent.click(editButton)
+
+        await waitFor(() => {
+          expect(screen.getByText('Save')).toBeInTheDocument()
+          expect(screen.getByText('Cancel')).toBeInTheDocument()
+        })
+      }
+    })
+
+    it('should exit edit mode when Cancel is clicked', async () => {
+      render(<PRDescription {...defaultProps} />)
+
+      // Enter edit mode
+      const editIcon = document.querySelector('.lucide-pencil')
+      const editButton = editIcon?.closest('button')
+      if (editButton) {
+        fireEvent.click(editButton)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-editor')).toBeInTheDocument()
+      })
+
+      // Click Cancel
+      fireEvent.click(screen.getByText('Cancel'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('description-editor')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should call mutation when Save is clicked', async () => {
+      render(<PRDescription {...defaultProps} />)
+
+      // Enter edit mode
+      const editIcon = document.querySelector('.lucide-pencil')
+      const editButton = editIcon?.closest('button')
+      if (editButton) {
+        fireEvent.click(editButton)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-editor')).toBeInTheDocument()
+      })
+
+      // Modify text
+      const editor = screen.getByTestId('description-editor')
+      fireEvent.change(editor, { target: { value: 'Updated description' } })
+
+      // Click Save
+      fireEvent.click(screen.getByText('Save'))
+
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          prNodeId: 'PR_kwDOTest123',
+          body: 'Updated description',
+          repoFullName: 'test-org/repo',
+          prNumber: 1
+        })
+      })
+    })
+
+    it('should exit edit mode after successful save', async () => {
+      render(<PRDescription {...defaultProps} />)
+
+      // Enter edit mode
+      const editIcon = document.querySelector('.lucide-pencil')
+      const editButton = editIcon?.closest('button')
+      if (editButton) {
+        fireEvent.click(editButton)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-editor')).toBeInTheDocument()
+      })
+
+      // Click Save
+      fireEvent.click(screen.getByText('Save'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('description-editor')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should show Edit button that enters edit mode when clicked for empty description', async () => {
+      render(<PRDescription {...defaultProps} body={null} />)
+
+      const editButton = screen.getByTitle('Edit description')
+      fireEvent.click(editButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-editor')).toBeInTheDocument()
+      })
     })
   })
 
@@ -187,7 +326,7 @@ describe('PRDescription', () => {
     const longBody = 'A'.repeat(350) // More than DESCRIPTION_PREVIEW_LENGTH (300)
 
     it('should truncate long descriptions', () => {
-      render(<PRDescription body={longBody} prUrl={defaultProps.prUrl} />)
+      render(<PRDescription {...defaultProps} body={longBody} />)
 
       expect(screen.getByText(/Read more/i)).toBeInTheDocument()
     })
@@ -199,7 +338,7 @@ describe('PRDescription', () => {
     })
 
     it('should expand when "Read more" is clicked', async () => {
-      render(<PRDescription body={longBody} prUrl={defaultProps.prUrl} />)
+      render(<PRDescription {...defaultProps} body={longBody} />)
 
       const readMoreButton = screen.getByText(/Read more/i)
       fireEvent.click(readMoreButton)
@@ -210,7 +349,7 @@ describe('PRDescription', () => {
     })
 
     it('should collapse when "Show less" is clicked', async () => {
-      render(<PRDescription body={longBody} prUrl={defaultProps.prUrl} />)
+      render(<PRDescription {...defaultProps} body={longBody} />)
 
       // Expand first
       fireEvent.click(screen.getByText(/Read more/i))
@@ -232,7 +371,7 @@ describe('PRDescription', () => {
     it('should render markdown content', () => {
       const markdownBody = '## Heading\n\nThis is **bold** text.'
 
-      render(<PRDescription body={markdownBody} prUrl={defaultProps.prUrl} />)
+      render(<PRDescription {...defaultProps} body={markdownBody} />)
 
       // MarkdownContent component should be used
       expect(screen.getByText(/bold/)).toBeInTheDocument()

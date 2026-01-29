@@ -130,7 +130,11 @@ describe('Settings Mutations', () => {
 
   describe('useSetIDESettings', () => {
     it('updates IDE sidebar width', async () => {
-      queryClient.setQueryData(keys.ideSettings, { sidebarWidth: 280, expandedRepos: [] })
+      queryClient.setQueryData(keys.ideSettings, {
+        sidebarWidth: 280,
+        expandedRepos: [],
+        expandedOwners: []
+      })
 
       const { result } = renderHook(() => useSetIDESettings(), {
         wrapper: createWrapper(queryClient)
@@ -142,7 +146,8 @@ describe('Settings Mutations', () => {
 
       expect(queryClient.getQueryData(keys.ideSettings)).toEqual({
         sidebarWidth: 350,
-        expandedRepos: []
+        expandedRepos: [],
+        expandedOwners: []
       })
     })
   })
@@ -269,7 +274,11 @@ describe('Settings Mutations', () => {
 
   describe('useToggleRepoExpanded', () => {
     it('expands a repo', async () => {
-      queryClient.setQueryData(keys.ideSettings, { sidebarWidth: 280, expandedRepos: [] })
+      queryClient.setQueryData(keys.ideSettings, {
+        sidebarWidth: 280,
+        expandedRepos: [],
+        expandedOwners: []
+      })
 
       const { result } = renderHook(() => useToggleRepoExpanded(), {
         wrapper: createWrapper(queryClient)
@@ -286,7 +295,8 @@ describe('Settings Mutations', () => {
     it('collapses an expanded repo', async () => {
       queryClient.setQueryData(keys.ideSettings, {
         sidebarWidth: 280,
-        expandedRepos: ['org/repo']
+        expandedRepos: ['org/repo'],
+        expandedOwners: []
       })
 
       const { result } = renderHook(() => useToggleRepoExpanded(), {

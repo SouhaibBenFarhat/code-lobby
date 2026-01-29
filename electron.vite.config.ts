@@ -34,6 +34,7 @@ export default defineConfig({
         '@data': resolve('--module-data/index.ts'),
         '@header': resolve('--module-header/index.tsx'),
         '@explorer': resolve('--module-explorer/index.tsx'),
+        '@user-profile': resolve('--module-user-profile/index.tsx'),
         '@canvas': resolve('--module-canvas/index.tsx'),
         '@pr-detail': resolve('--module-pr-detail/index.tsx'),
         '@ai-chat': resolve('--module-ai-chat/index.tsx'),

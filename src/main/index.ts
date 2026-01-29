@@ -155,7 +155,7 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
-  ipcMain.handle('open-external', async (_, url: string) => {
+  ipcMain.handle('shell-open-external', async (_, url: string) => {
     await shell.openExternal(url)
     return { success: true }
   })

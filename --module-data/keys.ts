@@ -40,6 +40,8 @@ export const keys = {
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
   rateLimit: ['github', 'rate-limit'] as const,
+  contributions: ['github', 'contributions'] as const,
+  userEvents: ['github', 'user-events'] as const,
 
   // Settings (PERSISTED)
   selectedRepos: ['settings', 'selected-repos'] as const,
@@ -77,7 +79,8 @@ export const keys = {
     selectedPRId: ['local', 'selected-pr-id'] as const,
     isAILoading: ['local', 'is-ai-loading'] as const,
     networkPanelOpen: ['local', 'network-panel-open'] as const,
-    networkPanelHeight: ['local', 'network-panel-height'] as const
+    networkPanelHeight: ['local', 'network-panel-height'] as const,
+    userProfilePanel: ['local', 'user-profile-panel'] as const
   },
 
   // For backward compat - keep flat keys

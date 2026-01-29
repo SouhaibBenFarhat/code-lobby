@@ -82,8 +82,12 @@ vi.mock('@data', () => ({
       costUsd: 0
     })
   ),
+  useContributions: vi.fn(() => mockQueryResult(null)),
+  useRefreshContributions: vi.fn(() => vi.fn()),
+  useUserProfilePanel: vi.fn(() => mockQueryResult({ isOpen: false, height: 250 })),
   // Mutation hooks
   useSetSelectedRepos: vi.fn(() => mockMutationResult()),
+  useSetUserProfilePanel: vi.fn(() => mockMutationResult()),
   useClearCacheAndRefresh: vi.fn(() => mockMutationResult()),
   useSetTheme: vi.fn(() => mockMutationResult()),
   useToggleNetworkPanel: vi.fn(() => mockMutationResult()),
