@@ -4,6 +4,7 @@
  */
 
 import type { PullRequest } from '@data'
+import { useUpdatePRTitle } from '@data'
 import {
   Avatar,
   AvatarFallback,
@@ -13,6 +14,7 @@ import {
   Col,
   cn,
   formatRelativeTime,
+  Input,
   MatchedAvatars,
   Row,
   Separator,
@@ -24,6 +26,7 @@ import {
   Check,
   Clock,
   Copy,
+  Edit3,
   ExternalLink,
   FileEdit,
   FileSearch,
@@ -52,6 +55,9 @@ export interface PRHeaderProps {
 
 function PRTitleSection({ pr }: { pr: PullRequest }) {
   const [copied, setCopied] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editedTitle, setEditedTitle] = useState(pr.title)
+  const updateTitle = useUpdatePRTitle()
 
   const copyBranchName = useCallback(async () => {
     await navigator.clipboard.writeText(pr.head.ref)
@@ -59,44 +65,150 @@ function PRTitleSection({ pr }: { pr: PullRequest }) {
     setTimeout(() => setCopied(false), 2000)
   }, [pr.head.ref])
 
+  const handleStartEdit = useCallback(() => {
+    setEditedTitle(pr.title)
+    setIsEditingTitle(true)
+  }, [pr.title])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingTitle(false)
+    setEditedTitle(pr.title)
+  }, [pr.title])
+
+  const handleSaveTitle = useCallback(() => {
+    if (editedTitle.trim() && editedTitle !== pr.title) {
+      updateTitle.mutate(
+        {
+          prNodeId: pr.id,
+          title: editedTitle.trim(),
+          repoFullName: pr.base.repo.full_name,
+          prNumber: pr.number
+        },
+        {
+          onSuccess: () => {
+            setIsEditingTitle(false)
+          }
+        }
+      )
+    } else {
+      setIsEditingTitle(false)
+    }
+  }, [editedTitle, pr.title, pr.id, pr.base.repo.full_name, pr.number, updateTitle])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSaveTitle()
+      } else if (e.key === 'Escape') {
+        handleCancelEdit()
+      }
+    },
+    [handleSaveTitle, handleCancelEdit]
+  )
+
   return (
-    <div className="flex-1 min-w-0 overflow-hidden">
-      <div className="flex items-center gap-2 mb-1">
-        <GitPullRequest
-          className={cn(
-            'w-4 h-4 flex-shrink-0',
-            pr.draft ? 'text-muted-foreground' : 'text-primary'
+    <div className="overflow-hidden">
+      {isEditingTitle ? (
+        <div className="flex items-center gap-2">
+          <GitPullRequest
+            className={cn(
+              'w-4 h-4 flex-shrink-0',
+              pr.draft ? 'text-muted-foreground' : 'text-primary'
+            )}
+          />
+          <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
+            #{pr.number}
+          </span>
+          <Input
+            value={editedTitle}
+            onChange={(e) => setEditedTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="h-7 text-sm font-semibold flex-1"
+            autoFocus
+            disabled={updateTitle.isPending}
+          />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="flex-shrink-0"
+            onClick={handleSaveTitle}
+            disabled={updateTitle.isPending || !editedTitle.trim()}
+          >
+            {updateTitle.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Check className="w-3.5 h-3.5 text-success" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="flex-shrink-0"
+            onClick={handleCancelEdit}
+            disabled={updateTitle.isPending}
+          >
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-start gap-2">
+          <GitPullRequest
+            className={cn(
+              'w-4 h-4 flex-shrink-0 mt-0.5',
+              pr.draft ? 'text-muted-foreground' : 'text-primary'
+            )}
+          />
+          <span className="text-xs text-muted-foreground font-mono flex-shrink-0 mt-0.5">
+            #{pr.number}
+          </span>
+          {pr.draft && (
+            <Badge variant="secondary" className="text-[10px] h-4 flex-shrink-0">
+              Draft
+            </Badge>
           )}
-        />
-        <span className="text-xs text-muted-foreground font-mono">#{pr.number}</span>
-        {pr.draft && (
-          <Badge variant="secondary" className="text-[10px] h-4">
-            Draft
-          </Badge>
-        )}
-      </div>
-      <h2 className="font-semibold text-sm leading-tight line-clamp-2 break-words">{pr.title}</h2>
-      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
+          <h2 className="font-semibold text-sm leading-tight line-clamp-2 break-words flex-1">
+            {pr.title}
+          </h2>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="flex-shrink-0"
+                onClick={handleStartEdit}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Edit title</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+      <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
         <GitBranch className="w-3 h-3 flex-shrink-0" />
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               onClick={copyBranchName}
-              className="font-mono hover:text-foreground transition-colors flex items-center gap-1 group"
+              className="font-mono hover:text-foreground transition-colors flex items-center gap-1 group max-w-[180px] truncate"
             >
-              {pr.head.ref}
+              <span className="truncate">{pr.head.ref}</span>
               {copied ? (
-                <Check className="w-3 h-3 text-success" />
+                <Check className="w-3 h-3 flex-shrink-0 text-success" />
               ) : (
-                <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Copy className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
               )}
             </button>
           </TooltipTrigger>
-          <TooltipContent>{copied ? 'Copied!' : 'Copy branch name'}</TooltipContent>
+          <TooltipContent>
+            <p className="font-mono text-xs break-all">{pr.head.ref}</p>
+            <p className="text-muted-foreground mt-1">{copied ? 'Copied!' : 'Click to copy'}</p>
+          </TooltipContent>
         </Tooltip>
-        <span className="flex-shrink-0">→</span>
-        <span className="font-mono">{pr.base.ref}</span>
+        <span className="flex-shrink-0 text-muted-foreground/60">→</span>
+        <span className="font-mono flex-shrink-0">{pr.base.ref}</span>
       </div>
     </div>
   )
@@ -109,58 +221,92 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
 
   return (
     <div className="p-4 border-b border-border flex-shrink-0 overflow-hidden bg-card/80 dark:bg-card/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
-      <div className="flex items-start justify-between gap-3">
-        <PRTitleSection pr={pr} />
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={refresh}
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
+      {/* Title and actions using grid system */}
+      <Row gutter="sm" align="start" justify="between" wrap>
+        {/* Title section - grows to fill, shrinks with min-width */}
+        <Col className="min-w-[340px] flex-1 flex-shrink">
+          <PRTitleSection pr={pr} />
+        </Col>
+
+        {/* Actions section - doesn't shrink, wraps when no space */}
+        <Col span="auto" className="flex-shrink-0">
+          <Row gutter="xs" align="center" wrap>
+            <Col span="auto">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={refresh}
+                    disabled={isRefreshing}
+                  >
+                    {isRefreshing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refresh PR details</TooltipContent>
+              </Tooltip>
+            </Col>
+            <Col span="auto">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => window.open(pr.html_url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Open in GitHub</TooltipContent>
+              </Tooltip>
+            </Col>
+            <Col span="auto">
+              <Separator orientation="vertical" className="h-5 mx-1" />
+            </Col>
+            <Col span="auto">
+              <FindPreviewButton />
+            </Col>
+            <Col span="auto">
+              <Separator orientation="vertical" className="h-5 mx-1" />
+            </Col>
+            <Col span="auto">
+              <ApproveButton />
+            </Col>
+            <Col span="auto">
+              <UpdateBranchButton />
+            </Col>
+            <Col span="auto">
+              <MergeButton />
+            </Col>
+            <Col span="auto">
+              <ReadyForReviewButton />
+            </Col>
+            <Col span="auto">
+              <ConvertToDraftButton />
+            </Col>
+            <Col span="auto">
+              <CloseButton />
+            </Col>
+            <Col span="auto">
+              <ReopenButton />
+            </Col>
+            <Col span="auto">
+              <Button variant="ghost" size="icon-sm" onClick={onClose}>
+                <X className="w-4 h-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Refresh PR details</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => window.open(pr.html_url, '_blank')}
-              >
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Open in GitHub</TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="h-5 mx-1" />
-          <FindPreviewButton />
-          <Separator orientation="vertical" className="h-5 mx-1" />
-          <ApproveButton />
-          <UpdateBranchButton />
-          <MergeButton />
-          <ReadyForReviewButton />
-          <ConvertToDraftButton />
-          <CloseButton />
-          <ReopenButton />
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
 
       {/* Stats */}
-      <Row gutter="md" align="center" className="pt-3 text-xs">
+      <Row gutter="sm" align="center" wrap className="pt-3 text-xs">
         <Col span="auto">
           <MatchedAvatars
             author={{ login: pr.user.login, avatar_url: pr.user.avatar_url }}

@@ -37,8 +37,12 @@ export { useRepos } from './repository'
 // Settings
 export {
   type UserProfilePanel,
+  useAgenticPrompts,
+  useAgenticSettingsOpen,
   useAIPanel,
   useCardLayouts,
+  useDailySpeeches,
+  useDailySpeechModalOpen,
   useGitHubToken,
   useIDESettings,
   useMinimizedRepos,

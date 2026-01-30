@@ -22,7 +22,7 @@ import {
   useViewMode
 } from '@data'
 import { Slot } from '@slot-system'
-import { Button, Toaster, TooltipProvider } from '@ui-kit'
+import { Button, ResizeHandle, Toaster, TooltipProvider } from '@ui-kit'
 import { MousePointerClick, PanelRightClose } from 'lucide-react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenInput } from './TokenInput'
@@ -192,8 +192,10 @@ export function App(): React.JSX.Element {
         explorerRafRef.current = requestAnimationFrame(() => {
           if (!explorerResizeStart.current || !leftSidebarRef.current) return
           const delta = e.clientX - explorerResizeStart.current.startX
+          // Allow up to 70% of window width, min 200px
+          const maxExplorerWidth = Math.floor(window.innerWidth * 0.7)
           const newWidth = Math.min(
-            500,
+            maxExplorerWidth,
             Math.max(200, explorerResizeStart.current.startWidth + delta)
           )
           leftSidebarRef.current.style.width = `${newWidth}px`
@@ -353,43 +355,48 @@ export function App(): React.JSX.Element {
         <Slot name="header" wrapInContainer={false} />
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Left sidebar: Explorer + User Profile (mirrors right sidebar: AI + Network) */}
-          <aside
-            ref={leftSidebarRef}
-            className="apple-sidebar overflow-hidden flex relative flex-shrink-0"
-            style={{ width: explorerWidth, minWidth: explorerWidth, maxWidth: explorerWidth }}
-          >
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <div
-                className={userProfileOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'}
+          {/* Left sidebar: Explorer + User Profile - only in IDE mode */}
+          {viewMode === 'ide' && (
+            <>
+              <aside
+                ref={leftSidebarRef}
+                className="apple-sidebar overflow-hidden flex flex-shrink-0"
+                style={{ width: explorerWidth, minWidth: explorerWidth, maxWidth: explorerWidth }}
               >
-                <Slot name="left-panel" wrapInContainer={false} />
-              </div>
-              {viewMode === 'ide' && userProfileOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Resize user profile panel"
-                    className={`h-1 w-full cursor-row-resize p-0 flex-shrink-0 transition-colors border-t border-border ${isUserProfileResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
-                    onMouseDown={handleUserProfileResizeStart}
-                  />
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                   <div
-                    ref={userProfilePanelRef}
-                    className="flex-shrink-0 overflow-hidden"
-                    style={{ height: userProfileHeight }}
+                    className={
+                      userProfileOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'
+                    }
                   >
-                    <Slot name="user-profile" wrapInContainer={false} />
+                    <Slot name="left-panel" wrapInContainer={false} />
                   </div>
-                </>
-              )}
-            </div>
-            <button
-              type="button"
-              aria-label="Resize sidebar"
-              className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-20 border-0 p-0 transition-colors ${isExplorerResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
-              onMouseDown={handleExplorerResizeStart}
-            />
-          </aside>
+                  {userProfileOpen && (
+                    <>
+                      <ResizeHandle
+                        direction="vertical"
+                        isResizing={isUserProfileResizing}
+                        onMouseDown={handleUserProfileResizeStart}
+                      />
+                      <div
+                        ref={userProfilePanelRef}
+                        className="flex-shrink-0 overflow-hidden"
+                        style={{ height: userProfileHeight }}
+                      >
+                        <Slot name="user-profile" wrapInContainer={false} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </aside>
+              {/* Explorer resize handle - outside aside for better hit area */}
+              <ResizeHandle
+                direction="horizontal"
+                isResizing={isExplorerResizing}
+                onMouseDown={handleExplorerResizeStart}
+              />
+            </>
+          )}
 
           <main className="flex-1 overflow-auto bg-muted/20">
             <Slot name="main" wrapInContainer={false} />
@@ -401,10 +408,10 @@ export function App(): React.JSX.Element {
               className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
               style={{ width: prDetailWidth, minWidth: prDetailWidth, maxWidth: prDetailWidth }}
             >
-              <button
-                type="button"
-                aria-label="Resize panel"
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-20 border-0 p-0 transition-colors ${isPRResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+              <ResizeHandle
+                direction="horizontal"
+                position="left"
+                isResizing={isPRResizing}
                 onMouseDown={handlePRResizeStart}
               />
               <div className="flex-1 overflow-hidden flex flex-col min-w-0">
@@ -443,10 +450,10 @@ export function App(): React.JSX.Element {
               className="apple-panel overflow-hidden flex relative flex-shrink-0"
               style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
             >
-              <button
-                type="button"
-                aria-label="Resize panel"
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-20 border-0 p-0 transition-colors ${isAIResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+              <ResizeHandle
+                direction="horizontal"
+                position="left"
+                isResizing={isAIResizing}
                 onMouseDown={handleAIResizeStart}
               />
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -462,10 +469,9 @@ export function App(): React.JSX.Element {
                 {networkPanelOpen && (
                   <>
                     {aiPanelOpen && (
-                      <button
-                        type="button"
-                        aria-label="Resize network panel"
-                        className={`h-1 w-full cursor-row-resize p-0 flex-shrink-0 transition-colors border-t border-border ${isNetworkResizing ? 'bg-primary/50' : 'hover:bg-primary/50'}`}
+                      <ResizeHandle
+                        direction="vertical"
+                        isResizing={isNetworkResizing}
                         onMouseDown={handleNetworkResizeStart}
                       />
                     )}

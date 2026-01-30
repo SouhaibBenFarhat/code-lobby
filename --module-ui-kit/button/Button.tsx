@@ -32,6 +32,8 @@ const buttonVariants: (props?: Record<string, unknown>) => string = cva(
         sm: 'h-8 px-3 text-xs rounded-[6px]',
         lg: 'h-11 px-6 text-base rounded-[10px]',
         icon: 'h-9 w-9 rounded-[8px]',
+        'icon-sm': 'h-7 w-7 rounded-[6px]',
+        'icon-xs': 'h-5 w-5 rounded-[4px]',
         // No size constraints - for unstyled variant
         none: ''
       }

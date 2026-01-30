@@ -48,6 +48,7 @@ export {
   type RowProps
 } from './grid'
 export { Input, type InputProps } from './input'
+export { Label, type LabelProps } from './label'
 export {
   ListMenu,
   ListMenuContent,
@@ -60,6 +61,8 @@ export { MarkdownContent } from './markdown-content'
 export { type EditorTab, MarkdownEditor, type MarkdownEditorProps } from './markdown-editor'
 export { MatchedAvatars, type MatchedAvatarsProps, type MatchedUser } from './matched-avatars'
 export { Popover, PopoverContent, PopoverTrigger } from './popover'
+export { Progress, type ProgressProps } from './progress'
+export { ResizeHandle, type ResizeHandleProps } from './resize-handle'
 export { ScrollArea, ScrollBar } from './scroll-area'
 export {
   Select,
@@ -87,6 +90,7 @@ export {
   SheetTrigger
 } from './sheet'
 export { Skeleton, type SkeletonProps } from './skeleton'
+export { Textarea, type TextareaProps } from './textarea'
 export {
   Timeline,
   TimelineConnector,

@@ -63,6 +63,12 @@ export const keys = {
   enableWebFetch: ['ai', 'enable-web-fetch'] as const,
   customPrompts: ['ai', 'custom-prompts'] as const,
   aiUsage: ['ai', 'usage'] as const,
+  // Agentic action prompts (PERSISTED)
+  agenticPrompts: ['ai', 'agentic-prompts'] as const,
+  agenticSettingsOpen: ['local', 'agentic-settings-open'] as const,
+  // Daily speeches (PERSISTED)
+  dailySpeeches: ['ai', 'daily-speeches'] as const,
+  dailySpeechModalOpen: ['local', 'daily-speech-modal-open'] as const,
   // Per-PR chat messages (each PR has its own cache entry)
   prChatMessages: (prId: string): readonly ['ai', 'pr-chat', string] =>
     ['ai', 'pr-chat', prId] as const,

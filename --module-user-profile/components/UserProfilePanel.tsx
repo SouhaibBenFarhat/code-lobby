@@ -27,6 +27,7 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
+  Sparkles,
   Target,
   TrendingUp,
   Trophy,
@@ -34,6 +35,7 @@ import {
   Zap
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { DailySpeechModal } from './DailySpeechModal'
 
 // Animated counter component
 function AnimatedNumber({
@@ -394,12 +396,14 @@ function EventsContent({
   events,
   isLoading,
   error,
-  onRefresh
+  onRefresh,
+  onGenerateDaily
 }: {
   events: UserEvent[]
   isLoading: boolean
   error: Error | null
   onRefresh: () => void
+  onGenerateDaily: () => void
 }): React.JSX.Element {
   if (isLoading && events.length === 0) {
     return (
@@ -440,10 +444,21 @@ function EventsContent({
     <div className="divide-y divide-border/30">
       <div className="px-3 py-2 bg-muted/30 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">Last 24 Hours</span>
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {events.length} event{events.length !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">Last 24 Hours</span>
+            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {events.length}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onGenerateDaily}
+            className="h-6 text-[10px] gap-1 text-primary hover:text-primary"
+          >
+            <Sparkles className="w-3 h-3" />
+            Generate Daily
+          </Button>
         </div>
       </div>
       {events.map((event) => (
@@ -464,6 +479,7 @@ export function UserProfilePanel({
 }: UserProfilePanelProps): React.JSX.Element {
   const { data: user } = useCurrentUser()
   const [activeTab, setActiveTab] = useState<'today' | 'stats'>('today')
+  const [isDailySpeechModalOpen, setIsDailySpeechModalOpen] = useState(false)
 
   // Contributions
   const {
@@ -491,7 +507,7 @@ export function UserProfilePanel({
   const isRefreshing = contributionsFetching || eventsFetching
 
   return (
-    <div className="flex flex-col h-full bg-background border-t border-border">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-card/50 shrink-0">
         <div className="flex items-center gap-2">
@@ -579,6 +595,7 @@ export function UserProfilePanel({
                   isLoading={eventsLoading}
                   error={eventsError}
                   onRefresh={refreshEvents}
+                  onGenerateDaily={() => setIsDailySpeechModalOpen(true)}
                 />
               </ScrollArea>
             )}
@@ -615,6 +632,13 @@ export function UserProfilePanel({
           </div>
         </div>
       )}
+
+      {/* Daily Speech Modal */}
+      <DailySpeechModal
+        isOpen={isDailySpeechModalOpen}
+        onClose={() => setIsDailySpeechModalOpen(false)}
+        events={eventsData}
+      />
     </div>
   )
 }

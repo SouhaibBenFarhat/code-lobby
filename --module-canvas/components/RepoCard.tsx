@@ -98,9 +98,13 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
       refetch()
     }
 
+    // Sort PRs by created_at (newest first) and apply user filter if needed
     const filteredPRs = useMemo(() => {
-      if (!showOnlyMyPRs || !currentUser) return prs
-      return prs.filter((pr) => pr.user.login === currentUser)
+      const sorted = [...prs].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      if (!showOnlyMyPRs || !currentUser) return sorted
+      return sorted.filter((pr) => pr.user.login === currentUser)
     }, [prs, showOnlyMyPRs, currentUser])
 
     const hasPRs = filteredPRs.length > 0

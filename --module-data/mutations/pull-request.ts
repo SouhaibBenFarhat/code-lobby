@@ -322,6 +322,40 @@ export function useUpdatePRBody(): UseMutationResult<
 }
 
 /**
+ * Update PR title
+ */
+export function useUpdatePRTitle(): UseMutationResult<
+  MutationResult,
+  Error,
+  { prNodeId: string; title: string; repoFullName: string; prNumber: number }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      prNodeId,
+      title
+    }: {
+      prNodeId: string
+      title: string
+      repoFullName: string
+      prNumber: number
+    }) => {
+      const token = getToken(qc)
+      return github.updatePRTitle(token, prNodeId, title)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate PR detail to refresh the title
+      qc.invalidateQueries({
+        queryKey: keys.prDetail(repoFullName, prNumber)
+      })
+      // Invalidate PR lists to update title there too
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === 'prs' })
+    }
+  })
+}
+
+/**
  * Update PR branch with base branch (sync with main)
  * Like GitHub's "Update branch" button
  */

@@ -19,6 +19,7 @@ import {
   extractJiraTicket,
   extractPreviewUrl,
   fetchModels as fetchClaudeModels,
+  generateDailySpeech,
   getDefaultModel,
   sendMessage as sendClaudeMessage,
   sendMessageStreaming as sendClaudeMessageStreaming,
@@ -888,6 +889,41 @@ function setupIPCHandlers(): void {
     setPRAnalysisPanelOpen(prId, isOpen)
     return { success: true }
   })
+
+  // Generate daily speech from user events using AI
+  ipcMain.handle(
+    'generate-daily-speech',
+    async (
+      _,
+      context: {
+        username: string
+        date: string
+        events: Array<{
+          type: string
+          description: string
+          repoName?: string
+          prNumber?: number
+          prTitle?: string
+          prDescription?: string
+          timestamp: string
+        }>
+      }
+    ) => {
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, error: 'No Claude API key configured' }
+      }
+
+      logger.info(LogCategory.API, 'Generating daily speech', {
+        username: context.username,
+        date: context.date,
+        eventCount: context.events.length
+      })
+
+      const result = await generateDailySpeech(apiKey, context)
+      return result
+    }
+  )
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PR CHAT OPERATIONS

@@ -43,6 +43,8 @@ export {
   useClosePR,
   useConvertPRToDraft,
   useDeleteCustomPrompt,
+  // Daily Speech
+  useDeleteDailySpeech,
   useFactoryReset,
   useMarkPRReady,
   useMergePR,
@@ -50,11 +52,17 @@ export {
   useOpenExternal,
   useReopenPR,
   useResetAIUsage,
+  // Daily Speech
+  useSaveDailySpeech,
   useSaveMessage,
   useSelectPR,
+  // Agentic Settings
+  useSetAgenticPrompts,
+  useSetAgenticSettingsOpen,
   useSetAIPanel,
   useSetCardLayouts,
   useSetClaudeApiKey,
+  useSetDailySpeechModalOpen,
   useSetEnableThinking,
   useSetEnableWebFetch,
   useSetIDESettings,
@@ -82,6 +90,7 @@ export {
   useUpdateNetworkRequest,
   useUpdatePRBody,
   useUpdatePRBranch,
+  useUpdatePRTitle,
   useValidatePersistedToken,
   useValidateToken
 } from './mutations'
@@ -95,6 +104,9 @@ export {
   type FindPreviewUrlParams,
   type UserEvent,
   type UserProfilePanel,
+  // Agentic Settings
+  useAgenticPrompts,
+  useAgenticSettingsOpen,
   // Settings
   useAIPanel,
   // AI
@@ -106,6 +118,9 @@ export {
   useContributions,
   useCurrentUser,
   useCustomPrompts,
+  useDailySpeeches,
+  // Daily Speech
+  useDailySpeechModalOpen,
   useEnableThinking,
   useEnableWebFetch,
   useFindPreviewUrl,
@@ -145,12 +160,14 @@ export {
 } from './queries'
 // Types
 export type {
+  AgenticPrompts,
   AIUsage,
   CardLayout,
   ChatMessage,
   CheckStatus,
   ClaudeModel,
   CustomPrompt,
+  DailySpeech,
   GitHubUser,
   MergeableState,
   MergeMethod,

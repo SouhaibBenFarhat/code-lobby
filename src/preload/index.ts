@@ -460,6 +460,21 @@ const electronAPI: ElectronAPI = {
   setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) =>
     ipcRenderer.invoke('set-pr-analysis-panel-open', prId, isOpen),
 
+  // Generate Daily Speech from user events
+  generateDailySpeech: (context: {
+    username: string
+    date: string
+    events: Array<{
+      type: string
+      description: string
+      repoName?: string
+      prNumber?: number
+      prTitle?: string
+      prDescription?: string
+      timestamp: string
+    }>
+  }) => ipcRenderer.invoke('generate-daily-speech', context),
+
   // PR Chat (AI chat linked to specific PRs)
   getPRChats: () => ipcRenderer.invoke('get-pr-chats'),
   getPRChat: (prId: string) => ipcRenderer.invoke('get-pr-chat', prId),

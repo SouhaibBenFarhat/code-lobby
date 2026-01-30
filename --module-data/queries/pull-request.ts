@@ -66,8 +66,10 @@ export function usePRs(): {
     }))
   })
 
-  // Combine results from all queries (each repo's PRs are already sorted by GraphQL)
-  const allPRs = queries.flatMap((q) => q.data || [])
+  // Combine results from all queries and sort by created_at (newest first)
+  const allPRs = queries
+    .flatMap((q) => q.data || [])
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   // Only show as loading if ALL queries are loading (initial load)
   // If some queries have data, we're not in a "loading" state

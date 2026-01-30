@@ -701,6 +701,22 @@ export async function updatePRBody(
   return { success: true }
 }
 
+export async function updatePRTitle(
+  token: string,
+  prNodeId: string,
+  title: string
+): Promise<MutationResult> {
+  const mutation = `
+    mutation($id: ID!, $title: String!) {
+      updatePullRequest(input: { pullRequestId: $id, title: $title }) {
+        pullRequest { id title }
+      }
+    }
+  `
+  await graphql(token, mutation, { id: prNodeId, title })
+  return { success: true }
+}
+
 export async function addPRComment(
   token: string,
   prNodeId: string,
@@ -1060,6 +1076,8 @@ export interface UserEvent {
   description: string
   timestamp: string
   icon: 'commit' | 'pr' | 'review' | 'comment' | 'issue' | 'branch' | 'other'
+  /** PR number if this event is related to a PR */
+  prNumber?: number
 }
 
 /**
@@ -1127,7 +1145,8 @@ function transformEvent(event: GitHubEvent): UserEvent {
         type: 'Pull Request',
         title: `${capitalizeFirst(action)} PR #${pr?.number}`,
         description: pr?.title || '',
-        icon: 'pr'
+        icon: 'pr',
+        prNumber: pr?.number
       }
     }
 
@@ -1139,7 +1158,8 @@ function transformEvent(event: GitHubEvent): UserEvent {
         type: 'Review',
         title: `${capitalizeFirst(reviewState)} PR #${pr?.number}`,
         description: pr?.title || '',
-        icon: 'review'
+        icon: 'review',
+        prNumber: pr?.number
       }
     }
 
@@ -1152,6 +1172,7 @@ function transformEvent(event: GitHubEvent): UserEvent {
         ...base,
         type: 'Comment',
         title: `Commented on #${prOrIssue?.number || '?'}`,
+        prNumber: event.payload.pull_request?.number,
         description: comment.slice(0, 100) + (comment.length > 100 ? '...' : ''),
         icon: 'comment'
       }

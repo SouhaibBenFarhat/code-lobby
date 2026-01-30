@@ -9,11 +9,13 @@ import { calculateCost } from './ai-pricing'
 import { wrapSdkCall, wrapSdkStreamCall } from './http-client'
 import {
   buildCIFailureAnalysisPrompt,
+  buildDailySpeechPrompt,
   buildJiraTicketPrompt,
   buildPRAnalysisPrompt,
   buildPreviewURLPrompt,
   CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
-  type CIFailureContext
+  type CIFailureContext,
+  type DailySpeechContext
 } from './prompts'
 import { addAIUsage } from './store'
 
@@ -1270,5 +1272,96 @@ export async function sendMessageStreamingWithTools(
 
       onChunk({ type: 'error', error: errorMessage })
     }
+  }
+}
+
+/**
+ * Generate a daily standup speech from user events using Claude
+ * This is a specialized function for the "Generate Daily" feature
+ */
+export async function generateDailySpeech(
+  apiKey: string,
+  context: DailySpeechContext
+): Promise<{
+  success: boolean
+  content?: string
+  error?: string
+  usage?: { inputTokens: number; outputTokens: number }
+}> {
+  try {
+    const client = getClient(apiKey)
+
+    // Build prompt using centralized prompt builder
+    const prompt = buildDailySpeechPrompt(context)
+
+    logger.info(LogCategory.API, 'Generating daily speech', {
+      username: context.username,
+      date: context.date,
+      eventCount: context.events.length
+    })
+
+    const response = await wrapSdkCall(
+      'claude.generateDailySpeech',
+      () =>
+        client.messages.create({
+          model: DEFAULT_MODEL,
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: prompt }],
+          stream: false
+        }),
+      {
+        logCategory: LogCategory.API,
+        details: { username: context.username, eventCount: context.events.length }
+      }
+    )
+
+    // Track AI usage
+    if (response.usage) {
+      const cost = calculateCost(
+        DEFAULT_MODEL,
+        response.usage.input_tokens,
+        response.usage.output_tokens
+      )
+      addAIUsage(response.usage.input_tokens, response.usage.output_tokens, cost)
+    }
+
+    // Extract the response text
+    let content = ''
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        content = block.text.trim()
+        break
+      }
+    }
+
+    if (!content) {
+      return {
+        success: false,
+        error: 'No content generated'
+      }
+    }
+
+    return {
+      success: true,
+      content,
+      usage: response.usage
+        ? {
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens
+          }
+        : undefined
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(LogCategory.API, 'Error generating daily speech', { error: errorMessage })
+
+    if (error instanceof Anthropic.AuthenticationError) {
+      return { success: false, error: 'Invalid Claude API key' }
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return { success: false, error: 'Rate limit exceeded. Please try again.' }
+    }
+
+    return { success: false, error: `Error: ${errorMessage}` }
   }
 }

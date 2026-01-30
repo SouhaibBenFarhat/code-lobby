@@ -142,6 +142,10 @@ module.exports = {
           from: { opacity: "1" },
           to: { opacity: "0" },
         },
+        "progress-indeterminate": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(350%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -159,6 +163,7 @@ module.exports = {
         "slide-out-to-bottom": "slide-out-to-bottom 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         "fade-in": "fade-in 0.2s ease-out",
         "fade-out": "fade-out 0.15s ease-in",
+        "progress-indeterminate": "progress-indeterminate 1.5s ease-in-out infinite",
       },
       fontFamily: {
         sans: [

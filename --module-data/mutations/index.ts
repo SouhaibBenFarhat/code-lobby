@@ -38,14 +38,20 @@ export {
   useSubmitPRReview,
   useSubmitPRReviewWithComments,
   useUpdatePRBody,
-  useUpdatePRBranch
+  useUpdatePRBranch,
+  useUpdatePRTitle
 } from './pull-request'
 // Settings
 export {
   useClearCache,
+  useDeleteDailySpeech,
   useFactoryReset,
+  useSaveDailySpeech,
+  useSetAgenticPrompts,
+  useSetAgenticSettingsOpen,
   useSetAIPanel,
   useSetCardLayouts,
+  useSetDailySpeechModalOpen,
   useSetIDESettings,
   useSetPRDetailPanel,
   useSetRepoColor,

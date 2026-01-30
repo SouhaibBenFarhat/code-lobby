@@ -207,12 +207,38 @@ export interface ClaudeModel {
   type?: string
 }
 
+/**
+ * Agentic Prompts - Custom system prompts for AI-powered actions
+ */
+export interface AgenticPrompts {
+  ciFailureAnalysis: string
+  prStatusAnalysis: string
+  jiraTicketExtraction: string
+  previewUrlExtraction: string
+}
+
 export interface AIUsage {
   inputTokens: number
   outputTokens: number
   inputCostUsd: number
   outputCostUsd: number
   costUsd: number
+}
+
+/**
+ * Daily Speech - AI-generated standup summary
+ */
+export interface DailySpeech {
+  id: string
+  date: string // ISO date string (YYYY-MM-DD)
+  content: string // Markdown content
+  metadata: {
+    generatedAt: string // ISO timestamp
+    eventCount: number
+    prsFetched: number
+  }
+  createdAt: string
+  updatedAt: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -508,6 +508,26 @@ export interface ElectronAPI {
   getPRAnalysisPanelOpen: (prId: string) => Promise<boolean>
   setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) => Promise<{ success: boolean }>
 
+  // Generate Daily Speech from user events
+  generateDailySpeech: (context: {
+    username: string
+    date: string
+    events: Array<{
+      type: string
+      description: string
+      repoName?: string
+      prNumber?: number
+      prTitle?: string
+      prDescription?: string
+      timestamp: string
+    }>
+  }) => Promise<{
+    success: boolean
+    content?: string
+    error?: string
+    usage?: { inputTokens: number; outputTokens: number }
+  }>
+
   // PR Chat (AI chat linked to specific PRs)
   getPRChats: () => Promise<
     Array<{

@@ -4,7 +4,7 @@
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
-import type { CardLayout, ViewMode } from '../types'
+import type { AgenticPrompts, CardLayout, DailySpeech, ViewMode } from '../types'
 
 export function useSetSelectedRepos(): UseMutationResult<string[], Error, string[]> {
   const qc = useQueryClient()
@@ -238,6 +238,97 @@ export function useSetUserProfilePanel(): UseMutationResult<
         height: 250
       }
       qc.setQueryData(keys.local.userProfilePanel, { ...current, ...s })
+    }
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENTIC SETTINGS - Custom prompts for AI-powered actions
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_AGENTIC_PROMPTS: AgenticPrompts = {
+  ciFailureAnalysis: '',
+  prStatusAnalysis: '',
+  jiraTicketExtraction: '',
+  previewUrlExtraction: ''
+}
+
+export function useSetAgenticPrompts(): UseMutationResult<
+  Partial<AgenticPrompts>,
+  Error,
+  Partial<AgenticPrompts>
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (prompts: Partial<AgenticPrompts>) => Promise.resolve(prompts),
+    onSuccess: (prompts) => {
+      const current =
+        qc.getQueryData<AgenticPrompts>(keys.agenticPrompts) || DEFAULT_AGENTIC_PROMPTS
+      qc.setQueryData(keys.agenticPrompts, { ...current, ...prompts })
+    }
+  })
+}
+
+export function useSetAgenticSettingsOpen(): UseMutationResult<boolean, Error, boolean> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
+    onSuccess: (isOpen) => {
+      qc.setQueryData(keys.agenticSettingsOpen, isOpen)
+    }
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DAILY SPEECHES - AI-generated standup summaries
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function useSaveDailySpeech(): UseMutationResult<DailySpeech, Error, DailySpeech> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (speech: DailySpeech) => Promise.resolve(speech),
+    onSuccess: (speech) => {
+      const current = qc.getQueryData<DailySpeech[]>(keys.dailySpeeches) || []
+      // Check if this speech already exists (by id)
+      const existingIndex = current.findIndex((s) => s.id === speech.id)
+      if (existingIndex >= 0) {
+        // Update existing
+        const updated = [...current]
+        updated[existingIndex] = speech
+        qc.setQueryData(keys.dailySpeeches, updated)
+      } else {
+        // Add new (prepend to keep newest first)
+        qc.setQueryData(keys.dailySpeeches, [speech, ...current])
+      }
+    }
+  })
+}
+
+export function useDeleteDailySpeech(): UseMutationResult<string, Error, string> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (speechId: string) => Promise.resolve(speechId),
+    onSuccess: (speechId) => {
+      const current = qc.getQueryData<DailySpeech[]>(keys.dailySpeeches) || []
+      qc.setQueryData(
+        keys.dailySpeeches,
+        current.filter((s) => s.id !== speechId)
+      )
+    }
+  })
+}
+
+export function useSetDailySpeechModalOpen(): UseMutationResult<boolean, Error, boolean> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
+    onSuccess: (isOpen) => {
+      qc.setQueryData(keys.dailySpeechModalOpen, isOpen)
     }
   })
 }

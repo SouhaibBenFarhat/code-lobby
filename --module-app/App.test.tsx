@@ -144,7 +144,7 @@ describe('App', () => {
       })
 
       // Should have resize handle between panels
-      const resizeHandle = container.querySelector('[aria-label="Resize network panel"]')
+      const resizeHandle = container.querySelector('[aria-label="Resize panel height"]')
       expect(resizeHandle).toBeInTheDocument()
     })
 

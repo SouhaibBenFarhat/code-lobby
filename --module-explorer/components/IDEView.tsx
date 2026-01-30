@@ -267,10 +267,10 @@ function AuthorSection({
 }: AuthorSectionProps) {
   const { login, avatarUrl, prs } = authorGroup
 
-  // Sort PRs by updated_at (most recent first)
+  // Sort PRs by created_at (newest first)
   const sortedPRs = useMemo(() => {
     return [...prs].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
   }, [prs])
 
