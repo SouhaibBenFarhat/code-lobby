@@ -12,6 +12,7 @@ export { ApproveButton, type ApproveButtonProps } from './ApproveButton'
 export { ChangedFilesSection, type ChangedFilesSectionProps } from './ChangedFilesSection'
 export { CheckItem, type CheckItemProps } from './CheckItem'
 export { CloseButton, type CloseButtonProps } from './CloseButton'
+export { CodeVisualizerPanel, type CodeVisualizerPanelProps } from './CodeVisualizerPanel'
 export { CommentItem, type CommentItemProps } from './CommentItem'
 export {
   ConvertToDraftButton,

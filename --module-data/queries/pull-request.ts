@@ -7,6 +7,7 @@
 
 import { type UseQueryResult, useQueries, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
+import type { FileContentResult } from '../github'
 import * as github from '../github'
 import { keys } from '../keys'
 import type { PRFile, PRIdentifier, PullRequest } from '../types'
@@ -156,5 +157,35 @@ export function usePRFiles(
       return files as PRFile[]
     },
     enabled: !!token && !!repoFullName && !!prNumber
+  })
+}
+
+/**
+ * Fetch full file content from a specific ref/branch
+ * Used by Code Visualizer to show complete file content
+ */
+export function useFileContent(
+  repoFullName: string | null,
+  ref: string | null,
+  path: string | null
+): UseQueryResult<FileContentResult | null> {
+  const { data: token } = useGitHubToken()
+
+  return useQuery({
+    queryKey:
+      repoFullName && ref && path
+        ? keys.fileContent(repoFullName, ref, path)
+        : ['github', 'file-content', 'none'],
+    queryFn: async () => {
+      if (!token || !repoFullName || !ref || !path) return null
+      const [owner, repo] = repoFullName.split('/')
+      const content = await github.fetchFileContent(token, owner, repo, path, ref)
+      return content
+    },
+    enabled: !!token && !!repoFullName && !!ref && !!path,
+    // File content rarely changes during review, cache for a long time
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    // Keep in cache even longer for faster switching between files
+    gcTime: 60 * 60 * 1000 // 1 hour
   })
 }

@@ -247,6 +247,15 @@ export interface DailySpeech {
 
 export type ViewMode = 'canvas' | 'ide'
 
+/** Code Visualizer panel state */
+export interface CodeVisualizerState {
+  isOpen: boolean
+  repoFullName: string | null
+  prNumber: number | null
+  headRef: string | null
+  initialFilePath: string | null
+}
+
 export interface CardLayout {
   i: string
   x: number

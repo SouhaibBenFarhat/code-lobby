@@ -5,7 +5,13 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
 import { keys } from '../keys'
-import type { AgenticPrompts, CardLayout, DailySpeech, ViewMode } from '../types'
+import type {
+  AgenticPrompts,
+  CardLayout,
+  CodeVisualizerState,
+  DailySpeech,
+  ViewMode
+} from '../types'
 
 // Helper to get persisted data with default
 function getPersisted<T>(key: readonly string[], defaultValue: T): T {
@@ -168,6 +174,27 @@ export function useDailySpeechModalOpen(): UseQueryResult<boolean, Error> {
   return useQuery({
     queryKey: keys.dailySpeechModalOpen,
     queryFn: () => getPersisted<boolean>(keys.dailySpeechModalOpen, false),
+    staleTime: Infinity
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CODE VISUALIZER - Floating code viewer panel
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_CODE_VISUALIZER_STATE: CodeVisualizerState = {
+  isOpen: false,
+  repoFullName: null,
+  prNumber: null,
+  headRef: null,
+  initialFilePath: null
+}
+
+export function useCodeVisualizer(): UseQueryResult<CodeVisualizerState, Error> {
+  return useQuery({
+    queryKey: keys.local.codeVisualizer,
+    queryFn: () =>
+      getPersisted<CodeVisualizerState>(keys.local.codeVisualizer, DEFAULT_CODE_VISUALIZER_STATE),
     staleTime: Infinity
   })
 }

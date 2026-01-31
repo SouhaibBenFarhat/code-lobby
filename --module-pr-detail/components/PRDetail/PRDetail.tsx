@@ -256,6 +256,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                 repoFullName={`${pr.base.repo.owner.login}/${pr.base.repo.name}`}
                 prNumber={pr.number}
                 totalChanged={pr.changed_files}
+                headRef={pr.head.ref}
               />
             </Col>
 

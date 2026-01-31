@@ -6,11 +6,14 @@
 
 import {
   useAIPanel,
+  useCloseCodeVisualizer,
+  useCodeVisualizer,
   useIDESettings,
   useIsAuthenticated,
   useNetworkPanel,
   useNetworkPanelHeight,
   usePRDetailPanel,
+  usePRFiles,
   useSelectedPRId,
   useSetAIPanel,
   useSetIDESettings,
@@ -21,6 +24,7 @@ import {
   useValidatePersistedToken,
   useViewMode
 } from '@data'
+import { CodeVisualizerPanel } from '@pr-detail'
 import { Slot } from '@slot-system'
 import { Button, ResizeHandle, Toaster, TooltipProvider } from '@ui-kit'
 import { MousePointerClick, PanelRightClose } from 'lucide-react'
@@ -56,6 +60,21 @@ export function App(): React.JSX.Element {
   const { data: userProfilePanelData } = useUserProfilePanel()
   const userProfileOpen = userProfilePanelData?.isOpen ?? false
   const userProfileHeight = userProfilePanelData?.height ?? DEFAULT_USER_PROFILE_HEIGHT
+
+  // Code Visualizer state
+  const { data: codeVisualizerData } = useCodeVisualizer()
+  const closeCodeVisualizer = useCloseCodeVisualizer()
+  const codeVisualizerOpen = codeVisualizerData?.isOpen ?? false
+  const codeVisualizerRepoFullName = codeVisualizerData?.repoFullName ?? null
+  const codeVisualizerPrNumber = codeVisualizerData?.prNumber ?? null
+  const codeVisualizerHeadRef = codeVisualizerData?.headRef ?? null
+  const codeVisualizerInitialFilePath = codeVisualizerData?.initialFilePath ?? undefined
+
+  // Fetch files for Code Visualizer
+  const { data: codeVisualizerFiles = [] } = usePRFiles(
+    codeVisualizerRepoFullName,
+    codeVisualizerPrNumber
+  )
 
   // Explorer width (from IDE settings, controlled by IDEView)
   const { data: ideSettings } = useIDESettings()
@@ -488,6 +507,20 @@ export function App(): React.JSX.Element {
             </aside>
           )}
         </div>
+
+        {/* Code Visualizer Floating Window */}
+        {codeVisualizerOpen &&
+          codeVisualizerRepoFullName &&
+          codeVisualizerHeadRef &&
+          codeVisualizerFiles.length > 0 && (
+            <CodeVisualizerPanel
+              repoFullName={codeVisualizerRepoFullName}
+              headRef={codeVisualizerHeadRef}
+              files={codeVisualizerFiles}
+              onClose={() => closeCodeVisualizer.mutate()}
+              initialFilePath={codeVisualizerInitialFilePath}
+            />
+          )}
 
         <Toaster />
       </div>

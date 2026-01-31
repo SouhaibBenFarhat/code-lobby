@@ -1228,3 +1228,59 @@ function transformEvent(event: GitHubEvent): UserEvent {
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE CONTENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface FileContentResult {
+  content: string
+  encoding: string
+  size: number
+  name: string
+  path: string
+  sha: string
+}
+
+/**
+ * Fetch full file content from a specific branch/ref
+ * Uses GitHub REST API: GET /repos/{owner}/{repo}/contents/{path}?ref={ref}
+ */
+export async function fetchFileContent(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string
+): Promise<FileContentResult> {
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}`
+
+  const response = await http.get<{
+    content: string
+    encoding: string
+    size: number
+    name: string
+    path: string
+    sha: string
+    type: string
+  }>(url, authHeaders(token))
+
+  // GitHub returns base64 encoded content
+  let decodedContent = ''
+  if (response.encoding === 'base64' && response.content) {
+    // Remove newlines from base64 string and decode
+    const cleanBase64 = response.content.replace(/\n/g, '')
+    decodedContent = atob(cleanBase64)
+  } else {
+    decodedContent = response.content || ''
+  }
+
+  return {
+    content: decodedContent,
+    encoding: response.encoding,
+    size: response.size,
+    name: response.name,
+    path: response.path,
+    sha: response.sha
+  }
+}

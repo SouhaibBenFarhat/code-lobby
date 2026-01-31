@@ -4,7 +4,13 @@
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
-import type { AgenticPrompts, CardLayout, DailySpeech, ViewMode } from '../types'
+import type {
+  AgenticPrompts,
+  CardLayout,
+  CodeVisualizerState,
+  DailySpeech,
+  ViewMode
+} from '../types'
 
 export function useSetSelectedRepos(): UseMutationResult<string[], Error, string[]> {
   const qc = useQueryClient()
@@ -329,6 +335,70 @@ export function useSetDailySpeechModalOpen(): UseMutationResult<boolean, Error, 
     mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
     onSuccess: (isOpen) => {
       qc.setQueryData(keys.dailySpeechModalOpen, isOpen)
+    }
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CODE VISUALIZER - Floating code viewer panel
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_CODE_VISUALIZER_STATE: CodeVisualizerState = {
+  isOpen: false,
+  repoFullName: null,
+  prNumber: null,
+  headRef: null,
+  initialFilePath: null
+}
+
+export function useSetCodeVisualizer(): UseMutationResult<
+  Partial<CodeVisualizerState>,
+  Error,
+  Partial<CodeVisualizerState>
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (state: Partial<CodeVisualizerState>) => Promise.resolve(state),
+    onSuccess: (state) => {
+      const current =
+        qc.getQueryData<CodeVisualizerState>(keys.local.codeVisualizer) ||
+        DEFAULT_CODE_VISUALIZER_STATE
+      qc.setQueryData(keys.local.codeVisualizer, { ...current, ...state })
+    }
+  })
+}
+
+/** Convenience mutation to open the code visualizer with specific params */
+export function useOpenCodeVisualizer(): UseMutationResult<
+  { repoFullName: string; prNumber: number; headRef: string; initialFilePath?: string },
+  Error,
+  { repoFullName: string; prNumber: number; headRef: string; initialFilePath?: string }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params) => Promise.resolve(params),
+    onSuccess: ({ repoFullName, prNumber, headRef, initialFilePath }) => {
+      qc.setQueryData<CodeVisualizerState>(keys.local.codeVisualizer, {
+        isOpen: true,
+        repoFullName,
+        prNumber,
+        headRef,
+        initialFilePath: initialFilePath || null
+      })
+    }
+  })
+}
+
+/** Convenience mutation to close the code visualizer */
+export function useCloseCodeVisualizer(): UseMutationResult<void, Error, void> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => Promise.resolve(),
+    onSuccess: () => {
+      qc.setQueryData<CodeVisualizerState>(keys.local.codeVisualizer, DEFAULT_CODE_VISUALIZER_STATE)
     }
   })
 }

@@ -16,6 +16,7 @@ import { registerToSlot } from '@slot-system'
 import { GitPullRequest } from 'lucide-react'
 import { PRDetail } from './components/PRDetail'
 
+export { CodeVisualizerPanel } from './components/CodeVisualizerPanel'
 export { PRDetail } from './components/PRDetail'
 export { useCurrentUser, useSelectedPR } from './hooks'
 

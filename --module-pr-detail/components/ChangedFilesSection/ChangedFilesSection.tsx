@@ -3,12 +3,13 @@
  * Uses TanStack Query hooks.
  */
 
-import { type PRFile, usePRFiles } from '@data'
-import { Badge, Button, Input } from '@ui-kit'
+import { type PRFile, useOpenCodeVisualizer, usePRFiles } from '@data'
+import { Badge, Button, Input, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
+  Code2,
   FileDiff,
   FileEdit,
   FileMinus,
@@ -25,6 +26,8 @@ export interface ChangedFilesSectionProps {
   repoFullName: string
   prNumber: number
   totalChanged: number
+  /** PR head branch ref for opening files in code visualizer */
+  headRef?: string
 }
 
 function buildFileTreeFromFiles(files: PRFile[]): FileTreeNodeType {
@@ -67,10 +70,14 @@ function getSortedChildren(node: FileTreeNodeType): FileTreeNodeType[] {
 export function ChangedFilesSection({
   repoFullName,
   prNumber,
-  totalChanged
+  totalChanged,
+  headRef
 }: ChangedFilesSectionProps): React.JSX.Element {
   // TanStack Query hook - pass totalChanged to enable parallel fetching for large PRs
   const { data: files = [], isLoading, error } = usePRFiles(repoFullName, prNumber, totalChanged)
+
+  // Code Visualizer mutation
+  const openCodeVisualizer = useOpenCodeVisualizer()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isExpanded, setIsExpanded] = useState(true)
@@ -110,6 +117,35 @@ export function ChangedFilesSection({
     })
   }, [])
 
+  // Handler for opening file in Code Visualizer
+  const handleOpenInViewer = useCallback(
+    (path: string) => {
+      if (headRef) {
+        openCodeVisualizer.mutate({
+          repoFullName,
+          prNumber,
+          headRef,
+          initialFilePath: path
+        })
+      }
+    },
+    [repoFullName, prNumber, headRef, openCodeVisualizer]
+  )
+
+  // Handler for opening Code Visualizer directly (without specific file)
+  const handleOpenViewer = useCallback(() => {
+    if (headRef && files.length > 0) {
+      // Find first non-deleted file to open by default
+      const firstViewableFile = files.find((f) => f.changeType !== 'DELETED')
+      openCodeVisualizer.mutate({
+        repoFullName,
+        prNumber,
+        headRef,
+        initialFilePath: firstViewableFile?.path
+      })
+    }
+  }, [repoFullName, prNumber, headRef, files, openCodeVisualizer])
+
   const fileStats = useMemo(() => {
     const stats = { added: 0, deleted: 0, modified: 0, renamed: 0 }
     for (const file of files) {
@@ -133,25 +169,48 @@ export function ChangedFilesSection({
 
   return (
     <div className="flex flex-col gap-3">
-      <Button
-        variant="unstyled"
-        size="none"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full"
-      >
-        <div className="flex items-center gap-2">
-          {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-primary" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-primary" />
-          )}
-          <FileDiff className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold">Changed Files</h3>
-          <Badge variant="secondary" className="text-[10px] h-5">
-            {totalChanged}
-          </Badge>
-        </div>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="unstyled"
+          size="none"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex-1"
+        >
+          <div className="flex items-center gap-2">
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4 text-primary" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-primary" />
+            )}
+            <FileDiff className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold">Changed Files</h3>
+            <Badge variant="secondary" className="text-[10px] h-5">
+              {totalChanged}
+            </Badge>
+          </div>
+        </Button>
+
+        {/* Open Code Visualizer button */}
+        {headRef && files.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 gap-1.5 text-xs"
+                onClick={handleOpenViewer}
+              >
+                <Code2 className="w-3.5 h-3.5" />
+                <span>Open Viewer</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              Open Code Visualizer to browse all changed files
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
 
       {isExpanded && (
         <div className="flex flex-col gap-3">
@@ -232,6 +291,7 @@ export function ChangedFilesSection({
                     toggleDir={toggleDir}
                     toggleFile={toggleFile}
                     searchQuery={searchQuery}
+                    onOpenInViewer={headRef ? handleOpenInViewer : undefined}
                   />
                 ))}
               </div>

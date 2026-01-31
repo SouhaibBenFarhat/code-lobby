@@ -29,7 +29,14 @@ export {
 export { useNetworkRequests } from './network'
 
 // Pull Request
-export { usePRFiles, usePRs, usePRsForRepo, useSelectedPR, useSelectedPRId } from './pull-request'
+export {
+  useFileContent,
+  usePRFiles,
+  usePRs,
+  usePRsForRepo,
+  useSelectedPR,
+  useSelectedPRId
+} from './pull-request'
 // Rate Limit
 export { useRateLimit } from './rate-limit'
 // Repository
@@ -41,6 +48,7 @@ export {
   useAgenticSettingsOpen,
   useAIPanel,
   useCardLayouts,
+  useCodeVisualizer,
   useDailySpeeches,
   useDailySpeechModalOpen,
   useGitHubToken,

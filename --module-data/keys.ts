@@ -36,6 +36,13 @@ export const keys = {
     prNumber: number
   ): readonly ['github', 'pr', string, number, 'files'] =>
     ['github', 'pr', repoFullName, prNumber, 'files'] as const,
+  /** Full file content from a specific ref/branch */
+  fileContent: (
+    repoFullName: string,
+    ref: string,
+    path: string
+  ): readonly ['github', 'file-content', string, string, string] =>
+    ['github', 'file-content', repoFullName, ref, path] as const,
 
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
@@ -86,7 +93,8 @@ export const keys = {
     isAILoading: ['local', 'is-ai-loading'] as const,
     networkPanelOpen: ['local', 'network-panel-open'] as const,
     networkPanelHeight: ['local', 'network-panel-height'] as const,
-    userProfilePanel: ['local', 'user-profile-panel'] as const
+    userProfilePanel: ['local', 'user-profile-panel'] as const,
+    codeVisualizer: ['local', 'code-visualizer'] as const
   },
 
   // For backward compat - keep flat keys

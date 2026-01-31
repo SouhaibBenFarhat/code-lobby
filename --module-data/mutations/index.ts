@@ -44,13 +44,16 @@ export {
 // Settings
 export {
   useClearCache,
+  useCloseCodeVisualizer,
   useDeleteDailySpeech,
   useFactoryReset,
+  useOpenCodeVisualizer,
   useSaveDailySpeech,
   useSetAgenticPrompts,
   useSetAgenticSettingsOpen,
   useSetAIPanel,
   useSetCardLayouts,
+  useSetCodeVisualizer,
   useSetDailySpeechModalOpen,
   useSetIDESettings,
   useSetPRDetailPanel,

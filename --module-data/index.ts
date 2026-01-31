@@ -40,6 +40,8 @@ export {
   useClearCache,
   useClearChat,
   useClearNetworkRequests,
+  // Code Visualizer
+  useCloseCodeVisualizer,
   useClosePR,
   useConvertPRToDraft,
   useDeleteCustomPrompt,
@@ -48,6 +50,8 @@ export {
   useFactoryReset,
   useMarkPRReady,
   useMergePR,
+  // Code Visualizer
+  useOpenCodeVisualizer,
   // System
   useOpenExternal,
   useReopenPR,
@@ -62,6 +66,8 @@ export {
   useSetAIPanel,
   useSetCardLayouts,
   useSetClaudeApiKey,
+  // Code Visualizer
+  useSetCodeVisualizer,
   useSetDailySpeechModalOpen,
   useSetEnableThinking,
   useSetEnableWebFetch,
@@ -114,6 +120,8 @@ export {
   useCardLayouts,
   useClaudeApiKey,
   useClaudeModels,
+  // Code Visualizer
+  useCodeVisualizer,
   // Contributions
   useContributions,
   useCurrentUser,
@@ -123,6 +131,8 @@ export {
   useDailySpeechModalOpen,
   useEnableThinking,
   useEnableWebFetch,
+  // File Content (Code Visualizer)
+  useFileContent,
   useFindPreviewUrl,
   useGitHubToken,
   useIDESettings,
@@ -166,6 +176,7 @@ export type {
   ChatMessage,
   CheckStatus,
   ClaudeModel,
+  CodeVisualizerState,
   CustomPrompt,
   DailySpeech,
   GitHubUser,

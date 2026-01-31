@@ -15,6 +15,7 @@ export {
 } from './card'
 export { ClaudeIcon, ClaudeLogoIcon } from './claude-icon'
 export { CodeHighlight, type CodeHighlightProps, getLanguageFromFileName } from './code-highlight'
+export { CodeViewer, type CodeViewerProps } from './code-viewer'
 export { CodeLobbyIcon, CodeLobbyLogo, CodeLobbyLogoAnimated } from './codelobby-logo'
 export {
   Dialog,
@@ -34,6 +35,8 @@ export {
   DiffViewer,
   type DiffViewerProps
 } from './diff-viewer'
+export { type FileTab, FileTabBar, type FileTabBarProps } from './file-tab-bar'
+export { FloatingWindow, type FloatingWindowProps } from './floating-window'
 export {
   Col,
   type ColOffset,
@@ -90,6 +93,7 @@ export {
   SheetTrigger
 } from './sheet'
 export { Skeleton, type SkeletonProps } from './skeleton'
+export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
 export { Textarea, type TextareaProps } from './textarea'
 export {
   Timeline,

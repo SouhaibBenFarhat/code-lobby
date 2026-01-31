@@ -3,10 +3,11 @@
  */
 
 import type { PRFile } from '@data'
-import { Badge, Button, DiffViewer } from '@ui-kit'
+import { Badge, Button, DiffViewer, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import {
   ChevronDown,
   ChevronRight,
+  Code2,
   FileDiff,
   FileEdit,
   FileMinus,
@@ -24,6 +25,8 @@ export interface FileTreeNodeProps {
   toggleDir: (path: string) => void
   toggleFile: (path: string) => void
   searchQuery: string
+  /** Called when "Open in Viewer" is clicked */
+  onOpenInViewer?: (path: string) => void
 }
 
 /** Get icon based on file change type */
@@ -63,7 +66,8 @@ export function FileTreeNode({
   expandedFiles,
   toggleDir,
   toggleFile,
-  searchQuery
+  searchQuery,
+  onOpenInViewer
 }: FileTreeNodeProps): React.JSX.Element | null {
   const isExpanded = node.isFile ? expandedFiles.has(node.path) : expandedDirs.has(node.path)
   const connector = isLast ? '└── ' : '├── '
@@ -77,35 +81,59 @@ export function FileTreeNode({
     const file = node.file
     return (
       <div>
-        <Button
-          variant="unstyled"
-          size="none"
-          onClick={() => toggleFile(node.path)}
-          className="w-full flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors group text-left"
-        >
-          <span className="text-muted-foreground/50 font-mono text-[10px] whitespace-pre select-none">
-            {prefix}
-            {connector}
-          </span>
-          {file.patch &&
-            (isExpanded ? (
-              <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-            ) : (
-              <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-            ))}
-          {!file.patch && <span className="w-3" />}
-          {getFileIcon(file.changeType)}
-          <span className="flex-1 truncate font-mono text-foreground/90">{node.name}</span>
-          <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-70 group-hover:opacity-100">
-            {file.additions > 0 && <span className="text-success">+{file.additions}</span>}
-            {file.deletions > 0 && <span className="text-destructive">−{file.deletions}</span>}
-          </div>
-          {getFileExtension(file.path) && (
-            <Badge variant="outline" className="text-[8px] h-4 px-1 font-mono opacity-50">
-              {getFileExtension(file.path)}
-            </Badge>
+        <div className="flex items-center group">
+          <Button
+            variant="unstyled"
+            size="none"
+            onClick={() => toggleFile(node.path)}
+            className="flex-1 flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors text-left"
+          >
+            <span className="text-muted-foreground/50 font-mono text-[10px] whitespace-pre select-none">
+              {prefix}
+              {connector}
+            </span>
+            {file.patch &&
+              (isExpanded ? (
+                <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              ))}
+            {!file.patch && <span className="w-3" />}
+            {getFileIcon(file.changeType)}
+            <span className="flex-1 truncate font-mono text-foreground/90">{node.name}</span>
+            <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-70 group-hover:opacity-100">
+              {file.additions > 0 && <span className="text-success">+{file.additions}</span>}
+              {file.deletions > 0 && <span className="text-destructive">−{file.deletions}</span>}
+            </div>
+            {getFileExtension(file.path) && (
+              <Badge variant="outline" className="text-[8px] h-4 px-1 font-mono opacity-50">
+                {getFileExtension(file.path)}
+              </Badge>
+            )}
+          </Button>
+          {/* Open in Viewer button */}
+          {onOpenInViewer && file.changeType !== 'DELETED' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="w-6 h-6 ml-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenInViewer(node.path)
+                  }}
+                >
+                  <Code2 className="w-3.5 h-3.5 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="text-xs">
+                Open in Code Viewer
+              </TooltipContent>
+            </Tooltip>
           )}
-        </Button>
+        </div>
         {isExpanded && file.patch && (
           <div className="ml-4 mb-2">
             <DiffViewer patch={file.patch} fileName={file.path} />
@@ -153,6 +181,7 @@ export function FileTreeNode({
               toggleDir={toggleDir}
               toggleFile={toggleFile}
               searchQuery={searchQuery}
+              onOpenInViewer={onOpenInViewer}
             />
           ))}
         </div>
