@@ -21,9 +21,17 @@ import type { AIUsage, ChatMessage, CustomPrompt } from '../types'
 export function useSetClaudeApiKey(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (apiKey: string) => Promise.resolve(apiKey),
+    mutationFn: async (apiKey: string) => {
+      // Persist to Electron store
+      if (window.electron?.setClaudeApiKey) {
+        await window.electron.setClaudeApiKey(apiKey)
+      }
+      return apiKey
+    },
     onSuccess: (apiKey) => {
       qc.setQueryData(keys.claudeApiKey, apiKey)
+      // Also invalidate the status query
+      qc.invalidateQueries({ queryKey: ['system', 'claude-api-key-status'] })
     }
   })
 }

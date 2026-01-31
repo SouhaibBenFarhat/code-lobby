@@ -87,7 +87,7 @@ describe('QuickActions', () => {
     )
 
     await user.click(screen.getByText('Find bugs'))
-    expect(mockOnSelect).toHaveBeenCalledWith('Review this PR for bugs.')
+    expect(mockOnSelect).toHaveBeenCalledWith('Review this PR for bugs.', 'Find bugs')
   })
 
   it('should call onSelect with custom prompt content', async () => {
@@ -104,7 +104,7 @@ describe('QuickActions', () => {
     )
 
     await user.click(screen.getByText('Check Types'))
-    expect(mockOnSelect).toHaveBeenCalledWith('Check for TypeScript errors.')
+    expect(mockOnSelect).toHaveBeenCalledWith('Check for TypeScript errors.', 'Check Types')
   })
 
   it('should disable buttons when disabled prop is true', () => {

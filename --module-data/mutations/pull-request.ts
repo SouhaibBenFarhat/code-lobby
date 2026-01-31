@@ -163,6 +163,37 @@ export function useAddPRComment(): UseMutationResult<
 }
 
 /**
+ * Delete a PR comment
+ * Invalidates all PR-related queries on success
+ */
+export function useDeletePRComment(): UseMutationResult<
+  MutationResult,
+  Error,
+  { commentNodeId: string; repoFullName: string; prNumber: number }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      commentNodeId
+    }: {
+      commentNodeId: string
+      repoFullName: string
+      prNumber: number
+    }) => {
+      const token = getToken(qc)
+      return github.deletePRComment(token, commentNodeId)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate ALL PR-related queries using shared prefix
+      qc.invalidateQueries({
+        queryKey: keys.pr(repoFullName, prNumber)
+      })
+    }
+  })
+}
+
+/**
  * Merge a PR
  */
 export function useMergePR(): UseMutationResult<
@@ -389,6 +420,108 @@ export function useUpdatePRBranch(): UseMutationResult<
         // Invalidate PR list
         qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === 'prs' })
       }
+    }
+  })
+}
+
+/**
+ * Add labels to a PR
+ */
+export function useAddLabels(): UseMutationResult<
+  github.RepoLabel[],
+  Error,
+  { repoFullName: string; prNumber: number; labels: string[] }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      repoFullName,
+      prNumber,
+      labels
+    }: {
+      repoFullName: string
+      prNumber: number
+      labels: string[]
+    }) => {
+      const token = getToken(qc)
+      const [owner, repo] = repoFullName.split('/')
+      return github.addLabelsToIssue(token, owner, repo, prNumber, labels)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate PR detail to refresh labels
+      qc.invalidateQueries({
+        queryKey: keys.prDetail(repoFullName, prNumber)
+      })
+      // Invalidate PR list to update labels there too
+      qc.invalidateQueries({
+        queryKey: keys.prsForRepo(repoFullName)
+      })
+    }
+  })
+}
+
+/**
+ * Remove a label from a PR
+ */
+export function useRemoveLabel(): UseMutationResult<
+  void,
+  Error,
+  { repoFullName: string; prNumber: number; labelName: string }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      repoFullName,
+      prNumber,
+      labelName
+    }: {
+      repoFullName: string
+      prNumber: number
+      labelName: string
+    }) => {
+      const token = getToken(qc)
+      const [owner, repo] = repoFullName.split('/')
+      return github.removeLabelFromIssue(token, owner, repo, prNumber, labelName)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate PR detail to refresh labels
+      qc.invalidateQueries({
+        queryKey: keys.prDetail(repoFullName, prNumber)
+      })
+      // Invalidate PR list to update labels there too
+      qc.invalidateQueries({
+        queryKey: keys.prsForRepo(repoFullName)
+      })
+    }
+  })
+}
+
+/**
+ * Upload a screenshot using GitHub's internal upload API
+ * Returns a URL that can be used in PR comments
+ */
+export function useUploadScreenshot(): UseMutationResult<
+  github.UploadImageResult,
+  Error,
+  { repoFullName: string; imageDataUrl: string; filename?: string }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      repoFullName,
+      imageDataUrl,
+      filename
+    }: {
+      repoFullName: string
+      imageDataUrl: string
+      filename?: string
+    }) => {
+      const token = getToken(qc)
+      const [owner, repo] = repoFullName.split('/')
+      return github.uploadScreenshot(token, owner, repo, imageDataUrl, filename)
     }
   })
 }

@@ -60,12 +60,12 @@ export interface AuthStatus {
 
 /**
  * Check if user is authenticated
+ * Simple: read token from cache, check if it exists
  */
 export function useIsAuthenticated(): AuthStatus {
-  const qc = useQueryClient()
   const { data: authData, isLoading } = useUser()
+  const { data: token } = useGitHubToken()
 
-  const token = qc.getQueryData<string>(keys.githubToken)
   const isAuthenticated = !!authData?.user || !!token
 
   return {

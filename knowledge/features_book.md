@@ -137,6 +137,50 @@ Many PRs have preview/staging links buried in comments. Finding them is tedious.
 
 No more searching through bot comments for that Vercel link.
 
+### 🌐 Webview Tabs
+
+Open preview URLs directly within CodeLobby as browser-like tabs:
+
+**How It Works:**
+1. Click the **+** button in the PR detail header
+2. Enter a URL (e.g., your staging/preview link)
+3. The webview opens as a new tab alongside the PR content
+
+**Webview Features:**
+
+| Feature | Description |
+|---------|-------------|
+| **Refresh** | Reload the current page |
+| **URL Display** | See the current URL |
+| **Open External** | Open in your default browser |
+| **Responsive Testing** | Test at mobile (375px) or desktop (1024px) widths |
+| **Console Monitor** | See console.log, warnings, and errors from the page |
+| **Screenshot Capture** | Drag to select a region and capture it |
+
+**Responsive Testing:**
+- Click the **Maximize** icon for full-width
+- Click the **Phone** icon for mobile view (375px)
+- Click the **Monitor** icon for desktop view (1024px)
+
+**Console Monitor:**
+- Terminal icon shows in the toolbar
+- Badge appears when there are warnings/errors
+- Red badge = errors, default = warnings
+- **Ripple animation** when new messages arrive
+- Click to see full console output with timestamps
+- Messages auto-clear on page navigation
+
+**Screenshot Capture:**
+1. Click the scissors icon
+2. Drag to select a region
+3. Release to capture
+4. Annotate with pencil/colors
+5. Copy to clipboard or post to PR
+
+**Tab Persistence:**
+- Webview state is preserved when switching tabs
+- Navigate away and back — your page stays loaded
+
 ---
 
 ### 🎫 Find Jira Ticket (AI-Powered)
@@ -484,6 +528,17 @@ Add comments to PRs directly from CodeLobby:
 - Providing context for reviewers
 - Following up on discussions
 
+### 🗑️ Delete Comment
+
+Remove your own comments from PRs:
+
+**How It Works:**
+1. Hover over any comment you authored
+2. A trash icon appears next to the copy button
+3. Click to delete — the comment is removed from GitHub
+
+**Note:** You can only delete your own comments, not others'.
+
 ---
 
 ## 📡 Network Panel
@@ -786,6 +841,10 @@ We're actively building:
 | **Approve PR** | One-click PR approval |
 | **Merge PR** | Merge with squash/merge/rebase |
 | **Post Comment** | Add comments to PRs directly |
+| **Delete Comment** | Remove your own comments |
+| **Webview Tabs** | Preview URLs embedded in app |
+| **Responsive Testing** | Test at mobile/desktop widths |
+| **Console Monitor** | See page logs/warnings/errors |
 | **Network Panel** | Debug HTTP requests in real-time |
 | **AI Cost Tracking** | Monitor Claude API costs in real-time |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |

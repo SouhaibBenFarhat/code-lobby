@@ -1,6 +1,17 @@
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
+import { fixPath } from './fix-path'
+
+// =============================================================================
+// FIX PATH FOR PACKAGED APP
+// Packaged Electron apps don't inherit the user's shell PATH, which causes
+// "spawn node ENOENT" errors when trying to run Node.js-based tools.
+// This reads the user's actual shell PATH (from .zshrc, .bashrc, etc.)
+// =============================================================================
+if (app.isPackaged) {
+  fixPath()
+}
 
 // Set app name immediately at module load (before app.whenReady)
 // This is required for macOS dock tooltip to show correct name
@@ -25,6 +36,11 @@ import {
   sendMessageStreaming as sendClaudeMessageStreaming,
   sendMessageStreamingWithTools as sendClaudeMessageStreamingWithTools
 } from './claude-api'
+import {
+  startClaudeSession,
+  stopAllSessions as stopAllClaudeSessions,
+  stopClaudeSession
+} from './claude-code-relay'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   addChatMessage,
@@ -102,7 +118,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: true // Enable <webview> tag for embedded browser views
     }
   })
 
@@ -167,6 +184,18 @@ function setupIPCHandlers(): void {
     factoryReset()
     logger.info(LogCategory.APP, 'Factory reset complete - app is now in fresh install state')
     return { success: true }
+  })
+
+  // Memory usage - returns process memory info
+  ipcMain.handle('get-memory-usage', () => {
+    const memUsage = process.memoryUsage()
+    return {
+      heapUsed: memUsage.heapUsed,
+      heapTotal: memUsage.heapTotal,
+      rss: memUsage.rss, // Resident Set Size - total memory allocated
+      external: memUsage.external,
+      arrayBuffers: memUsage.arrayBuffers
+    }
   })
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1031,6 +1060,129 @@ function setupIPCHandlers(): void {
       return { success: true }
     }
   )
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CLAUDE CODE CLI
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  ipcMain.handle('check-claude-code-installed', async () => {
+    const { exec } = await import('node:child_process')
+    const { promisify } = await import('node:util')
+    const { existsSync } = await import('node:fs')
+    const { homedir } = await import('node:os')
+    const execAsync = promisify(exec)
+
+    const home = homedir()
+    logger.info(LogCategory.APP, 'Checking for Claude Code CLI', { home })
+
+    // Common paths where claude might be installed
+    const possiblePaths = [
+      `${home}/.volta/bin/claude`, // Volta
+      '/usr/local/bin/claude', // Homebrew / manual
+      '/opt/homebrew/bin/claude', // Homebrew on Apple Silicon
+      `${home}/.local/bin/claude`, // pip/pipx style
+      `${home}/.npm-global/bin/claude`, // npm global custom
+      `${home}/n/bin/claude` // n (node version manager)
+    ]
+
+    // Build enhanced PATH including common locations
+    const enhancedPath = [
+      process.env.PATH,
+      `${home}/.volta/bin`,
+      `${home}/.local/bin`,
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+      `${home}/.npm-global/bin`,
+      `${home}/n/bin`
+    ]
+      .filter(Boolean)
+      .join(':')
+
+    // Check which paths exist
+    for (const p of possiblePaths) {
+      const exists = existsSync(p)
+      logger.debug(LogCategory.APP, `Path check: ${p}`, { exists })
+    }
+
+    // Try with enhanced PATH first
+    try {
+      logger.info(LogCategory.APP, 'Trying claude with enhanced PATH')
+      const { stdout, stderr } = await execAsync('claude --version', {
+        env: { ...process.env, PATH: enhancedPath },
+        shell: '/bin/zsh' // Use zsh which might have Volta configured
+      })
+      const version = stdout.trim()
+      logger.info(LogCategory.APP, 'Claude Code CLI detected', { version, stderr: stderr?.trim() })
+      return { installed: true, version }
+    } catch (err) {
+      logger.warn(LogCategory.APP, 'Enhanced PATH failed', { error: (err as Error).message })
+
+      // Try direct paths
+      for (const claudePath of possiblePaths) {
+        if (!existsSync(claudePath)) continue
+
+        try {
+          logger.info(LogCategory.APP, `Trying direct path: ${claudePath}`)
+          const { stdout } = await execAsync(`"${claudePath}" --version`, {
+            env: { ...process.env, VOLTA_HOME: `${home}/.volta` },
+            shell: '/bin/zsh'
+          })
+          const version = stdout.trim()
+          logger.info(LogCategory.APP, 'Claude Code CLI detected at path', {
+            path: claudePath,
+            version
+          })
+          return { installed: true, version, path: claudePath }
+        } catch (pathErr) {
+          logger.warn(LogCategory.APP, `Path ${claudePath} failed`, {
+            error: (pathErr as Error).message
+          })
+        }
+      }
+
+      logger.info(LogCategory.APP, 'Claude Code CLI not installed')
+      return { installed: false, version: null }
+    }
+  })
+
+  // Start Claude Code session
+  ipcMain.handle(
+    'claude:start',
+    async (
+      _,
+      options: {
+        sessionId: string
+        prompt: string
+        conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+        prContext?: {
+          owner: string
+          repo: string
+          branch: string
+          baseBranch?: string
+          prNumber?: number
+          prTitle?: string
+          prDescription?: string
+          changedFiles?: number
+          githubToken: string
+        }
+        config?: {
+          model?: string
+          enableExtendedThinking?: boolean
+          maxThinkingTokens?: number
+        }
+      }
+    ) => {
+      if (!mainWindow) {
+        throw new Error('Main window not available')
+      }
+      await startClaudeSession(mainWindow, options)
+    }
+  )
+
+  // Stop Claude Code session
+  ipcMain.handle('claude:stop', (_, sessionId: string) => {
+    return stopClaudeSession(sessionId)
+  })
 }
 
 app.whenReady().then(() => {
@@ -1066,8 +1218,9 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Save logs before quitting
+// Save logs and cleanup before quitting
 app.on('before-quit', () => {
   logger.info(LogCategory.APP, 'App shutting down')
+  stopAllClaudeSessions()
   logger.forceSave()
 })

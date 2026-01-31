@@ -506,6 +506,9 @@ const electronAPI: ElectronAPI = {
   resetAIUsage: () => ipcRenderer.invoke('reset-ai-usage'),
   getAIPricing: () => ipcRenderer.invoke('get-ai-pricing'),
 
+  // Memory usage
+  getMemoryUsage: () => ipcRenderer.invoke('get-memory-usage'),
+
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
@@ -522,6 +525,118 @@ const electronAPI: ElectronAPI = {
   // Shell operations
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell-open-external', url)
+  },
+
+  // Claude Code CLI
+  checkClaudeCodeInstalled: () => ipcRenderer.invoke('check-claude-code-installed'),
+
+  // Claude Code Session Management
+  startClaudeSession: (options: {
+    sessionId: string
+    prompt: string
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+    prContext?: {
+      owner: string
+      repo: string
+      branch: string
+      baseBranch?: string
+      prNumber?: number
+      prTitle?: string
+      prDescription?: string
+      changedFiles?: number
+      labels?: string[]
+      comments?: Array<{ author: string; body: string; createdAt: string }>
+      reviewSummary?: string
+      githubToken: string
+    }
+    config?: {
+      model?: string
+      enableExtendedThinking?: boolean
+      maxThinkingTokens?: number
+    }
+  }) => ipcRenderer.invoke('claude:start', options),
+
+  stopClaudeSession: (sessionId: string) => ipcRenderer.invoke('claude:stop', sessionId),
+
+  onClaudeChunk: (
+    callback: (data: {
+      sessionId: string
+      event: {
+        type: string
+        message?: { content: string }
+        tool_name?: string
+        input?: Record<string, unknown>
+        content?: string
+        thinking?: string
+        result?: string
+        error?: string
+        usage?: { input_tokens?: number; output_tokens?: number }
+      }
+      raw?: string
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        sessionId: string
+        event: {
+          type: string
+          message?: { content: string }
+          tool_name?: string
+          input?: Record<string, unknown>
+          content?: string
+          thinking?: string
+          result?: string
+          error?: string
+          usage?: { input_tokens?: number; output_tokens?: number }
+        }
+        raw?: string
+      }
+    ) => {
+      callback(data)
+    }
+    ipcRenderer.on('claude:chunk', handler)
+    return () => {
+      ipcRenderer.removeListener('claude:chunk', handler)
+    }
+  },
+
+  onClaudeDone: (
+    callback: (data: {
+      sessionId: string
+      success: boolean
+      error?: string
+      usage?: { inputTokens: number; outputTokens: number }
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        sessionId: string
+        success: boolean
+        error?: string
+        usage?: { inputTokens: number; outputTokens: number }
+      }
+    ) => {
+      callback(data)
+    }
+    ipcRenderer.on('claude:done', handler)
+    return () => {
+      ipcRenderer.removeListener('claude:done', handler)
+    }
+  },
+
+  onClaudeError: (callback: (data: { sessionId: string; error: string }) => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { sessionId: string; error: string }
+    ) => {
+      callback(data)
+    }
+    ipcRenderer.on('claude:error', handler)
+    return () => {
+      ipcRenderer.removeListener('claude:error', handler)
+    }
   }
 }
 

@@ -44,6 +44,10 @@ export const keys = {
   ): readonly ['github', 'file-content', string, string, string] =>
     ['github', 'file-content', repoFullName, ref, path] as const,
 
+  /** Repository labels */
+  repoLabels: (repoFullName: string): readonly ['github', 'repo-labels', string] =>
+    ['github', 'repo-labels', repoFullName] as const,
+
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
   rateLimit: ['github', 'rate-limit'] as const,
@@ -94,7 +98,13 @@ export const keys = {
     networkPanelOpen: ['local', 'network-panel-open'] as const,
     networkPanelHeight: ['local', 'network-panel-height'] as const,
     userProfilePanel: ['local', 'user-profile-panel'] as const,
-    codeVisualizer: ['local', 'code-visualizer'] as const
+    codeVisualizer: ['local', 'code-visualizer'] as const,
+    /** Webview tabs per PR - key includes PR identifier */
+    prWebviewTabs: (prId: string): readonly ['local', 'pr-webview-tabs', string] =>
+      ['local', 'pr-webview-tabs', prId] as const,
+    /** Active tab for a PR (null = PR detail, string = webview tab id) */
+    prActiveTab: (prId: string): readonly ['local', 'pr-active-tab', string] =>
+      ['local', 'pr-active-tab', prId] as const
   },
 
   // For backward compat - keep flat keys

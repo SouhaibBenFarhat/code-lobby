@@ -112,7 +112,11 @@ export function useClaudeModels(): UseQueryResult<ClaudeModel[]> {
       }))
 
       // Sort by created_at descending (newest first)
-      models.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      models.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return dateB - dateA
+      })
 
       return models
     },

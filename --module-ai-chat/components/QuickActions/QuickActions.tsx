@@ -11,7 +11,7 @@ import { AddCustomPromptModal } from '../AddCustomPromptModal'
 export interface QuickActionsProps {
   prompts: QuickPrompt[]
   customPrompts: CustomPrompt[]
-  onSelect: (prompt: string) => void
+  onSelect: (prompt: string, label: string) => void
   onAddCustomPrompt: (label: string, prompt: string) => Promise<void>
   onDeleteCustomPrompt: (id: string) => Promise<void>
   disabled?: boolean
@@ -105,7 +105,7 @@ export function QuickActions({
             <Button
               variant="unstyled"
               size="none"
-              onClick={() => onSelect(prompt.prompt)}
+              onClick={() => onSelect(prompt.prompt, prompt.label)}
               disabled={disabled}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
@@ -140,7 +140,7 @@ export function QuickActions({
             key={prompt.id}
             variant="unstyled"
             size="none"
-            onClick={() => onSelect(prompt.prompt)}
+            onClick={() => onSelect(prompt.prompt, prompt.label)}
             disabled={disabled}
             className={cn(
               'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',

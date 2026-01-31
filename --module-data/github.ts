@@ -733,6 +733,26 @@ export async function addPRComment(
   return { success: true }
 }
 
+/**
+ * Delete a comment from a PR/issue using GraphQL
+ * @param token GitHub token
+ * @param commentNodeId The GraphQL node ID of the comment
+ */
+export async function deletePRComment(
+  token: string,
+  commentNodeId: string
+): Promise<MutationResult> {
+  const mutation = `
+    mutation($id: ID!) {
+      deleteIssueComment(input: { id: $id }) {
+        clientMutationId
+      }
+    }
+  `
+  await graphql(token, mutation, { id: commentNodeId })
+  return { success: true }
+}
+
 export type MergeMethod = 'MERGE' | 'SQUASH' | 'REBASE'
 
 export async function mergePR(
@@ -953,16 +973,6 @@ export async function fetchContributions(token: string): Promise<ContributionsDa
   }>(token, query, {
     from: from.toISOString(),
     to: to.toISOString()
-  })
-
-  console.log('[fetchContributions] Raw data:', {
-    totalContributions: data.viewer.contributionsCollection.contributionCalendar.totalContributions,
-    restrictedContributionsCount: data.viewer.contributionsCollection.restrictedContributionsCount,
-    hasAnyContributions: data.viewer.contributionsCollection.hasAnyContributions,
-    totalCommitContributions: data.viewer.contributionsCollection.totalCommitContributions,
-    totalPRContributions: data.viewer.contributionsCollection.totalPullRequestContributions,
-    totalReviewContributions:
-      data.viewer.contributionsCollection.totalPullRequestReviewContributions
   })
 
   const collection = data.viewer.contributionsCollection
@@ -1230,6 +1240,97 @@ function capitalizeFirst(str: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// LABELS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface RepoLabel {
+  id: number
+  name: string
+  color: string
+  description: string | null
+  default: boolean
+}
+
+/**
+ * Fetch all labels for a repository
+ * Uses GitHub REST API: GET /repos/{owner}/{repo}/labels
+ */
+export async function fetchRepoLabels(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<RepoLabel[]> {
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/labels?per_page=100`
+
+  const response = await http.get<
+    Array<{
+      id: number
+      name: string
+      color: string
+      description: string | null
+      default: boolean
+    }>
+  >(url, authHeaders(token))
+
+  return response.map((label) => ({
+    id: label.id,
+    name: label.name,
+    color: label.color,
+    description: label.description,
+    default: label.default
+  }))
+}
+
+/**
+ * Add labels to a PR/Issue
+ * Uses GitHub REST API: POST /repos/{owner}/{repo}/issues/{issue_number}/labels
+ * Note: PRs use the issues API for labels
+ */
+export async function addLabelsToIssue(
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  labels: string[]
+): Promise<RepoLabel[]> {
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/issues/${issueNumber}/labels`
+
+  const response = await http.post<
+    Array<{
+      id: number
+      name: string
+      color: string
+      description: string | null
+      default: boolean
+    }>
+  >(url, { labels }, authHeaders(token))
+
+  return response.map((label) => ({
+    id: label.id,
+    name: label.name,
+    color: label.color,
+    description: label.description,
+    default: label.default
+  }))
+}
+
+/**
+ * Remove a label from a PR/Issue
+ * Uses GitHub REST API: DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}
+ */
+export async function removeLabelFromIssue(
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  labelName: string
+): Promise<void> {
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(labelName)}`
+
+  await http.delete(url, authHeaders(token))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // FILE CONTENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1282,5 +1383,149 @@ export async function fetchFileContent(
     name: response.name,
     path: response.path,
     sha: response.sha
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMAGE UPLOAD - For PR screenshots (using GitHub's internal upload API)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface UploadImageResult {
+  url: string
+}
+
+interface AssetPolicyResponse {
+  id: number
+  name: string
+  size: number
+  content_type: string
+  href: string
+  upload_url: string
+  upload_authenticity_token: string
+  form: Record<string, string>
+  same_origin: boolean
+  asset_upload_url: string
+  asset_upload_authenticity_token: string
+}
+
+/**
+ * Upload an image using GitHub's internal upload API.
+ * This is the same API used by GitHub's web UI when you paste/drag images.
+ *
+ * Returns a URL in the format: https://github.com/user-attachments/assets/<UUID>
+ *
+ * NOTE: This API may require web session authentication and might not work
+ * with just a Bearer token. If it fails, we'll need to use an alternative approach.
+ *
+ * @param token GitHub token
+ * @param owner Repository owner
+ * @param repo Repository name
+ * @param imageDataUrl The image as a data URL (e.g., "data:image/png;base64,...")
+ * @param filename Optional filename
+ * @returns The GitHub user-attachments URL
+ */
+export async function uploadScreenshot(
+  token: string,
+  owner: string,
+  repo: string,
+  imageDataUrl: string,
+  filename?: string
+): Promise<UploadImageResult> {
+  // Extract the base64 data and mime type from the data URL
+  const matches = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/)
+  if (!matches) {
+    throw new Error('Invalid image data URL format')
+  }
+
+  const mimeType = matches[1]
+  const base64Data = matches[2]
+
+  // Convert base64 to binary
+  const binaryString = atob(base64Data)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  const blob = new Blob([bytes], { type: mimeType })
+
+  // Determine file extension from mime type
+  // Handle cases like 'image/svg+xml' -> 'svg', 'image/png' -> 'png'
+  let ext = mimeType.split('/')[1] || 'png'
+  if (ext.includes('+')) {
+    ext = ext.split('+')[0] // 'svg+xml' -> 'svg'
+  }
+  const actualFilename = filename || `screenshot-${Date.now()}.${ext}`
+
+  // Step 1: Request upload policy from GitHub
+  // This is GitHub's internal API - may require web session cookies
+  const policyUrl = 'https://github.com/upload/policies/assets'
+
+  const policyResponse = await fetch(policyUrl, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify({
+      name: actualFilename,
+      size: blob.size,
+      content_type: mimeType,
+      repository_id: `${owner}/${repo}`
+    })
+  })
+
+  if (!policyResponse.ok) {
+    const errorText = await policyResponse.text()
+    throw new Error(
+      `GitHub upload API failed (may require web session): ${policyResponse.status} - ${errorText}`
+    )
+  }
+
+  const policy: AssetPolicyResponse = await policyResponse.json()
+
+  // Step 2: Upload file to S3
+  const formData = new FormData()
+
+  // Add all form fields from the policy
+  for (const [key, value] of Object.entries(policy.form)) {
+    formData.append(key, value)
+  }
+
+  // Add the file last (required by S3)
+  formData.append('file', blob, actualFilename)
+
+  const uploadResponse = await fetch(policy.upload_url, {
+    method: 'POST',
+    body: formData
+  })
+
+  if (!uploadResponse.ok && uploadResponse.status !== 204) {
+    throw new Error(`Failed to upload to S3: ${uploadResponse.status} ${uploadResponse.statusText}`)
+  }
+
+  // Step 3: Confirm the upload with GitHub
+  const confirmResponse = await fetch(policy.asset_upload_url, {
+    method: 'PUT',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify({
+      authenticity_token: policy.asset_upload_authenticity_token
+    })
+  })
+
+  if (!confirmResponse.ok) {
+    const errorText = await confirmResponse.text()
+    throw new Error(`Failed to confirm upload: ${confirmResponse.status} - ${errorText}`)
+  }
+
+  // The final URL is the asset href
+  return {
+    url: policy.href
   }
 }

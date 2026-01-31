@@ -83,17 +83,23 @@ describe('useThrottledValue', () => {
     expect(result.current).toBe(obj2)
   })
 
-  it('should cancel animation frame on unmount', () => {
-    const cancelAnimationFrameSpy = vi.spyOn(global, 'cancelAnimationFrame')
+  it('should cleanup timeout on unmount', () => {
+    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
 
     const { unmount, rerender } = renderHook(({ value }) => useThrottledValue(value), {
       initialProps: { value: 'initial' }
     })
 
+    // First update should be immediate, advance just a tiny bit
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+
+    // Update again to trigger a pending timeout
     rerender({ value: 'updated' })
     unmount()
 
-    // Should have called cancelAnimationFrame during cleanup
-    expect(cancelAnimationFrameSpy).toHaveBeenCalled()
+    // Should have called clearTimeout during cleanup
+    expect(clearTimeoutSpy).toHaveBeenCalled()
   })
 })

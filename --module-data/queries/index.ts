@@ -25,15 +25,17 @@ export {
   useRefreshUserEvents,
   useUserEvents
 } from './contributions'
+// Memory Usage
+export { type MemoryUsage, useMemoryUsage } from './memory-usage'
 // Network
 export { useNetworkRequests } from './network'
-
 // Pull Request
 export {
   useFileContent,
   usePRFiles,
   usePRs,
   usePRsForRepo,
+  useRepoLabels,
   useSelectedPR,
   useSelectedPRId
 } from './pull-request'
@@ -55,7 +57,9 @@ export {
   useIDESettings,
   useMinimizedRepos,
   useMyPRsRepos,
+  usePRActiveTab,
   usePRDetailPanel,
+  usePRWebviewTabs,
   useRepoColors,
   useSelectedRepos,
   useUserProfilePanel,
@@ -64,6 +68,10 @@ export {
 
 // System
 export {
+  type ClaudeApiKeyStatus,
+  type ClaudeCodeStatus,
+  useClaudeApiKeyStatus,
+  useClaudeCodeStatus,
   useIsFullscreen,
   useNetworkPanel,
   useNetworkPanelHeight,

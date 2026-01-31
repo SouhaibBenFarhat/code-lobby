@@ -627,6 +627,15 @@ export interface ElectronAPI {
     }>
   >
 
+  // Memory usage
+  getMemoryUsage: () => Promise<{
+    heapUsed: number
+    heapTotal: number
+    rss: number
+    external: number
+    arrayBuffers: number
+  }>
+
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
@@ -636,6 +645,70 @@ export interface ElectronAPI {
   shell: {
     openExternal: (url: string) => Promise<void>
   }
+
+  // Claude Code CLI
+  checkClaudeCodeInstalled: () => Promise<{
+    installed: boolean
+    version: string | null
+    path?: string
+  }>
+
+  // Claude Code Session Management
+  startClaudeSession: (options: {
+    sessionId: string
+    prompt: string
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+    prContext?: {
+      owner: string
+      repo: string
+      branch: string
+      baseBranch?: string
+      prNumber?: number
+      prTitle?: string
+      prDescription?: string
+      changedFiles?: number
+      labels?: string[]
+      comments?: Array<{ author: string; body: string; createdAt: string }>
+      reviewSummary?: string
+      githubToken: string
+    }
+    config?: {
+      model?: string
+      enableExtendedThinking?: boolean
+      maxThinkingTokens?: number
+    }
+  }) => Promise<void>
+
+  stopClaudeSession: (sessionId: string) => Promise<boolean>
+
+  onClaudeChunk: (
+    callback: (data: {
+      sessionId: string
+      event: {
+        type: string
+        message?: { content: string }
+        tool_name?: string
+        input?: Record<string, unknown>
+        content?: string
+        thinking?: string
+        result?: string
+        error?: string
+        usage?: { input_tokens?: number; output_tokens?: number }
+      }
+      raw?: string
+    }) => void
+  ) => () => void
+
+  onClaudeDone: (
+    callback: (data: {
+      sessionId: string
+      success: boolean
+      error?: string
+      usage?: { inputTokens: number; outputTokens: number }
+    }) => void
+  ) => () => void
+
+  onClaudeError: (callback: (data: { sessionId: string; error: string }) => void) => () => void
 }
 
 declare global {

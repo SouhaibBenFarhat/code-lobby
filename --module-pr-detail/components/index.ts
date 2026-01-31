@@ -20,12 +20,16 @@ export {
 } from './ConvertToDraftButton'
 export { FileTreeNode, type FileTreeNodeProps } from './FileTreeNode'
 export { FindPreviewButton } from './FindPreviewButton'
+export { LabelsButton, type LabelsButtonProps } from './LabelsButton'
+export { LabelsSection, type LabelsSectionProps } from './LabelsSection'
 export { MergeButton, type MergeButtonProps } from './MergeButton'
 export { PostCommentForm, type PostCommentFormProps } from './PostCommentForm'
+export { PostScreenshotModal, type PostScreenshotModalProps } from './PostScreenshotModal'
 export { PRDescription, type PRDescriptionProps } from './PRDescription'
 // Main component
 export { PRDetail, type PRDetailProps } from './PRDetail'
 export { PRDetailSkeleton, type PRDetailSkeletonProps } from './PRDetailSkeleton'
+export { PRTabBar, type PRTabBarProps } from './PRTabBar'
 export {
   ReadyForReviewButton,
   type ReadyForReviewButtonProps
@@ -41,3 +45,4 @@ export type {
   ReviewerFeedback
 } from './types'
 export { UpdateBranchButton, type UpdateBranchButtonProps } from './UpdateBranchButton'
+export { WebviewPanel, type WebviewPanelProps } from './WebviewPanel'

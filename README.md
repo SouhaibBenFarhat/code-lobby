@@ -196,6 +196,16 @@ A popover showing recent activity across all your PRs:
 - Node.js 18+
 - pnpm 10+
 - Git
+- Claude Code CLI (for AI features) - Install via `npm install -g @anthropic-ai/claude-code`
+
+#### Claude Code CLI Setup
+
+The AI chat and analysis features require Claude Code CLI to be installed and configured:
+
+1. Install Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
+2. Set your Anthropic API key: `export ANTHROPIC_API_KEY="your-key"` (or configure via the app settings)
+
+The app will show a banner if Claude Code CLI is not detected, with instructions to install it.
 
 ### Clone & Install
 
@@ -274,7 +284,7 @@ pnpm run dev
 | Components | shadcn/ui (Radix UI) |
 | State & Data | TanStack Query 5 |
 | GitHub API | Direct GraphQL fetch |
-| AI Integration | Anthropic Claude SDK |
+| AI Integration | Claude Code CLI (claude-agent-sdk) |
 | Persistence | localStorage (TanStack Query) + electron-store |
 | Drag & Resize | react-rnd |
 
@@ -287,7 +297,7 @@ codelobby/
 ├── src/
 │   ├── main/                      # Electron main process (Node.js)
 │   │   ├── index.ts               # App entry, IPC handlers
-│   │   ├── claude-api.ts          # Claude AI streaming integration
+│   │   ├── claude-code-relay.ts   # Claude Code CLI integration (Agent SDK)
 │   │   ├── store.ts               # Persistent storage (electron-store)
 │   │   ├── prompts/               # AI system prompts
 │   │   └── *.test.ts              # Colocated tests
@@ -388,7 +398,7 @@ tsconfig.json (root)
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      External APIs                           │
-│        GitHub API (GraphQL)     │      Claude API (REST)     │
+│        GitHub API (GraphQL)     │     Claude Code CLI        │
 └─────────────────────────────────┴────────────────────────────┘
             ▲                                  ▲
             │ fetch() (direct)                 │ IPC (streaming)
@@ -396,8 +406,8 @@ tsconfig.json (root)
 ┌───────────┴────────────────────────┬─────────┴───────────────┐
 │       @data              │      Main Process       │
 │  ┌──────────────────────────────┐  │  ┌───────────────────┐  │
-│  │  github.ts (API functions)   │  │  │  claude-api.ts    │  │
-│  │  queries/* (useQuery hooks)  │  │  │  (streaming AI)   │  │
+│  │  github.ts (API functions)   │  │  │claude-code-relay  │  │
+│  │  queries/* (useQuery hooks)  │  │  │  (Agent SDK)      │  │
 │  │  mutations/* (useMutation)   │  │  └───────────────────┘  │
 │  └──────────────────────────────┘  │                         │
 └────────────────────────────────────┴─────────────────────────┘
@@ -420,7 +430,7 @@ tsconfig.json (root)
 
 **Key Points:**
 - **GitHub API calls are direct** — fetch() from renderer, no IPC
-- **Claude AI uses IPC** — Streaming requires main process
+- **Claude Code CLI uses IPC** — Streaming sessions via main process with Agent SDK
 - **TanStack Query is the single source of truth** — All state in cache
 - **Automatic persistence** — Settings & AI data persist to localStorage
 
@@ -432,17 +442,17 @@ The following diagram illustrates how all CodeLobby modules interact with each o
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                              EXTERNAL SERVICES                                   │
 │    ┌─────────────────────────┐              ┌─────────────────────────┐         │
-│    │    GitHub API           │              │     Claude API          │         │
-│    │  (GraphQL + REST)       │              │    (REST + Streaming)   │         │
+│    │    GitHub API           │              │    Claude Code CLI      │         │
+│    │  (GraphQL + REST)       │              │  (claude-agent-sdk)     │         │
 │    └───────────┬─────────────┘              └───────────┬─────────────┘         │
 └────────────────┼────────────────────────────────────────┼───────────────────────┘
-                 │ fetch() direct                          │ Anthropic SDK
+                 │ fetch() direct                          │ Agent SDK streaming
                  │                                         │
 ┌────────────────┼─────────────────────────────────────────┼───────────────────────┐
 │                │           ELECTRON MAIN PROCESS          │                       │
 │                │              (src/main/)                 ▼                       │
 │                │         ┌────────────────────────────────────┐                  │
-│                │         │  claude-api.ts (streaming)         │                  │
+│                │         │  claude-code-relay.ts (Agent SDK)  │                  │
 │                │         │  store.ts (electron-store)         │                  │
 │                │         │  prompts/ (system prompts)         │                  │
 │                │         └──────────────┬─────────────────────┘                  │
@@ -454,7 +464,7 @@ The following diagram illustrates how all CodeLobby modules interact with each o
 │                │    ┌────────────────────┴────────────────────┐                  │
 │                │    │  Secure IPC Bridge (OS operations)      │                  │
 │                │    │  • Theme control  • Fullscreen          │                  │
-│                │    │  • AI streaming   • Notifications       │                  │
+│                │    │  • Claude Code streaming • Notifications│                  │
 │                │    └────────────────────┬────────────────────┘                  │
 └────────────────┼─────────────────────────┼───────────────────────────────────────┘
                  │                         │
@@ -826,8 +836,8 @@ query GetPRsForRepos($repos: [String!]!) {
 | Theme | `localStorage` | Direct key: `codelobby-theme` |
 | View Mode, Selected Repos | `localStorage` | TanStack Query persistence |
 | Card Layouts, Repo Colors, Minimized Repos | `localStorage` | TanStack Query persistence (settings keys) |
-| Claude API Key | `~/Library/Application Support/codelobby/` | Encrypted via electron-store |
-| AI Settings (model, thinking, web fetch) | `~/Library/Application Support/codelobby/` | electron-store |
+| Claude API Key | `ANTHROPIC_API_KEY` env var or electron-store | Used by Claude Code CLI |
+| AI Settings (model, thinking) | `~/Library/Application Support/codelobby/` | electron-store |
 | General Chat History | `~/Library/Application Support/codelobby/` | electron-store |
 | PR-Specific Chats, PR Analyses | `~/Library/Application Support/codelobby/` | electron-store |
 | AI Usage Tracking (cost/tokens) | `~/Library/Application Support/codelobby/` | electron-store |
@@ -939,6 +949,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 - [Tailwind CSS](https://tailwindcss.com/) - Styling
 - [Lucide Icons](https://lucide.dev/) - Icons
 - [GitHub GraphQL API](https://docs.github.com/en/graphql) - Data source
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) - AI assistant integration
 
 ---
 
@@ -971,22 +982,24 @@ MIT License - See [LICENSE](LICENSE) for details.
 ### Current
 - PR monitoring dashboard with full context (CI, comments, reviews)
 - Customizable spatial layout (Canvas & IDE views)
-- AI-powered PR analysis and CI failure diagnosis
+- AI-powered PR analysis and CI failure diagnosis (via Claude Code CLI)
 - PR-specific AI chat with full code diff context
 - AI review generation with inline comments (Approve, Request Changes, Comment)
 - PR actions (approve, merge, request changes) directly from the app
 - Network panel for debugging HTTP requests
 - Custom quick prompts
-- AI usage tracking (tokens/cost stored, UI pending)
+- AI usage tracking with cost indicator in header
+- Memory usage indicator in header
+- Streaming state indicators (reasoning, tool use, writing)
 
 ### Next
-- AI cost indicator display in header
+- SQLite persistence for conversation history
 - Smart suggestions based on comment content
 - Natural language PR search
 - Comment on PRs directly from the app
 
 ### Future
-- AI-assisted code fixes
+- AI-assisted code fixes (via Claude Code tools)
 - Deep code review with full codebase access
 - Automated actions with human approval
 

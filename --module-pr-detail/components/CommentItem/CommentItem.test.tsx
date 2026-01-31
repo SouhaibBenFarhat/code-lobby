@@ -7,7 +7,7 @@
 import { fireEvent, render, screen, waitFor } from '@test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CommentData } from '../types'
-import { CommentItem } from './CommentItem'
+import { CommentItem, type CommentItemProps } from './CommentItem'
 
 describe('CommentItem', () => {
   const baseComment: CommentData = {
@@ -22,6 +22,14 @@ describe('CommentItem', () => {
     event: 'commented'
   }
 
+  const defaultProps: Omit<CommentItemProps, 'comment'> = {
+    repoFullName: 'owner/repo',
+    prNumber: 123
+  }
+
+  const renderCommentItem = (comment: CommentData) =>
+    render(<CommentItem comment={comment} {...defaultProps} />)
+
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock clipboard API
@@ -34,19 +42,19 @@ describe('CommentItem', () => {
 
   describe('rendering', () => {
     it('should render comment body', () => {
-      render(<CommentItem comment={baseComment} />)
+      renderCommentItem(baseComment)
 
       expect(screen.getByText('This is a test comment')).toBeInTheDocument()
     })
 
     it('should render author login', () => {
-      render(<CommentItem comment={baseComment} />)
+      renderCommentItem(baseComment)
 
       expect(screen.getByText('testuser')).toBeInTheDocument()
     })
 
     it('should render avatar container', () => {
-      const { container } = render(<CommentItem comment={baseComment} />)
+      const { container } = renderCommentItem(baseComment)
 
       // Avatar component wraps an avatar element (may show fallback or img)
       const avatar = container.querySelector('[class*="avatar"], span[class*="h-5"][class*="w-5"]')
@@ -59,7 +67,7 @@ describe('CommentItem', () => {
         created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 mins ago
       }
 
-      render(<CommentItem comment={recentComment} />)
+      renderCommentItem(recentComment)
 
       // Should show relative time like "5 minutes ago" or "5m"
       expect(screen.getByText(/\d+\s*(m|min|minute)/i)).toBeInTheDocument()
@@ -71,7 +79,7 @@ describe('CommentItem', () => {
         actor: undefined as unknown as CommentData['actor']
       }
 
-      const { container } = render(<CommentItem comment={commentWithoutActor} />)
+      const { container } = renderCommentItem(commentWithoutActor)
 
       expect(container.firstChild).toBeNull()
     })
@@ -84,7 +92,7 @@ describe('CommentItem', () => {
         event: 'approved'
       }
 
-      render(<CommentItem comment={approvedComment} />)
+      renderCommentItem(approvedComment)
 
       expect(screen.getByText('Approved')).toBeInTheDocument()
     })
@@ -95,7 +103,7 @@ describe('CommentItem', () => {
         event: 'changes_requested'
       }
 
-      render(<CommentItem comment={changesComment} />)
+      renderCommentItem(changesComment)
 
       expect(screen.getByText('Changes')).toBeInTheDocument()
     })
@@ -106,13 +114,13 @@ describe('CommentItem', () => {
         event: 'reviewed'
       }
 
-      render(<CommentItem comment={reviewedComment} />)
+      renderCommentItem(reviewedComment)
 
       expect(screen.getByText('Reviewed')).toBeInTheDocument()
     })
 
     it('should not show event badge for regular comments', () => {
-      render(<CommentItem comment={baseComment} />)
+      renderCommentItem(baseComment)
 
       expect(screen.queryByText('Approved')).not.toBeInTheDocument()
       expect(screen.queryByText('Changes')).not.toBeInTheDocument()
@@ -130,13 +138,13 @@ describe('CommentItem', () => {
         }
       }
 
-      render(<CommentItem comment={botComment} />)
+      renderCommentItem(botComment)
 
       expect(screen.getByText('Bot')).toBeInTheDocument()
     })
 
     it('should not show Bot badge for human comments', () => {
-      render(<CommentItem comment={baseComment} />)
+      renderCommentItem(baseComment)
 
       expect(screen.queryByText('Bot')).not.toBeInTheDocument()
     })
@@ -149,7 +157,7 @@ describe('CommentItem', () => {
         event: 'approved'
       }
 
-      const { container } = render(<CommentItem comment={approvedComment} />)
+      const { container } = renderCommentItem(approvedComment)
 
       const card = container.firstChild
       expect(card).toHaveClass('bg-success/15')
@@ -161,7 +169,7 @@ describe('CommentItem', () => {
         event: 'changes_requested'
       }
 
-      const { container } = render(<CommentItem comment={changesComment} />)
+      const { container } = renderCommentItem(changesComment)
 
       const card = container.firstChild
       expect(card).toHaveClass('bg-destructive/15')
@@ -176,7 +184,7 @@ describe('CommentItem', () => {
         }
       }
 
-      const { container } = render(<CommentItem comment={botComment} />)
+      const { container } = renderCommentItem(botComment)
 
       const card = container.firstChild
       expect(card).toHaveClass('bg-purple-500/15')
@@ -185,7 +193,7 @@ describe('CommentItem', () => {
 
   describe('copy functionality', () => {
     it('should copy comment body when copy button is clicked', async () => {
-      render(<CommentItem comment={baseComment} />)
+      renderCommentItem(baseComment)
 
       // Find the copy button (it appears on hover, but should be in DOM)
       const copyIcon = document.querySelector('.lucide-copy')
@@ -201,7 +209,7 @@ describe('CommentItem', () => {
     })
 
     it('should show check icon after successful copy', async () => {
-      render(<CommentItem comment={baseComment} />)
+      renderCommentItem(baseComment)
 
       const copyIcon = document.querySelector('.lucide-copy')
       const copyButton = copyIcon?.closest('button')
@@ -224,7 +232,7 @@ describe('CommentItem', () => {
         body: 'A'.repeat(300) // More than TRUNCATE_LENGTH (200)
       }
 
-      render(<CommentItem comment={longComment} />)
+      renderCommentItem(longComment)
 
       expect(screen.getByText(/Show more/i)).toBeInTheDocument()
     })
@@ -235,7 +243,7 @@ describe('CommentItem', () => {
         body: 'Short comment'
       }
 
-      render(<CommentItem comment={shortComment} />)
+      renderCommentItem(shortComment)
 
       expect(screen.queryByText(/Show more/i)).not.toBeInTheDocument()
     })
@@ -247,7 +255,7 @@ describe('CommentItem', () => {
         body: longBody
       }
 
-      render(<CommentItem comment={longComment} />)
+      renderCommentItem(longComment)
 
       const showMoreButton = screen.getByText(/Show more/i)
       fireEvent.click(showMoreButton)
@@ -264,7 +272,7 @@ describe('CommentItem', () => {
         body: longBody
       }
 
-      render(<CommentItem comment={longComment} />)
+      renderCommentItem(longComment)
 
       // First expand
       fireEvent.click(screen.getByText(/Show more/i))
@@ -289,7 +297,7 @@ describe('CommentItem', () => {
         body: ''
       }
 
-      render(<CommentItem comment={emptyBodyComment} />)
+      renderCommentItem(emptyBodyComment)
 
       // Should still render the header with author info
       expect(screen.getByText('testuser')).toBeInTheDocument()

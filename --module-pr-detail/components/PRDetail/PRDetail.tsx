@@ -2,8 +2,16 @@
  * PRDetail - PR detail panel showing comments, reviews, and CI status.
  *
  * Uses useSelectedPR hook to subscribe to store instead of receiving pr prop.
+ * Now supports webview tabs for viewing preview/staging URLs within the panel.
  */
 
+import {
+  useAddWebviewTab,
+  usePRActiveTab,
+  usePRWebviewTabs,
+  useRemoveWebviewTab,
+  useSetPRActiveTab
+} from '@data'
 import {
   Avatar,
   AvatarFallback,
@@ -16,7 +24,7 @@ import {
   Separator
 } from '@ui-kit'
 import { Bot, CheckCircle2, FileSearch, MessageSquare, Users, XCircle } from 'lucide-react'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 
 import { useSelectedPR } from '../../hooks'
 // Import extracted components
@@ -24,11 +32,14 @@ import { ChangedFilesSection } from '../ChangedFilesSection'
 import { CIChecksSection } from '../CIChecksSection'
 import { CommentItem } from '../CommentItem'
 import { PostCommentForm } from '../PostCommentForm'
+import { PostScreenshotModal } from '../PostScreenshotModal'
 import { PRDescription } from '../PRDescription'
 import { PRDetailSkeleton } from '../PRDetailSkeleton'
 import { PRHeader } from '../PRHeader'
+import { PRTabBar } from '../PRTabBar'
 import { ReviewerCard } from '../ReviewerCard'
 import type { CommentData, ReviewerFeedback } from '../types'
+import { WebviewPanel } from '../WebviewPanel'
 
 export interface PRDetailProps {
   onClose: () => void
@@ -38,6 +49,72 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
   // Subscribe to selected PR and loading state from hook
   // The hook automatically fetches full PR data when selectedPRId changes
   const { pr, isLoading: isLoadingDetails, selectedPRId } = useSelectedPR()
+
+  // Webview tabs - use PR identifier as key
+  const prId = selectedPRId ? `${selectedPRId.repoFullName}#${selectedPRId.prNumber}` : null
+  const { data: webviewTabs } = usePRWebviewTabs(prId)
+  const { data: activeTabId } = usePRActiveTab(prId)
+  const addWebviewTab = useAddWebviewTab()
+  const removeWebviewTab = useRemoveWebviewTab()
+  const setActiveTab = useSetPRActiveTab()
+
+  // Webview tab handlers
+  const handleSelectPRDetail = useCallback(() => {
+    if (prId) {
+      setActiveTab.mutate({ prId, tabId: null })
+    }
+  }, [prId, setActiveTab])
+
+  const handleSelectTab = useCallback(
+    (tabId: string) => {
+      if (prId) {
+        setActiveTab.mutate({ prId, tabId })
+      }
+    },
+    [prId, setActiveTab]
+  )
+
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      if (prId) {
+        removeWebviewTab.mutate({ prId, tabId })
+      }
+    },
+    [prId, removeWebviewTab]
+  )
+
+  const handleAddTab = useCallback(
+    (url: string) => {
+      if (prId) {
+        const tabId = `tab-${Date.now()}`
+        addWebviewTab.mutate({
+          prId,
+          tab: { id: tabId, url, title: '' }
+        })
+      }
+    },
+    [prId, addWebviewTab]
+  )
+
+  // Get the active webview tab (if any)
+  const activeWebviewTab = useMemo(() => {
+    if (!activeTabId || !webviewTabs) return null
+    return webviewTabs.find((t) => t.id === activeTabId) ?? null
+  }, [activeTabId, webviewTabs])
+
+  // Screenshot modal state
+  const [screenshotData, setScreenshotData] = useState<{
+    imageDataUrl: string
+    sourceUrl: string
+  } | null>(null)
+
+  const handleScreenshotCaptured = useCallback((imageDataUrl: string, sourceUrl: string) => {
+    setScreenshotData({ imageDataUrl, sourceUrl })
+  }, [])
+
+  const handleCloseScreenshotModal = useCallback(() => {
+    setScreenshotData(null)
+  }, [])
 
   // Tab state for comments filter (now includes code reviews)
   const [commentTab, setCommentTab] = useState<'all' | 'humans' | 'bots' | 'reviews'>('all')
@@ -219,7 +296,20 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
     >
       <PRHeader onClose={onClose} />
 
-      <ScrollArea className="flex-1">
+      {/* Tab bar for PR detail + webviews */}
+      <PRTabBar
+        prTitle={pr.title}
+        prNumber={pr.number}
+        tabs={webviewTabs || []}
+        activeTabId={activeTabId ?? null}
+        onSelectPRDetail={handleSelectPRDetail}
+        onSelectTab={handleSelectTab}
+        onCloseTab={handleCloseTab}
+        onAddTab={handleAddTab}
+      />
+
+      {/* PR Detail content - hidden when webview tab is active */}
+      <ScrollArea className={cn('flex-1', activeWebviewTab && 'hidden')}>
         <div className="p-4 w-full max-w-full overflow-x-hidden pr-detail-content">
           <Row gutter="xl" className="flex-col">
             {/* PR Description Section */}
@@ -460,7 +550,11 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                                 )}
                               />
 
-                              <CommentItem comment={comment} />
+                              <CommentItem
+                                comment={comment}
+                                repoFullName={selectedPRId.repoFullName}
+                                prNumber={selectedPRId.prNumber}
+                              />
                             </div>
                           ))}
                         </div>
@@ -608,6 +702,29 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
           </Row>
         </div>
       </ScrollArea>
+
+      {/* Render all webview tabs - keep them alive but hidden when not active */}
+      {(webviewTabs || []).map((tab) => (
+        <div key={tab.id} className={cn('flex-1', activeTabId !== tab.id && 'hidden')}>
+          <WebviewPanel
+            url={tab.url}
+            onScreenshotCaptured={(imageDataUrl) => handleScreenshotCaptured(imageDataUrl, tab.url)}
+          />
+        </div>
+      ))}
+
+      {/* Screenshot posting modal */}
+      {selectedPRId && pr && (
+        <PostScreenshotModal
+          isOpen={!!screenshotData}
+          onClose={handleCloseScreenshotModal}
+          screenshotDataUrl={screenshotData?.imageDataUrl ?? null}
+          repoFullName={selectedPRId.repoFullName}
+          prNumber={selectedPRId.prNumber}
+          prNodeId={pr.id}
+          sourceUrl={screenshotData?.sourceUrl}
+        />
+      )}
     </div>
   )
 }

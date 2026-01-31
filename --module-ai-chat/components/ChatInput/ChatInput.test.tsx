@@ -14,7 +14,13 @@ describe('ChatInput', () => {
     isSending: false,
     isContextValid: true,
     linkedPRChat: false,
-    streaming: { content: '', thinking: '', isStreaming: false },
+    streaming: {
+      content: '',
+      thinking: '',
+      isStreaming: false,
+      status: 'idle' as const,
+      activity: null
+    },
     messages: [],
     selectedModel: 'claude-3-5-sonnet-20241022',
     enableWebFetch: false,
@@ -169,7 +175,13 @@ describe('ChatInput', () => {
       render(
         <ChatInput
           {...defaultProps}
-          streaming={{ content: 'test', thinking: '', isStreaming: true }}
+          streaming={{
+            content: 'test',
+            thinking: '',
+            isStreaming: true,
+            status: 'writing' as const,
+            activity: null
+          }}
         />
       )
 

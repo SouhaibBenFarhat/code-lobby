@@ -1,31 +1,26 @@
 /**
- * AIChat - AI chat panel powered by Claude
+ * AIChat - AI chat panel powered by Claude Code CLI
  *
  * Automatically follows the selected PR:
  * - When you select a PR, the chat switches to that PR's conversation
- * - Messages are persisted per-PR via TanStack Query
- * - Uses XMLHttpRequest for streaming (better than fetch in Electron)
+ * - Messages are persisted per-PR via TanStack Query + localStorage
+ * - Uses Claude Code CLI for AI capabilities (tools, context, web search)
  */
 
-import type { ChatMessage, ReviewCommentInput } from '@data'
+import type { ReviewCommentInput } from '@data'
 import {
-  useAddAIUsage,
+  type ClaudeMessage,
   useAddCustomPrompt,
-  useClaudeApiKey,
-  useClaudeModels,
-  useClearChat,
+  useClaudeApiKeyStatus,
+  useClaudeCodeStatus,
+  useClaudeSession,
+  useClearSession,
   useCustomPrompts,
   useDeleteCustomPrompt,
-  useEnableThinking,
-  useEnableWebFetch,
-  usePRChatMessages,
   usePRFiles,
-  useSaveMessage,
-  useSelectedModel,
+  useSendMessage,
   useSetClaudeApiKey,
-  useSetEnableThinking,
-  useSetEnableWebFetch,
-  useSetSelectedModel,
+  useStopClaude,
   useSubmitPRReviewWithComments
 } from '@data'
 import { Button } from '@ui-kit'
@@ -33,24 +28,19 @@ import { ArrowDown, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getPRQuickPrompts } from '../../constants'
 import { useThrottledValue } from '../../hooks'
-import type { AIChatPanelProps, ReviewData, ReviewVerdict, StreamingState } from '../../types'
-import {
-  applyStreamEvent,
-  buildClaudeHeaders,
-  buildClaudeRequestBody,
-  buildSystemPrompt,
-  CLAUDE_API_URL,
-  calculateTokenCost,
-  createStreamAccumulator,
-  DEFAULT_MODEL,
-  formatMessagesForClaude,
-  parseSSEChunk
-} from '../../utils'
+import type {
+  AIChatPanelProps,
+  QueuedMessage,
+  ReviewData,
+  ReviewVerdict,
+  StreamingState
+} from '../../types'
 import { NoPRSelectedState, PRContextBanner } from '../ChatEmptyStates'
 import { ChatHeader } from '../ChatHeader'
 import { ChatInput } from '../ChatInput'
 import { ChatSettings } from '../ChatSettings'
 import { MessageBubble } from '../MessageBubble'
+import { QueuedMessageBubble } from '../QueuedMessageBubble'
 import { ReviewPreviewModal } from '../ReviewPreviewModal'
 import { StreamingBubble } from '../StreamingBubble'
 
@@ -58,68 +48,74 @@ export type { AIChatPanelProps } from '../../types'
 
 const SCROLL_THRESHOLD = 100
 
+// Available Claude models for selection
+// Ordered by: newest/most capable first
+const CLAUDE_MODELS = [
+  // Claude 4.5 family (Latest - Nov 2025)
+  { id: 'claude-opus-4-5-20251101', display_name: 'Claude Opus 4.5 (Premium)' },
+  { id: 'claude-haiku-4-5-20251001', display_name: 'Claude Haiku 4.5 (Fast)' },
+  { id: 'claude-sonnet-4-5-20250929', display_name: 'Claude Sonnet 4.5 (Balanced)' },
+  // Claude Code CLI aliases (auto-resolve to latest)
+  { id: 'opus', display_name: 'Opus (Latest)' },
+  { id: 'sonnet', display_name: 'Sonnet (Latest)' },
+  { id: 'haiku', display_name: 'Haiku (Latest)' },
+  { id: 'opusplan', display_name: 'Opus Plan (Opus plans, Sonnet executes)' },
+  // Claude 4 family (Active - May/Aug 2025)
+  { id: 'claude-opus-4-1-20250805', display_name: 'Claude Opus 4.1' },
+  { id: 'claude-opus-4-20250514', display_name: 'Claude Opus 4' },
+  { id: 'claude-sonnet-4-20250514', display_name: 'Claude Sonnet 4' },
+  // Legacy (older versions)
+  { id: 'claude-3-7-sonnet-20250219', display_name: 'Claude 3.7 Sonnet (Deprecated)' },
+  { id: 'claude-3-5-haiku-20241022', display_name: 'Claude 3.5 Haiku (Deprecated)' },
+  { id: 'claude-3-haiku-20240307', display_name: 'Claude 3 Haiku' }
+]
+
+const DEFAULT_MODEL = 'sonnet'
+
+/**
+ * Generate a unique session ID for a PR
+ */
+function getPRSessionId(repoFullName: string, prNumber: number): string {
+  return `pr-${repoFullName.replace('/', '-')}-${prNumber}`
+}
+
 export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): React.JSX.Element {
   // ═══════════════════════════════════════════════════════════════════════════
-  // DERIVE PR ID - Chat automatically follows selected PR
+  // DERIVE PR ID / SESSION ID
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const prId = selectedPR ? `${selectedPR.base.repo.full_name}#${selectedPR.number}` : null
   const repoFullName = selectedPR?.base.repo.full_name ?? null
   const prNumber = selectedPR?.number ?? null
+  const sessionId = repoFullName && prNumber ? getPRSessionId(repoFullName, prNumber) : null
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERIES & MUTATIONS
+  // CLAUDE CODE STATUS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const { data: apiKey } = useClaudeApiKey()
-  const { data: selectedModel } = useSelectedModel()
-  const { data: enableThinking } = useEnableThinking()
-  const { data: enableWebFetch } = useEnableWebFetch()
+  const { data: claudeCodeStatus, isLoading: isLoadingClaudeCode } = useClaudeCodeStatus()
+  const { data: apiKeyStatus, isLoading: isLoadingApiKey } = useClaudeApiKeyStatus()
+  const isClaudeCodeInstalled = claudeCodeStatus?.installed ?? false
+  const hasApiKey = apiKeyStatus?.hasKey ?? false
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TANSTACK QUERIES & MUTATIONS (Claude Code)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const { data: session } = useClaudeSession(sessionId ?? 'no-pr')
+  const sendMessageMutation = useSendMessage()
+  const stopClaudeMutation = useStopClaude()
+  const clearSessionMutation = useClearSession()
+  const setApiKeyMutation = useSetClaudeApiKey()
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OTHER QUERIES & MUTATIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const { data: customPrompts = [] } = useCustomPrompts()
-  const { data: messages = [], isLoading: isLoadingMessages } = usePRChatMessages(prId)
-  const { data: models = [], isLoading: isLoadingModels } = useClaudeModels()
-  // Pass changed_files count to enable parallel fetching for large PRs
   const { data: prFiles = [] } = usePRFiles(repoFullName, prNumber, selectedPR?.changed_files)
-
-  // Build PR context with full details including file diffs, comments, and CI status
-  const prContext = selectedPR
-    ? {
-        prNumber: selectedPR.number,
-        prTitle: selectedPR.title,
-        prBody: selectedPR.body,
-        repoFullName: selectedPR.base.repo.full_name,
-        // Branch info
-        headBranch: selectedPR.head?.ref,
-        baseBranch: selectedPR.base?.ref,
-        // PR metadata
-        author: selectedPR.user?.login,
-        isDraft: selectedPR.draft,
-        labels: selectedPR.labels?.map((l) => l.name),
-        // Stats
-        additions: selectedPR.additions,
-        deletions: selectedPR.deletions,
-        changedFiles: selectedPR.changed_files,
-        // Review status
-        reviewDecision: selectedPR.reviewDecision,
-        // Detailed data
-        files: prFiles,
-        comments: selectedPR.commentsList,
-        reviews: selectedPR.reviews,
-        reviewThreads: selectedPR.reviewThreads,
-        checks: selectedPR.checks
-      }
-    : undefined
-
-  const setApiKey = useSetClaudeApiKey()
-  const setSelectedModelMut = useSetSelectedModel()
-  const setEnableThinkingMut = useSetEnableThinking()
-  const setEnableWebFetchMut = useSetEnableWebFetch()
-  const saveMessage = useSaveMessage()
-  const clearChat = useClearChat()
   const addCustomPrompt = useAddCustomPrompt()
   const deleteCustomPrompt = useDeleteCustomPrompt()
   const submitReview = useSubmitPRReviewWithComments()
-  const addAIUsage = useAddAIUsage()
 
   // ═══════════════════════════════════════════════════════════════════════════
   // LOCAL STATE
@@ -130,13 +126,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   const [showSettings, setShowSettings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState('')
+
+  // Model and thinking settings
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
+  const [enableThinking, setEnableThinking] = useState(true)
   const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set())
-  const [isSending, setIsSending] = useState(false)
-  const [streaming, setStreaming] = useState<StreamingState>({
-    content: '',
-    thinking: '',
-    isStreaming: false
-  })
   const [userScrolledUp, setUserScrolledUp] = useState(false)
 
   // Review preview state
@@ -146,22 +140,54 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   }>({ isOpen: false, review: null })
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
 
-  const throttledStreaming = useThrottledValue(streaming, 100)
+  // Message queue - stores messages to send after current streaming completes
+  const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DERIVED STATE FROM SESSION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const messages = session?.messages ?? []
+
+  // isStreaming: true while actively streaming OR while finalizing (status='done' but content not yet in messages)
+  // This prevents the flash where StreamingBubble hides before MessageBubble appears
+  const isActivelyStreaming =
+    session?.status === 'streaming' ||
+    session?.status === 'thinking' ||
+    session?.status === 'tool_use'
+  const isFinalizing = session?.status === 'done' && Boolean(session?.currentStream)
+  const isStreaming = isActivelyStreaming || isFinalizing
+
+  const isSending = isStreaming || sendMessageMutation.isPending
+  const hasMessages = messages.length > 0
+
+  // Build streaming state for UI - simple derivation, no complex detection
+  const getStreamingStatus = (): StreamingState['status'] => {
+    if (!isStreaming) return 'idle'
+    if (session?.status === 'thinking') return 'thinking'
+    if (session?.status === 'tool_use') return 'tool_use'
+    if (session?.currentStream) return 'writing'
+    return 'composing'
+  }
+
+  // Direct object creation - no useMemo needed for simple derivation
+  const streaming: StreamingState = {
+    content: session?.currentStream ?? '',
+    thinking: session?.thinking ?? '',
+    isStreaming,
+    status: getStreamingStatus(),
+    activity: session?.activity ?? null
+  }
+
+  // Reduced throttle: 30ms instead of 100ms for snappier updates
+  const throttledStreaming = useThrottledValue(streaming, 30)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // REFS
   // ═══════════════════════════════════════════════════════════════════════════
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const xhrRef = useRef<XMLHttpRequest | null>(null)
   const isAutoScrollingRef = useRef(false)
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // DERIVED STATE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const currentModel = selectedModel || DEFAULT_MODEL
-  const hasMessages = messages.length > 0
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SCROLL MANAGEMENT
@@ -198,157 +224,140 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   }, [isAtBottom])
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STREAMING
+  // SEND MESSAGE (via Claude Code CLI)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const sendMessageWithStreaming = useCallback(
-    (messageText: string) => {
-      if (!prId || !apiKey) return
+  const sendMessageWithClaudeCode = useCallback(
+    (messageText: string, displayLabel?: string) => {
+      if (!sessionId || !hasApiKey) return
 
       setError(null)
-      setIsSending(true)
       setUserScrolledUp(false)
-
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content: messageText,
-        timestamp: new Date().toISOString()
-      }
-      saveMessage.mutate({ prId, message: userMessage })
       scrollToBottom(false)
 
-      setStreaming({ content: '', thinking: '', isStreaming: true })
-
-      const systemPrompt = buildSystemPrompt({ prContext })
-      const claudeMessages = formatMessagesForClaude([...messages, userMessage])
-      const requestBody = buildClaudeRequestBody({
-        model: currentModel,
-        systemPrompt,
-        messages: claudeMessages,
-        enableThinking: enableThinking ?? false
-      })
-      const headers = buildClaudeHeaders(apiKey)
-
-      const xhr = new XMLHttpRequest()
-      xhrRef.current = xhr
-
-      let accumulator = createStreamAccumulator()
-      let lastProcessedIndex = 0
-
-      xhr.open('POST', CLAUDE_API_URL)
-      Object.entries(headers).forEach(([key, value]) => {
-        xhr.setRequestHeader(key, value)
-      })
-
-      xhr.onprogress = () => {
-        const newText = xhr.responseText.slice(lastProcessedIndex)
-        lastProcessedIndex = xhr.responseText.length
-        if (!newText) return
-
-        const events = parseSSEChunk(newText)
-        for (const event of events) {
-          accumulator = applyStreamEvent(accumulator, event)
-        }
-
-        setStreaming({
-          content: accumulator.content,
-          thinking: accumulator.thinking,
-          isStreaming: true
-        })
-      }
-
-      xhr.onload = () => {
-        if (xhr.status !== 200) {
-          try {
-            const err = JSON.parse(xhr.responseText)
-            setError(err.error?.message || `API error: ${xhr.status}`)
-          } catch {
-            setError(`API error: ${xhr.status}`)
+      // Build FULL PR context - Claude gets everything internally via system prompt
+      const prContext = selectedPR
+        ? {
+            owner: selectedPR.base.repo.owner.login,
+            repo: selectedPR.base.repo.name,
+            branch: selectedPR.head.ref,
+            baseBranch: selectedPR.base.ref,
+            prNumber: selectedPR.number,
+            prTitle: selectedPR.title,
+            prDescription: selectedPR.body || undefined,
+            changedFiles: selectedPR.changed_files,
+            // Include labels
+            labels: selectedPR.labels?.map((l) => l.name) || [],
+            // Include recent comments (limit to 10 most recent)
+            comments:
+              selectedPR.commentsList?.slice(-10).map((c) => ({
+                author: c.author.login,
+                body: c.body,
+                createdAt: new Date(c.created_at).toLocaleDateString()
+              })) || [],
+            // Summarize review status
+            reviewSummary: selectedPR.reviews
+              ? (() => {
+                  const approved = selectedPR.reviews.filter((r) => r.state === 'approved').length
+                  const changes = selectedPR.reviews.filter(
+                    (r) => r.state === 'changes_requested'
+                  ).length
+                  const commented = selectedPR.reviews.filter((r) => r.state === 'commented').length
+                  const parts = []
+                  if (approved > 0) parts.push(`${approved} approval${approved > 1 ? 's' : ''}`)
+                  if (changes > 0)
+                    parts.push(`${changes} change${changes > 1 ? 's' : ''} requested`)
+                  if (commented > 0) parts.push(`${commented} comment${commented > 1 ? 's' : ''}`)
+                  return parts.length > 0 ? parts.join(', ') : undefined
+                })()
+              : undefined
           }
-          setStreaming({ content: '', thinking: '', isStreaming: false })
-          setIsSending(false)
-          return
-        }
+        : undefined
 
-        // Track AI usage if we have token counts
-        if (accumulator.usage) {
-          const { inputCostUsd, outputCostUsd } = calculateTokenCost(
-            currentModel,
-            accumulator.usage.inputTokens,
-            accumulator.usage.outputTokens
-          )
-          addAIUsage.mutate({
-            inputTokens: accumulator.usage.inputTokens,
-            outputTokens: accumulator.usage.outputTokens,
-            inputCostUsd,
-            outputCostUsd
-          })
-        }
-
-        setStreaming({ content: '', thinking: '', isStreaming: false })
-        const assistantMessage: ChatMessage = {
-          id: accumulator.messageId,
-          role: 'assistant',
-          content: accumulator.content,
-          thinking: accumulator.thinking || undefined,
-          timestamp: new Date().toISOString()
-        }
-        saveMessage.mutate({ prId, message: assistantMessage })
-        setIsSending(false)
+      // Claude config - uses user-selected model and thinking settings
+      const config = {
+        model: selectedModel,
+        enableExtendedThinking: enableThinking,
+        maxThinkingTokens: enableThinking ? 10000 : 0
       }
 
-      xhr.onerror = () => {
-        setError('Network error')
-        setStreaming({ content: '', thinking: '', isStreaming: false })
-        setIsSending(false)
-      }
-
-      xhr.send(JSON.stringify(requestBody))
+      // Send message directly - NO prompt enhancement needed
+      // All context is provided internally via system prompt
+      sendMessageMutation.mutate(
+        { sessionId, prompt: messageText, displayLabel, prContext, config },
+        {
+          onError: (err) => {
+            setError(err.message || 'Failed to send message')
+          }
+        }
+      )
     },
     [
-      prId,
-      apiKey,
-      prContext,
-      messages,
-      currentModel,
+      sessionId,
+      hasApiKey,
+      selectedPR,
+      selectedModel,
       enableThinking,
-      saveMessage,
-      scrollToBottom,
-      addAIUsage
+      sendMessageMutation,
+      scrollToBottom
     ]
   )
 
-  // Cleanup XHR on unmount
-  useEffect(() => {
-    return () => {
-      if (xhrRef.current) xhrRef.current.abort()
-    }
-  }, [])
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EFFECTS
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // Auto-scroll during streaming (throttledStreaming triggers scroll as content arrives)
+  // Sync error from session
+  useEffect(() => {
+    if (session?.error) {
+      setError(session.error)
+    }
+  }, [session?.error])
+
+  // Auto-scroll during streaming
   useEffect(() => {
     if (streaming.isStreaming && !userScrolledUp && throttledStreaming.content) {
       scrollToBottom(false)
     }
   }, [streaming.isStreaming, userScrolledUp, scrollToBottom, throttledStreaming.content])
 
-  // Scroll when new messages arrive (messages triggers scroll when count changes)
+  // Scroll when new messages arrive
   useEffect(() => {
     if (!streaming.isStreaming && messages.length > 0) {
       scrollToBottom()
       setUserScrolledUp(false)
     }
-  }, [messages, streaming.isStreaming, scrollToBottom])
+  }, [messages.length, streaming.isStreaming, scrollToBottom])
 
-  // Reset scroll when PR changes (selectedPR triggers reset on PR switch)
+  // Reset scroll when PR changes
   useEffect(() => {
     if (selectedPR) {
       setUserScrolledUp(false)
-      // Small delay to allow messages to render
       setTimeout(() => scrollToBottom(false), 100)
     }
   }, [selectedPR, scrollToBottom])
+
+  // Process message queue when streaming ends
+  const prevStreamingRef = useRef(isStreaming)
+  useEffect(() => {
+    const wasStreaming = prevStreamingRef.current
+    prevStreamingRef.current = isStreaming
+
+    // Only process when streaming just ended (was streaming, now not)
+    if (wasStreaming && !isStreaming && messageQueue.length > 0) {
+      // Small delay to let the UI settle before processing next message
+      const timeout = setTimeout(() => {
+        const [nextMessage, ...remainingQueue] = messageQueue
+        setMessageQueue(remainingQueue)
+
+        if (nextMessage) {
+          sendMessageWithClaudeCode(nextMessage.content, nextMessage.displayLabel)
+        }
+      }, 300) // 300ms delay between messages for smoother UX
+
+      return () => clearTimeout(timeout)
+    }
+  }, [isStreaming, messageQueue, sendMessageWithClaudeCode])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HANDLERS
@@ -359,13 +368,17 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     setIsSettingKey(true)
     setError(null)
     try {
+      // Validate by testing against Claude API
       const response = await fetch('https://api.anthropic.com/v1/models?limit=1', {
-        headers: buildClaudeHeaders(apiKeyInput.trim())
+        headers: {
+          'x-api-key': apiKeyInput.trim(),
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        }
       })
       if (response.ok) {
-        setApiKey.mutate(apiKeyInput.trim())
+        setApiKeyMutation.mutate(apiKeyInput.trim())
         setApiKeyInput('')
-        // Models will auto-fetch via useClaudeModels when API key is set
       } else {
         setError('Invalid API key')
       }
@@ -374,22 +387,52 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     } finally {
       setIsSettingKey(false)
     }
-  }, [apiKeyInput, setApiKey])
+  }, [apiKeyInput, setApiKeyMutation])
 
-  const handleRemoveApiKey = useCallback(() => {
-    setApiKey.mutate('')
-    setShowSettings(false)
-  }, [setApiKey])
+  /**
+   * Generate unique queued message ID
+   */
+  const generateQueueId = useCallback(() => {
+    return `queue-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  }, [])
+
+  /**
+   * Add a message to the queue (used when Claude is already streaming)
+   */
+  const addToQueue = useCallback(
+    (content: string, displayLabel?: string) => {
+      const queuedMessage: QueuedMessage = {
+        id: generateQueueId(),
+        content,
+        displayLabel
+      }
+      setMessageQueue((prev) => [...prev, queuedMessage])
+    },
+    [generateQueueId]
+  )
 
   const handleSendMessage = useCallback(() => {
-    if (!input.trim() || !prId || isSending) return
-    sendMessageWithStreaming(input.trim())
+    if (!input.trim() || !sessionId) return
+
+    const messageText = input.trim()
     setInput('')
-  }, [input, prId, isSending, sendMessageWithStreaming])
+
+    // If currently streaming, queue the message instead
+    if (isStreaming) {
+      addToQueue(messageText)
+      return
+    }
+
+    sendMessageWithClaudeCode(messageText)
+  }, [input, sessionId, isStreaming, addToQueue, sendMessageWithClaudeCode])
 
   const handleClearHistory = useCallback(() => {
-    if (prId) clearChat.mutate(prId)
-  }, [prId, clearChat])
+    if (sessionId) clearSessionMutation.mutate(sessionId)
+  }, [sessionId, clearSessionMutation])
+
+  const handleStopStreaming = useCallback(() => {
+    if (sessionId) stopClaudeMutation.mutate(sessionId)
+  }, [sessionId, stopClaudeMutation])
 
   const toggleThinkingExpanded = useCallback((id: string) => {
     setExpandedThinking((prev) => {
@@ -405,22 +448,95 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   }, [scrollToBottom])
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // CONVERT CLAUDE MESSAGES TO CHAT MESSAGES FOR UI
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const chatMessages = messages.map((m: ClaudeMessage) => ({
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    displayLabel: m.displayLabel, // Show this instead of full content for quick actions
+    thinking: m.thinking,
+    timestamp: new Date(m.timestamp).toISOString()
+  }))
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
 
   const showScrollButton = userScrolledUp
+  const isLoading = isLoadingClaudeCode || isLoadingApiKey
+
+  // Show loading while checking status
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+      </div>
+    )
+  }
+
+  // Show Claude Code CLI install prompt if not installed
+  if (!isClaudeCodeInstalled) {
+    return (
+      <div className="h-full flex flex-col">
+        <ChatHeader
+          apiKey={null}
+          selectedModel=""
+          models={[]}
+          showSettings={false}
+          onShowSettingsChange={() => {}}
+          onClearHistory={() => {}}
+          onClose={onClose}
+        />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md text-center space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-orange-500/10 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-orange-500" />
+            </div>
+            <h3 className="text-lg font-semibold">Claude Code CLI Required</h3>
+            <p className="text-sm text-muted-foreground">
+              CodeLobby uses Claude Code CLI for AI features. Install it to enable AI-powered PR
+              analysis.
+            </p>
+            <div className="bg-muted p-3 rounded-md font-mono text-sm">
+              npm install -g @anthropic-ai/claude-code
+            </div>
+            <p className="text-xs text-muted-foreground">After installing, restart CodeLobby.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex flex-col">
       <ChatHeader
-        apiKey={apiKey || null}
-        selectedModel={currentModel}
-        models={models}
+        apiKey={hasApiKey ? 'configured' : null}
+        selectedModel={selectedModel}
+        models={CLAUDE_MODELS}
         showSettings={showSettings}
         onShowSettingsChange={setShowSettings}
         onClearHistory={handleClearHistory}
         onClose={onClose}
       />
+
+      {/* Settings panel - collapsible */}
+      {showSettings && hasApiKey && (
+        <ChatSettings
+          models={CLAUDE_MODELS}
+          selectedModel={selectedModel}
+          enableThinking={enableThinking}
+          isLoadingModels={false}
+          onModelChange={setSelectedModel}
+          onThinkingChange={setEnableThinking}
+          onRemoveApiKey={() => {
+            // Clear the API key
+            setApiKeyMutation.mutate('')
+          }}
+        />
+      )}
 
       {/* Show PR context banner when a PR is selected */}
       {selectedPR && (
@@ -431,31 +547,22 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         />
       )}
 
-      {showSettings && apiKey && (
-        <ChatSettings
-          models={models}
-          selectedModel={currentModel}
-          enableThinking={enableThinking ?? false}
-          isLoadingModels={isLoadingModels}
-          onModelChange={(id) => setSelectedModelMut.mutate(id)}
-          onThinkingChange={(enabled) => setEnableThinkingMut.mutate(enabled)}
-          onRemoveApiKey={handleRemoveApiKey}
-        />
+      {/* Tool activity indicator */}
+      {session?.activity && (
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-xs">
+          <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+          <span className="text-muted-foreground">
+            {session.activity.toolName}: {session.activity.input}
+          </span>
+        </div>
       )}
 
       <div className="flex-1 relative overflow-hidden">
-        {/* Loading state */}
-        {isLoadingMessages && (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
-
         {/* No PR selected */}
-        {!isLoadingMessages && !selectedPR && <NoPRSelectedState apiKey={apiKey || null} />}
+        {!selectedPR && <NoPRSelectedState apiKey={hasApiKey ? 'configured' : null} />}
 
         {/* Chat area - shows when PR is selected */}
-        {!isLoadingMessages && selectedPR && (
+        {selectedPR && (
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
@@ -472,7 +579,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             )}
 
             {/* Messages */}
-            {messages.map((message) => (
+            {chatMessages.map((message) => (
               <MessageBubble
                 key={message.id}
                 message={message}
@@ -487,6 +594,31 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             {streaming.isStreaming && (
               <div className="pb-3">
                 <StreamingBubble streaming={throttledStreaming} />
+              </div>
+            )}
+
+            {/* Queued messages */}
+            {messageQueue.length > 0 && (
+              <div className="space-y-3">
+                {/* Queue header */}
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-2 pb-1 border-t border-dashed border-border/50">
+                  <span className="font-medium">
+                    {messageQueue.length} message{messageQueue.length > 1 ? 's' : ''} queued
+                  </span>
+                </div>
+
+                {/* Queued message bubbles */}
+                {messageQueue.map((queuedMsg, index) => (
+                  <QueuedMessageBubble
+                    key={queuedMsg.id}
+                    message={queuedMsg}
+                    index={index}
+                    onRemove={() =>
+                      setMessageQueue((prev) => prev.filter((m) => m.id !== queuedMsg.id))
+                    }
+                    user={user}
+                  />
+                ))}
               </div>
             )}
 
@@ -516,9 +648,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
       )}
 
       {/* Input area */}
-      {apiKey && prId ? (
+      {hasApiKey && sessionId ? (
         <ChatInput
-          apiKey={apiKey}
+          apiKey="configured"
           apiKeyInput={apiKeyInput}
           isSettingKey={isSettingKey}
           onApiKeyInputChange={setApiKeyInput}
@@ -528,10 +660,10 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           isContextValid={true}
           linkedPRChat={!!selectedPR}
           streaming={streaming}
-          messages={messages}
-          selectedModel={currentModel}
-          enableWebFetch={enableWebFetch ?? false}
-          onWebFetchChange={(enabled) => setEnableWebFetchMut.mutate(enabled)}
+          messages={chatMessages}
+          selectedModel={selectedModel}
+          enableWebFetch={true}
+          onWebFetchChange={() => {}}
           prompts={getPRQuickPrompts({
             hasCIFailures:
               selectedPR?.checks?.state === 'failure' || selectedPR?.checks?.state === 'error'
@@ -539,9 +671,15 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           customPrompts={customPrompts}
           onInputChange={setInput}
           onSendMessage={handleSendMessage}
-          onQuickActionSelect={(text) => {
-            if (!prId || isSending) return
-            sendMessageWithStreaming(text)
+          onStopStreaming={isStreaming ? handleStopStreaming : undefined}
+          onQuickActionSelect={(prompt, label) => {
+            if (!sessionId) return
+            // If streaming, queue the quick action
+            if (isStreaming) {
+              addToQueue(prompt, label)
+              return
+            }
+            sendMessageWithClaudeCode(prompt, label)
           }}
           onAddCustomPrompt={async (label, prompt) => {
             addCustomPrompt.mutate({ label, prompt })
@@ -550,7 +688,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             deleteCustomPrompt.mutate(id)
           }}
         />
-      ) : !apiKey ? (
+      ) : !hasApiKey ? (
         <div className="p-4 border-t">
           <div className="flex gap-2">
             <input

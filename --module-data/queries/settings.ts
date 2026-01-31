@@ -10,6 +10,7 @@ import type {
   CardLayout,
   CodeVisualizerState,
   DailySpeech,
+  PRWebviewTab,
   ViewMode
 } from '../types'
 
@@ -195,6 +196,34 @@ export function useCodeVisualizer(): UseQueryResult<CodeVisualizerState, Error> 
     queryKey: keys.local.codeVisualizer,
     queryFn: () =>
       getPersisted<CodeVisualizerState>(keys.local.codeVisualizer, DEFAULT_CODE_VISUALIZER_STATE),
+    staleTime: Infinity
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PR WEBVIEW TABS - Browser tabs associated with PRs
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get webview tabs for a specific PR
+ */
+export function usePRWebviewTabs(prId: string | null): UseQueryResult<PRWebviewTab[], Error> {
+  return useQuery({
+    queryKey: prId ? keys.local.prWebviewTabs(prId) : ['local', 'pr-webview-tabs', 'none'],
+    queryFn: () => (prId ? getPersisted<PRWebviewTab[]>(keys.local.prWebviewTabs(prId), []) : []),
+    enabled: !!prId,
+    staleTime: Infinity
+  })
+}
+
+/**
+ * Get active tab for a specific PR (null = PR detail view, string = webview tab id)
+ */
+export function usePRActiveTab(prId: string | null): UseQueryResult<string | null, Error> {
+  return useQuery({
+    queryKey: prId ? keys.local.prActiveTab(prId) : ['local', 'pr-active-tab', 'none'],
+    queryFn: () => (prId ? getPersisted<string | null>(keys.local.prActiveTab(prId), null) : null),
+    enabled: !!prId,
     staleTime: Infinity
   })
 }

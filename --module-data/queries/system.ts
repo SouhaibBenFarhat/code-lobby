@@ -77,3 +77,75 @@ export function useNetworkPanelHeight(): UseQueryResult<number, Error> {
     staleTime: Infinity
   })
 }
+
+/**
+ * Claude Code CLI status
+ */
+export interface ClaudeCodeStatus {
+  installed: boolean
+  version: string | null
+  checkedAt: number
+}
+
+/**
+ * Query for Claude Code CLI installation status
+ * Checks if the CLI is available on the user's machine
+ */
+export function useClaudeCodeStatus(): UseQueryResult<ClaudeCodeStatus, Error> {
+  return useQuery({
+    queryKey: ['system', 'claude-code-status'],
+    queryFn: async (): Promise<ClaudeCodeStatus> => {
+      if (!window.electron?.checkClaudeCodeInstalled) {
+        return { installed: false, version: null, checkedAt: Date.now() }
+      }
+
+      try {
+        const result = await window.electron.checkClaudeCodeInstalled()
+        return {
+          installed: result.installed,
+          version: result.version,
+          checkedAt: Date.now()
+        }
+      } catch {
+        return { installed: false, version: null, checkedAt: Date.now() }
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Check every 5 minutes
+    refetchOnWindowFocus: false
+  })
+}
+
+/**
+ * Claude API Key status (from Electron store)
+ */
+export interface ClaudeApiKeyStatus {
+  hasKey: boolean
+  checkedAt: number
+}
+
+/**
+ * Query for Claude API key status
+ * Returns whether an API key is configured (not the key itself for security)
+ */
+export function useClaudeApiKeyStatus(): UseQueryResult<ClaudeApiKeyStatus, Error> {
+  return useQuery({
+    queryKey: ['system', 'claude-api-key-status'],
+    queryFn: async (): Promise<ClaudeApiKeyStatus> => {
+      if (!window.electron?.getClaudeApiKey) {
+        return { hasKey: false, checkedAt: Date.now() }
+      }
+
+      try {
+        const key = await window.electron.getClaudeApiKey()
+        return {
+          hasKey: !!key,
+          checkedAt: Date.now()
+        }
+      } catch {
+        return { hasKey: false, checkedAt: Date.now() }
+      }
+    },
+    staleTime: Infinity, // Only invalidated manually
+    refetchOnWindowFocus: false
+  })
+}

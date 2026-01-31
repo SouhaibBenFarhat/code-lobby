@@ -23,7 +23,7 @@ function QueuedMessageBubbleInner({
   return (
     <div className="flex gap-2 justify-end opacity-60">
       <div className="max-w-[85%] rounded-lg bg-primary/50 text-primary-foreground px-3 py-2 relative group selection:bg-white/30 selection:text-white">
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="text-sm whitespace-pre-wrap">{message.displayLabel || message.content}</p>
         <Button
           variant="unstyled"
           size="none"

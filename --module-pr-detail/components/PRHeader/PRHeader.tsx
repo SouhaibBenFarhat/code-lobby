@@ -44,6 +44,7 @@ import { ApproveButton } from '../ApproveButton'
 import { CloseButton } from '../CloseButton'
 import { ConvertToDraftButton } from '../ConvertToDraftButton'
 import { FindPreviewButton } from '../FindPreviewButton'
+import { LabelsButton } from '../LabelsButton'
 import { MergeButton } from '../MergeButton'
 import { ReadyForReviewButton } from '../ReadyForReviewButton'
 import { ReopenButton } from '../ReopenButton'
@@ -271,6 +272,9 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
             </Col>
             <Col span="auto">
               <FindPreviewButton />
+            </Col>
+            <Col span="auto">
+              <LabelsButton />
             </Col>
             <Col span="auto">
               <Separator orientation="vertical" className="h-5 mx-1" />

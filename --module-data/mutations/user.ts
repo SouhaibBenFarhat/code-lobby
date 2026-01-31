@@ -1,6 +1,6 @@
 /**
  * User / Auth Mutations
- * Token is stored in TanStack Query cache and passed to API functions
+ * Token is stored in TanStack Query cache (persisted to localStorage automatically)
  */
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,29 +13,19 @@ export function useSignIn(): UseMutationResult<{ token: string; user: GitHubUser
 
   return useMutation({
     mutationFn: async (token: string) => {
-      console.log('[useSignIn] mutationFn called with token:', `${token.substring(0, 10)}...`)
       // Validate the token via API
       const result = await github.validateToken(token)
-      console.log('[useSignIn] validateToken result:', result.valid, result.user?.login)
       if (!result.valid) {
         throw new Error('Invalid token')
       }
       return { token, user: result.user as GitHubUser }
     },
     onSuccess: ({ token, user }) => {
-      console.log('[useSignIn] onSuccess - setting token and user')
-      // Store token in TanStack cache (persisted to localStorage)
+      // Store token in TanStack cache (auto-persisted to localStorage)
       qc.setQueryData(keys.githubToken, token)
-      const cachedToken = qc.getQueryData<string>(keys.githubToken)
-      console.log(
-        '[useSignIn] Token set in cache:',
-        `${typeof cachedToken === 'string' ? cachedToken.substring(0, 10) : ''}...`
-      )
-      // Store user data as AuthData format { user, token }
+      // Store user data
       qc.setQueryData(keys.user, { user, token })
-      console.log('[useSignIn] User set in cache:', qc.getQueryData(keys.user))
       // Refetch repos with new token
-      console.log('[useSignIn] Calling refetchQueries for repos')
       qc.refetchQueries({ queryKey: keys.repos })
     }
   })
@@ -50,7 +40,7 @@ export function useSignOut(): UseMutationResult<void, Error, void> {
     },
     onSuccess: () => {
       // Clear token from cache
-      qc.removeQueries({ queryKey: keys.githubToken })
+      qc.setQueryData(keys.githubToken, null)
       // Clear user
       qc.setQueryData(keys.user, null)
       // Clear all GitHub-related data
@@ -80,7 +70,7 @@ export function useValidateToken(): UseMutationResult<
         qc.setQueryData(keys.githubToken, token)
         qc.setQueryData(keys.user, { user, token })
       } else {
-        qc.removeQueries({ queryKey: keys.githubToken })
+        qc.setQueryData(keys.githubToken, null)
         qc.setQueryData(keys.user, null)
       }
     }
@@ -100,22 +90,33 @@ export function useValidatePersistedToken(): UseMutationResult<
 
   return useMutation({
     mutationFn: async () => {
-      // Get token from cache (restored from localStorage by TanStack persistence)
+      // Get token from TanStack cache (restored from localStorage by persist)
       const token = qc.getQueryData<string>(keys.githubToken)
       if (!token) {
+        // No token found - don't validate, don't clear anything
         return { token: null, valid: false, user: undefined }
       }
-      const result = await github.validateToken(token)
-      return { token, valid: result.valid, user: result.user as GitHubUser | undefined }
+
+      try {
+        const result = await github.validateToken(token)
+        return { token, valid: result.valid, user: result.user as GitHubUser | undefined }
+      } catch {
+        // On network error, keep the token (assume valid)
+        return { token, valid: true, user: undefined }
+      }
     },
     onSuccess: ({ token, valid, user }) => {
-      if (valid && user && token) {
-        qc.setQueryData(keys.user, { user, token })
-      } else {
-        // Token is invalid - clear it
-        qc.removeQueries({ queryKey: keys.githubToken })
+      if (valid && token) {
+        // Token is valid - store user data
+        if (user) {
+          qc.setQueryData(keys.user, { user, token })
+        }
+      } else if (token && !valid) {
+        // Token EXISTS but is INVALID - clear it
+        qc.setQueryData(keys.githubToken, null)
         qc.setQueryData(keys.user, null)
       }
+      // If token is null, do nothing - don't clear cache
     }
   })
 }

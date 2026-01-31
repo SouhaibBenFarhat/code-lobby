@@ -94,6 +94,10 @@ vi.mock('@data', () => ({
       previewUrlExtraction: ''
     })
   ),
+  useClaudeCodeStatus: vi.fn(() => mockQueryResult({ isInstalled: true, isChecking: false })),
+  useMemoryUsage: vi.fn(() =>
+    mockQueryResult({ heapUsedMB: 50, heapTotalMB: 100, rssMB: 150, heapPercentage: 50 })
+  ),
   // Mutation hooks
   useSetSelectedRepos: vi.fn(() => mockMutationResult()),
   useSetUserProfilePanel: vi.fn(() => mockMutationResult()),

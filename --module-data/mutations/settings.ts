@@ -9,6 +9,7 @@ import type {
   CardLayout,
   CodeVisualizerState,
   DailySpeech,
+  PRWebviewTab,
   ViewMode
 } from '../types'
 
@@ -399,6 +400,108 @@ export function useCloseCodeVisualizer(): UseMutationResult<void, Error, void> {
     mutationFn: () => Promise.resolve(),
     onSuccess: () => {
       qc.setQueryData<CodeVisualizerState>(keys.local.codeVisualizer, DEFAULT_CODE_VISUALIZER_STATE)
+    }
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PR WEBVIEW TABS - Browser tabs associated with PRs
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface AddWebviewTabParams {
+  prId: string
+  tab: PRWebviewTab
+}
+
+/** Add a new webview tab to a PR */
+export function useAddWebviewTab(): UseMutationResult<
+  AddWebviewTabParams,
+  Error,
+  AddWebviewTabParams
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: AddWebviewTabParams) => Promise.resolve(params),
+    onSuccess: ({ prId, tab }) => {
+      const current = qc.getQueryData<PRWebviewTab[]>(keys.local.prWebviewTabs(prId)) || []
+      qc.setQueryData(keys.local.prWebviewTabs(prId), [...current, tab])
+      // Auto-switch to the new tab
+      qc.setQueryData(keys.local.prActiveTab(prId), tab.id)
+    }
+  })
+}
+
+interface RemoveWebviewTabParams {
+  prId: string
+  tabId: string
+}
+
+/** Remove a webview tab from a PR */
+export function useRemoveWebviewTab(): UseMutationResult<
+  RemoveWebviewTabParams,
+  Error,
+  RemoveWebviewTabParams
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: RemoveWebviewTabParams) => Promise.resolve(params),
+    onSuccess: ({ prId, tabId }) => {
+      const current = qc.getQueryData<PRWebviewTab[]>(keys.local.prWebviewTabs(prId)) || []
+      const updated = current.filter((t) => t.id !== tabId)
+      qc.setQueryData(keys.local.prWebviewTabs(prId), updated)
+
+      // If we closed the active tab, switch to PR detail view
+      const activeTab = qc.getQueryData<string | null>(keys.local.prActiveTab(prId))
+      if (activeTab === tabId) {
+        qc.setQueryData(keys.local.prActiveTab(prId), null)
+      }
+    }
+  })
+}
+
+interface UpdateWebviewTabParams {
+  prId: string
+  tabId: string
+  updates: Partial<Omit<PRWebviewTab, 'id'>>
+}
+
+/** Update a webview tab (e.g., change URL or title) */
+export function useUpdateWebviewTab(): UseMutationResult<
+  UpdateWebviewTabParams,
+  Error,
+  UpdateWebviewTabParams
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: UpdateWebviewTabParams) => Promise.resolve(params),
+    onSuccess: ({ prId, tabId, updates }) => {
+      const current = qc.getQueryData<PRWebviewTab[]>(keys.local.prWebviewTabs(prId)) || []
+      const updated = current.map((t) => (t.id === tabId ? { ...t, ...updates } : t))
+      qc.setQueryData(keys.local.prWebviewTabs(prId), updated)
+    }
+  })
+}
+
+interface SetActiveTabParams {
+  prId: string
+  tabId: string | null // null = PR detail view
+}
+
+/** Set the active tab for a PR */
+export function useSetPRActiveTab(): UseMutationResult<
+  SetActiveTabParams,
+  Error,
+  SetActiveTabParams
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: SetActiveTabParams) => Promise.resolve(params),
+    onSuccess: ({ prId, tabId }) => {
+      qc.setQueryData(keys.local.prActiveTab(prId), tabId)
     }
   })
 }

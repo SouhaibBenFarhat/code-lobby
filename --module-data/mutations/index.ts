@@ -28,26 +28,32 @@ export {
   type MergeMethod,
   type ReviewCommentInput,
   type ReviewEvent,
+  useAddLabels,
   useAddPRComment,
   useClosePR,
   useConvertPRToDraft,
+  useDeletePRComment,
   useMarkPRReady,
   useMergePR,
+  useRemoveLabel,
   useReopenPR,
   useSelectPR,
   useSubmitPRReview,
   useSubmitPRReviewWithComments,
   useUpdatePRBody,
   useUpdatePRBranch,
-  useUpdatePRTitle
+  useUpdatePRTitle,
+  useUploadScreenshot
 } from './pull-request'
 // Settings
 export {
+  useAddWebviewTab,
   useClearCache,
   useCloseCodeVisualizer,
   useDeleteDailySpeech,
   useFactoryReset,
   useOpenCodeVisualizer,
+  useRemoveWebviewTab,
   useSaveDailySpeech,
   useSetAgenticPrompts,
   useSetAgenticSettingsOpen,
@@ -56,6 +62,7 @@ export {
   useSetCodeVisualizer,
   useSetDailySpeechModalOpen,
   useSetIDESettings,
+  useSetPRActiveTab,
   useSetPRDetailPanel,
   useSetRepoColor,
   useSetRepoMinimized,
@@ -63,7 +70,8 @@ export {
   useSetUserProfilePanel,
   useSetViewMode,
   useToggleMyPRsFilter,
-  useToggleRepoExpanded
+  useToggleRepoExpanded,
+  useUpdateWebviewTab
 } from './settings'
 
 // System

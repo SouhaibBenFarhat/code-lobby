@@ -1,38 +1,43 @@
 /**
  * Hook for throttling values using requestAnimationFrame
  * Useful for performance optimization during rapid updates (e.g., streaming)
+ *
+ * @param value - The value to throttle
+ * @param intervalMs - Minimum interval between updates in milliseconds (default: 33ms ~30fps)
  */
 
 import { useEffect, useRef, useState } from 'react'
 
-export function useThrottledValue<T>(value: T, fps = 30): T {
+export function useThrottledValue<T>(value: T, intervalMs = 33): T {
   const [throttledValue, setThrottledValue] = useState(value)
   const lastUpdateRef = useRef(0)
-  const frameRef = useRef<number | null>(null)
+  const pendingRef = useRef(false)
 
   useEffect(() => {
-    const minInterval = 1000 / fps
     const now = performance.now()
+    const elapsed = now - lastUpdateRef.current
 
-    if (now - lastUpdateRef.current >= minInterval) {
+    // If enough time has passed, update immediately
+    if (elapsed >= intervalMs) {
       setThrottledValue(value)
       lastUpdateRef.current = now
-    } else {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
-      }
-      frameRef.current = requestAnimationFrame(() => {
+      pendingRef.current = false
+    } else if (!pendingRef.current) {
+      // Schedule update for remaining time
+      pendingRef.current = true
+      const remaining = intervalMs - elapsed
+      const timeoutId = setTimeout(() => {
         setThrottledValue(value)
         lastUpdateRef.current = performance.now()
-      })
-    }
+        pendingRef.current = false
+      }, remaining)
 
-    return () => {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
+      return () => {
+        clearTimeout(timeoutId)
+        pendingRef.current = false
       }
     }
-  }, [value, fps])
+  }, [value, intervalMs])
 
   return throttledValue
 }

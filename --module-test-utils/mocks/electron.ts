@@ -156,6 +156,25 @@ interface MockElectronAPI {
   // Fullscreen
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
+
+  // Claude Code CLI
+  checkClaudeCodeInstalled: ReturnType<typeof vi.fn>
+  startClaudeSession: ReturnType<typeof vi.fn>
+  stopClaudeSession: ReturnType<typeof vi.fn>
+  onClaudeChunk: ReturnType<typeof vi.fn>
+  onClaudeDone: ReturnType<typeof vi.fn>
+  onClaudeError: ReturnType<typeof vi.fn>
+
+  // Memory usage
+  getMemoryUsage: ReturnType<typeof vi.fn>
+
+  // Network request tracking
+  onNetworkRequest: ReturnType<typeof vi.fn>
+
+  // Shell
+  shell: {
+    openExternal: ReturnType<typeof vi.fn>
+  }
 }
 
 // ============================================================================
@@ -384,6 +403,31 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),
     onFullscreenChange: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+
+    // Claude Code CLI
+    checkClaudeCodeInstalled: vi.fn().mockResolvedValue({ installed: true }),
+    startClaudeSession: vi.fn().mockResolvedValue(undefined),
+    stopClaudeSession: vi.fn().mockResolvedValue(true),
+    onClaudeChunk: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+    onClaudeDone: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+    onClaudeError: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+
+    // Memory usage
+    getMemoryUsage: vi.fn().mockResolvedValue({
+      heapUsed: 50 * 1024 * 1024,
+      heapTotal: 100 * 1024 * 1024,
+      rss: 150 * 1024 * 1024,
+      external: 10 * 1024 * 1024,
+      arrayBuffers: 5 * 1024 * 1024
+    }),
+
+    // Network request tracking
+    onNetworkRequest: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+
+    // Shell
+    shell: {
+      openExternal: vi.fn().mockResolvedValue({ success: true })
+    },
 
     ...overrides
   }

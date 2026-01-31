@@ -203,7 +203,7 @@ export interface CustomPrompt {
 export interface ClaudeModel {
   id: string
   display_name: string
-  created_at: string
+  created_at?: string
   type?: string
 }
 
@@ -254,6 +254,13 @@ export interface CodeVisualizerState {
   prNumber: number | null
   headRef: string | null
   initialFilePath: string | null
+}
+
+/** Webview tab associated with a PR */
+export interface PRWebviewTab {
+  id: string
+  url: string
+  title: string
 }
 
 export interface CardLayout {

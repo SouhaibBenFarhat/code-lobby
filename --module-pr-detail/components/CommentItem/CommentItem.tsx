@@ -2,6 +2,7 @@
  * CommentItem - Displays a single comment in the PR timeline.
  */
 
+import { useCurrentUser, useDeletePRComment } from '@data'
 import {
   Avatar,
   AvatarFallback,
@@ -14,21 +15,45 @@ import {
   MarkdownContent,
   Row
 } from '@ui-kit'
-import { Bot, Check, ChevronRight, Copy } from 'lucide-react'
+import { Bot, Check, ChevronRight, Copy, Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { CommentData } from '../types'
 
 export interface CommentItemProps {
   comment: CommentData
+  /** Repository full name for mutations */
+  repoFullName: string
+  /** PR number for mutations */
+  prNumber: number
 }
 
 const TRUNCATE_LENGTH = 200
 
-export function CommentItem({ comment }: CommentItemProps): React.JSX.Element | null {
+export function CommentItem({
+  comment,
+  repoFullName,
+  prNumber
+}: CommentItemProps): React.JSX.Element | null {
   const [isExpanded, setIsExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const { data: currentUser } = useCurrentUser()
+  const deleteComment = useDeletePRComment()
+
   if (!comment.actor) return null
+
+  // Check if current user can delete this comment (only their own comments)
+  const canDelete = currentUser?.login === comment.actor.login && comment.event === 'commented'
+
+  const handleDelete = () => {
+    if (!canDelete) return
+
+    deleteComment.mutate({
+      commentNodeId: comment.id,
+      repoFullName,
+      prNumber
+    })
+  }
 
   const shouldTruncate = comment.body && comment.body.length > TRUNCATE_LENGTH
 
@@ -149,6 +174,25 @@ export function CommentItem({ comment }: CommentItemProps): React.JSX.Element | 
                         <Check className="w-3 h-3 text-success" />
                       ) : (
                         <Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                      )}
+                    </Button>
+                  </Col>
+                )}
+                {/* Delete button - visible on hover for own comments */}
+                {canDelete && (
+                  <Col span="auto">
+                    <Button
+                      variant="unstyled"
+                      size="none"
+                      onClick={handleDelete}
+                      disabled={deleteComment.isPending}
+                      className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                      title="Delete comment"
+                    >
+                      {deleteComment.isPending ? (
+                        <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
                       )}
                     </Button>
                   </Col>

@@ -25,6 +25,8 @@ export const LogCategory = {
   STORE: 'Store',
   /** Rate limiting events */
   RATE_LIMIT: 'RateLimit',
+  /** AI operations (Claude Code CLI) */
+  AI: 'AI',
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDERER PROCESS CATEGORIES

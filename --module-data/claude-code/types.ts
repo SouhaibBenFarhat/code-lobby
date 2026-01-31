@@ -1,0 +1,252 @@
+/**
+ * Claude Code CLI Integration Types
+ *
+ * Types for managing Claude Code subprocess communication,
+ * session state, and streaming output parsing.
+ */
+
+// =============================================================================
+// Message Types
+// =============================================================================
+
+/**
+ * A single message in a Claude conversation
+ */
+export interface ClaudeMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  displayLabel?: string // Short label to show instead of full content (for quick actions)
+  thinking?: string // Collapsed thinking content
+  timestamp: number
+}
+
+// =============================================================================
+// Tool Activity Types
+// =============================================================================
+
+/**
+ * Current tool being used by Claude
+ */
+export interface ToolActivity {
+  toolName: string
+  input: string
+  startedAt: number
+}
+
+/**
+ * Result from a tool execution
+ */
+export interface ToolResult {
+  toolName: string
+  output: string
+  duration: number
+}
+
+// =============================================================================
+// Session Types
+// =============================================================================
+
+/**
+ * Repository context for Claude to access code
+ */
+export interface RepoContext {
+  owner: string
+  repo: string
+  branch: string
+  prNumber?: number
+  localPath?: string // Path to cloned repo (~/.codelobby/repos/...)
+}
+
+/**
+ * Session status
+ */
+export type SessionStatus = 'idle' | 'streaming' | 'thinking' | 'tool_use' | 'done' | 'error'
+
+/**
+ * Complete session state stored in TanStack Query cache
+ */
+export interface ClaudeSession {
+  id: string
+  status: SessionStatus
+  messages: ClaudeMessage[]
+  currentStream: string // Live streaming text content
+  thinking: string | null // Current thinking being streamed
+  activity: ToolActivity | null // Current tool being used
+  lastToolResult: ToolResult | null // Last tool result (for display)
+  error: string | null
+  repoContext?: RepoContext
+  createdAt: number
+  updatedAt: number
+}
+
+// =============================================================================
+// Stream Event Types (from Claude Code --output-format stream-json)
+// =============================================================================
+
+/**
+ * Assistant message event
+ */
+export interface StreamEventAssistant {
+  type: 'assistant'
+  message: {
+    content: string
+  }
+}
+
+/**
+ * Tool use event - Claude is calling a tool
+ */
+export interface StreamEventToolUse {
+  type: 'tool_use'
+  tool_name: string
+  input: Record<string, unknown>
+}
+
+/**
+ * Tool result event - Tool completed
+ */
+export interface StreamEventToolResult {
+  type: 'tool_result'
+  content: string
+}
+
+/**
+ * Thinking event - Extended thinking content
+ */
+export interface StreamEventThinking {
+  type: 'thinking'
+  thinking: string
+}
+
+/**
+ * Final result event
+ */
+export interface StreamEventResult {
+  type: 'result'
+  result: string
+  usage?: {
+    input_tokens?: number
+    output_tokens?: number
+  }
+}
+
+/**
+ * Error event
+ */
+export interface StreamEventError {
+  type: 'error'
+  error: string
+}
+
+/**
+ * System event (status updates)
+ */
+export interface StreamEventSystem {
+  type: 'system'
+  message: string
+}
+
+/**
+ * Union of all possible stream events
+ */
+export type StreamEvent =
+  | StreamEventAssistant
+  | StreamEventToolUse
+  | StreamEventToolResult
+  | StreamEventThinking
+  | StreamEventResult
+  | StreamEventError
+  | StreamEventSystem
+
+// =============================================================================
+// IPC Types
+// =============================================================================
+
+/**
+ * Request to start a Claude Code session
+ */
+export interface ClaudeStartRequest {
+  sessionId: string
+  prompt: string
+  conversationHistory?: ClaudeMessage[] // For multi-turn conversations
+  repoContext?: {
+    owner: string
+    repo: string
+    branch: string
+    prNumber?: number
+    githubToken: string // For private repo access
+  }
+}
+
+/**
+ * IPC event sent from main to renderer for stream chunks
+ */
+export interface ClaudeStreamChunk {
+  sessionId: string
+  event: StreamEvent
+  raw?: string // Raw JSON for debugging
+}
+
+/**
+ * IPC event sent when session completes
+ */
+export interface ClaudeSessionComplete {
+  sessionId: string
+  success: boolean
+  error?: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+  }
+}
+
+// =============================================================================
+// Persistence Types
+// =============================================================================
+
+/**
+ * Stored session data (subset of ClaudeSession for localStorage)
+ */
+export interface StoredSession {
+  id: string
+  messages: ClaudeMessage[]
+  repoContext?: RepoContext
+  createdAt: number
+  updatedAt: number
+}
+
+/**
+ * All stored sessions
+ */
+export interface StoredSessions {
+  [sessionId: string]: StoredSession
+}
+
+// =============================================================================
+// UI Helper Types
+// =============================================================================
+
+/**
+ * Formatted tool activity for display
+ */
+export interface FormattedActivity {
+  icon: 'file' | 'search' | 'folder' | 'terminal' | 'globe' | 'loading'
+  label: string
+  detail: string
+}
+
+/**
+ * Tool name to display mapping
+ */
+export const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  Read: 'Reading file',
+  Write: 'Writing file',
+  Edit: 'Editing file',
+  Glob: 'Finding files',
+  Grep: 'Searching code',
+  LS: 'Listing directory',
+  Bash: 'Running command',
+  WebSearch: 'Searching web',
+  WebFetch: 'Fetching URL'
+}

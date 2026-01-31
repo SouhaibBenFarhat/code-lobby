@@ -50,13 +50,18 @@ function MessageBubbleInner({
   }, [message.content, message.role])
 
   // Get display content (without the JSON block if present)
+  // For user messages with displayLabel, show the label instead of full prompt
   const displayContent = useMemo(() => {
     if (!message.content) return ''
+    // For user messages, prefer displayLabel (short label for quick actions)
+    if (message.role === 'user' && (message as any).displayLabel) {
+      return (message as any).displayLabel
+    }
     if (reviewData) {
       return getDisplayContentWithoutReview(message.content)
     }
     return message.content
-  }, [message.content, reviewData])
+  }, [message.content, message.role, reviewData, (message as any).displayLabel])
 
   return (
     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>

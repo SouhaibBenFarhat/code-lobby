@@ -29,6 +29,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.27",
     "@anthropic-ai/sdk": "^0.71.2",
     "@electron-toolkit/utils": "^3.0.0",
     "@octokit/graphql": "^7.0.2",
@@ -64,6 +65,7 @@
     "react-grid-layout": "^2.2.2",
     "react-markdown": "^10.1.0",
     "react-rnd": "^10.5.2",
+    "react-sketch-canvas": "^6.2.0",
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",

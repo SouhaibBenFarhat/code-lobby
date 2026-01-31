@@ -10,7 +10,13 @@
  */
 
 // Client
-export { QueryClientProvider, queryClient, useQueryClient } from './client'
+export {
+  isQueryCacheHydrated,
+  QueryClientProvider,
+  queryClient,
+  useQueryClient,
+  waitForHydration
+} from './client'
 
 // API Endpoints
 export {
@@ -32,10 +38,14 @@ export {
   // AI Mutations
   useAddAIUsage,
   useAddCustomPrompt,
+  // Labels
+  useAddLabels,
   // Network
   useAddNetworkRequest,
   // Pull Request
   useAddPRComment,
+  // Webview Tabs
+  useAddWebviewTab,
   // Settings
   useClearCache,
   useClearChat,
@@ -47,6 +57,7 @@ export {
   useDeleteCustomPrompt,
   // Daily Speech
   useDeleteDailySpeech,
+  useDeletePRComment,
   useFactoryReset,
   useMarkPRReady,
   useMergePR,
@@ -54,6 +65,10 @@ export {
   useOpenCodeVisualizer,
   // System
   useOpenExternal,
+  // Labels
+  useRemoveLabel,
+  // Webview Tabs
+  useRemoveWebviewTab,
   useReopenPR,
   useResetAIUsage,
   // Daily Speech
@@ -75,6 +90,8 @@ export {
   useSetNetworkPanel,
   useSetNetworkPanelHeight,
   useSetNetworkPanelOpen,
+  // Webview Tabs
+  useSetPRActiveTab,
   useSetPRDetailPanel,
   useSetRepoColor,
   useSetRepoMinimized,
@@ -97,6 +114,10 @@ export {
   useUpdatePRBody,
   useUpdatePRBranch,
   useUpdatePRTitle,
+  // Webview Tabs
+  useUpdateWebviewTab,
+  // Screenshot Upload
+  useUploadScreenshot,
   useValidatePersistedToken,
   useValidateToken
 } from './mutations'
@@ -104,10 +125,13 @@ export {
 export {
   // User / Auth
   type AuthData,
+  // Claude Code CLI
+  type ClaudeCodeStatus,
   // Contributions & Events
   type ContributionsData,
   // AI
   type FindPreviewUrlParams,
+  type MemoryUsage,
   type UserEvent,
   type UserProfilePanel,
   // Agentic Settings
@@ -119,6 +143,9 @@ export {
   useAIUsage,
   useCardLayouts,
   useClaudeApiKey,
+  useClaudeApiKeyStatus,
+  // Claude Code CLI
+  useClaudeCodeStatus,
   useClaudeModels,
   // Code Visualizer
   useCodeVisualizer,
@@ -139,23 +166,31 @@ export {
   useIsAuthenticated,
   // System
   useIsFullscreen,
+  // Memory Usage
+  useMemoryUsage,
   useMinimizedRepos,
   useMyPRsRepos,
   useNetworkPanel,
   useNetworkPanelHeight,
   // Network
   useNetworkRequests,
+  // Webview Tabs
+  usePRActiveTab,
   usePRChatMessages,
   usePRDetailPanel,
   // Pull Request
   usePRFiles,
   usePRs,
   usePRsForRepo,
+  // Webview Tabs
+  usePRWebviewTabs,
   // Rate Limit
   useRateLimit,
   useRefreshContributions,
   useRefreshUserEvents,
   useRepoColors,
+  // Labels
+  useRepoLabels,
   // Repository
   useRepos,
   useSelectedModel,
@@ -189,6 +224,7 @@ export type {
   PRFile,
   PRIdentifier,
   PRReview,
+  PRWebviewTab,
   PullRequest,
   RateLimit,
   Repository,
@@ -198,3 +234,47 @@ export type {
   ReviewThread,
   ViewMode
 } from './types'
+
+// =============================================================================
+// CLAUDE CODE CLI INTEGRATION
+// =============================================================================
+
+// Claude Code Types
+export type {
+  ClaudeMessage,
+  ClaudeSession,
+  ClaudeSessionComplete,
+  ClaudeStartRequest,
+  ClaudeStreamChunk,
+  FormattedActivity,
+  RepoContext,
+  SessionStatus,
+  StoredSession,
+  StreamEvent,
+  ToolActivity,
+  ToolResult
+} from './claude-code'
+// Claude Code Constants
+// Claude Code Hooks
+// Claude Code Parser
+// Claude Code Persistence
+export {
+  claudeKeys,
+  formatToolActivity,
+  formatToolResult,
+  getGeneralSessionId,
+  getPRSessionId,
+  isTerminalEvent,
+  parsePRSessionId,
+  TOOL_DISPLAY_NAMES,
+  useClaudeSession,
+  useClaudeStreamListener,
+  useClearSession,
+  useDeleteSession,
+  useIsStreaming,
+  useSendMessage,
+  useSessionMessages,
+  useStopClaude,
+  useThinking,
+  useToolActivity
+} from './claude-code'

@@ -3,7 +3,7 @@
  */
 
 import { Button, cn, Input, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
-import { Globe, Key, Loader2, Send } from 'lucide-react'
+import { Globe, Key, Loader2, Send, Square } from 'lucide-react'
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../../types'
 import { ContextIndicator } from '../ContextIndicator'
@@ -33,7 +33,8 @@ export interface ChatInputProps {
   // Handlers
   onInputChange: (value: string) => void
   onSendMessage: () => void
-  onQuickActionSelect: (prompt: string) => void
+  onStopStreaming?: () => void
+  onQuickActionSelect: (prompt: string, label: string) => void
   onAddCustomPrompt: (label: string, prompt: string) => Promise<void>
   onDeleteCustomPrompt: (id: string) => Promise<void>
 }
@@ -57,6 +58,7 @@ export function ChatInput({
   customPrompts,
   onInputChange,
   onSendMessage,
+  onStopStreaming,
   onQuickActionSelect,
   onAddCustomPrompt,
   onDeleteCustomPrompt
@@ -204,15 +206,30 @@ export function ChatInput({
                 </p>
               </TooltipContent>
             </Tooltip>
-            <Button
-              onClick={handleSendClick}
-              disabled={!input.trim()}
-              size="icon"
-              className={cn('h-9 w-9 flex-shrink-0', isSending && input.trim() && 'bg-primary/70')}
-              title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
+            {streaming.isStreaming && onStopStreaming ? (
+              <Button
+                onClick={onStopStreaming}
+                variant="destructive"
+                size="icon"
+                className="h-9 w-9 flex-shrink-0"
+                title="Stop streaming"
+              >
+                <Square className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSendClick}
+                disabled={!input.trim()}
+                size="icon"
+                className={cn(
+                  'h-9 w-9 flex-shrink-0',
+                  isSending && input.trim() && 'bg-primary/70'
+                )}
+                title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-between">

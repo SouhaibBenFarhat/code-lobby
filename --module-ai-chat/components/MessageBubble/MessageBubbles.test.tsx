@@ -153,19 +153,24 @@ describe('StreamingBubble', () => {
     const streaming: StreamingState = {
       content: '',
       thinking: '',
-      isStreaming: true
+      isStreaming: true,
+      status: 'composing',
+      activity: null
     }
 
     render(<StreamingBubble streaming={streaming} />)
 
-    expect(screen.getByText('Generating response...')).toBeInTheDocument()
+    // StreamingStateIndicator shows "Processing" for composing status
+    expect(screen.getByText('Processing')).toBeInTheDocument()
   })
 
   it('should render streaming content', async () => {
     const streaming: StreamingState = {
       content: 'Test streaming content',
       thinking: '',
-      isStreaming: true
+      isStreaming: true,
+      status: 'writing',
+      activity: null
     }
 
     const { container } = render(<StreamingBubble streaming={streaming} />)
@@ -181,7 +186,9 @@ describe('StreamingBubble', () => {
     const streaming: StreamingState = {
       content: '',
       thinking: 'I need to think about this...',
-      isStreaming: true
+      isStreaming: true,
+      status: 'thinking',
+      activity: null
     }
 
     render(<StreamingBubble streaming={streaming} />)
@@ -194,7 +201,9 @@ describe('StreamingBubble', () => {
     const streaming: StreamingState = {
       content: 'My response so far',
       thinking: 'My thoughts',
-      isStreaming: true
+      isStreaming: true,
+      status: 'writing',
+      activity: null
     }
 
     const { container } = render(<StreamingBubble streaming={streaming} />)

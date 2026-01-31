@@ -49,9 +49,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { AboutDialog } from './AboutDialog'
 import { AgenticSettingsSidebar } from './AgenticSettingsSidebar'
 import { AICostIndicator } from './AICostIndicator'
+import { ClaudeCodeStatus } from './ClaudeCodeStatus'
 import { ContributionsModal } from './ContributionsModal'
 import { EventStream } from './EventStream'
 import { LogsViewer } from './LogsViewer'
+import { MemoryUsageIndicator } from './MemoryUsageIndicator'
 import { RepoSelector } from './RepoSelector'
 
 function formatTimeUntilReset(resetAt: string): string {
@@ -319,6 +321,14 @@ export function Header({
       )}
 
       <AICostIndicator />
+
+      <MemoryUsageIndicator />
+
+      <Separator orientation="vertical" className="h-6" />
+
+      <div className="no-drag">
+        <ClaudeCodeStatus />
+      </div>
 
       <div className="flex-1" />
 

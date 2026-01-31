@@ -69,14 +69,16 @@ describe('PRDetail', () => {
       const pr = createMockPullRequest({ title: 'Fix authentication bug' })
       render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
-      expect(screen.getByText('Fix authentication bug')).toBeInTheDocument()
+      // PR title may appear multiple times (header, breadcrumb, etc), check at least one exists
+      expect(screen.getAllByText('Fix authentication bug').length).toBeGreaterThan(0)
     })
 
     it('should render PR number', () => {
       const pr = createMockPullRequest({ number: 42 })
       render(<PRDetail onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
-      expect(screen.getByText(/#42/)).toBeInTheDocument()
+      // PR number may appear multiple times (header, etc), check at least one exists
+      expect(screen.getAllByText(/#42/).length).toBeGreaterThan(0)
     })
 
     it('should render close button', () => {

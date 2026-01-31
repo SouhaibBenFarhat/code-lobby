@@ -115,13 +115,14 @@ describe('User Mutations', () => {
         await result.current.mutateAsync()
       })
 
-      // Token should be cleared
-      expect(queryClient.getQueryData(keys.githubToken)).toBeUndefined()
+      // Token should be cleared (set to null via setQueryData)
+      expect(queryClient.getQueryData(keys.githubToken)).toBeNull()
 
-      // User should be cleared (undefined when removed from cache)
+      // User is set to null first, but then removed by removeQueries (predicate matches 'github')
+      // So it ends up undefined
       expect(queryClient.getQueryData(keys.user)).toBeUndefined()
 
-      // Repos should be cleared
+      // Repos should be removed (undefined when removed from cache via removeQueries)
       expect(queryClient.getQueryData(keys.repos)).toBeUndefined()
     })
 
@@ -176,7 +177,8 @@ describe('User Mutations', () => {
         expect(res.valid).toBe(false)
       })
 
-      expect(queryClient.getQueryData(keys.githubToken)).toBeUndefined()
+      // setQueryData(key, null) sets the value to null, not undefined
+      expect(queryClient.getQueryData(keys.githubToken)).toBeNull()
       expect(queryClient.getQueryData(keys.user)).toBeNull()
     })
   })
@@ -232,9 +234,49 @@ describe('User Mutations', () => {
         await result.current.mutateAsync()
       })
 
-      // Token should be cleared
-      expect(queryClient.getQueryData(keys.githubToken)).toBeUndefined()
+      // Token should be cleared (set to null)
+      expect(queryClient.getQueryData(keys.githubToken)).toBeNull()
       expect(queryClient.getQueryData(keys.user)).toBeNull()
+    })
+
+    it('does NOT clear cache when no token found (prevents race condition)', async () => {
+      // No token in cache - simulates hydration not completing yet
+      // Pre-set some data that should NOT be cleared
+      queryClient.setQueryData(keys.user, { user: { login: 'existing' }, token: 'existing' })
+
+      const { result } = renderHook(() => useValidatePersistedToken(), {
+        wrapper: createWrapper(queryClient)
+      })
+
+      await act(async () => {
+        const res = await result.current.mutateAsync()
+        expect(res.valid).toBe(false)
+        expect(res.token).toBeNull()
+      })
+
+      // The user data should NOT be cleared - we didn't touch it because no token was found
+      // This prevents race conditions where hydration hasn't completed yet
+      const userData = queryClient.getQueryData(keys.user)
+      expect(userData).toEqual({ user: { login: 'existing' }, token: 'existing' })
+    })
+
+    it('keeps token on network error (assumes valid)', async () => {
+      queryClient.setQueryData(keys.githubToken, 'valid-token')
+      vi.mocked(github.validateToken).mockRejectedValue(new Error('Network error'))
+
+      const { result } = renderHook(() => useValidatePersistedToken(), {
+        wrapper: createWrapper(queryClient)
+      })
+
+      await act(async () => {
+        const res = await result.current.mutateAsync()
+        // On network error, we assume the token is valid
+        expect(res.valid).toBe(true)
+        expect(res.token).toBe('valid-token')
+      })
+
+      // Token should NOT be cleared on network error
+      expect(queryClient.getQueryData(keys.githubToken)).toBe('valid-token')
     })
   })
 })

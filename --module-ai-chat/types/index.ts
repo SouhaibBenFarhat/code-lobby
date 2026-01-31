@@ -70,16 +70,26 @@ export interface SelectedPR {
 }
 
 // Streaming state for the current assistant message being generated
+export type StreamingStatus = 'idle' | 'thinking' | 'tool_use' | 'writing' | 'composing'
+
+export interface ToolActivity {
+  toolName: string
+  input: string
+}
+
 export interface StreamingState {
   content: string
   thinking: string
   isStreaming: boolean
+  status: StreamingStatus
+  activity: ToolActivity | null
 }
 
 // Queued message waiting to be sent
 export interface QueuedMessage {
   id: string
   content: string
+  displayLabel?: string // Short label to show instead of full content (for quick actions)
 }
 
 // Pre-defined prompt structure

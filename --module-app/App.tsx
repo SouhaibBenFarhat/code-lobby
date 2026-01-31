@@ -6,6 +6,7 @@
 
 import {
   useAIPanel,
+  useClaudeStreamListener,
   useCloseCodeVisualizer,
   useCodeVisualizer,
   useIDESettings,
@@ -22,7 +23,8 @@ import {
   useSetUserProfilePanel,
   useUserProfilePanel,
   useValidatePersistedToken,
-  useViewMode
+  useViewMode,
+  waitForHydration
 } from '@data'
 import { CodeVisualizerPanel } from '@pr-detail'
 import { Slot } from '@slot-system'
@@ -86,11 +88,17 @@ export function App(): React.JSX.Element {
   const setIDESettings = useSetIDESettings()
   const setNetworkPanelHeight = useSetNetworkPanelHeight()
   const setUserProfilePanel = useSetUserProfilePanel()
-  const { mutate: validatePersistedToken } = useValidatePersistedToken()
 
-  // On app startup, validate persisted token and restore user data
+  // Initialize Claude Code stream listener (receives IPC events from main process)
+  useClaudeStreamListener()
+
+  // Validate persisted token on startup (after hydration completes)
+  const { mutate: validatePersistedToken } = useValidatePersistedToken()
   useEffect(() => {
-    validatePersistedToken()
+    // Wait for TanStack Query cache to hydrate from localStorage
+    waitForHydration().then(() => {
+      validatePersistedToken()
+    })
   }, [validatePersistedToken])
 
   // Panel resize state

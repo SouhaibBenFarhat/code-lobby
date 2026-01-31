@@ -189,3 +189,27 @@ export function useFileContent(
     gcTime: 60 * 60 * 1000 // 1 hour
   })
 }
+
+/**
+ * Fetch all labels for a repository
+ * Used by Label picker to show available labels
+ */
+export function useRepoLabels(
+  repoFullName: string | null
+): UseQueryResult<github.RepoLabel[] | null> {
+  const { data: token } = useGitHubToken()
+
+  return useQuery({
+    queryKey: repoFullName ? keys.repoLabels(repoFullName) : ['github', 'repo-labels', 'none'],
+    queryFn: async () => {
+      if (!token || !repoFullName) return null
+      const [owner, repo] = repoFullName.split('/')
+      const labels = await github.fetchRepoLabels(token, owner, repo)
+      return labels
+    },
+    enabled: !!token && !!repoFullName,
+    // Labels don't change often, cache for a long time
+    staleTime: 60 * 60 * 1000, // 1 hour
+    gcTime: 2 * 60 * 60 * 1000 // 2 hours
+  })
+}
