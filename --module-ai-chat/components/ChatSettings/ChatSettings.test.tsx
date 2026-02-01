@@ -18,10 +18,8 @@ describe('ChatSettings', () => {
       }
     ],
     selectedModel: 'claude-3-5-sonnet-20241022',
-    thinkingBudget: 0,
     isLoadingModels: false,
     onModelChange: vi.fn(),
-    onThinkingBudgetChange: vi.fn(),
     onRemoveApiKey: vi.fn()
   }
 
@@ -54,33 +52,6 @@ describe('ChatSettings', () => {
       const triggers = screen.getAllByRole('combobox')
       expect(triggers.length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('Claude 3.5 Sonnet')).toBeInTheDocument()
-    })
-  })
-
-  describe('thinking budget slider', () => {
-    it('renders thinking label', () => {
-      render(<ChatSettings {...defaultProps} />)
-
-      expect(screen.getByText('Thinking')).toBeInTheDocument()
-    })
-
-    it('renders slider', () => {
-      render(<ChatSettings {...defaultProps} />)
-
-      const slider = screen.getByRole('slider')
-      expect(slider).toBeInTheDocument()
-    })
-
-    it('shows Off when budget is 0', () => {
-      render(<ChatSettings {...defaultProps} thinkingBudget={0} />)
-
-      expect(screen.getByText('Off')).toBeInTheDocument()
-    })
-
-    it('shows token count when budget is set', () => {
-      render(<ChatSettings {...defaultProps} thinkingBudget={10000} />)
-
-      expect(screen.getByText('10k tokens')).toBeInTheDocument()
     })
   })
 

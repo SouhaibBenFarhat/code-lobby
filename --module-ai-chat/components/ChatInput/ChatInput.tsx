@@ -1,13 +1,25 @@
 /**
- * ChatInput - Input area with API key entry, textarea, and quick actions
+ * ChatInput - Input area with API key entry, textarea, thinking slider, and quick actions
  */
 
-import { Button, cn, Input } from '@ui-kit'
+import { Button, cn, Input, Slider, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import { Key, Loader2, Send, Square } from 'lucide-react'
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../../types'
 import { ContextIndicator } from '../ContextIndicator'
 import { QuickActions } from '../QuickActions'
+
+// Thinking budget range
+const THINKING_MIN = 0
+const THINKING_MAX = 32000
+const THINKING_STEP = 1000
+
+// Format thinking budget for display (compact)
+function formatThinkingBudgetCompact(value: number): string {
+  if (value === 0) return 'Off'
+  if (value >= 1000) return `${value / 1000}k`
+  return `${value}`
+}
 
 export interface ChatInputProps {
   // API Key state
@@ -24,6 +36,9 @@ export interface ChatInputProps {
   streaming: StreamingState
   messages: ChatMessage[]
   selectedModel: string
+  // Thinking budget
+  thinkingBudget: number
+  onThinkingBudgetChange: (budget: number) => void
   // Quick actions
   prompts: QuickPrompt[]
   customPrompts: CustomPrompt[]
@@ -50,6 +65,8 @@ export function ChatInput({
   streaming,
   messages,
   selectedModel,
+  thinkingBudget,
+  onThinkingBudgetChange,
   prompts,
   customPrompts,
   onInputChange,
@@ -196,15 +213,46 @@ export function ChatInput({
             )}
           </div>
         </div>
-        <div className="flex items-center justify-between">
-          <ContextIndicator
-            messages={messages}
-            streamingContent={streaming.content}
-            streamingThinking={streaming.thinking}
-            model={selectedModel}
-            inputText={input}
-          />
-          <p className="text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <ContextIndicator
+              messages={messages}
+              streamingContent={streaming.content}
+              streamingThinking={streaming.thinking}
+              model={selectedModel}
+              inputText={input}
+            />
+
+            {/* Compact Thinking Budget Slider */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center">
+                  <Slider
+                    value={[thinkingBudget]}
+                    min={THINKING_MIN}
+                    max={THINKING_MAX}
+                    step={THINKING_STEP}
+                    onValueChange={(values) => onThinkingBudgetChange(values[0])}
+                    className="w-16"
+                  />
+                  <span
+                    className={cn(
+                      'text-[10px] tabular-nums ml-1',
+                      thinkingBudget > 0 ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {formatThinkingBudgetCompact(thinkingBudget)}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Extended thinking:{' '}
+                {thinkingBudget === 0 ? 'Disabled' : `${thinkingBudget.toLocaleString()} tokens`}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground shrink-0">
             {isSending
               ? 'Enter to queue • Shift+Enter for new line'
               : 'Enter to send • Shift+Enter for new line'}

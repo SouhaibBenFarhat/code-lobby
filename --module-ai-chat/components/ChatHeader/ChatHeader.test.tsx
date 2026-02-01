@@ -19,8 +19,9 @@ describe('ChatHeader', () => {
         created_at: '2024-02-29T00:00:00Z'
       }
     ],
-    showSettings: false,
-    onShowSettingsChange: vi.fn(),
+    isLoadingModels: false,
+    onModelChange: vi.fn(),
+    onRemoveApiKey: vi.fn(),
     onClearHistory: vi.fn(),
     onClose: vi.fn()
   }
@@ -62,14 +63,14 @@ describe('ChatHeader', () => {
       expect(defaultProps.onClose).toHaveBeenCalled()
     })
 
-    it('calls onShowSettingsChange when settings button clicked', async () => {
+    it('opens settings popover when settings button clicked', async () => {
       render(<ChatHeader {...defaultProps} />)
-      // Find the settings button by its aria-label or title
+      // Find the settings button (first button)
       const buttons = screen.getAllByRole('button')
-      // Settings button should be the first one (before trash and close)
       const settingsButton = buttons[0]
       await userEvent.click(settingsButton)
-      expect(defaultProps.onShowSettingsChange).toHaveBeenCalledWith(true)
+      // Settings popover should show the Settings title
+      expect(screen.getByText('Settings')).toBeInTheDocument()
     })
 
     it('calls onClearHistory when clear button clicked', async () => {

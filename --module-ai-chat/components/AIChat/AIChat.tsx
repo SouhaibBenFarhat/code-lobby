@@ -41,7 +41,6 @@ import type {
 import { NoPRSelectedState, PRContextBanner } from '../ChatEmptyStates'
 import { ChatHeader } from '../ChatHeader'
 import { ChatInput } from '../ChatInput'
-import { ChatSettings } from '../ChatSettings'
 import { ReviewPreviewModal } from '../ReviewPreviewModal'
 import { VirtualizedMessageList } from '../VirtualizedMessageList'
 
@@ -124,7 +123,6 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [isSettingKey, setIsSettingKey] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState('')
 
@@ -588,8 +586,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           apiKey={null}
           selectedModel=""
           models={[]}
-          showSettings={false}
-          onShowSettingsChange={() => {}}
+          isLoadingModels={false}
+          onModelChange={() => {}}
+          onRemoveApiKey={() => {}}
           onClearHistory={() => {}}
           onClose={onClose}
         />
@@ -619,27 +618,15 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         apiKey={hasApiKey ? 'configured' : null}
         selectedModel={selectedModel}
         models={CLAUDE_MODELS}
-        showSettings={showSettings}
-        onShowSettingsChange={setShowSettings}
+        isLoadingModels={false}
+        onModelChange={setSelectedModel}
+        onRemoveApiKey={() => {
+          // Clear the API key
+          setApiKeyMutation.mutate('')
+        }}
         onClearHistory={handleClearHistory}
         onClose={onClose}
       />
-
-      {/* Settings panel - collapsible */}
-      {showSettings && hasApiKey && (
-        <ChatSettings
-          models={CLAUDE_MODELS}
-          selectedModel={selectedModel}
-          thinkingBudget={thinkingBudget}
-          isLoadingModels={false}
-          onModelChange={setSelectedModel}
-          onThinkingBudgetChange={setThinkingBudget}
-          onRemoveApiKey={() => {
-            // Clear the API key
-            setApiKeyMutation.mutate('')
-          }}
-        />
-      )}
 
       {/* Show PR context banner when a PR is selected */}
       {selectedPR && (
@@ -735,6 +722,8 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           streaming={streaming}
           messages={chatMessages}
           selectedModel={selectedModel}
+          thinkingBudget={thinkingBudget}
+          onThinkingBudgetChange={setThinkingBudget}
           prompts={[]}
           customPrompts={customPrompts}
           onInputChange={setInput}

@@ -24,6 +24,8 @@ describe('ChatInput', () => {
     },
     messages: [],
     selectedModel: 'claude-3-5-sonnet-20241022',
+    thinkingBudget: 10000,
+    onThinkingBudgetChange: vi.fn(),
     prompts: [
       { id: 'test-prompt', label: 'Test Prompt', prompt: 'Test prompt content', icon: '💡' }
     ],
