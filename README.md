@@ -936,12 +936,6 @@ When reporting bugs, please include:
 
 ---
 
-## License
-
-MIT License - See [LICENSE](LICENSE) for details.
-
----
-
 ## Acknowledgments
 
 - [Electron](https://www.electronjs.org/) - Desktop app framework
