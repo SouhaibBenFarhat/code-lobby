@@ -285,7 +285,7 @@ pnpm run dev
 | State & Data | TanStack Query 5 |
 | GitHub API | Direct GraphQL fetch |
 | AI Integration | Claude Code CLI (claude-agent-sdk) |
-| Persistence | localStorage (TanStack Query) + electron-store |
+| Persistence | SQLite (Drizzle ORM) + localStorage + electron-store |
 | Drag & Resize | react-rnd |
 
 ### Project Structure
@@ -319,6 +319,9 @@ codelobby/
 │   └── mutations/                 # useMutation hooks
 ├── --module-slot-system/          # Module registration system
 ├── --module-logger/               # Structured logging (main/renderer)
+├── --module-persistence/          # SQLite persistence (Drizzle ORM)
+│   ├── main/                      # Database connection, schema, repositories
+│   └── hooks/                     # TanStack Query hooks for DB operations
 ├── --module-ui-kit/               # Shared UI components (shadcn/ui)
 ├── --module-header/               # Header bar, settings, rate limit
 ├── --module-canvas/               # Free-form PR card canvas
@@ -838,10 +841,9 @@ query GetPRsForRepos($repos: [String!]!) {
 | Card Layouts, Repo Colors, Minimized Repos | `localStorage` | TanStack Query persistence (settings keys) |
 | Claude API Key | `ANTHROPIC_API_KEY` env var or electron-store | Used by Claude Code CLI |
 | AI Settings (model, thinking) | `~/Library/Application Support/codelobby/` | electron-store |
-| General Chat History | `~/Library/Application Support/codelobby/` | electron-store |
-| PR-Specific Chats, PR Analyses | `~/Library/Application Support/codelobby/` | electron-store |
-| AI Usage Tracking (cost/tokens) | `~/Library/Application Support/codelobby/` | electron-store |
-| Custom Quick Prompts | `~/Library/Application Support/codelobby/` | electron-store |
+| Conversations & Messages | `~/Library/Application Support/codelobby/codelobby.db` | SQLite (Drizzle ORM) |
+| Custom Quick Prompts | `~/Library/Application Support/codelobby/codelobby.db` | SQLite (Drizzle ORM) |
+| AI Usage Tracking (cost/tokens) | `~/Library/Application Support/codelobby/codelobby.db` | SQLite (Drizzle ORM) |
 
 ---
 
@@ -987,16 +989,16 @@ MIT License - See [LICENSE](LICENSE) for details.
 - AI review generation with inline comments (Approve, Request Changes, Comment)
 - PR actions (approve, merge, request changes) directly from the app
 - Network panel for debugging HTTP requests
-- Custom quick prompts
+- Custom quick prompts (with edit/update support)
 - AI usage tracking with cost indicator in header
 - Memory usage indicator in header
 - Streaming state indicators (reasoning, tool use, writing)
+- **SQLite persistence** for conversations, messages, custom prompts, and AI usage (Drizzle ORM)
 
 ### Next
-- SQLite persistence for conversation history
 - Smart suggestions based on comment content
 - Natural language PR search
-- Comment on PRs directly from the app
+- Pull branch to local machine with one click
 
 ### Future
 - AI-assisted code fixes (via Claude Code tools)

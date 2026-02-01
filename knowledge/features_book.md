@@ -611,11 +611,17 @@ Everything persists across sessions:
 - Window positions and sizes
 - Expanded/collapsed sections
 - Filter settings per repository
-- AI conversation history
+- AI conversation history (stored in SQLite database)
+- Custom quick prompts (stored in SQLite database)
 - Panel open/closed states
 - **Selected AI conversation** — Resume exactly where you left off
 
 Close the app Friday, open it Monday — everything is exactly where you left it.
+
+**Powered by SQLite:**
+- Conversations and messages are stored in a local SQLite database
+- Efficient even with thousands of messages
+- No external services — all data stays on your machine
 
 ### Fresh Start When You Need It
 

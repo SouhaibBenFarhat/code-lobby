@@ -31,8 +31,8 @@ CodeLobby is an **Electron desktop application** built with:
 | Build Tool | electron-vite |
 | Styling | Tailwind CSS 3 + shadcn/ui |
 | GitHub API | GraphQL (direct fetch) |
-| AI Integration | Anthropic Claude API |
-| Persistence | localStorage + TanStack Query Persist |
+| AI Integration | Claude Code CLI (claude-agent-sdk) |
+| Persistence | **SQLite (Drizzle ORM)** + localStorage + electron-store |
 
 ### Architectural Philosophy
 
@@ -144,6 +144,19 @@ Modules are prefixed with `--module-` and live at the project root:
                             # Button, Input, Card, etc.
 
 --module-logger/            # Structured logging
+
+--module-persistence/       # SQLite database (Drizzle ORM)
+├── main/                   # Main process: schema, connection, repositories
+│   ├── schema.ts           # Drizzle table definitions
+│   ├── connection.ts       # Database connection management
+│   ├── ipc-handlers.ts     # IPC handlers for DB operations
+│   └── repositories/       # CRUD operations per table
+├── hooks/                  # Renderer process: TanStack Query hooks
+│   ├── conversations.ts
+│   ├── messages.ts
+│   ├── custom-prompts.ts
+│   └── ai-usage.ts
+└── types.ts                # Shared TypeScript types
 
 --module-test-utils/        # Test utilities & mocks
 
@@ -407,6 +420,45 @@ persistQueryClient({
 })
 ```
 
+### SQLite Persistence (--module-persistence/)
+
+For structured data that requires relational storage, CodeLobby uses SQLite via Drizzle ORM:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Renderer Process                          │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  @persistence/hooks (TanStack Query hooks)              ││
+│  │  useConversations(), useMessages(), useCustomPrompts()  ││
+│  └─────────────────────────────────────────────────────────┘│
+└───────────────────────────┬─────────────────────────────────┘
+                            │ window.electron.db.* (IPC)
+┌───────────────────────────┴─────────────────────────────────┐
+│                    Main Process                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  @persistence/main (Drizzle ORM)                        ││
+│  │  • schema.ts - Table definitions                        ││
+│  │  • connection.ts - Database connection                  ││
+│  │  • ipc-handlers.ts - IPC bridge                         ││
+│  │  • repositories/* - CRUD operations                     ││
+│  └───────────────────────────┬─────────────────────────────┘│
+│                              │                               │
+│  ┌───────────────────────────┴─────────────────────────────┐│
+│  │  SQLite Database (codelobby.db)                         ││
+│  │  • conversations - Chat sessions (PR & general)         ││
+│  │  • messages - Individual chat messages                  ││
+│  │  • custom_prompts - User-created quick prompts          ││
+│  │  • ai_usage - Token usage & cost tracking               ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why SQLite?**
+- Relational data (conversations → messages)
+- Efficient queries for large chat histories
+- Atomic operations for data integrity
+- No external database server required
+
 ---
 
 ## 8. Component Architecture Patterns
@@ -601,4 +653,4 @@ pnpm run test         # Run tests
 
 ---
 
-*Last updated: January 26, 2026*
+*Last updated: January 29, 2026*
