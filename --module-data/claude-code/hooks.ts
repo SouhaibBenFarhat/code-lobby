@@ -34,6 +34,7 @@ import type {
   SessionStatus,
   StreamEvent,
   ToolActivity,
+  ToolHistoryEntry,
   ToolResult
 } from './types'
 
@@ -66,6 +67,7 @@ function createInitialSession(sessionId: string, repoContext?: RepoContext): Cla
     thinking: null,
     activity: null,
     lastToolResult: null,
+    toolHistory: [],
     error: null,
     repoContext: repoContext || stored?.repoContext,
     createdAt: stored?.createdAt || Date.now(),
@@ -114,7 +116,15 @@ interface PRContext {
   changedFiles?: number
   labels?: string[]
   comments?: Array<{ author: string; body: string; createdAt: string }>
+  reviews?: Array<{ author: string; state: string; body: string | null; createdAt: string }>
+  reviewThreads?: Array<{
+    path: string
+    line: number | null
+    isResolved: boolean
+    comments: Array<{ author: string; body: string; createdAt: string }>
+  }>
   reviewSummary?: string
+  username?: string // GitHub username of the current user
 }
 
 interface ClaudeConfig {
@@ -277,6 +287,7 @@ export function useClearSession(): UseMutationResult<
           thinking: null,
           activity: null,
           lastToolResult: null,
+          toolHistory: [],
           error: null,
           updatedAt: Date.now()
         }
@@ -336,6 +347,16 @@ export function useClaudeStreamListener(): void {
     // Handle stream chunks
     const unsubChunk = window.electron.onClaudeChunk((data) => {
       const { sessionId, event } = data
+
+      // Debug: Log tool_use events to see actual command structure
+      if (event && (event as StreamEvent).type === 'tool_use') {
+        const toolEvent = event as { tool_name?: string; input?: Record<string, unknown> }
+        console.log('[Claude Tool Use]', {
+          tool_name: toolEvent.tool_name,
+          input_keys: toolEvent.input ? Object.keys(toolEvent.input) : [],
+          input: toolEvent.input
+        })
+      }
 
       queryClient.setQueryData<ClaudeSession>(claudeKeys.session(sessionId), (old) => {
         if (!old) return old
@@ -420,19 +441,74 @@ function processStreamEvent(session: ClaudeSession, event: StreamEvent): ClaudeS
     updates.thinking = (session.thinking || '') + (event.thinking || '')
   } else if (isToolUseEvent(event)) {
     const { toolName, input } = extractToolInfo(event)
+    const now = Date.now()
     updates.status = 'tool_use'
     updates.activity = {
       toolName,
       input,
-      startedAt: Date.now()
+      startedAt: now
     } as ToolActivity
+
+    // Only add to history if we have meaningful input (skip empty {} placeholders)
+    const hasInput = input && input !== '{}' && input !== '' && !input.startsWith('[')
+    if (hasInput) {
+      // Check if we should update the last entry (same tool, was running with no input)
+      const history = [...(session.toolHistory || [])]
+      const lastEntry = history.length > 0 ? history[history.length - 1] : null
+
+      if (
+        lastEntry &&
+        lastEntry.toolName === toolName &&
+        lastEntry.status === 'running' &&
+        !lastEntry.input
+      ) {
+        // Update existing entry with the input
+        history[history.length - 1] = { ...lastEntry, input }
+        updates.toolHistory = history
+      } else {
+        // Add new entry
+        const historyEntry: ToolHistoryEntry = {
+          id: `tool-${now}-${Math.random().toString(36).slice(2, 8)}`,
+          toolName,
+          input,
+          startedAt: now,
+          status: 'running'
+        }
+        updates.toolHistory = [...history, historyEntry]
+      }
+    } else if (
+      !session.toolHistory?.some((e) => e.status === 'running' && e.toolName === toolName)
+    ) {
+      // Add placeholder entry (will be updated when we get input)
+      const historyEntry: ToolHistoryEntry = {
+        id: `tool-${now}-${Math.random().toString(36).slice(2, 8)}`,
+        toolName,
+        input: '',
+        startedAt: now,
+        status: 'running'
+      }
+      updates.toolHistory = [...(session.toolHistory || []), historyEntry]
+    }
   } else if (isToolResultEvent(event)) {
+    const now = Date.now()
+    const duration = session.activity ? now - session.activity.startedAt : 0
     updates.lastToolResult = {
       toolName: session.activity?.toolName || 'Unknown',
       output: event.content || '',
-      duration: session.activity ? Date.now() - session.activity.startedAt : 0
+      duration
     } as ToolResult
     updates.activity = null
+    // Update the last tool history entry with result
+    if (session.toolHistory && session.toolHistory.length > 0) {
+      const history = [...session.toolHistory]
+      const lastEntry = { ...history[history.length - 1] }
+      lastEntry.output = (event.content || '').slice(0, 500) // Truncate for storage
+      lastEntry.completedAt = now
+      lastEntry.duration = duration
+      lastEntry.status = 'completed'
+      history[history.length - 1] = lastEntry
+      updates.toolHistory = history
+    }
   } else if (isResultEvent(event)) {
     // Final result - the result is the FULL content, not a delta
     // Only use it if we don't have accumulated content yet
@@ -445,6 +521,15 @@ function processStreamEvent(session: ClaudeSession, event: StreamEvent): ClaudeS
     updates.status = 'error'
     updates.error = event.error
     updates.activity = null
+    // Mark any running tool as errored
+    if (session.toolHistory && session.toolHistory.length > 0) {
+      const history = [...session.toolHistory]
+      const lastEntry = history[history.length - 1]
+      if (lastEntry.status === 'running') {
+        history[history.length - 1] = { ...lastEntry, status: 'error', completedAt: Date.now() }
+        updates.toolHistory = history
+      }
+    }
   }
 
   return { ...session, ...updates }
@@ -475,6 +560,44 @@ function finalizeSession(session: ClaudeSession, success: boolean, error?: strin
     error: success ? null : error || 'Session failed',
     updatedAt: Date.now()
   }
+}
+
+// =============================================================================
+// Review Event Hook
+// =============================================================================
+
+/**
+ * Review data from Claude's structured review output
+ */
+export interface ClaudeReviewData {
+  summary: string
+  comments: Array<{ file: string; line: number; body: string }>
+  verdict: 'approve' | 'request_changes' | 'comment'
+}
+
+/**
+ * Listen for Claude review events (when Claude generates a structured review)
+ * This uses a tool-based approach - the main process detects review JSON and emits a dedicated event
+ */
+export function useClaudeReviewListener(
+  sessionId: string | null,
+  onReview: (review: ClaudeReviewData) => void
+): void {
+  const onReviewRef = useRef(onReview)
+  onReviewRef.current = onReview
+
+  useEffect(() => {
+    if (!window.electron || !sessionId) return
+
+    const unsubscribe = window.electron.onClaudeReview((data) => {
+      // Only handle reviews for our session
+      if (data.sessionId === sessionId) {
+        onReviewRef.current(data.review)
+      }
+    })
+
+    return unsubscribe
+  }, [sessionId])
 }
 
 // =============================================================================

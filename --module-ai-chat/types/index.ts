@@ -77,12 +77,24 @@ export interface ToolActivity {
   input: string
 }
 
+export interface ToolHistoryEntry {
+  id: string
+  toolName: string
+  input: string
+  output?: string
+  startedAt: number
+  completedAt?: number
+  duration?: number
+  status: 'running' | 'completed' | 'error'
+}
+
 export interface StreamingState {
   content: string
   thinking: string
   isStreaming: boolean
   status: StreamingStatus
   activity: ToolActivity | null
+  toolHistory: ToolHistoryEntry[]
 }
 
 // Queued message waiting to be sent

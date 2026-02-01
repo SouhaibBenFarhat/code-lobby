@@ -43,10 +43,13 @@
       "@ui-kit": ["./--module-ui-kit/index.ts"],
       "@ui-kit/*": ["./--module-ui-kit/*"],
       "@test-utils": ["./--module-test-utils/index.ts"],
-      "@test-utils/*": ["./--module-test-utils/*"]
+      "@test-utils/*": ["./--module-test-utils/*"],
+      "@persistence": ["./--module-persistence/index.ts"],
+      "@persistence/*": ["./--module-persistence/*"]
     },
-    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom", "electron"],
     "outDir": "./out/renderer"
   },
-  "include": ["src/renderer/**/*", "src/preload/electron-api.d.ts", "--module-*/**/*", "tests/**/*"]
+  "include": ["src/renderer/**/*", "src/preload/electron-api.d.ts", "--module-*/**/*", "tests/**/*"],
+  "exclude": ["--module-persistence/main/**/*", "--module-logger/main.ts", "--module-logger/main-logger.ts", "--module-logger/main-logger.test.ts"]
 }

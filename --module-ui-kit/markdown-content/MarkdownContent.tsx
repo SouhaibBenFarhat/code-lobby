@@ -1,9 +1,10 @@
-import type { JSX } from 'react'
+import { Check, Copy } from 'lucide-react'
+import { type JSX, useCallback, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import { Button } from '../button'
+import { CodeHighlight } from '../code-highlight/CodeHighlight'
 import { cn } from '../utils'
 
 interface MarkdownContentProps {
@@ -11,12 +12,63 @@ interface MarkdownContentProps {
   className?: string
 }
 
+/** Code block with copy button */
+function CodeBlockWithCopy({ code, language }: { code: string; language: string }): JSX.Element {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = code
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [code])
+
+  return (
+    <div className="relative group">
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          'absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity',
+          'bg-muted/80 hover:bg-muted border border-border/50',
+          copied && 'opacity-100'
+        )}
+        onClick={handleCopy}
+        title={copied ? 'Copied!' : 'Copy code'}
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+      </Button>
+      <CodeHighlight
+        code={code}
+        language={language}
+        showLineNumbers={code.split('\n').length > 3}
+        className="text-[11px]"
+      />
+    </div>
+  )
+}
+
 export function MarkdownContent({ content, className }: MarkdownContentProps): JSX.Element {
   return (
     <div className={cn('markdown-content', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, rehypeHighlight]}
+        rehypePlugins={[rehypeRaw]}
         components={{
           // Paragraphs
           p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
@@ -39,32 +91,34 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
             <h4 className="text-xs font-semibold mb-1 mt-2 first:mt-0">{children}</h4>
           ),
 
-          // Code
-          code: ({ className, children, ...props }) => {
-            const isInline = !className
-            if (isInline) {
-              return (
-                <code
-                  className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-mono text-foreground"
-                  {...props}
-                >
-                  {children}
-                </code>
-              )
+          // Code - use CodeBlockWithCopy for blocks, inline styling for inline code
+          code: ({ className, children, node, ...props }) => {
+            // Check if this is a code block (has language class) or inline code
+            const match = /language-(\w+)/.exec(className || '')
+            const language = match?.[1]
+            const codeString = String(children).replace(/\n$/, '')
+
+            // Check if parent is a <pre> tag (code block vs inline)
+            const isCodeBlock = node?.position && language
+
+            if (isCodeBlock && language) {
+              // Use CodeBlockWithCopy for code blocks (includes copy button)
+              return <CodeBlockWithCopy code={codeString} language={language} />
             }
+
+            // Inline code
             return (
-              <code className={cn('text-[11px]', className)} {...props}>
+              <code
+                className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-mono text-foreground"
+                {...props}
+              >
                 {children}
               </code>
             )
           },
 
-          // Code blocks
-          pre: ({ children }) => (
-            <pre className="my-2 p-3 rounded-lg bg-muted/80 overflow-x-auto text-[11px] leading-relaxed border border-border">
-              {children}
-            </pre>
-          ),
+          // Code blocks - pass through since CodeHighlight handles its own container
+          pre: ({ children }) => <div className="my-2">{children}</div>,
 
           // Links
           a: ({ href, children }) => (

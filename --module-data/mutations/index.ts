@@ -12,8 +12,8 @@ export {
   useSaveMessage,
   useSetClaudeApiKey,
   useSetEnableThinking,
-  useSetEnableWebFetch,
-  useSetSelectedModel
+  useSetSelectedModel,
+  useUpdateCustomPrompt
 } from './ai'
 // Network
 export {

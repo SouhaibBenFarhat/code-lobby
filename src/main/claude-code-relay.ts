@@ -15,6 +15,220 @@ import { LogCategory, mainLogger as logger } from '@logger/main'
 import type { BrowserWindow } from 'electron'
 import { getClaudeApiKey } from './store'
 
+// =============================================================================
+// Review Detection Types
+// =============================================================================
+
+interface ReviewComment {
+  file: string
+  line: number
+  body: string
+}
+
+interface ReviewData {
+  summary: string
+  comments: ReviewComment[]
+  verdict: 'approve' | 'request_changes' | 'comment'
+}
+
+/**
+ * Check if JSON has balanced braces/brackets (complete JSON)
+ */
+function isJsonComplete(jsonStr: string): boolean {
+  let braceCount = 0
+  let bracketCount = 0
+  let inString = false
+  let escaped = false
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i]
+    if (escaped) {
+      escaped = false
+      continue
+    }
+    if (char === '\\') {
+      escaped = true
+      continue
+    }
+    if (char === '"') {
+      inString = !inString
+      continue
+    }
+    if (inString) continue
+    if (char === '{') braceCount++
+    else if (char === '}') braceCount--
+    else if (char === '[') bracketCount++
+    else if (char === ']') bracketCount--
+  }
+
+  return braceCount === 0 && bracketCount === 0 && !inString
+}
+
+// Tool tags - Claude "calls" tools by outputting these XML-style blocks
+const REVIEW_TOOL_START = '<codelobby_submit_review>'
+const REVIEW_TOOL_END = '</codelobby_submit_review>'
+
+/**
+ * Streaming tool call filter
+ * Accumulates text and strips out <codelobby_submit_review>...</codelobby_submit_review> blocks
+ */
+class ToolCallFilter {
+  private buffer = ''
+
+  /**
+   * Process incoming text chunk and return only displayable content
+   * Tool call content is stripped out
+   */
+  processChunk(text: string): string {
+    this.buffer += text
+
+    // Check if we have a complete tool call to strip
+    const startIdx = this.buffer.indexOf(REVIEW_TOOL_START)
+    const endIdx = this.buffer.indexOf(REVIEW_TOOL_END)
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      // We have a complete tool call - strip it out
+      const before = this.buffer.slice(0, startIdx)
+      const after = this.buffer.slice(endIdx + REVIEW_TOOL_END.length)
+      this.buffer = after
+      return before
+    }
+
+    if (startIdx !== -1) {
+      // Tool call started but not finished - emit everything before it, keep rest buffered
+      const before = this.buffer.slice(0, startIdx)
+      this.buffer = this.buffer.slice(startIdx)
+      return before
+    }
+
+    // Check if buffer might end with partial start tag (e.g., "<codelobby_sub")
+    // We need to hold back potential partial matches
+    const partialMatch = this.getPartialTagMatch()
+    if (partialMatch > 0) {
+      const safeToEmit = this.buffer.slice(0, -partialMatch)
+      this.buffer = this.buffer.slice(-partialMatch)
+      return safeToEmit
+    }
+
+    // No tool call detected - emit everything
+    const result = this.buffer
+    this.buffer = ''
+    return result
+  }
+
+  /**
+   * Check if buffer ends with a partial match of the start tag
+   * Returns the length of the partial match, or 0 if none
+   */
+  private getPartialTagMatch(): number {
+    // Check increasingly longer suffixes of buffer against tag prefix
+    for (let len = Math.min(this.buffer.length, REVIEW_TOOL_START.length - 1); len >= 1; len--) {
+      const suffix = this.buffer.slice(-len)
+      if (REVIEW_TOOL_START.startsWith(suffix)) {
+        return len
+      }
+    }
+    return 0
+  }
+
+  /**
+   * Get any remaining buffered content (called at end of stream)
+   */
+  flush(): string {
+    // At end of stream, if we're holding a partial tag that never completed,
+    // it wasn't actually a tag - emit it
+    // But if we're inside an incomplete tool call (has start but no end), discard it
+    if (this.buffer.includes(REVIEW_TOOL_START)) {
+      // Incomplete tool call - strip from start tag onwards
+      const idx = this.buffer.indexOf(REVIEW_TOOL_START)
+      const result = this.buffer.slice(0, idx)
+      this.buffer = ''
+      return result
+    }
+    const result = this.buffer
+    this.buffer = ''
+    return result
+  }
+
+  /**
+   * Reset filter state
+   */
+  reset(): void {
+    this.buffer = ''
+  }
+}
+
+/**
+ * Remove tool call blocks from text (for clean display)
+ * Tool calls are extracted separately and not shown to users
+ */
+function stripToolCallsFromText(content: string): string {
+  if (!content) return content
+
+  const startIdx = content.indexOf(REVIEW_TOOL_START)
+  const endIdx = content.indexOf(REVIEW_TOOL_END)
+
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    // Remove the tool call block (inclusive of tags)
+    const result = content.slice(0, startIdx) + content.slice(endIdx + REVIEW_TOOL_END.length)
+    return result.replace(/\n{3,}/g, '\n\n').trim()
+  }
+
+  return content
+}
+
+/**
+ * Extract review tool call from Claude's response
+ * Looks for JSON inside <codelobby_submit_review> tags (tool call pattern)
+ */
+function extractReviewFromResponse(content: string): ReviewData | null {
+  if (!content) return null
+
+  // Look for the review tool call
+  const startIdx = content.indexOf(REVIEW_TOOL_START)
+  const endIdx = content.indexOf(REVIEW_TOOL_END)
+
+  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+    return null
+  }
+
+  // Extract the JSON from the tool call
+  const jsonStr = content.slice(startIdx + REVIEW_TOOL_START.length, endIdx).trim()
+
+  if (!jsonStr || !isJsonComplete(jsonStr)) return null
+
+  try {
+    const parsed = JSON.parse(jsonStr)
+
+    // Validate structure
+    if (typeof parsed.summary !== 'string') return null
+    if (!Array.isArray(parsed.comments)) return null
+    if (!['approve', 'request_changes', 'comment'].includes(parsed.verdict)) return null
+
+    // Validate and map comments
+    const validComments: ReviewComment[] = []
+    for (const c of parsed.comments) {
+      if (
+        typeof c === 'object' &&
+        c !== null &&
+        typeof c.file === 'string' &&
+        typeof c.line === 'number' &&
+        typeof c.body === 'string'
+      ) {
+        validComments.push({ file: c.file, line: c.line, body: c.body })
+      }
+    }
+
+    return {
+      summary: parsed.summary,
+      comments: validComments,
+      verdict: parsed.verdict
+    }
+  } catch {
+    return null
+  }
+}
+
 // Import the SDK dynamically (ESM module)
 let queryFn: typeof import('@anthropic-ai/claude-agent-sdk').query | null = null
 
@@ -33,8 +247,16 @@ interface PRContext {
   changedFiles?: number
   labels?: string[]
   comments?: Array<{ author: string; body: string; createdAt: string }>
+  reviews?: Array<{ author: string; state: string; body: string | null; createdAt: string }>
+  reviewThreads?: Array<{
+    path: string
+    line: number | null
+    isResolved: boolean
+    comments: Array<{ author: string; body: string; createdAt: string }>
+  }>
   reviewSummary?: string // e.g., "2 approvals, 1 change requested"
   githubToken: string
+  username?: string // GitHub username of the current user
 }
 
 interface ClaudeConfig {
@@ -87,9 +309,11 @@ function buildSystemPrompt(prContext?: PRContext): string {
   // ==========================================================================
   // IDENTITY & ROLE
   // ==========================================================================
+  const userGreeting = prContext?.username ? `You are assisting **${prContext.username}**.` : ''
+
   sections.push(`# CodeLobby AI Assistant
 
-You are an expert code reviewer and AI assistant integrated into CodeLobby, a desktop application for managing GitHub Pull Requests. Your role is to help developers:
+You are an expert code reviewer and AI assistant integrated into CodeLobby, a desktop application for managing GitHub Pull Requests.${userGreeting ? ` ${userGreeting}` : ''} Your role is to help developers:
 
 - **Review PRs**: Analyze code changes, identify bugs, suggest improvements
 - **Understand code**: Explain complex logic, trace data flow, find patterns
@@ -106,7 +330,31 @@ You have FULL ACCESS to powerful tools:
 - **WebSearch**: Search the internet for documentation, solutions
 - **WebFetch**: Fetch content from URLs
 
-**IMPORTANT**: You can and SHOULD use these tools proactively. Don't ask for permission - just do it.`)
+**IMPORTANT**: You can and SHOULD use these tools proactively. Don't ask for permission - just do it.
+
+## Communication Style
+
+- **Be precise** - Get straight to the point, no fluff or unnecessary preamble
+- **Calibrate length** - Match response length to the question complexity:
+  - Simple question → Short, direct answer
+  - Complex question → Thorough but focused explanation
+  - Code review → Detailed analysis with specific references
+- **Be constructive** - Focus on solutions and actionable feedback, not just problems
+- **No filler phrases** - Skip "Great question!", "I'd be happy to help", "Let me explain..."
+- **Lead with the answer** - State the conclusion/solution first, then explain if needed
+- **Be friendly and professional** - Be friendly and professional, don't be too formal or too casual.
+- **Build friendship with the user** - Try to guess the user's name and use it in the conversation, and make the conversation more personal and friendly. You will receive the user's name in the prContext as github username and use your intelligence to guess his name.
+
+## Adaptive Communication
+
+- **Escalate with complexity** - As the conversation progresses and topics get deeper, naturally increase detail level
+- **Follow user cues** - If the user asks follow-up questions, they want more depth; adjust accordingly
+- **User overrides everything** - If the user explicitly asks you to:
+  - "Be shorter" / "Too long" → Give more concise responses
+  - "Explain more" / "Be detailed" → Provide thorough explanations
+  - "Just give me the code" → Skip explanations, output code directly
+  - "Walk me through it" → Step-by-step detailed breakdown
+- **Remember preferences** - Once a user indicates a preference in the conversation, maintain it unless they say otherwise`)
 
   // ==========================================================================
   // PR CONTEXT (if available)
@@ -123,6 +371,8 @@ You have FULL ACCESS to powerful tools:
       changedFiles,
       labels,
       comments,
+      reviews,
+      reviewThreads,
       reviewSummary,
       githubToken
     } = prContext
@@ -148,13 +398,35 @@ You have FULL ACCESS to powerful tools:
 
 ${prDescription ? `### PR Description\n${prDescription}\n` : ''}
 ${
+  reviews && reviews.length > 0
+    ? `### PR Reviews (${reviews.length})\n${reviews
+        .map((r) => {
+          const stateEmoji =
+            r.state === 'approved' ? '✅' : r.state === 'changes_requested' ? '🔄' : '💬'
+          const bodyText = r.body ? `\n${r.body}` : ''
+          return `${stateEmoji} **${r.author}** (${r.createdAt}) - ${r.state}${bodyText}`
+        })
+        .join('\n\n')}\n`
+    : ''
+}
+${
+  reviewThreads && reviewThreads.length > 0
+    ? `### Inline Review Comments (${reviewThreads.length} threads)\n${reviewThreads
+        .map((t) => {
+          const resolvedTag = t.isResolved ? ' [RESOLVED]' : ''
+          const location = t.line ? `${t.path}:${t.line}` : t.path
+          const threadComments = t.comments
+            .map((c) => `  - **${c.author}** (${c.createdAt}): ${c.body}`)
+            .join('\n')
+          return `📍 **${location}**${resolvedTag}\n${threadComments}`
+        })
+        .join('\n\n')}\n`
+    : ''
+}
+${
   comments && comments.length > 0
     ? `### PR Comments (${comments.length})\n${comments
-        .slice(0, 10)
-        .map(
-          (c) =>
-            `**${c.author}** (${c.createdAt}):\n${c.body.slice(0, 500)}${c.body.length > 500 ? '...' : ''}`
-        )
+        .map((c) => `**${c.author}** (${c.createdAt}):\n${c.body}`)
         .join('\n\n')}\n`
     : ''
 }
@@ -219,7 +491,43 @@ The user hasn't selected a specific PR. You can still help with general coding q
 - Verify error handling and edge cases
 - Look for code style and best practices
 - Consider maintainability and readability
-- Suggest tests if missing`)
+- Suggest tests if missing
+
+## Code Review Tool
+
+You have access to a \`codelobby_submit_review\` tool for submitting PR reviews to GitHub.
+
+When asked to "generate a review", "create a review", or "review this PR" or anything in that context of reviewing code:
+
+1. **First**, read claude.md/CLAUDE.md in the project (if it exists) and ensure the code is compliant with its guidelines
+2. **Second**, write your analysis as human-readable text explaining your findings
+3. Also check readme.md/README.md in the project (if it exists) and ensure the code is compliant with its guidelines.
+5. Check the coverage of the code, sometimes can be found in the comments of the PR. if not try to locate untested files and mention in the summary.
+6. Check for memory leaks, or security issues, feel free to access websearch if needed, especially if new libraries are used.
+7. Ensure there is no excessive logging or console.logs, suggest that some console.logs can be reported to sentry.io if needed.
+8. ensure accessibility is respected but don't over obsess about it.
+9. add. **Then**, call the review tool by outputting this EXACT format at the END:
+
+<codelobby_submit_review>
+{"summary":"Brief summary","comments":[{"file":"path/to/file.ts","line":42,"body":"Your comment"}],"verdict":"approve|request_changes|comment"}
+</codelobby_submit_review>
+
+**Tool Parameters:**
+- \`summary\` (string): 1-2 sentence review summary
+- \`comments\` (array): Each with \`file\` (string), \`line\` (number), \`body\` (string)  
+- \`verdict\`: "approve" (good code), "request_changes" (must fix), or "comment" (feedback only)
+
+**CRITICAL Review Guidelines:**
+- **NO praise comments** - Do NOT add comments that just say something is good/well done
+- **Only actionable feedback** - Comments should identify issues, bugs, improvements, or concerns
+- **If code is good** - Use verdict "approve" with a SHORT encouraging summary (e.g., "Clean implementation, good to merge!") and an EMPTY comments array
+- **Quality over quantity** - Fewer meaningful comments are better than many trivial ones
+- Each comment MUST have exact file path and line number from the changed files
+
+**Important:**
+- The tool call block is automatically extracted and NOT shown to users
+- Write your human-readable analysis BEFORE calling the tool
+- Only call this tool when explicitly asked to generate/create a review`)
 
   return sections.join('\n')
 }
@@ -393,6 +701,11 @@ export async function startClaudeSession(
     let totalCost = 0
     let messageCount = 0
     let accumulatedText = ''
+    // Track current tool being called (for accumulating input from deltas)
+    let currentToolName: string | null = null
+    let currentToolInput = ''
+    // Filter to intercept tool call content during streaming
+    const toolCallFilter = new ToolCallFilter()
 
     for await (const message of result) {
       if (abortController.signal.aborted) {
@@ -433,32 +746,68 @@ export async function startClaudeSession(
           if (sdkEvent.delta?.type === 'text_delta') {
             const text = safeStringify(sdkEvent.delta.text)
             accumulatedText += text
-            mainWindow.webContents.send('claude:chunk', {
-              sessionId,
-              event: { type: 'assistant', message: { content: text } }
-            })
+            // Filter out tool call content before sending to UI
+            const displayText = toolCallFilter.processChunk(text)
+            if (displayText) {
+              mainWindow.webContents.send('claude:chunk', {
+                sessionId,
+                event: { type: 'assistant', message: { content: displayText } }
+              })
+            }
           } else if (sdkEvent.delta?.type === 'thinking_delta') {
             mainWindow.webContents.send('claude:chunk', {
               sessionId,
               event: { type: 'thinking', thinking: safeStringify(sdkEvent.delta.thinking) }
             })
+          } else if (sdkEvent.delta?.type === 'input_json_delta') {
+            // Accumulate tool input JSON
+            currentToolInput += sdkEvent.delta.partial_json || ''
           }
         } else if (sdkEvent?.type === 'content_block_start') {
           if (sdkEvent.content_block?.type === 'tool_use') {
+            // Tool started - save name and reset input accumulator
+            currentToolName = sdkEvent.content_block.name || 'Unknown'
+            currentToolInput = ''
+            // Send initial event (input will be updated when complete)
             mainWindow.webContents.send('claude:chunk', {
               sessionId,
               event: {
                 type: 'tool_use',
-                tool_name: sdkEvent.content_block.name,
-                input: safeStringify(sdkEvent.content_block.input || {})
+                tool_name: currentToolName,
+                input: {} // Will be updated when we get the full input
               }
             })
           } else if (sdkEvent.content_block?.type === 'thinking') {
-            // Thinking block started
             mainWindow.webContents.send('claude:chunk', {
               sessionId,
               event: { type: 'thinking', thinking: '' }
             })
+          }
+        } else if (sdkEvent?.type === 'content_block_stop') {
+          // Tool input complete - parse and send the full input
+          if (currentToolName && currentToolInput) {
+            try {
+              const parsedInput = JSON.parse(currentToolInput)
+              mainWindow.webContents.send('claude:chunk', {
+                sessionId,
+                event: {
+                  type: 'tool_use',
+                  tool_name: currentToolName,
+                  input: parsedInput // Send as object, not string!
+                }
+              })
+              logger.debug(LogCategory.AI, 'Tool input complete', {
+                tool: currentToolName,
+                inputKeys: Object.keys(parsedInput)
+              })
+            } catch {
+              logger.warn(LogCategory.AI, 'Failed to parse tool input', {
+                tool: currentToolName,
+                raw: currentToolInput.slice(0, 200)
+              })
+            }
+            currentToolName = null
+            currentToolInput = ''
           }
         }
       } else if (message.type === 'tool_progress') {
@@ -475,7 +824,35 @@ export async function startClaudeSession(
       } else if (message.type === 'result') {
         totalCost = (message as any).total_cost_usd || 0
         const rawResult = (message as any).result
-        const resultText = safeStringify(rawResult) || accumulatedText
+        let resultText = safeStringify(rawResult) || accumulatedText
+
+        // Flush any remaining buffered content from the filter
+        const remainingText = toolCallFilter.flush()
+        if (remainingText) {
+          mainWindow.webContents.send('claude:chunk', {
+            sessionId,
+            event: { type: 'assistant', message: { content: remainingText } }
+          })
+        }
+
+        // Check for review data in the final result (using unfiltered accumulatedText)
+        const reviewData = extractReviewFromResponse(accumulatedText)
+        if (reviewData) {
+          logger.info(LogCategory.AI, 'Review detected in response', {
+            sessionId,
+            commentsCount: reviewData.comments.length,
+            verdict: reviewData.verdict
+          })
+
+          // Strip the tool call from the text so users don't see it
+          resultText = stripToolCallsFromText(resultText)
+
+          // Emit dedicated review event - this triggers the "Open Review" button
+          mainWindow.webContents.send('claude:review', {
+            sessionId,
+            review: reviewData
+          })
+        }
 
         mainWindow.webContents.send('claude:chunk', {
           sessionId,

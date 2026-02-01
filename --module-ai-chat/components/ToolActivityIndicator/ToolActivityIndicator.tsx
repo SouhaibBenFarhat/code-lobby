@@ -1,14 +1,28 @@
 /**
  * ToolActivityIndicator - Shows what Claude Code is currently doing
+ * Now includes a history of recent tool calls for visibility
  */
 
-import type { ToolActivity, ToolResult } from '@data'
+import type { ToolActivity, ToolHistoryEntry, ToolResult } from '@data'
 import { cn } from '@ui-kit'
-import { FileText, Folder, Globe, Loader2, Search, Terminal } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Folder,
+  Globe,
+  Loader2,
+  Search,
+  Terminal,
+  XCircle
+} from 'lucide-react'
+import { useState } from 'react'
 
 interface ToolActivityIndicatorProps {
   activity: ToolActivity | null
   lastResult: ToolResult | null
+  toolHistory?: ToolHistoryEntry[]
   className?: string
 }
 
@@ -16,58 +30,141 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
   Read: FileText,
   Write: FileText,
   Edit: FileText,
+  StrReplace: FileText,
   Glob: Folder,
   Grep: Search,
   LS: Folder,
   Bash: Terminal,
+  Shell: Terminal,
   WebSearch: Globe,
-  WebFetch: Globe
+  WebFetch: Globe,
+  Task: Loader2,
+  TodoWrite: FileText
 }
 
 const TOOL_LABELS: Record<string, string> = {
   Read: 'Reading file',
   Write: 'Writing file',
   Edit: 'Editing file',
+  StrReplace: 'Editing file',
   Glob: 'Finding files',
   Grep: 'Searching code',
   LS: 'Listing directory',
   Bash: 'Running command',
+  Shell: 'Running command',
   WebSearch: 'Searching web',
-  WebFetch: 'Fetching URL'
+  WebFetch: 'Fetching URL',
+  Task: 'Running task',
+  TodoWrite: 'Updating todos'
 }
 
 export function ToolActivityIndicator({
   activity,
   lastResult,
+  toolHistory = [],
   className
 }: ToolActivityIndicatorProps): React.JSX.Element | null {
-  if (!activity && !lastResult) return null
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  // Show nothing if no activity and no history
+  if (!activity && !lastResult && toolHistory.length === 0) return null
 
   const Icon = activity ? TOOL_ICONS[activity.toolName] || Loader2 : null
   const label = activity ? TOOL_LABELS[activity.toolName] || activity.toolName : null
 
+  // Get last 10 history entries (most recent first)
+  const recentHistory = [...toolHistory].reverse().slice(0, 10)
+
   return (
-    <div className={cn('space-y-2', className)}>
-      {/* Current activity */}
+    <div className={cn('space-y-1', className)}>
+      {/* Current activity - always visible */}
       {activity && Icon && (
-        <div className="flex items-center gap-2 text-xs bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md p-2 animate-pulse">
-          <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="font-medium">{label}</span>
-          <span className="text-blue-400/70 truncate font-mono text-[10px]">{activity.input}</span>
+        <div className="bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md px-2 py-1.5">
+          <div className="flex items-center gap-2 text-xs">
+            <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
+            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="font-medium">{label}</span>
+          </div>
+          {activity.input && (
+            <div className="mt-1 text-[11px] font-mono text-blue-400 bg-blue-500/10 rounded px-2 py-1 break-all">
+              {activity.input}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Last result (collapsed by default, shows briefly) */}
-      {lastResult && !activity && (
-        <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium">{lastResult.toolName}</span>
-            <span className="text-[10px]">({lastResult.duration}ms)</span>
-          </div>
-          <pre className="font-mono text-[10px] max-h-20 overflow-auto whitespace-pre-wrap">
-            {lastResult.output.slice(0, 500)}
-            {lastResult.output.length > 500 && '...'}
-          </pre>
+      {/* Tool history section */}
+      {recentHistory.length > 0 && (
+        <div className="bg-muted/30 rounded-md border border-border/50">
+          {/* Header - click to expand/collapse */}
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1.5 w-full px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-3 h-3" />
+            ) : (
+              <ChevronRight className="w-3 h-3" />
+            )}
+            <span className="font-medium">Tool Activity</span>
+            <span className="text-muted-foreground/60">({toolHistory.length} calls)</span>
+          </button>
+
+          {/* History list */}
+          {isExpanded && (
+            <div className="px-2 pb-2 space-y-1 max-h-60 overflow-y-auto">
+              {recentHistory.map((entry) => {
+                const EntryIcon = TOOL_ICONS[entry.toolName] || FileText
+                const isRunning = entry.status === 'running'
+                const isError = entry.status === 'error'
+
+                return (
+                  <div
+                    key={entry.id}
+                    className={cn(
+                      'text-[10px] py-1 px-1.5 rounded border',
+                      isRunning && 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+                      isError && 'bg-red-500/10 text-red-500 border-red-500/20',
+                      !isRunning && !isError && 'text-muted-foreground border-border/30'
+                    )}
+                  >
+                    {/* Header row */}
+                    <div className="flex items-center gap-1.5">
+                      {/* Status icon */}
+                      {isRunning ? (
+                        <Loader2 className="w-2.5 h-2.5 animate-spin flex-shrink-0" />
+                      ) : isError ? (
+                        <XCircle className="w-2.5 h-2.5 flex-shrink-0" />
+                      ) : (
+                        <Check className="w-2.5 h-2.5 flex-shrink-0 text-green-500" />
+                      )}
+
+                      {/* Tool icon */}
+                      <EntryIcon className="w-2.5 h-2.5 flex-shrink-0" />
+
+                      {/* Tool name */}
+                      <span className="font-medium">{entry.toolName}</span>
+
+                      {/* Duration */}
+                      {entry.duration !== undefined && (
+                        <span className="text-muted-foreground/60 ml-auto flex-shrink-0">
+                          {entry.duration}ms
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Input - full command on separate line */}
+                    {entry.input && (
+                      <div className="mt-0.5 font-mono text-[9px] opacity-80 break-all bg-black/5 dark:bg-white/5 rounded px-1 py-0.5">
+                        {entry.input}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

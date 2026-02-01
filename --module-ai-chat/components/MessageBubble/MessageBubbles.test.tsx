@@ -13,7 +13,6 @@ import { MessageBubble } from './MessageBubble'
 describe('MessageBubble', () => {
   const mockExpandedThinking = new Set<string>()
   const mockToggleThinking = vi.fn()
-  const mockOnOpenReview = vi.fn()
 
   const userMessage: ChatMessage = {
     id: 'user-1',
@@ -126,26 +125,9 @@ describe('MessageBubble', () => {
     expect(screen.getByText('Let me think about this...')).toBeInTheDocument()
   })
 
-  it('should render Open Review button when message contains review JSON', () => {
-    const messageWithReview: ChatMessage = {
-      id: 'review-1',
-      role: 'assistant',
-      content: `Here is my review:\n\`\`\`json:review\n{"summary":"Good changes","comments":[],"verdict":"approve"}\n\`\`\``,
-      timestamp: new Date().toISOString()
-    }
-
-    render(
-      <MessageBubble
-        message={messageWithReview}
-        expandedThinking={mockExpandedThinking}
-        toggleThinkingExpanded={mockToggleThinking}
-        onOpenReview={mockOnOpenReview}
-      />
-    )
-
-    // Button text includes comment count: "Open Review (0 comments)"
-    expect(screen.getByText(/Open Review/)).toBeInTheDocument()
-  })
+  // Note: Review detection is now handled via tool events (claude:review) in the main process,
+  // not by parsing message content in the component. The review modal is opened by the
+  // useClaudeReviewListener hook in AIChat, not by MessageBubble.
 })
 
 describe('StreamingBubble', () => {
@@ -155,13 +137,14 @@ describe('StreamingBubble', () => {
       thinking: '',
       isStreaming: true,
       status: 'composing',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     render(<StreamingBubble streaming={streaming} />)
 
-    // StreamingStateIndicator shows "Processing" for composing status
-    expect(screen.getByText('Processing')).toBeInTheDocument()
+    // StreamingStateIndicator shows "Processing..." for composing status
+    expect(screen.getByText('Processing...')).toBeInTheDocument()
   })
 
   it('should render streaming content', async () => {
@@ -170,7 +153,8 @@ describe('StreamingBubble', () => {
       thinking: '',
       isStreaming: true,
       status: 'writing',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     const { container } = render(<StreamingBubble streaming={streaming} />)
@@ -188,7 +172,8 @@ describe('StreamingBubble', () => {
       thinking: 'I need to think about this...',
       isStreaming: true,
       status: 'thinking',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     render(<StreamingBubble streaming={streaming} />)
@@ -203,7 +188,8 @@ describe('StreamingBubble', () => {
       thinking: 'My thoughts',
       isStreaming: true,
       status: 'writing',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     const { container } = render(<StreamingBubble streaming={streaming} />)

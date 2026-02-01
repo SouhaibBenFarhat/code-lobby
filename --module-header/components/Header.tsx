@@ -51,6 +51,7 @@ import { AgenticSettingsSidebar } from './AgenticSettingsSidebar'
 import { AICostIndicator } from './AICostIndicator'
 import { ClaudeCodeStatus } from './ClaudeCodeStatus'
 import { ContributionsModal } from './ContributionsModal'
+import { DatabaseViewer } from './DatabaseViewer'
 import { EventStream } from './EventStream'
 import { LogsViewer } from './LogsViewer'
 import { MemoryUsageIndicator } from './MemoryUsageIndicator'
@@ -421,6 +422,8 @@ export function Header({
             <EventStream />
           </PopoverContent>
         </Popover>
+
+        <DatabaseViewer />
 
         <Tooltip>
           <TooltipTrigger asChild>

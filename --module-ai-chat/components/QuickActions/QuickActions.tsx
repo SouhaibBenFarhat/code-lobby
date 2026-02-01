@@ -3,7 +3,7 @@
  */
 
 import { Button, cn } from '@ui-kit'
-import { MessageSquare, MessageSquarePlus, X } from 'lucide-react'
+import { MessageSquarePlus, Pencil, X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import type { CustomPrompt, QuickPrompt } from '../../types'
 import { AddCustomPromptModal } from '../AddCustomPromptModal'
@@ -13,6 +13,7 @@ export interface QuickActionsProps {
   customPrompts: CustomPrompt[]
   onSelect: (prompt: string, label: string) => void
   onAddCustomPrompt: (label: string, prompt: string) => Promise<void>
+  onUpdateCustomPrompt: (id: string, label: string, prompt: string) => Promise<void>
   onDeleteCustomPrompt: (id: string) => Promise<void>
   disabled?: boolean
   className?: string
@@ -23,11 +24,13 @@ export function QuickActions({
   customPrompts,
   onSelect,
   onAddCustomPrompt,
+  onUpdateCustomPrompt,
   onDeleteCustomPrompt,
   disabled = false,
   className = ''
 }: QuickActionsProps): React.JSX.Element {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingPrompt, setEditingPrompt] = useState<CustomPrompt | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -68,11 +71,21 @@ export function QuickActions({
 
   return (
     <div className={cn('relative', className)}>
-      {/* Add Custom Prompt Modal */}
+      {/* Add/Edit Custom Prompt Modal */}
       <AddCustomPromptModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={onAddCustomPrompt}
+        isOpen={isModalOpen || !!editingPrompt}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingPrompt(null)
+        }}
+        onSave={async (label, prompt) => {
+          if (editingPrompt) {
+            await onUpdateCustomPrompt(editingPrompt.id, label, prompt)
+          } else {
+            await onAddCustomPrompt(label, prompt)
+          }
+        }}
+        editPrompt={editingPrompt}
       />
 
       {/* Scrollable container with mask fade effect */}
@@ -99,9 +112,9 @@ export function QuickActions({
           <MessageSquarePlus className="w-3 h-3" />
         </Button>
 
-        {/* Custom prompts with delete button */}
+        {/* Custom prompts with edit/delete buttons */}
         {customPrompts.map((prompt) => (
-          <div key={prompt.id} className="relative group flex-shrink-0">
+          <div key={prompt.id} className="relative flex-shrink-0">
             <Button
               variant="unstyled"
               size="none"
@@ -111,26 +124,41 @@ export function QuickActions({
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
                 'bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50',
                 'text-primary hover:text-primary',
-                'transition-all duration-150 pr-7',
+                'transition-all duration-150 pr-12',
                 disabled && 'opacity-50 cursor-not-allowed'
               )}
             >
-              <MessageSquare className="w-3 h-3" />
               <span>{prompt.label}</span>
             </Button>
-            {/* Delete button */}
-            <Button
-              variant="unstyled"
-              size="none"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeleteCustomPrompt(prompt.id)
-              }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-destructive/80 hover:bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Delete prompt"
-            >
-              <X className="w-3 h-3" />
-            </Button>
+            {/* Action buttons container - always visible, subtle */}
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+              {/* Edit button */}
+              <Button
+                variant="unstyled"
+                size="none"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingPrompt(prompt)
+                }}
+                className="w-4 h-4 flex items-center justify-center rounded-full text-primary/40 hover:text-primary/80 hover:bg-primary/10 transition-colors"
+                title="Edit prompt"
+              >
+                <Pencil className="w-2.5 h-2.5" />
+              </Button>
+              {/* Delete button */}
+              <Button
+                variant="unstyled"
+                size="none"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteCustomPrompt(prompt.id)
+                }}
+                className="w-4 h-4 flex items-center justify-center rounded-full text-primary/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Delete prompt"
+              >
+                <X className="w-2.5 h-2.5" />
+              </Button>
+            </div>
           </div>
         ))}
 

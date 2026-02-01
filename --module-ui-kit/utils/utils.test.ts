@@ -1,126 +1,157 @@
 /**
- * Utility Functions Tests
+ * Utils Tests
  */
 
-import { describe, expect, it } from 'vitest'
-import { cn, formatRelativeTime, truncate } from './index'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cn, formatRelativeTime, groupBy, truncate } from './index'
 
-describe('Utils', () => {
-  describe('cn (classnames merger)', () => {
-    it('should merge class names', () => {
-      const result = cn('class1', 'class2')
-      expect(result).toBe('class1 class2')
-    })
+describe('cn', () => {
+  it('should merge class names', () => {
+    expect(cn('foo', 'bar')).toBe('foo bar')
+  })
 
-    it('should handle conditional classes', () => {
-      const isActive = true
-      const result = cn('base', isActive && 'active')
-      expect(result).toBe('base active')
-    })
+  it('should handle conditional classes', () => {
+    expect(cn('foo', false && 'bar', 'baz')).toBe('foo baz')
+    expect(cn('foo', true && 'bar', 'baz')).toBe('foo bar baz')
+  })
 
-    it('should filter out falsy values', () => {
-      const result = cn('base', false, null, undefined, 'end')
-      expect(result).toBe('base end')
-    })
+  it('should merge Tailwind classes correctly', () => {
+    expect(cn('px-2', 'px-4')).toBe('px-4')
+    expect(cn('text-red-500', 'text-blue-500')).toBe('text-blue-500')
+  })
 
-    it('should merge tailwind classes correctly', () => {
-      const result = cn('px-2 py-1', 'px-4')
-      // tailwind-merge should keep the last px value
-      expect(result).toBe('py-1 px-4')
-    })
+  it('should handle arrays', () => {
+    expect(cn(['foo', 'bar'])).toBe('foo bar')
+  })
 
-    it('should handle arrays', () => {
-      const result = cn(['class1', 'class2'])
-      expect(result).toBe('class1 class2')
-    })
+  it('should handle objects', () => {
+    expect(cn({ foo: true, bar: false, baz: true })).toBe('foo baz')
+  })
+})
 
-    it('should handle objects', () => {
-      const result = cn({ active: true, disabled: false })
-      expect(result).toBe('active')
+describe('formatRelativeTime', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should return "just now" for times less than 60 seconds ago', () => {
+    const now = new Date('2024-01-15T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2024-01-15T11:59:30Z')).toBe('just now')
+  })
+
+  it('should return minutes ago', () => {
+    const now = new Date('2024-01-15T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2024-01-15T11:55:00Z')).toBe('5m ago')
+    expect(formatRelativeTime('2024-01-15T11:30:00Z')).toBe('30m ago')
+  })
+
+  it('should return hours ago', () => {
+    const now = new Date('2024-01-15T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2024-01-15T10:00:00Z')).toBe('2h ago')
+    expect(formatRelativeTime('2024-01-15T00:00:00Z')).toBe('12h ago')
+  })
+
+  it('should return days ago', () => {
+    const now = new Date('2024-01-15T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2024-01-14T12:00:00Z')).toBe('1d ago')
+    expect(formatRelativeTime('2024-01-10T12:00:00Z')).toBe('5d ago')
+  })
+
+  it('should return weeks ago', () => {
+    const now = new Date('2024-01-28T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2024-01-21T12:00:00Z')).toBe('1w ago')
+    expect(formatRelativeTime('2024-01-07T12:00:00Z')).toBe('3w ago')
+  })
+
+  it('should return months ago', () => {
+    const now = new Date('2024-06-15T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2024-05-15T12:00:00Z')).toBe('1mo ago')
+    expect(formatRelativeTime('2024-01-15T12:00:00Z')).toBe('5mo ago')
+  })
+
+  it('should return years ago', () => {
+    const now = new Date('2024-06-15T12:00:00Z')
+    vi.setSystemTime(now)
+    expect(formatRelativeTime('2023-06-15T12:00:00Z')).toBe('1y ago')
+    expect(formatRelativeTime('2021-06-15T12:00:00Z')).toBe('3y ago')
+  })
+})
+
+describe('groupBy', () => {
+  it('should group items by key', () => {
+    const items = [
+      { type: 'fruit', name: 'apple' },
+      { type: 'fruit', name: 'banana' },
+      { type: 'vegetable', name: 'carrot' }
+    ]
+    const result = groupBy(items, (item) => item.type)
+    expect(result).toEqual({
+      fruit: [
+        { type: 'fruit', name: 'apple' },
+        { type: 'fruit', name: 'banana' }
+      ],
+      vegetable: [{ type: 'vegetable', name: 'carrot' }]
     })
   })
 
-  describe('formatRelativeTime', () => {
-    it('should format seconds ago', () => {
-      const date = new Date(Date.now() - 30 * 1000).toISOString()
-      const result = formatRelativeTime(date)
-      expect(result).toMatch(/just now|seconds?|30s/i)
-    })
+  it('should handle empty array', () => {
+    const result = groupBy([], (item: { type: string }) => item.type)
+    expect(result).toEqual({})
+  })
 
-    it('should format minutes ago', () => {
-      const date = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-      const result = formatRelativeTime(date)
-      expect(result).toMatch(/5\s*m|5\s*min/i)
-    })
-
-    it('should format hours ago', () => {
-      const date = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-      const result = formatRelativeTime(date)
-      expect(result).toMatch(/3\s*h|3\s*hour/i)
-    })
-
-    it('should format days ago', () => {
-      const date = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-      const result = formatRelativeTime(date)
-      expect(result).toMatch(/2\s*d|2\s*day/i)
-    })
-
-    it('should format weeks ago', () => {
-      const date = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-      const result = formatRelativeTime(date)
-      expect(result).toMatch(/2\s*w|2\s*week|14\s*d/i)
-    })
-
-    it('should handle Date objects', () => {
-      const date = new Date(Date.now() - 60 * 1000)
-      const result = formatRelativeTime(date.toISOString())
-      expect(result).toMatch(/1\s*m|1\s*min|minute/i)
-    })
-
-    it('should handle future dates', () => {
-      const date = new Date(Date.now() + 60 * 60 * 1000).toISOString()
-      const result = formatRelativeTime(date)
-      // Should still return something meaningful
-      expect(result).toBeTruthy()
+  it('should handle array with single item', () => {
+    const items = [{ type: 'fruit', name: 'apple' }]
+    const result = groupBy(items, (item) => item.type)
+    expect(result).toEqual({
+      fruit: [{ type: 'fruit', name: 'apple' }]
     })
   })
 
-  describe('truncate', () => {
-    it('should truncate long strings', () => {
-      const longString = 'This is a very long string that should be truncated'
-      const result = truncate(longString, 20)
-      expect(result.length).toBeLessThanOrEqual(23) // 20 + '...'
-      expect(result).toContain('...')
-    })
+  it('should handle different key extractors', () => {
+    const items = [
+      { id: 1, status: 'active' },
+      { id: 2, status: 'inactive' },
+      { id: 3, status: 'active' }
+    ]
+    const result = groupBy(items, (item) => item.status)
+    expect(result.active).toHaveLength(2)
+    expect(result.inactive).toHaveLength(1)
+  })
+})
 
-    it('should not truncate short strings', () => {
-      const shortString = 'Short'
-      const result = truncate(shortString, 20)
-      expect(result).toBe('Short')
-      expect(result).not.toContain('...')
-    })
+describe('truncate', () => {
+  it('should not truncate strings shorter than maxLength', () => {
+    expect(truncate('hello', 10)).toBe('hello')
+    expect(truncate('hello', 5)).toBe('hello')
+  })
 
-    it('should handle exact length', () => {
-      const exactString = 'Exactly twenty char'
-      const result = truncate(exactString, 19)
-      expect(result.length).toBeLessThanOrEqual(22)
-    })
+  it('should truncate strings longer than maxLength', () => {
+    expect(truncate('hello world', 8)).toBe('hello...')
+    expect(truncate('a very long string that needs truncation', 20)).toBe('a very long strin...')
+  })
 
-    it('should handle empty string', () => {
-      const result = truncate('', 10)
-      expect(result).toBe('')
-    })
+  it('should use default maxLength of 100', () => {
+    const longString = 'a'.repeat(150)
+    const result = truncate(longString)
+    expect(result).toHaveLength(100)
+    expect(result.endsWith('...')).toBe(true)
+  })
 
-    it('should handle very small max length', () => {
-      const result = truncate('Hello World', 3)
-      // maxLength 3 means slice(0, 0) + '...' = '...'
-      expect(result).toBe('...')
-    })
+  it('should handle empty strings', () => {
+    expect(truncate('', 10)).toBe('')
+  })
 
-    it('should use default max length when not provided', () => {
-      const longString = 'A'.repeat(200)
-      const result = truncate(longString)
-      expect(result.length).toBeLessThan(200)
-    })
+  it('should handle exact length strings', () => {
+    expect(truncate('hello', 5)).toBe('hello')
   })
 })

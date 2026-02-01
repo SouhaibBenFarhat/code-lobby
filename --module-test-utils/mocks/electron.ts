@@ -175,6 +175,40 @@ interface MockElectronAPI {
   shell: {
     openExternal: ReturnType<typeof vi.fn>
   }
+
+  // SQLite Database (Persistence Module)
+  db: {
+    conversations: {
+      list: ReturnType<typeof vi.fn>
+      get: ReturnType<typeof vi.fn>
+      getWithMessages: ReturnType<typeof vi.fn>
+      create: ReturnType<typeof vi.fn>
+      getOrCreate: ReturnType<typeof vi.fn>
+      update: ReturnType<typeof vi.fn>
+      delete: ReturnType<typeof vi.fn>
+      deleteAll: ReturnType<typeof vi.fn>
+    }
+    messages: {
+      listForConversation: ReturnType<typeof vi.fn>
+      add: ReturnType<typeof vi.fn>
+      addMany: ReturnType<typeof vi.fn>
+      update: ReturnType<typeof vi.fn>
+      delete: ReturnType<typeof vi.fn>
+      clearForConversation: ReturnType<typeof vi.fn>
+    }
+    customPrompts: {
+      list: ReturnType<typeof vi.fn>
+      create: ReturnType<typeof vi.fn>
+      update: ReturnType<typeof vi.fn>
+      delete: ReturnType<typeof vi.fn>
+    }
+    aiUsage: {
+      add: ReturnType<typeof vi.fn>
+      listRecent: ReturnType<typeof vi.fn>
+      getStats: ReturnType<typeof vi.fn>
+      clear: ReturnType<typeof vi.fn>
+    }
+  }
 }
 
 // ============================================================================
@@ -427,6 +461,75 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // Shell
     shell: {
       openExternal: vi.fn().mockResolvedValue({ success: true })
+    },
+
+    // SQLite Database (Persistence Module)
+    db: {
+      conversations: {
+        list: vi.fn().mockResolvedValue({ success: true, data: [] }),
+        get: vi.fn().mockResolvedValue({ success: true, data: undefined }),
+        getWithMessages: vi.fn().mockResolvedValue({ success: true, data: undefined }),
+        create: vi.fn().mockImplementation((data) =>
+          Promise.resolve({
+            success: true,
+            data: { ...data, createdAt: Date.now(), updatedAt: Date.now() }
+          })
+        ),
+        getOrCreate: vi.fn().mockImplementation((data) =>
+          Promise.resolve({
+            success: true,
+            data: { ...data, createdAt: Date.now(), updatedAt: Date.now() }
+          })
+        ),
+        update: vi.fn().mockResolvedValue({ success: true, data: undefined }),
+        delete: vi.fn().mockResolvedValue({ success: true, data: true }),
+        deleteAll: vi.fn().mockResolvedValue({ success: true, data: 0 })
+      },
+      messages: {
+        listForConversation: vi.fn().mockResolvedValue({ success: true, data: [] }),
+        add: vi.fn().mockImplementation((data) =>
+          Promise.resolve({
+            success: true,
+            data: { ...data, createdAt: Date.now() }
+          })
+        ),
+        addMany: vi.fn().mockResolvedValue({ success: true }),
+        update: vi.fn().mockResolvedValue({ success: true, data: undefined }),
+        delete: vi.fn().mockResolvedValue({ success: true, data: true }),
+        clearForConversation: vi.fn().mockResolvedValue({ success: true, data: 0 })
+      },
+      customPrompts: {
+        list: vi.fn().mockResolvedValue({ success: true, data: [] }),
+        create: vi.fn().mockImplementation((data) =>
+          Promise.resolve({
+            success: true,
+            data: { ...data, createdAt: Date.now() }
+          })
+        ),
+        update: vi.fn().mockResolvedValue({ success: true, data: undefined }),
+        delete: vi.fn().mockResolvedValue({ success: true, data: true })
+      },
+      aiUsage: {
+        add: vi.fn().mockImplementation((data) =>
+          Promise.resolve({
+            success: true,
+            data: { id: 1, ...data, createdAt: Date.now() }
+          })
+        ),
+        listRecent: vi.fn().mockResolvedValue({ success: true, data: [] }),
+        getStats: vi.fn().mockResolvedValue({
+          success: true,
+          data: {
+            totalInputTokens: 0,
+            totalOutputTokens: 0,
+            totalInputCostUsd: 0,
+            totalOutputCostUsd: 0,
+            totalCostUsd: 0,
+            recordCount: 0
+          }
+        }),
+        clear: vi.fn().mockResolvedValue({ success: true, data: 0 })
+      }
     },
 
     ...overrides

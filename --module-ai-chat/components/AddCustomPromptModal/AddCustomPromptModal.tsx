@@ -1,5 +1,5 @@
 /**
- * Modal for creating custom prompts with better UX
+ * Modal for creating or editing custom prompts with better UX
  */
 
 import {
@@ -12,20 +12,28 @@ import {
   DialogTitle,
   Input
 } from '@ui-kit'
-import { AlertCircle, Check, Loader2, MessageSquarePlus } from 'lucide-react'
+import { AlertCircle, Check, Loader2, MessageSquarePlus, Pencil } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 export interface AddCustomPromptModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (label: string, prompt: string) => Promise<void>
+  /** If provided, modal is in edit mode */
+  editPrompt?: {
+    id: string
+    label: string
+    prompt: string
+  } | null
 }
 
 export function AddCustomPromptModal({
   isOpen,
   onClose,
-  onSave
+  onSave,
+  editPrompt
 }: AddCustomPromptModalProps): React.JSX.Element {
+  const isEditMode = !!editPrompt
   const [label, setLabel] = useState('')
   const [prompt, setPrompt] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -39,14 +47,17 @@ export function AddCustomPromptModal({
     }
   }, [isOpen])
 
-  // Reset form when modal closes
+  // Initialize form with edit data or reset when modal opens/closes
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && editPrompt) {
+      setLabel(editPrompt.label)
+      setPrompt(editPrompt.prompt)
+    } else if (!isOpen) {
       setLabel('')
       setPrompt('')
       setError(null)
     }
-  }, [isOpen])
+  }, [isOpen, editPrompt])
 
   const handleSave = async () => {
     if (!label.trim()) {
@@ -85,12 +96,22 @@ export function AddCustomPromptModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageSquarePlus className="w-5 h-5 text-primary" />
-            Create Custom Prompt
+            {isEditMode ? (
+              <>
+                <Pencil className="w-5 h-5 text-primary" />
+                Edit Custom Prompt
+              </>
+            ) : (
+              <>
+                <MessageSquarePlus className="w-5 h-5 text-primary" />
+                Create Custom Prompt
+              </>
+            )}
           </DialogTitle>
           <DialogDescription>
-            Create a reusable prompt for quick access. Your prompts are saved locally and persist
-            across sessions.
+            {isEditMode
+              ? 'Update your custom prompt. Changes are saved locally.'
+              : 'Create a reusable prompt for quick access. Your prompts are saved locally and persist across sessions.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -148,12 +169,12 @@ export function AddCustomPromptModal({
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
+                {isEditMode ? 'Updating...' : 'Saving...'}
               </>
             ) : (
               <>
                 <Check className="w-4 h-4 mr-2" />
-                Save Prompt
+                {isEditMode ? 'Update Prompt' : 'Save Prompt'}
               </>
             )}
           </Button>

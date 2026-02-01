@@ -6,13 +6,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import React, { useLayoutEffect, useMemo } from 'react'
-import type {
-  ChatMessage,
-  GitHubUser,
-  QueuedMessage,
-  ReviewData,
-  StreamingState
-} from '../../types'
+import type { ChatMessage, GitHubUser, QueuedMessage, StreamingState } from '../../types'
 import { MessageBubble } from '../MessageBubble'
 import { QueuedMessageBubble } from '../QueuedMessageBubble'
 import { StreamingBubble } from '../StreamingBubble'
@@ -29,7 +23,6 @@ export interface VirtualizedMessageListProps {
   onScroll: () => void
   onVirtualizerReady: (scrollToEnd: () => void) => void
   user?: GitHubUser | null
-  onOpenReview?: (review: ReviewData) => void
 }
 
 export function VirtualizedMessageList({
@@ -43,8 +36,7 @@ export function VirtualizedMessageList({
   scrollContainerRef,
   onScroll,
   onVirtualizerReady,
-  user,
-  onOpenReview
+  user
 }: VirtualizedMessageListProps): React.JSX.Element {
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
@@ -71,7 +63,7 @@ export function VirtualizedMessageList({
     count: allItems.length,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => 100, // Slightly larger estimate for safety
-    overscan: 5 // Render 5 extra items above/below viewport
+    overscan: 2 // Render 2 extra items above/below viewport (tight for performance)
   })
 
   const virtualItems = virtualizer.getVirtualItems()
@@ -129,7 +121,6 @@ export function VirtualizedMessageList({
                   expandedThinking={expandedThinking}
                   toggleThinkingExpanded={toggleThinkingExpanded}
                   user={user}
-                  onOpenReview={onOpenReview}
                 />
               )}
 

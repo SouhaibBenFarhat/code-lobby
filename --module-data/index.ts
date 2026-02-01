@@ -85,7 +85,6 @@ export {
   useSetCodeVisualizer,
   useSetDailySpeechModalOpen,
   useSetEnableThinking,
-  useSetEnableWebFetch,
   useSetIDESettings,
   useSetNetworkPanel,
   useSetNetworkPanelHeight,
@@ -110,6 +109,7 @@ export {
   useToggleMyPRsFilter,
   useToggleNetworkPanel,
   useToggleRepoExpanded,
+  useUpdateCustomPrompt,
   useUpdateNetworkRequest,
   useUpdatePRBody,
   useUpdatePRBranch,
@@ -157,7 +157,6 @@ export {
   // Daily Speech
   useDailySpeechModalOpen,
   useEnableThinking,
-  useEnableWebFetch,
   // File Content (Code Visualizer)
   useFileContent,
   useFindPreviewUrl,
@@ -252,6 +251,7 @@ export type {
   StoredSession,
   StreamEvent,
   ToolActivity,
+  ToolHistoryEntry,
   ToolResult
 } from './claude-code'
 // Claude Code Constants
@@ -259,14 +259,17 @@ export type {
 // Claude Code Parser
 // Claude Code Persistence
 export {
+  type ClaudeReviewData,
   claudeKeys,
   formatToolActivity,
   formatToolResult,
   getGeneralSessionId,
   getPRSessionId,
+  initSessionCache,
   isTerminalEvent,
   parsePRSessionId,
   TOOL_DISPLAY_NAMES,
+  useClaudeReviewListener,
   useClaudeSession,
   useClaudeStreamListener,
   useClearSession,

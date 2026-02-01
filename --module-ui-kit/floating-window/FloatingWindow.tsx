@@ -170,7 +170,7 @@ export function FloatingWindow({
               <WindowControls
                 onClose={onClose}
                 onMinimize={onMinimize}
-                onMaximize={handleMaximizeToggle}
+                onMaximize={onMaximize ? handleMaximizeToggle : undefined}
                 isMaximized={isMaximized}
                 isMinimized={isMinimized}
               />
@@ -234,7 +234,7 @@ export function FloatingWindow({
             <WindowControls
               onClose={onClose}
               onMinimize={onMinimize}
-              onMaximize={handleMaximizeToggle}
+              onMaximize={onMaximize ? handleMaximizeToggle : undefined}
               isMaximized={isMaximized}
               isMinimized={isMinimized}
             />

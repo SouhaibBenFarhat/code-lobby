@@ -36,6 +36,7 @@ export {
   type DiffViewerProps
 } from './diff-viewer'
 export { type FileTab, FileTabBar, type FileTabBarProps } from './file-tab-bar'
+export { Flex, type FlexProps } from './flex'
 export { FloatingWindow, type FloatingWindowProps } from './floating-window'
 export {
   Col,
@@ -93,6 +94,7 @@ export {
   SheetTrigger
 } from './sheet'
 export { Skeleton, type SkeletonProps } from './skeleton'
+export { Slider, type SliderProps } from './slider'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
 export { Textarea, type TextareaProps } from './textarea'
 export {

@@ -56,18 +56,8 @@ export function useSetEnableThinking(): UseMutationResult<boolean, Error, boolea
   })
 }
 
-export function useSetEnableWebFetch(): UseMutationResult<boolean, Error, boolean> {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (enabled: boolean) => Promise.resolve(enabled),
-    onSuccess: (enabled) => {
-      qc.setQueryData(keys.enableWebFetch, enabled)
-    }
-  })
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
-// CUSTOM PROMPTS MUTATIONS
+// CUSTOM PROMPTS MUTATIONS - Persisted to SQLite
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface AddCustomPromptParams {
@@ -82,13 +72,24 @@ export function useAddCustomPrompt(): UseMutationResult<
 > {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ label, prompt }: AddCustomPromptParams) => {
-      const newPrompt: CustomPrompt = { id: crypto.randomUUID(), label, prompt }
-      return Promise.resolve(newPrompt)
+    mutationFn: async ({ label, prompt }: AddCustomPromptParams): Promise<CustomPrompt> => {
+      const id = crypto.randomUUID()
+      const result = await window.electron.db.customPrompts.create({ id, label, prompt })
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to save custom prompt')
+      }
+      const data = result.data
+      return {
+        id: data.id,
+        label: data.label,
+        prompt: data.prompt,
+        createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : undefined
+      }
     },
     onSuccess: (newPrompt) => {
       const current = qc.getQueryData<CustomPrompt[]>(keys.customPrompts) || []
-      qc.setQueryData(keys.customPrompts, [...current, newPrompt])
+      // Prepend new prompt (newest first ordering)
+      qc.setQueryData(keys.customPrompts, [newPrompt, ...current])
     }
   })
 }
@@ -96,12 +97,54 @@ export function useAddCustomPrompt(): UseMutationResult<
 export function useDeleteCustomPrompt(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => Promise.resolve(id),
+    mutationFn: async (id: string): Promise<string> => {
+      const result = await window.electron.db.customPrompts.delete(id)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete custom prompt')
+      }
+      return id
+    },
     onSuccess: (id) => {
       const current = qc.getQueryData<CustomPrompt[]>(keys.customPrompts) || []
       qc.setQueryData(
         keys.customPrompts,
         current.filter((p) => p.id !== id)
+      )
+    }
+  })
+}
+
+interface UpdateCustomPromptParams {
+  id: string
+  label?: string
+  prompt?: string
+}
+
+export function useUpdateCustomPrompt(): UseMutationResult<
+  CustomPrompt,
+  Error,
+  UpdateCustomPromptParams
+> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, label, prompt }: UpdateCustomPromptParams): Promise<CustomPrompt> => {
+      const result = await window.electron.db.customPrompts.update(id, { label, prompt })
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to update custom prompt')
+      }
+      const data = result.data
+      return {
+        id: data.id,
+        label: data.label,
+        prompt: data.prompt,
+        createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : undefined
+      }
+    },
+    onSuccess: (updatedPrompt) => {
+      const current = qc.getQueryData<CustomPrompt[]>(keys.customPrompts) || []
+      qc.setQueryData(
+        keys.customPrompts,
+        current.map((p) => (p.id === updatedPrompt.id ? updatedPrompt : p))
       )
     }
   })

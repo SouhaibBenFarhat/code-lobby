@@ -114,10 +114,6 @@ describe('Query Keys', () => {
       expect(keys.enableThinking).toEqual(['ai', 'enable-thinking'])
     })
 
-    it('should have enableWebFetch key', () => {
-      expect(keys.enableWebFetch).toEqual(['ai', 'enable-web-fetch'])
-    })
-
     it('should have customPrompts key', () => {
       expect(keys.customPrompts).toEqual(['ai', 'custom-prompts'])
     })
@@ -196,7 +192,6 @@ describe('Query Keys', () => {
         keys.claudeModels,
         keys.selectedModel,
         keys.enableThinking,
-        keys.enableWebFetch,
         keys.customPrompts,
         keys.networkRequests,
         keys.networkPanelOpen,

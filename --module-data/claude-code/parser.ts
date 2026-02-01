@@ -85,7 +85,20 @@ export function extractTextContent(event: StreamEventAssistant): string {
 }
 
 /**
+ * Helper to safely get a string value from an object property
+ */
+function getStringValue(obj: Record<string, unknown>, key: string): string | null {
+  const value = obj[key]
+  if (value === undefined || value === null) return null
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  // Don't convert functions or objects
+  return null
+}
+
+/**
  * Extract tool name and input from a tool_use event
+ * Formats the input nicely for display (like Cursor does)
  */
 export function extractToolInfo(event: StreamEventToolUse): {
   toolName: string
@@ -94,21 +107,61 @@ export function extractToolInfo(event: StreamEventToolUse): {
   const toolName = event.tool_name || 'Unknown'
   let input = ''
 
-  if (event.input) {
-    // Format the input based on tool type
-    if (event.input.path) {
-      input = String(event.input.path)
-    } else if (event.input.pattern) {
-      input = String(event.input.pattern)
-    } else if (event.input.command) {
-      input = String(event.input.command)
-    } else if (event.input.query) {
-      input = String(event.input.query)
-    } else if (event.input.url) {
-      input = String(event.input.url)
-    } else {
-      // Fallback: stringify first few chars
-      input = JSON.stringify(event.input).slice(0, 100)
+  if (event.input && typeof event.input === 'object') {
+    const inp = event.input as Record<string, unknown>
+
+    // Shell/Bash commands
+    input =
+      getStringValue(inp, 'command') ||
+      getStringValue(inp, 'cmd') ||
+      // File operations
+      getStringValue(inp, 'path') ||
+      getStringValue(inp, 'file_path') ||
+      getStringValue(inp, 'filePath') ||
+      getStringValue(inp, 'file') ||
+      // Search/grep - pattern is more specific
+      getStringValue(inp, 'pattern') ||
+      getStringValue(inp, 'regex') ||
+      getStringValue(inp, 'search_term') ||
+      getStringValue(inp, 'searchTerm') ||
+      // Queries
+      getStringValue(inp, 'query') ||
+      getStringValue(inp, 'prompt') ||
+      // URLs
+      getStringValue(inp, 'url') ||
+      // Task/description
+      getStringValue(inp, 'description') ||
+      getStringValue(inp, 'title') ||
+      getStringValue(inp, 'name') ||
+      // Text content (for write/edit)
+      ''
+
+    // If still empty, try to build a meaningful summary from the input object
+    if (!input) {
+      // Try to show key fields that are strings
+      const stringFields: string[] = []
+      for (const [key, value] of Object.entries(inp)) {
+        if (typeof value === 'string' && value.length > 0 && value.length < 200) {
+          stringFields.push(`${key}: ${value.length > 50 ? `${value.slice(0, 50)}...` : value}`)
+        }
+      }
+      if (stringFields.length > 0) {
+        input = stringFields.slice(0, 3).join(' | ')
+      } else {
+        // Last resort: try to JSON stringify, filtering out non-serializable values
+        try {
+          const safeObj: Record<string, unknown> = {}
+          for (const [key, value] of Object.entries(inp)) {
+            if (typeof value !== 'function' && typeof value !== 'symbol') {
+              safeObj[key] = value
+            }
+          }
+          const json = JSON.stringify(safeObj)
+          input = json.length > 150 ? `${json.slice(0, 150)}...` : json
+        } catch {
+          input = `[${Object.keys(inp).join(', ')}]`
+        }
+      }
     }
   }
 

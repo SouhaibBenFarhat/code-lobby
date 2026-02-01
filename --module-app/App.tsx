@@ -5,6 +5,7 @@
  */
 
 import {
+  initSessionCache,
   useAIPanel,
   useClaudeStreamListener,
   useCloseCodeVisualizer,
@@ -96,7 +97,8 @@ export function App(): React.JSX.Element {
   const { mutate: validatePersistedToken } = useValidatePersistedToken()
   useEffect(() => {
     // Wait for TanStack Query cache to hydrate from localStorage
-    waitForHydration().then(() => {
+    // and initialize session cache from SQLite
+    Promise.all([waitForHydration(), initSessionCache()]).then(() => {
       validatePersistedToken()
     })
   }, [validatePersistedToken])

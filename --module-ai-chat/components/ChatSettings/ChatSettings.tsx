@@ -1,5 +1,5 @@
 /**
- * ChatSettings - Compact settings panel with model selector, thinking toggle, and API key management
+ * ChatSettings - Compact settings panel with model selector, thinking budget slider, and API key management
  */
 
 import {
@@ -9,29 +9,41 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Toggle
+  Slider
 } from '@ui-kit'
 import { Loader2 } from 'lucide-react'
 import React from 'react'
 import type { ClaudeModel } from '../../types'
 
+// Thinking budget range
+const THINKING_MIN = 0
+const THINKING_MAX = 32000
+const THINKING_STEP = 1000
+
+// Format thinking budget for display
+function formatThinkingBudget(value: number): string {
+  if (value === 0) return 'Off'
+  if (value >= 1000) return `${value / 1000}k tokens`
+  return `${value} tokens`
+}
+
 export interface ChatSettingsProps {
   models: ClaudeModel[]
   selectedModel: string
-  enableThinking: boolean
+  thinkingBudget: number // 0 = off, otherwise token budget
   isLoadingModels: boolean
   onModelChange: (modelId: string) => void
-  onThinkingChange: (enabled: boolean) => void
+  onThinkingBudgetChange: (budget: number) => void
   onRemoveApiKey: () => void
 }
 
 export function ChatSettings({
   models,
   selectedModel,
-  enableThinking,
+  thinkingBudget,
   isLoadingModels,
   onModelChange,
-  onThinkingChange,
+  onThinkingBudgetChange,
   onRemoveApiKey
 }: ChatSettingsProps): React.JSX.Element {
   return (
@@ -69,10 +81,20 @@ export function ChatSettings({
         )}
       </div>
 
-      {/* Extended Thinking Toggle */}
+      {/* Extended Thinking Budget Slider */}
       <div className="flex items-center gap-3">
         <span className="text-xs text-muted-foreground w-16 shrink-0">Thinking</span>
-        <Toggle size="xs" checked={enableThinking} onCheckedChange={onThinkingChange} />
+        <Slider
+          value={[thinkingBudget]}
+          min={THINKING_MIN}
+          max={THINKING_MAX}
+          step={THINKING_STEP}
+          onValueChange={(values) => onThinkingBudgetChange(values[0])}
+          className="flex-1"
+        />
+        <span className="text-[10px] text-muted-foreground tabular-nums min-w-[3.5rem] text-right">
+          {formatThinkingBudget(thinkingBudget)}
+        </span>
       </div>
 
       {/* API Key Management */}

@@ -2,8 +2,8 @@
  * ChatInput - Input area with API key entry, textarea, and quick actions
  */
 
-import { Button, cn, Input, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
-import { Globe, Key, Loader2, Send, Square } from 'lucide-react'
+import { Button, cn, Input } from '@ui-kit'
+import { Key, Loader2, Send, Square } from 'lucide-react'
 import React, { useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../../types'
 import { ContextIndicator } from '../ContextIndicator'
@@ -24,9 +24,6 @@ export interface ChatInputProps {
   streaming: StreamingState
   messages: ChatMessage[]
   selectedModel: string
-  // Web fetch toggle
-  enableWebFetch: boolean
-  onWebFetchChange: (enabled: boolean) => void
   // Quick actions
   prompts: QuickPrompt[]
   customPrompts: CustomPrompt[]
@@ -36,6 +33,7 @@ export interface ChatInputProps {
   onStopStreaming?: () => void
   onQuickActionSelect: (prompt: string, label: string) => void
   onAddCustomPrompt: (label: string, prompt: string) => Promise<void>
+  onUpdateCustomPrompt: (id: string, label: string, prompt: string) => Promise<void>
   onDeleteCustomPrompt: (id: string) => Promise<void>
 }
 
@@ -52,8 +50,6 @@ export function ChatInput({
   streaming,
   messages,
   selectedModel,
-  enableWebFetch,
-  onWebFetchChange,
   prompts,
   customPrompts,
   onInputChange,
@@ -61,6 +57,7 @@ export function ChatInput({
   onStopStreaming,
   onQuickActionSelect,
   onAddCustomPrompt,
+  onUpdateCustomPrompt,
   onDeleteCustomPrompt
 }: ChatInputProps): React.JSX.Element {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -148,6 +145,7 @@ export function ChatInput({
           customPrompts={customPrompts}
           onSelect={onQuickActionSelect}
           onAddCustomPrompt={onAddCustomPrompt}
+          onUpdateCustomPrompt={onUpdateCustomPrompt}
           onDeleteCustomPrompt={onDeleteCustomPrompt}
           disabled={isSending || streaming.isStreaming || (linkedPRChat && !isContextValid)}
         />
@@ -172,40 +170,6 @@ export function ChatInput({
             style={{ height: '72px' }}
           />
           <div className="flex flex-col gap-1 mb-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={enableWebFetch ? 'default' : 'ghost'}
-                  size="icon"
-                  className={cn(
-                    'h-9 w-9 flex-shrink-0 transition-colors',
-                    enableWebFetch
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  )}
-                  onClick={() => onWebFetchChange(!enableWebFetch)}
-                >
-                  <Globe className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-[200px]">
-                <p className="text-xs">
-                  {enableWebFetch ? (
-                    <>
-                      <span className="font-medium text-emerald-400">Web fetch enabled</span>
-                      <br />
-                      Claude can read web pages for current docs & info
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium">Web fetch disabled</span>
-                      <br />
-                      Enable to let Claude read web pages
-                    </>
-                  )}
-                </p>
-              </TooltipContent>
-            </Tooltip>
             {streaming.isStreaming && onStopStreaming ? (
               <Button
                 onClick={onStopStreaming}

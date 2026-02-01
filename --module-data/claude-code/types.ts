@@ -43,6 +43,20 @@ export interface ToolResult {
   duration: number
 }
 
+/**
+ * Tool execution history entry (for activity log)
+ */
+export interface ToolHistoryEntry {
+  id: string
+  toolName: string
+  input: string
+  output?: string
+  startedAt: number
+  completedAt?: number
+  duration?: number
+  status: 'running' | 'completed' | 'error'
+}
+
 // =============================================================================
 // Session Types
 // =============================================================================
@@ -74,6 +88,7 @@ export interface ClaudeSession {
   thinking: string | null // Current thinking being streamed
   activity: ToolActivity | null // Current tool being used
   lastToolResult: ToolResult | null // Last tool result (for display)
+  toolHistory: ToolHistoryEntry[] // History of all tool calls in this session
   error: string | null
   repoContext?: RepoContext
   createdAt: number

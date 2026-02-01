@@ -253,8 +253,6 @@ const electronAPI: ElectronAPI = {
   getDefaultModel: () => ipcRenderer.invoke('get-default-model'),
   getEnableThinking: () => ipcRenderer.invoke('get-enable-thinking'),
   setEnableThinking: (enabled: boolean) => ipcRenderer.invoke('set-enable-thinking', enabled),
-  getEnableWebFetch: () => ipcRenderer.invoke('get-enable-web-fetch'),
-  setEnableWebFetch: (enabled: boolean) => ipcRenderer.invoke('set-enable-web-fetch', enabled),
   getChatHistory: () => ipcRenderer.invoke('get-chat-history'),
   sendChatMessage: (message: string) => ipcRenderer.invoke('send-chat-message', message),
   sendChatMessageStreaming: (message: string, systemContext?: string) =>
@@ -636,6 +634,136 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('claude:error', handler)
     return () => {
       ipcRenderer.removeListener('claude:error', handler)
+    }
+  },
+
+  // Claude review event - emitted when Claude generates a structured review
+  onClaudeReview: (
+    callback: (data: {
+      sessionId: string
+      review: {
+        summary: string
+        comments: Array<{ file: string; line: number; body: string }>
+        verdict: 'approve' | 'request_changes' | 'comment'
+      }
+    }) => void
+  ) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        sessionId: string
+        review: {
+          summary: string
+          comments: Array<{ file: string; line: number; body: string }>
+          verdict: 'approve' | 'request_changes' | 'comment'
+        }
+      }
+    ) => {
+      callback(data)
+    }
+    ipcRenderer.on('claude:review', handler)
+    return () => {
+      ipcRenderer.removeListener('claude:review', handler)
+    }
+  },
+
+  // ==========================================================================
+  // SQLite Database (Persistence Module)
+  // ==========================================================================
+
+  db: {
+    // Conversations
+    conversations: {
+      list: () => ipcRenderer.invoke('db:conversations:list'),
+      get: (id: string) => ipcRenderer.invoke('db:conversations:get', id),
+      getWithMessages: (id: string) => ipcRenderer.invoke('db:conversations:getWithMessages', id),
+      create: (data: {
+        id: string
+        sessionType: 'pr' | 'general'
+        repoFullName?: string | null
+        prNumber?: number | null
+        prTitle?: string | null
+      }) => ipcRenderer.invoke('db:conversations:create', data),
+      getOrCreate: (data: {
+        id: string
+        sessionType: 'pr' | 'general'
+        repoFullName?: string | null
+        prNumber?: number | null
+        prTitle?: string | null
+      }) => ipcRenderer.invoke('db:conversations:getOrCreate', data),
+      update: (
+        id: string,
+        data: {
+          sessionType?: 'pr' | 'general'
+          repoFullName?: string | null
+          prNumber?: number | null
+          prTitle?: string | null
+        }
+      ) => ipcRenderer.invoke('db:conversations:update', id, data),
+      delete: (id: string) => ipcRenderer.invoke('db:conversations:delete', id),
+      deleteAll: () => ipcRenderer.invoke('db:conversations:deleteAll')
+    },
+
+    // Messages
+    messages: {
+      list: () => ipcRenderer.invoke('db:messages:list'),
+      listForConversation: (conversationId: string) =>
+        ipcRenderer.invoke('db:messages:listForConversation', conversationId),
+      add: (data: {
+        id: string
+        conversationId: string
+        role: 'user' | 'assistant'
+        content: string
+        thinking?: string | null
+        displayLabel?: string | null
+      }) => ipcRenderer.invoke('db:messages:add', data),
+      addMany: (
+        messages: Array<{
+          id: string
+          conversationId: string
+          role: 'user' | 'assistant'
+          content: string
+          thinking?: string | null
+          displayLabel?: string | null
+        }>
+      ) => ipcRenderer.invoke('db:messages:addMany', messages),
+      update: (
+        id: string,
+        data: {
+          role?: 'user' | 'assistant'
+          content?: string
+          thinking?: string | null
+          displayLabel?: string | null
+        }
+      ) => ipcRenderer.invoke('db:messages:update', id, data),
+      delete: (id: string) => ipcRenderer.invoke('db:messages:delete', id),
+      clearForConversation: (conversationId: string) =>
+        ipcRenderer.invoke('db:messages:clearForConversation', conversationId)
+    },
+
+    // Custom Prompts
+    customPrompts: {
+      list: () => ipcRenderer.invoke('db:customPrompts:list'),
+      create: (data: { id: string; label: string; prompt: string }) =>
+        ipcRenderer.invoke('db:customPrompts:create', data),
+      update: (id: string, data: { label?: string; prompt?: string }) =>
+        ipcRenderer.invoke('db:customPrompts:update', id, data),
+      delete: (id: string) => ipcRenderer.invoke('db:customPrompts:delete', id)
+    },
+
+    // AI Usage
+    aiUsage: {
+      add: (data: {
+        model: string
+        inputTokens: number
+        outputTokens: number
+        inputCostUsd: number
+        outputCostUsd: number
+      }) => ipcRenderer.invoke('db:aiUsage:add', data),
+      listRecent: (limit?: number) => ipcRenderer.invoke('db:aiUsage:listRecent', limit),
+      getStats: (sinceTimestamp?: number) =>
+        ipcRenderer.invoke('db:aiUsage:getStats', sinceTimestamp),
+      clear: () => ipcRenderer.invoke('db:aiUsage:clear')
     }
   }
 }

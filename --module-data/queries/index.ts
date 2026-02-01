@@ -11,7 +11,6 @@ export {
   useClaudeModels,
   useCustomPrompts,
   useEnableThinking,
-  useEnableWebFetch,
   useFindPreviewUrl,
   usePRChatMessages,
   useSelectedModel

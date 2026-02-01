@@ -10,23 +10,26 @@
 import type { ReviewCommentInput } from '@data'
 import {
   type ClaudeMessage,
+  type ClaudeReviewData,
   useAddCustomPrompt,
   useClaudeApiKeyStatus,
   useClaudeCodeStatus,
+  useClaudeReviewListener,
   useClaudeSession,
   useClearSession,
+  useCurrentUser,
   useCustomPrompts,
   useDeleteCustomPrompt,
   usePRFiles,
   useSendMessage,
   useSetClaudeApiKey,
   useStopClaude,
-  useSubmitPRReviewWithComments
+  useSubmitPRReviewWithComments,
+  useUpdateCustomPrompt
 } from '@data'
 import { Button } from '@ui-kit'
-import { ArrowDown, Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { getPRQuickPrompts } from '../../constants'
+import { ArrowDown, ClipboardCheck, Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useThrottledValue } from '../../hooks'
 import type {
   AIChatPanelProps,
@@ -39,14 +42,10 @@ import { NoPRSelectedState, PRContextBanner } from '../ChatEmptyStates'
 import { ChatHeader } from '../ChatHeader'
 import { ChatInput } from '../ChatInput'
 import { ChatSettings } from '../ChatSettings'
-import { MessageBubble } from '../MessageBubble'
-import { QueuedMessageBubble } from '../QueuedMessageBubble'
 import { ReviewPreviewModal } from '../ReviewPreviewModal'
-import { StreamingBubble } from '../StreamingBubble'
+import { VirtualizedMessageList } from '../VirtualizedMessageList'
 
 export type { AIChatPanelProps } from '../../types'
-
-const SCROLL_THRESHOLD = 100
 
 // Available Claude models for selection
 // Ordered by: newest/most capable first
@@ -94,6 +93,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   const { data: claudeCodeStatus, isLoading: isLoadingClaudeCode } = useClaudeCodeStatus()
   const { data: apiKeyStatus, isLoading: isLoadingApiKey } = useClaudeApiKeyStatus()
+  const { data: currentUser } = useCurrentUser()
   const isClaudeCodeInstalled = claudeCodeStatus?.installed ?? false
   const hasApiKey = apiKeyStatus?.hasKey ?? false
 
@@ -114,6 +114,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   const { data: customPrompts = [] } = useCustomPrompts()
   const { data: prFiles = [] } = usePRFiles(repoFullName, prNumber, selectedPR?.changed_files)
   const addCustomPrompt = useAddCustomPrompt()
+  const updateCustomPrompt = useUpdateCustomPrompt()
   const deleteCustomPrompt = useDeleteCustomPrompt()
   const submitReview = useSubmitPRReviewWithComments()
 
@@ -129,7 +130,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   // Model and thinking settings
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
-  const [enableThinking, setEnableThinking] = useState(true)
+  const [thinkingBudget, setThinkingBudget] = useState(10000) // 0 = off, otherwise token budget
   const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set())
   const [userScrolledUp, setUserScrolledUp] = useState(false)
 
@@ -139,6 +140,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     review: ReviewData | null
   }>({ isOpen: false, review: null })
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+
+  // Pending review from Claude (shows button, doesn't auto-open modal)
+  const [pendingReview, setPendingReview] = useState<ReviewData | null>(null)
 
   // Message queue - stores messages to send after current streaming completes
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
@@ -176,7 +180,8 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     thinking: session?.thinking ?? '',
     isStreaming,
     status: getStreamingStatus(),
-    activity: session?.activity ?? null
+    activity: session?.activity ?? null,
+    toolHistory: session?.toolHistory ?? []
   }
 
   // Reduced throttle: 30ms instead of 100ms for snappier updates
@@ -188,6 +193,8 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isAutoScrollingRef = useRef(false)
+  const lastScrollTopRef = useRef(0)
+  const virtualizerScrollToEndRef = useRef<(() => void) | null>(null)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SCROLL MANAGEMENT
@@ -197,18 +204,25 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     const container = scrollContainerRef.current
     if (!container) return true
     const { scrollTop, scrollHeight, clientHeight } = container
-    return scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD
+    // Very small threshold (5px) to account for sub-pixel rendering
+    return scrollHeight - scrollTop - clientHeight < 5
   }, [])
 
   const scrollToBottom = useCallback((smooth = true) => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
     isAutoScrollingRef.current = true
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: smooth ? 'smooth' : 'instant'
-    })
+
+    // Use virtualizer's scrollToEnd if available (more accurate for virtualized lists)
+    if (virtualizerScrollToEndRef.current) {
+      virtualizerScrollToEndRef.current()
+    } else {
+      const container = scrollContainerRef.current
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: smooth ? 'smooth' : 'instant'
+        })
+      }
+    }
 
     setTimeout(
       () => {
@@ -219,9 +233,30 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   }, [])
 
   const handleScroll = useCallback(() => {
+    // Ignore scroll events triggered by programmatic scrolling
     if (isAutoScrollingRef.current) return
-    setUserScrolledUp(!isAtBottom())
+
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const currentScrollTop = container.scrollTop
+    const scrolledUp = currentScrollTop < lastScrollTopRef.current
+    lastScrollTopRef.current = currentScrollTop
+
+    // User scrolled UP by any amount -> disable auto-scroll
+    if (scrolledUp) {
+      setUserScrolledUp(true)
+    }
+    // User scrolled to the very bottom -> re-enable auto-scroll
+    else if (isAtBottom()) {
+      setUserScrolledUp(false)
+    }
   }, [isAtBottom])
+
+  // Callback when virtualizer is ready - stores the scrollToEnd function
+  const handleVirtualizerReady = useCallback((scrollToEnd: () => void) => {
+    virtualizerScrollToEndRef.current = scrollToEnd
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SEND MESSAGE (via Claude Code CLI)
@@ -248,12 +283,32 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             changedFiles: selectedPR.changed_files,
             // Include labels
             labels: selectedPR.labels?.map((l) => l.name) || [],
-            // Include recent comments (limit to 10 most recent)
+            // Include ALL PR comments
             comments:
-              selectedPR.commentsList?.slice(-10).map((c) => ({
+              selectedPR.commentsList?.map((c) => ({
                 author: c.author.login,
                 body: c.body,
                 createdAt: new Date(c.created_at).toLocaleDateString()
+              })) || [],
+            // Include ALL review content
+            reviews:
+              selectedPR.reviews?.map((r) => ({
+                author: r.author.login,
+                state: r.state,
+                body: r.body,
+                createdAt: new Date(r.created_at).toLocaleDateString()
+              })) || [],
+            // Include ALL review threads (inline comments on code)
+            reviewThreads:
+              selectedPR.reviewThreads?.map((t) => ({
+                path: t.path,
+                line: t.line,
+                isResolved: t.isResolved,
+                comments: t.comments.map((c) => ({
+                  author: c.author.login,
+                  body: c.body,
+                  createdAt: new Date(c.created_at).toLocaleDateString()
+                }))
               })) || [],
             // Summarize review status
             reviewSummary: selectedPR.reviews
@@ -270,15 +325,20 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
                   if (commented > 0) parts.push(`${commented} comment${commented > 1 ? 's' : ''}`)
                   return parts.length > 0 ? parts.join(', ') : undefined
                 })()
-              : undefined
+              : undefined,
+            // Include current user's GitHub username
+            username: currentUser?.login
           }
-        : undefined
+        : // Even without a PR selected, pass the username for personalization
+          currentUser?.login
+          ? { owner: '', repo: '', username: currentUser.login }
+          : undefined
 
       // Claude config - uses user-selected model and thinking settings
       const config = {
         model: selectedModel,
-        enableExtendedThinking: enableThinking,
-        maxThinkingTokens: enableThinking ? 10000 : 0
+        enableExtendedThinking: thinkingBudget > 0,
+        maxThinkingTokens: thinkingBudget
       }
 
       // Send message directly - NO prompt enhancement needed
@@ -297,9 +357,10 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
       hasApiKey,
       selectedPR,
       selectedModel,
-      enableThinking,
+      thinkingBudget,
       sendMessageMutation,
-      scrollToBottom
+      scrollToBottom,
+      currentUser?.login
     ]
   )
 
@@ -329,10 +390,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     }
   }, [messages.length, streaming.isStreaming, scrollToBottom])
 
-  // Reset scroll when PR changes
+  // Reset scroll and clear pending review when PR changes
   useEffect(() => {
     if (selectedPR) {
       setUserScrolledUp(false)
+      setPendingReview(null) // Clear any pending review from previous PR
       setTimeout(() => scrollToBottom(false), 100)
     }
   }, [selectedPR, scrollToBottom])
@@ -447,18 +509,59 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     scrollToBottom(true)
   }, [scrollToBottom])
 
+  const handleOpenReview = useCallback((review: ReviewData) => {
+    setReviewPreview({ isOpen: true, review })
+  }, [])
+
+  // Listen for Claude review events (tool-based approach)
+  // This callback converts ClaudeReviewData to ReviewData format and shows a button
+  const handleClaudeReview = useCallback((review: ClaudeReviewData) => {
+    // Convert ClaudeReviewData to ReviewData format (add IDs to comments)
+    const reviewData: ReviewData = {
+      summary: review.summary,
+      verdict: review.verdict,
+      comments: review.comments.map((c, i) => ({
+        id: `review-comment-${i}-${Date.now()}`,
+        file: c.file,
+        line: c.line,
+        body: c.body
+      }))
+    }
+    // Set pending review - button will appear, user clicks to open modal
+    setPendingReview(reviewData)
+  }, [])
+
+  // Hook into Claude review events (tool-based, not parsing)
+  useClaudeReviewListener(sessionId, handleClaudeReview)
+
+  // Handler for clicking the "Open Review" button
+  const handleOpenPendingReview = useCallback(() => {
+    if (pendingReview) {
+      handleOpenReview(pendingReview)
+      setPendingReview(null) // Clear pending after opening
+    }
+  }, [pendingReview, handleOpenReview])
+
+  const _handleRemoveQueuedMessage = useCallback((id: string) => {
+    setMessageQueue((prev) => prev.filter((m) => m.id !== id))
+  }, [])
+
   // ═══════════════════════════════════════════════════════════════════════════
   // CONVERT CLAUDE MESSAGES TO CHAT MESSAGES FOR UI
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const chatMessages = messages.map((m: ClaudeMessage) => ({
-    id: m.id,
-    role: m.role,
-    content: m.content,
-    displayLabel: m.displayLabel, // Show this instead of full content for quick actions
-    thinking: m.thinking,
-    timestamp: new Date(m.timestamp).toISOString()
-  }))
+  const chatMessages = useMemo(
+    () =>
+      messages.map((m: ClaudeMessage) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        displayLabel: m.displayLabel, // Show this instead of full content for quick actions
+        thinking: m.thinking,
+        timestamp: new Date(m.timestamp).toISOString()
+      })),
+    [messages]
+  )
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -527,10 +630,10 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         <ChatSettings
           models={CLAUDE_MODELS}
           selectedModel={selectedModel}
-          enableThinking={enableThinking}
+          thinkingBudget={thinkingBudget}
           isLoadingModels={false}
           onModelChange={setSelectedModel}
-          onThinkingChange={setEnableThinking}
+          onThinkingBudgetChange={setThinkingBudget}
           onRemoveApiKey={() => {
             // Clear the API key
             setApiKeyMutation.mutate('')
@@ -547,83 +650,53 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         />
       )}
 
-      {/* Tool activity indicator */}
-      {session?.activity && (
-        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-xs">
-          <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-          <span className="text-muted-foreground">
-            {session.activity.toolName}: {session.activity.input}
-          </span>
-        </div>
-      )}
-
       <div className="flex-1 relative overflow-hidden">
         {/* No PR selected */}
         {!selectedPR && <NoPRSelectedState apiKey={hasApiKey ? 'configured' : null} />}
 
         {/* Chat area - shows when PR is selected */}
         {selectedPR && (
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className="h-full overflow-y-auto p-4 space-y-4"
-          >
+          <>
             {/* Empty state when no messages */}
-            {!hasMessages && !streaming.isStreaming && (
+            {!hasMessages && !streaming.isStreaming ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <p className="text-muted-foreground mb-2">No conversation yet</p>
                 <p className="text-xs text-muted-foreground">
                   Ask a question about PR #{selectedPR.number}
                 </p>
               </div>
-            )}
-
-            {/* Messages */}
-            {chatMessages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
+            ) : (
+              /* Virtualized message list - only renders visible messages */
+              <VirtualizedMessageList
+                messages={chatMessages}
+                streaming={streaming}
+                throttledStreaming={throttledStreaming}
+                messageQueue={messageQueue}
                 expandedThinking={expandedThinking}
                 toggleThinkingExpanded={toggleThinkingExpanded}
+                setMessageQueue={setMessageQueue}
+                scrollContainerRef={scrollContainerRef}
+                onScroll={handleScroll}
+                onVirtualizerReady={handleVirtualizerReady}
                 user={user}
-                onOpenReview={(review) => setReviewPreview({ isOpen: true, review })}
               />
-            ))}
-
-            {/* Streaming bubble */}
-            {streaming.isStreaming && (
-              <div className="pb-3">
-                <StreamingBubble streaming={throttledStreaming} />
-              </div>
             )}
 
-            {/* Queued messages */}
-            {messageQueue.length > 0 && (
-              <div className="space-y-3">
-                {/* Queue header */}
-                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-2 pb-1 border-t border-dashed border-border/50">
-                  <span className="font-medium">
-                    {messageQueue.length} message{messageQueue.length > 1 ? 's' : ''} queued
-                  </span>
-                </div>
-
-                {/* Queued message bubbles */}
-                {messageQueue.map((queuedMsg, index) => (
-                  <QueuedMessageBubble
-                    key={queuedMsg.id}
-                    message={queuedMsg}
-                    index={index}
-                    onRemove={() =>
-                      setMessageQueue((prev) => prev.filter((m) => m.id !== queuedMsg.id))
-                    }
-                    user={user}
-                  />
-                ))}
+            {/* Review ready button - appears when Claude generates a review */}
+            {pendingReview && !streaming.isStreaming && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
+                <Button
+                  onClick={handleOpenPendingReview}
+                  className="flex items-center gap-2 shadow-lg"
+                  variant="default"
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  Open Review ({pendingReview.comments.length} comment
+                  {pendingReview.comments.length !== 1 ? 's' : ''})
+                </Button>
               </div>
             )}
-
-            <div className="h-px" />
-          </div>
+          </>
         )}
 
         {/* Scroll to bottom button */}
@@ -662,12 +735,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           streaming={streaming}
           messages={chatMessages}
           selectedModel={selectedModel}
-          enableWebFetch={true}
-          onWebFetchChange={() => {}}
-          prompts={getPRQuickPrompts({
-            hasCIFailures:
-              selectedPR?.checks?.state === 'failure' || selectedPR?.checks?.state === 'error'
-          })}
+          prompts={[]}
           customPrompts={customPrompts}
           onInputChange={setInput}
           onSendMessage={handleSendMessage}
@@ -683,6 +751,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
           }}
           onAddCustomPrompt={async (label, prompt) => {
             addCustomPrompt.mutate({ label, prompt })
+          }}
+          onUpdateCustomPrompt={async (id, label, prompt) => {
+            updateCustomPrompt.mutate({ id, label, prompt })
           }}
           onDeleteCustomPrompt={async (id) => {
             deleteCustomPrompt.mutate(id)

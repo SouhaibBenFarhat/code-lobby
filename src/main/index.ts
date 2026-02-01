@@ -20,6 +20,7 @@ if (process.platform === 'darwin') {
 }
 
 import { LogCategory, mainLogger as logger } from '@logger/main'
+import { closeDatabase, initDatabase, registerPersistenceIpcHandlers } from '@persistence/main'
 import { getAllModelPricing } from './ai-pricing'
 import {
   analyzeCIFailure,
@@ -33,8 +34,7 @@ import {
   generateDailySpeech,
   getDefaultModel,
   sendMessage as sendClaudeMessage,
-  sendMessageStreaming as sendClaudeMessageStreaming,
-  sendMessageStreamingWithTools as sendClaudeMessageStreamingWithTools
+  sendMessageStreaming as sendClaudeMessageStreaming
 } from './claude-api'
 import {
   startClaudeSession,
@@ -57,7 +57,6 @@ import {
   getClaudeApiKey,
   getCustomQuickPrompts,
   getEnableThinking,
-  getEnableWebFetch,
   getPRAnalysis,
   getPRAnalysisPanelOpen,
   getPRChat,
@@ -66,12 +65,10 @@ import {
   resetAIUsage,
   setClaudeApiKey,
   setEnableThinking,
-  setEnableWebFetch,
   setPRAnalysis,
   setPRAnalysisPanelOpen,
   setSelectedModel
 } from './store'
-import { executeWebFetch, FETCH_URL_TOOL } from './web-fetch'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ARCHITECTURE NOTE
@@ -356,17 +353,6 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
-  // Web fetch toggle (free tool that allows Claude to fetch URLs)
-  ipcMain.handle('get-enable-web-fetch', async () => {
-    return getEnableWebFetch()
-  })
-
-  ipcMain.handle('set-enable-web-fetch', async (_, enabled: boolean) => {
-    logger.info(LogCategory.API, 'Setting web fetch tool', { enabled })
-    setEnableWebFetch(enabled)
-    return { success: true }
-  })
-
   ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
@@ -446,7 +432,6 @@ function setupIPCHandlers(): void {
 
       const selectedModel = getSelectedModel() || getDefaultModel()
       const enableThinking = getEnableThinking()
-      const enableWebFetch = getEnableWebFetch()
 
       // Check if there's an active PR chat
       const activePRChatId = getActivePRChatId()
@@ -455,7 +440,6 @@ function setupIPCHandlers(): void {
       logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
         model: selectedModel,
         thinking: enableThinking,
-        webFetch: enableWebFetch,
         hasSystemContext: !!systemContext,
         isInPRChat,
         activePRChatId
@@ -548,41 +532,15 @@ function setupIPCHandlers(): void {
         }
       }
 
-      // Start streaming - use tool-enabled version if web fetch is enabled
-      if (enableWebFetch) {
-        // Tool executor that handles web fetch requests
-        const toolExecutor = async (
-          toolName: string,
-          toolInput: Record<string, unknown>
-        ): Promise<{ content: string; isError: boolean }> => {
-          if (toolName === 'fetch_url') {
-            const url = toolInput.url as string
-            return executeWebFetch(url)
-          }
-          return { content: `Unknown tool: ${toolName}`, isError: true }
-        }
-
-        sendClaudeMessageStreamingWithTools(
-          apiKey,
-          claudeMessages,
-          handleChunk,
-          [FETCH_URL_TOOL],
-          toolExecutor,
-          selectedModel,
-          effectiveSystemPrompt,
-          enableThinking
-        )
-      } else {
-        // Regular streaming without tools
-        sendClaudeMessageStreaming(
-          apiKey,
-          claudeMessages,
-          handleChunk,
-          selectedModel,
-          effectiveSystemPrompt,
-          enableThinking
-        )
-      }
+      // Start streaming (web fetch is handled natively by Claude Code CLI)
+      sendClaudeMessageStreaming(
+        apiKey,
+        claudeMessages,
+        handleChunk,
+        selectedModel,
+        effectiveSystemPrompt,
+        enableThinking
+      )
 
       return { success: true, streamId }
     }
@@ -1196,6 +1154,10 @@ app.whenReady().then(() => {
     logsPath: logger.getLogsPath()
   })
 
+  // Initialize SQLite database
+  initDatabase()
+  registerPersistenceIpcHandlers()
+
   electronApp.setAppUserModelId('com.codelobby.app')
 
   app.on('browser-window-created', (_, window) => {
@@ -1222,5 +1184,6 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   logger.info(LogCategory.APP, 'App shutting down')
   stopAllClaudeSessions()
+  closeDatabase()
   logger.forceSave()
 })

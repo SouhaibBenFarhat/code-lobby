@@ -12,7 +12,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '@logger/main': resolve('--module-logger/main.ts'),
-        '@logger': resolve('--module-logger/index.ts')
+        '@logger': resolve('--module-logger/index.ts'),
+        '@persistence/main': resolve('--module-persistence/main/index.ts')
       }
     }
   },
@@ -42,7 +43,8 @@ export default defineConfig({
         '@app/bootstrap': resolve('--module-app/bootstrap.ts'),
         '@app': resolve('--module-app/index.ts'),
         '@ui-kit': resolve('--module-ui-kit/index.ts'),
-        '@test-utils': resolve('--module-test-utils/index.ts')
+        '@test-utils': resolve('--module-test-utils/index.ts'),
+        '@persistence': resolve('--module-persistence/index.ts')
       }
     },
     plugins: [react()]

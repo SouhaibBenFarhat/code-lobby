@@ -36,12 +36,7 @@ export {
 // Component exports
 export { AIChatPanel } from './components/AIChat'
 
-export {
-  CONTEXT_WINDOWS,
-  DEFAULT_CONTEXT_WINDOW,
-  GENERATE_REVIEW_PROMPT,
-  getPRQuickPrompts
-} from './constants'
+export { CONTEXT_WINDOWS, DEFAULT_CONTEXT_WINDOW } from './constants'
 
 export { useThrottledValue } from './hooks'
 

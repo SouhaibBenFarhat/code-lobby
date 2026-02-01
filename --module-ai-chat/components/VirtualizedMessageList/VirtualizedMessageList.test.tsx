@@ -53,7 +53,8 @@ describe('VirtualizedMessageList', () => {
     thinking: '',
     isStreaming: false,
     status: 'idle',
-    activity: null
+    activity: null,
+    toolHistory: []
   }
 
   beforeEach(() => {
@@ -81,7 +82,8 @@ describe('VirtualizedMessageList', () => {
       thinking: '',
       isStreaming: true,
       status: 'writing',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     const { container } = render(<TestWrapper messages={[]} streaming={streaming} />)
@@ -99,7 +101,8 @@ describe('VirtualizedMessageList', () => {
       thinking: '',
       isStreaming: true,
       status: 'writing',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     const messageQueue = [
@@ -149,7 +152,8 @@ describe('VirtualizedMessageList', () => {
       thinking: 'Thinking about the problem...',
       isStreaming: true,
       status: 'thinking',
-      activity: null
+      activity: null,
+      toolHistory: []
     }
 
     const { container } = render(<TestWrapper messages={[]} streaming={streaming} />)

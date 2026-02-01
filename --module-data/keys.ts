@@ -71,7 +71,6 @@ export const keys = {
   claudeModels: ['ai', 'claude-models'] as const,
   selectedModel: ['ai', 'selected-model'] as const,
   enableThinking: ['ai', 'enable-thinking'] as const,
-  enableWebFetch: ['ai', 'enable-web-fetch'] as const,
   customPrompts: ['ai', 'custom-prompts'] as const,
   aiUsage: ['ai', 'usage'] as const,
   // Agentic action prompts (PERSISTED)

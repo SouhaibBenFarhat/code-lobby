@@ -330,8 +330,6 @@ export interface ElectronAPI {
   getDefaultModel: () => Promise<string>
   getEnableThinking: () => Promise<boolean>
   setEnableThinking: (enabled: boolean) => Promise<{ success: boolean }>
-  getEnableWebFetch: () => Promise<boolean>
-  setEnableWebFetch: (enabled: boolean) => Promise<{ success: boolean }>
   getChatHistory: () => Promise<
     Array<{
       id: string
@@ -709,6 +707,313 @@ export interface ElectronAPI {
   ) => () => void
 
   onClaudeError: (callback: (data: { sessionId: string; error: string }) => void) => () => void
+
+  // Claude review event - emitted when Claude generates a structured review
+  onClaudeReview: (
+    callback: (data: {
+      sessionId: string
+      review: {
+        summary: string
+        comments: Array<{ file: string; line: number; body: string }>
+        verdict: 'approve' | 'request_changes' | 'comment'
+      }
+    }) => void
+  ) => () => void
+
+  // ==========================================================================
+  // SQLite Database (Persistence Module)
+  // ==========================================================================
+
+  db: {
+    // Conversations
+    conversations: {
+      list: () => Promise<{
+        success: boolean
+        data?: Array<{
+          id: string
+          sessionType: 'pr' | 'general'
+          repoFullName: string | null
+          prNumber: number | null
+          prTitle: string | null
+          createdAt: number
+          updatedAt: number
+        }>
+        error?: string
+      }>
+      get: (id: string) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          sessionType: 'pr' | 'general'
+          repoFullName: string | null
+          prNumber: number | null
+          prTitle: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      getWithMessages: (id: string) => Promise<{
+        success: boolean
+        data?: {
+          conversation: {
+            id: string
+            sessionType: 'pr' | 'general'
+            repoFullName: string | null
+            prNumber: number | null
+            prTitle: string | null
+            createdAt: number
+            updatedAt: number
+          }
+          messages: Array<{
+            id: string
+            conversationId: string
+            role: 'user' | 'assistant'
+            content: string
+            thinking: string | null
+            displayLabel: string | null
+            createdAt: number
+          }>
+        }
+        error?: string
+      }>
+      create: (data: {
+        id: string
+        sessionType: 'pr' | 'general'
+        repoFullName?: string | null
+        prNumber?: number | null
+        prTitle?: string | null
+      }) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          sessionType: 'pr' | 'general'
+          repoFullName: string | null
+          prNumber: number | null
+          prTitle: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      getOrCreate: (data: {
+        id: string
+        sessionType: 'pr' | 'general'
+        repoFullName?: string | null
+        prNumber?: number | null
+        prTitle?: string | null
+      }) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          sessionType: 'pr' | 'general'
+          repoFullName: string | null
+          prNumber: number | null
+          prTitle: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      update: (
+        id: string,
+        data: {
+          sessionType?: 'pr' | 'general'
+          repoFullName?: string | null
+          prNumber?: number | null
+          prTitle?: string | null
+        }
+      ) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          sessionType: 'pr' | 'general'
+          repoFullName: string | null
+          prNumber: number | null
+          prTitle: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      delete: (id: string) => Promise<{ success: boolean; data?: boolean; error?: string }>
+      deleteAll: () => Promise<{ success: boolean; data?: number; error?: string }>
+    }
+
+    // Messages
+    messages: {
+      list: () => Promise<{
+        success: boolean
+        data?: Array<{
+          id: string
+          conversationId: string
+          role: 'user' | 'assistant'
+          content: string
+          thinking: string | null
+          displayLabel: string | null
+          createdAt: number
+        }>
+        error?: string
+      }>
+      listForConversation: (conversationId: string) => Promise<{
+        success: boolean
+        data?: Array<{
+          id: string
+          conversationId: string
+          role: 'user' | 'assistant'
+          content: string
+          thinking: string | null
+          displayLabel: string | null
+          createdAt: number
+        }>
+        error?: string
+      }>
+      add: (data: {
+        id: string
+        conversationId: string
+        role: 'user' | 'assistant'
+        content: string
+        thinking?: string | null
+        displayLabel?: string | null
+      }) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          conversationId: string
+          role: 'user' | 'assistant'
+          content: string
+          thinking: string | null
+          displayLabel: string | null
+          createdAt: number
+        }
+        error?: string
+      }>
+      addMany: (
+        messages: Array<{
+          id: string
+          conversationId: string
+          role: 'user' | 'assistant'
+          content: string
+          thinking?: string | null
+          displayLabel?: string | null
+        }>
+      ) => Promise<{ success: boolean; error?: string }>
+      update: (
+        id: string,
+        data: {
+          role?: 'user' | 'assistant'
+          content?: string
+          thinking?: string | null
+          displayLabel?: string | null
+        }
+      ) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          conversationId: string
+          role: 'user' | 'assistant'
+          content: string
+          thinking: string | null
+          displayLabel: string | null
+          createdAt: number
+        }
+        error?: string
+      }>
+      delete: (id: string) => Promise<{ success: boolean; data?: boolean; error?: string }>
+      clearForConversation: (conversationId: string) => Promise<{
+        success: boolean
+        data?: number
+        error?: string
+      }>
+    }
+
+    // Custom Prompts
+    customPrompts: {
+      list: () => Promise<{
+        success: boolean
+        data?: Array<{
+          id: string
+          label: string
+          prompt: string
+          createdAt: number
+        }>
+        error?: string
+      }>
+      create: (data: { id: string; label: string; prompt: string }) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          label: string
+          prompt: string
+          createdAt: number
+        }
+        error?: string
+      }>
+      update: (
+        id: string,
+        data: { label?: string; prompt?: string }
+      ) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          label: string
+          prompt: string
+          createdAt: number
+        }
+        error?: string
+      }>
+      delete: (id: string) => Promise<{ success: boolean; data?: boolean; error?: string }>
+    }
+
+    // AI Usage
+    aiUsage: {
+      add: (data: {
+        model: string
+        inputTokens: number
+        outputTokens: number
+        inputCostUsd: number
+        outputCostUsd: number
+      }) => Promise<{
+        success: boolean
+        data?: {
+          id: number
+          model: string
+          inputTokens: number
+          outputTokens: number
+          inputCostUsd: number
+          outputCostUsd: number
+          createdAt: number
+        }
+        error?: string
+      }>
+      listRecent: (limit?: number) => Promise<{
+        success: boolean
+        data?: Array<{
+          id: number
+          model: string
+          inputTokens: number
+          outputTokens: number
+          inputCostUsd: number
+          outputCostUsd: number
+          createdAt: number
+        }>
+        error?: string
+      }>
+      getStats: (sinceTimestamp?: number) => Promise<{
+        success: boolean
+        data?: {
+          totalInputTokens: number
+          totalOutputTokens: number
+          totalInputCostUsd: number
+          totalOutputCostUsd: number
+          totalCostUsd: number
+          recordCount: number
+        }
+        error?: string
+      }>
+      clear: () => Promise<{ success: boolean; data?: number; error?: string }>
+    }
+  }
 }
 
 declare global {

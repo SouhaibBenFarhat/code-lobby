@@ -103,7 +103,6 @@ export interface AIChatSettings {
   claudeApiKey: string | null
   selectedModel: string | null
   enableThinking: boolean
-  enableWebFetch: boolean
   chatHistory: ChatMessage[]
 }
 
@@ -223,7 +222,6 @@ const store = new Store<StoreSchema>({
       claudeApiKey: null,
       selectedModel: null,
       enableThinking: true, // Show Claude's reasoning by default
-      enableWebFetch: false, // Web fetch tool disabled by default
       chatHistory: []
     },
     aiPanel: {
@@ -416,19 +414,6 @@ export function setEnableThinking(enabled: boolean): void {
   storeSet(
     'aiChat.enableThinking',
     () => store.set('aiChat', { ...current, enableThinking: enabled }),
-    { enabled }
-  )
-}
-
-export function getEnableWebFetch(): boolean {
-  return storeGet('aiChat.enableWebFetch', () => store.get('aiChat').enableWebFetch ?? false)
-}
-
-export function setEnableWebFetch(enabled: boolean): void {
-  const current = store.get('aiChat')
-  storeSet(
-    'aiChat.enableWebFetch',
-    () => store.set('aiChat', { ...current, enableWebFetch: enabled }),
     { enabled }
   )
 }

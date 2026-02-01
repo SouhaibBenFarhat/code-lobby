@@ -18,10 +18,10 @@ describe('ChatSettings', () => {
       }
     ],
     selectedModel: 'claude-3-5-sonnet-20241022',
-    enableThinking: false,
+    thinkingBudget: 0,
     isLoadingModels: false,
     onModelChange: vi.fn(),
-    onThinkingChange: vi.fn(),
+    onThinkingBudgetChange: vi.fn(),
     onRemoveApiKey: vi.fn()
   }
 
@@ -51,42 +51,36 @@ describe('ChatSettings', () => {
     it('renders select trigger with correct model', () => {
       render(<ChatSettings {...defaultProps} />)
 
-      const trigger = screen.getByRole('combobox')
-      expect(trigger).toBeInTheDocument()
+      const triggers = screen.getAllByRole('combobox')
+      expect(triggers.length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('Claude 3.5 Sonnet')).toBeInTheDocument()
     })
   })
 
-  describe('extended thinking toggle', () => {
-    it('renders thinking toggle with label', () => {
+  describe('thinking budget slider', () => {
+    it('renders thinking label', () => {
       render(<ChatSettings {...defaultProps} />)
 
       expect(screen.getByText('Thinking')).toBeInTheDocument()
     })
 
-    it('shows toggle in off state by default', () => {
-      render(<ChatSettings {...defaultProps} enableThinking={false} />)
+    it('renders slider', () => {
+      render(<ChatSettings {...defaultProps} />)
 
-      const toggle = screen.getByRole('switch')
-      expect(toggle).toHaveAttribute('aria-checked', 'false')
-      expect(toggle).toHaveClass('bg-muted')
+      const slider = screen.getByRole('slider')
+      expect(slider).toBeInTheDocument()
     })
 
-    it('shows toggle in on state when enabled', () => {
-      render(<ChatSettings {...defaultProps} enableThinking={true} />)
+    it('shows Off when budget is 0', () => {
+      render(<ChatSettings {...defaultProps} thinkingBudget={0} />)
 
-      const toggle = screen.getByRole('switch')
-      expect(toggle).toHaveAttribute('aria-checked', 'true')
-      expect(toggle).toHaveClass('bg-primary')
+      expect(screen.getByText('Off')).toBeInTheDocument()
     })
 
-    it('calls onThinkingChange when toggle clicked', async () => {
-      render(<ChatSettings {...defaultProps} enableThinking={false} />)
+    it('shows token count when budget is set', () => {
+      render(<ChatSettings {...defaultProps} thinkingBudget={10000} />)
 
-      const toggle = screen.getByRole('switch')
-      await userEvent.click(toggle)
-
-      expect(defaultProps.onThinkingChange).toHaveBeenCalledWith(true)
+      expect(screen.getByText('10k tokens')).toBeInTheDocument()
     })
   })
 

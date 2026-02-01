@@ -14,13 +14,15 @@
     "types": ["node"],
     "paths": {
       "@logger/main": ["./--module-logger/main.ts"],
-      "@logger": ["./--module-logger/index.ts"]
+      "@logger": ["./--module-logger/index.ts"],
+      "@persistence/main": ["./--module-persistence/main/index.ts"]
     }
   },
   "include": [
     "electron.vite.config.ts",
     "src/main/**/*",
     "src/preload/**/*",
-    "--module-logger/**/*"
+    "--module-logger/**/*",
+    "--module-persistence/main/**/*"
   ]
 }

@@ -72,19 +72,23 @@ export function useEnableThinking(): UseQueryResult<boolean> {
   })
 }
 
-export function useEnableWebFetch(): UseQueryResult<boolean> {
-  return useQuery({
-    queryKey: keys.enableWebFetch,
-    queryFn: (): boolean => getPersisted(keys.enableWebFetch, false),
-    staleTime: Infinity
-  })
-}
-
 export function useCustomPrompts(): UseQueryResult<CustomPrompt[]> {
   return useQuery({
     queryKey: keys.customPrompts,
-    queryFn: (): CustomPrompt[] => getPersisted(keys.customPrompts, []),
-    staleTime: Infinity
+    queryFn: async (): Promise<CustomPrompt[]> => {
+      const result = await window.electron.db.customPrompts.list()
+      if (!result.success) {
+        console.error('Failed to load custom prompts:', result.error)
+        return []
+      }
+      return (result.data || []).map((data) => ({
+        id: data.id,
+        label: data.label,
+        prompt: data.prompt,
+        createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : undefined
+      }))
+    }
+    // No staleTime - always fetch fresh from SQLite
   })
 }
 

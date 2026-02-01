@@ -7,7 +7,9 @@
 
 // Hooks
 export {
+  type ClaudeReviewData,
   claudeKeys,
+  useClaudeReviewListener,
   useClaudeSession,
   useClaudeStreamListener,
   useClearSession,
@@ -46,6 +48,7 @@ export {
   getPRSessionId,
   getRecentSessions,
   getSessionMessages,
+  initSessionCache,
   listSessionIds,
   loadAllSessions,
   loadSession,
@@ -76,6 +79,7 @@ export type {
   StreamEventToolResult,
   StreamEventToolUse,
   ToolActivity,
+  ToolHistoryEntry,
   ToolResult
 } from './types'
 export { TOOL_DISPLAY_NAMES } from './types'

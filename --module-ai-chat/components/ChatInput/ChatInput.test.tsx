@@ -19,12 +19,11 @@ describe('ChatInput', () => {
       thinking: '',
       isStreaming: false,
       status: 'idle' as const,
-      activity: null
+      activity: null,
+      toolHistory: []
     },
     messages: [],
     selectedModel: 'claude-3-5-sonnet-20241022',
-    enableWebFetch: false,
-    onWebFetchChange: vi.fn(),
     prompts: [
       { id: 'test-prompt', label: 'Test Prompt', prompt: 'Test prompt content', icon: '💡' }
     ],
@@ -33,6 +32,7 @@ describe('ChatInput', () => {
     onSendMessage: vi.fn(),
     onQuickActionSelect: vi.fn(),
     onAddCustomPrompt: vi.fn(),
+    onUpdateCustomPrompt: vi.fn(),
     onDeleteCustomPrompt: vi.fn()
   }
 
@@ -180,7 +180,8 @@ describe('ChatInput', () => {
             thinking: '',
             isStreaming: true,
             status: 'writing' as const,
-            activity: null
+            activity: null,
+            toolHistory: []
           }}
         />
       )
@@ -211,53 +212,6 @@ describe('ChatInput', () => {
       render(<ChatInput {...defaultProps} isSending={true} />)
 
       expect(screen.getByText(/Enter to queue/)).toBeInTheDocument()
-    })
-  })
-
-  describe('web fetch toggle', () => {
-    it('renders web fetch toggle button', () => {
-      render(<ChatInput {...defaultProps} />)
-
-      // The globe icon button should be present
-      const buttons = screen.getAllByRole('button')
-      const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
-      expect(webFetchButton).toBeTruthy()
-    })
-
-    it('shows enabled styling when web fetch is enabled', () => {
-      render(<ChatInput {...defaultProps} enableWebFetch={true} />)
-
-      const buttons = screen.getAllByRole('button')
-      const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
-      expect(webFetchButton).toHaveClass('bg-emerald-600')
-    })
-
-    it('shows ghost styling when web fetch is disabled', () => {
-      render(<ChatInput {...defaultProps} enableWebFetch={false} />)
-
-      const buttons = screen.getAllByRole('button')
-      const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
-      expect(webFetchButton).toHaveClass('text-muted-foreground')
-    })
-
-    it('calls onWebFetchChange when toggle clicked', async () => {
-      render(<ChatInput {...defaultProps} enableWebFetch={false} />)
-
-      const buttons = screen.getAllByRole('button')
-      const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
-      await userEvent.click(webFetchButton as HTMLElement)
-
-      expect(defaultProps.onWebFetchChange).toHaveBeenCalledWith(true)
-    })
-
-    it('toggles from enabled to disabled', async () => {
-      render(<ChatInput {...defaultProps} enableWebFetch={true} />)
-
-      const buttons = screen.getAllByRole('button')
-      const webFetchButton = buttons.find((btn) => btn.querySelector('svg.lucide-globe'))
-      await userEvent.click(webFetchButton as HTMLElement)
-
-      expect(defaultProps.onWebFetchChange).toHaveBeenCalledWith(false)
     })
   })
 

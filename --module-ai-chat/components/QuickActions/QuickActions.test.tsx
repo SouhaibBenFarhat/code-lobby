@@ -38,37 +38,31 @@ const mockCustomPrompts: CustomPrompt[] = [
 describe('QuickActions', () => {
   const mockOnSelect = vi.fn()
   const mockOnAddCustomPrompt = vi.fn().mockResolvedValue(undefined)
+  const mockOnUpdateCustomPrompt = vi.fn().mockResolvedValue(undefined)
   const mockOnDeleteCustomPrompt = vi.fn().mockResolvedValue(undefined)
+
+  const defaultProps = {
+    prompts: mockPrompts,
+    customPrompts: [] as CustomPrompt[],
+    onSelect: mockOnSelect,
+    onAddCustomPrompt: mockOnAddCustomPrompt,
+    onUpdateCustomPrompt: mockOnUpdateCustomPrompt,
+    onDeleteCustomPrompt: mockOnDeleteCustomPrompt
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should render built-in prompts', () => {
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={[]}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} />)
 
     expect(screen.getByText('Find bugs')).toBeInTheDocument()
     expect(screen.getByText('Summarize')).toBeInTheDocument()
   })
 
   it('should render custom prompts', () => {
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={mockCustomPrompts}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} customPrompts={mockCustomPrompts} />)
 
     expect(screen.getByText('Check Types')).toBeInTheDocument()
   })
@@ -76,15 +70,7 @@ describe('QuickActions', () => {
   it('should call onSelect when prompt is clicked', async () => {
     const user = userEvent.setup()
 
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={[]}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} />)
 
     await user.click(screen.getByText('Find bugs'))
     expect(mockOnSelect).toHaveBeenCalledWith('Review this PR for bugs.', 'Find bugs')
@@ -93,31 +79,14 @@ describe('QuickActions', () => {
   it('should call onSelect with custom prompt content', async () => {
     const user = userEvent.setup()
 
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={mockCustomPrompts}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} customPrompts={mockCustomPrompts} />)
 
     await user.click(screen.getByText('Check Types'))
     expect(mockOnSelect).toHaveBeenCalledWith('Check for TypeScript errors.', 'Check Types')
   })
 
   it('should disable buttons when disabled prop is true', () => {
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={[]}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-        disabled={true}
-      />
-    )
+    render(<QuickActions {...defaultProps} disabled={true} />)
 
     const buttons = screen.getAllByRole('button')
     buttons.forEach((button) => {
@@ -128,15 +97,7 @@ describe('QuickActions', () => {
   it('should open modal when add button is clicked', async () => {
     const user = userEvent.setup()
 
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={[]}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} />)
 
     await user.click(screen.getByTitle('Add custom prompt'))
 
@@ -147,15 +108,7 @@ describe('QuickActions', () => {
   it('should call onDeleteCustomPrompt when delete button is clicked', async () => {
     const user = userEvent.setup()
 
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={mockCustomPrompts}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} customPrompts={mockCustomPrompts} />)
 
     // Find the delete button (it's hidden by default, shown on hover)
     const deleteButton = screen.getByTitle('Delete prompt')
@@ -165,15 +118,7 @@ describe('QuickActions', () => {
   })
 
   it('should render add button at the start', () => {
-    render(
-      <QuickActions
-        prompts={mockPrompts}
-        customPrompts={mockCustomPrompts}
-        onSelect={mockOnSelect}
-        onAddCustomPrompt={mockOnAddCustomPrompt}
-        onDeleteCustomPrompt={mockOnDeleteCustomPrompt}
-      />
-    )
+    render(<QuickActions {...defaultProps} customPrompts={mockCustomPrompts} />)
 
     const buttons = screen.getAllByRole('button')
     // First button should be the add button

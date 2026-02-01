@@ -1,31 +1,116 @@
 /**
  * StreamingBubble - Renders the currently streaming assistant response
- * Optimized for performance: no word-by-word animation, CSS in globals.css
+ * Shows tool activity inline (like Cursor) with full command visibility
  *
  * Note: Scroll management is handled by parent component (AIChat)
+ * Note: Review detection is handled via tool events, not text parsing
  */
 
 import { ClaudeIcon, MarkdownContent } from '@ui-kit'
-import { Brain } from 'lucide-react'
+import { Brain, Check, FileText, Folder, Globe, Loader2, Search, Terminal } from 'lucide-react'
 import React, { useEffect, useRef } from 'react'
-import type { StreamingState } from '../../types'
+import type { StreamingState, ToolHistoryEntry } from '../../types'
 import { StreamingStateIndicator } from '../StreamingStateIndicator'
 
 /**
  * Fix incomplete markdown code blocks for better streaming display.
- * Adds closing ``` if we have an unclosed code block.
  */
 function fixIncompleteMarkdown(content: string): string {
-  // Count code fence markers
   const fenceMatches = content.match(/```/g)
   const fenceCount = fenceMatches?.length || 0
-
-  // If odd number of fences, we have an unclosed code block
   if (fenceCount % 2 === 1) {
     return `${content}\n\`\`\``
   }
-
   return content
+}
+
+// Tool icons
+const TOOL_ICONS: Record<string, React.ElementType> = {
+  Read: FileText,
+  Write: FileText,
+  Edit: FileText,
+  StrReplace: FileText,
+  Glob: Folder,
+  Grep: Search,
+  LS: Folder,
+  Bash: Terminal,
+  Shell: Terminal,
+  WebSearch: Globe,
+  WebFetch: Globe,
+  Task: Loader2,
+  TodoWrite: FileText
+}
+
+// Friendly labels
+const TOOL_LABELS: Record<string, string> = {
+  Read: 'Read',
+  Write: 'Write',
+  Edit: 'Edit',
+  StrReplace: 'Edit',
+  Glob: 'Find files',
+  Grep: 'Search',
+  LS: 'List',
+  Bash: 'Run',
+  Shell: 'Run',
+  WebSearch: 'Web search',
+  WebFetch: 'Fetch URL',
+  Task: 'Task',
+  TodoWrite: 'Update todos'
+}
+
+/** Renders tool activity in Cursor-style - current running + completed count */
+function ToolActivitySection({
+  toolHistory,
+  currentActivity
+}: {
+  toolHistory: ToolHistoryEntry[]
+  currentActivity: { toolName: string; input: string } | null
+}): React.JSX.Element | null {
+  const completedTools = toolHistory.filter((t) => t.status === 'completed')
+  const runningTool = toolHistory.find((t) => t.status === 'running')
+
+  // Get the display info for current/running tool
+  const activeToolName = currentActivity?.toolName || runningTool?.toolName
+  const activeInput = currentActivity?.input || runningTool?.input || ''
+  const ActiveIcon = activeToolName ? TOOL_ICONS[activeToolName] || Terminal : Terminal
+
+  // Truncate input for display
+  const displayInput = activeInput
+    ? activeInput.length > 50
+      ? `${activeInput.slice(0, 50)}...`
+      : activeInput
+    : ''
+
+  if (!activeToolName && completedTools.length === 0) return null
+
+  return (
+    <div className="text-[11px] space-y-1">
+      {/* Completed tools summary - collapsed */}
+      {completedTools.length > 0 && (
+        <div className="flex items-center gap-1.5 text-muted-foreground/70">
+          <Check className="w-3 h-3 text-green-500" />
+          <span>
+            {completedTools.length} tool{completedTools.length > 1 ? 's' : ''} executed
+          </span>
+        </div>
+      )}
+
+      {/* Currently running tool */}
+      {activeToolName && (
+        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          <ActiveIcon className="w-3 h-3" />
+          {displayInput ? (
+            <code className="font-mono truncate" title={activeInput}>
+              {displayInput}
+            </code>
+          ) : (
+            <span>{TOOL_LABELS[activeToolName] || activeToolName}...</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export interface StreamingBubbleProps {
@@ -36,7 +121,7 @@ function StreamingBubbleInner({ streaming }: StreamingBubbleProps): React.JSX.El
   const thinkingRef = useRef<HTMLPreElement>(null)
   const lastScrollRef = useRef(0)
 
-  // Throttled auto-scroll for thinking section (every 100ms max)
+  // Throttled auto-scroll for thinking section
   useEffect(() => {
     if (thinkingRef.current && streaming.thinking) {
       const now = Date.now()
@@ -46,6 +131,9 @@ function StreamingBubbleInner({ streaming }: StreamingBubbleProps): React.JSX.El
       }
     }
   }, [streaming.thinking])
+
+  // Get tool history (most recent last for natural reading order)
+  const toolHistory = streaming.toolHistory || []
 
   return (
     <div className="flex gap-2">
@@ -76,14 +164,25 @@ function StreamingBubbleInner({ streaming }: StreamingBubbleProps): React.JSX.El
           </div>
         )}
 
-        {/* State indicator at top - shows what Claude is doing when no content yet */}
-        {!streaming.content && !streaming.thinking && streaming.status !== 'idle' && (
-          <div className="px-3 py-2 border-b border-border/50">
-            <StreamingStateIndicator status={streaming.status} activity={streaming.activity} />
+        {/* Tool activity - Cursor style: summary + current running */}
+        {(toolHistory.length > 0 || streaming.activity) && (
+          <div className="px-3 py-2 border-b border-border/30">
+            <ToolActivitySection toolHistory={toolHistory} currentActivity={streaming.activity} />
           </div>
         )}
 
-        {/* Main content - rendered as markdown for proper code formatting */}
+        {/* State indicator when no content/tools yet */}
+        {!streaming.content &&
+          !streaming.thinking &&
+          toolHistory.length === 0 &&
+          !streaming.activity &&
+          streaming.status !== 'idle' && (
+            <div className="px-3 py-2 border-b border-border/50">
+              <StreamingStateIndicator status={streaming.status} activity={streaming.activity} />
+            </div>
+          )}
+
+        {/* Main content */}
         <div className="prose prose-sm dark:prose-invert max-w-none text-sm px-3 py-2">
           {streaming.content ? (
             <>
@@ -91,19 +190,20 @@ function StreamingBubbleInner({ streaming }: StreamingBubbleProps): React.JSX.El
                 <MarkdownContent content={fixIncompleteMarkdown(streaming.content)} />
                 <span className="streaming-cursor" />
               </div>
-              {/* Show state at bottom when paused/composing with existing content */}
-              {(streaming.status === 'composing' || streaming.status === 'tool_use') && (
+
+              {/* Show current tool activity if there's content but Claude is working */}
+              {streaming.status === 'tool_use' && streaming.activity && (
                 <div className="mt-2 pt-2 border-t border-border/30">
                   <StreamingStateIndicator
                     status={streaming.status}
                     activity={streaming.activity}
-                    className="opacity-80"
                   />
                 </div>
               )}
             </>
           ) : (
             !streaming.thinking &&
+            toolHistory.length === 0 &&
             streaming.status === 'idle' && (
               <StreamingStateIndicator status="composing" activity={null} />
             )
