@@ -37,7 +37,7 @@ import { PRDescription } from '../PRDescription'
 import { PRDetailSkeleton } from '../PRDetailSkeleton'
 import { PRHeader } from '../PRHeader'
 import { PRTabBar } from '../PRTabBar'
-import { ReviewerCard } from '../ReviewerCard'
+import { ReviewTree } from '../ReviewTree'
 import type { CommentData, ReviewerFeedback } from '../types'
 import { WebviewPanel } from '../WebviewPanel'
 
@@ -585,116 +585,10 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                   </Col>
                 )}
 
-                {/* Reviews content (Reviews tab) - Grouped by Reviewer */}
+                {/* Reviews content (Reviews tab) - Tree-based display */}
                 {commentTab === 'reviews' && (
                   <Col span="full">
-                    {reviewsByReviewer.length > 0 ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Users className="w-3 h-3" />
-                            <span>
-                              {reviewsByReviewer.length} reviewer
-                              {reviewsByReviewer.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            {reviewsByReviewer.filter((r) => r.reviewState === 'approved').length >
-                              0 && (
-                              <span className="text-success flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                {
-                                  reviewsByReviewer.filter((r) => r.reviewState === 'approved')
-                                    .length
-                                }
-                              </span>
-                            )}
-                            {reviewsByReviewer.filter((r) => r.reviewState === 'changes_requested')
-                              .length > 0 && (
-                              <span className="text-destructive flex items-center gap-1">
-                                <XCircle className="w-3 h-3" />
-                                {
-                                  reviewsByReviewer.filter(
-                                    (r) => r.reviewState === 'changes_requested'
-                                  ).length
-                                }
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="relative ml-2">
-                          {/* Timeline line */}
-                          <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
-                          {/* Start marker */}
-                          <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
-
-                          <div className="space-y-0 pt-4">
-                            {reviewsByReviewer.map((reviewer, index) => (
-                              <div
-                                key={`${reviewer.login}-${index}`}
-                                className="relative pl-12 pb-5 group"
-                              >
-                                {/* Timeline dot */}
-                                <div
-                                  className={cn(
-                                    'absolute left-[4px] top-3 w-[26px] h-[26px] rounded-full border-[3px] bg-background flex items-center justify-center shadow-sm transition-transform group-hover:scale-110',
-                                    reviewer.reviewState === 'approved'
-                                      ? 'border-success'
-                                      : reviewer.reviewState === 'changes_requested'
-                                        ? 'border-destructive'
-                                        : reviewer.isBot
-                                          ? 'border-purple-500'
-                                          : 'border-primary'
-                                  )}
-                                >
-                                  {reviewer.reviewState === 'approved' ? (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                                  ) : reviewer.reviewState === 'changes_requested' ? (
-                                    <XCircle className="w-3.5 h-3.5 text-destructive" />
-                                  ) : reviewer.isBot ? (
-                                    <Bot className="w-3.5 h-3.5 text-purple-500" />
-                                  ) : (
-                                    <FileSearch className="w-3.5 h-3.5 text-primary" />
-                                  )}
-                                </div>
-
-                                {/* Connector line from dot to card */}
-                                <div
-                                  className={cn(
-                                    'absolute left-[30px] top-[22px] w-[18px] h-[2px]',
-                                    reviewer.reviewState === 'approved'
-                                      ? 'bg-success/50'
-                                      : reviewer.reviewState === 'changes_requested'
-                                        ? 'bg-destructive/50'
-                                        : reviewer.isBot
-                                          ? 'bg-purple-500/50'
-                                          : 'bg-primary/50'
-                                  )}
-                                />
-
-                                <ReviewerCard reviewer={reviewer} prUrl={pr.html_url} />
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* End marker */}
-                          <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
-                        </div>
-                      </div>
-                    ) : (
-                      <Row
-                        gutter="sm"
-                        justify="center"
-                        align="center"
-                        className="flex-col py-6 text-sm text-muted-foreground"
-                      >
-                        <Col span="auto">
-                          <FileSearch className="w-5 h-5 opacity-50" />
-                        </Col>
-                        <Col span="auto">No reviews yet</Col>
-                      </Row>
-                    )}
+                    <ReviewTree reviewers={reviewsByReviewer} prUrl={pr.html_url} />
                   </Col>
                 )}
               </Row>

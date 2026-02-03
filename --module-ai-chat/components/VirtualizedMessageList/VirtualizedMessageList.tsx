@@ -3,6 +3,7 @@
  * IMPORTANT: Streaming content is rendered OUTSIDE the virtualizer to avoid constant re-measurements
  */
 
+import type { ClaudeReviewData } from '@data'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import React, { useLayoutEffect, useMemo } from 'react'
@@ -23,6 +24,9 @@ export interface VirtualizedMessageListProps {
   onScroll: () => void
   onVirtualizerReady: (scrollToEnd: () => void) => void
   user?: GitHubUser | null
+  // Review support - for messages that generated code reviews
+  sessionReviews?: Record<string, ClaudeReviewData>
+  onOpenReview?: (review: ClaudeReviewData) => void
 }
 
 export function VirtualizedMessageList({
@@ -36,7 +40,9 @@ export function VirtualizedMessageList({
   scrollContainerRef,
   onScroll,
   onVirtualizerReady,
-  user
+  user,
+  sessionReviews,
+  onOpenReview
 }: VirtualizedMessageListProps): React.JSX.Element {
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
@@ -121,6 +127,8 @@ export function VirtualizedMessageList({
                   expandedThinking={expandedThinking}
                   toggleThinkingExpanded={toggleThinkingExpanded}
                   user={user}
+                  review={sessionReviews?.[(item.data as ChatMessage).id]}
+                  onOpenReview={onOpenReview}
                 />
               )}
 

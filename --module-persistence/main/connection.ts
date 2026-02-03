@@ -4,6 +4,12 @@
  * Initializes and manages the SQLite database connection using better-sqlite3 and Drizzle ORM.
  * The database is stored in the Electron app's user data directory.
  *
+ * Migrations:
+ * - Migration files are generated with `pnpm db:generate` during development
+ * - They are stored in the `drizzle/` folder and bundled with the app
+ * - On app startup, `migrate()` automatically applies any pending migrations
+ * - Applied migrations are tracked in `__drizzle_migrations` table
+ *
  * This module runs in the Electron MAIN process only.
  */
 
@@ -12,6 +18,7 @@ import { join } from 'node:path'
 import { LogCategory, mainLogger as logger } from '@logger/main'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { app } from 'electron'
 import * as schema from './schema'
 
@@ -123,6 +130,20 @@ export function getDatabase(): ReturnType<typeof drizzle<typeof schema>> {
 }
 
 /**
+ * Get the raw better-sqlite3 database instance for raw SQL queries.
+ * Use this for queries that need direct SQL access (like querying sqlite_master).
+ */
+export function getRawDatabase(): Database.Database {
+  if (!sqliteDb) {
+    if (initError) {
+      throw new Error(`Database unavailable: ${initError.message}`)
+    }
+    throw new Error('Database not initialized. Call initDatabase() first.')
+  }
+  return sqliteDb
+}
+
+/**
  * Close the database connection.
  * Should be called during app shutdown.
  */
@@ -140,77 +161,46 @@ export function closeDatabase(): void {
 // =============================================================================
 
 /**
- * Run database migrations.
- * Creates tables if they don't exist.
+ * Get the path to the migrations folder.
+ * - Development: ./drizzle (relative to project root)
+ * - Production: bundled with the app in resources
+ */
+function getMigrationsPath(): string {
+  if (app.isPackaged) {
+    // Production: migrations are bundled in the app's resources
+    return join(process.resourcesPath, 'drizzle')
+  }
+  // Development: migrations are in the project root
+  return join(app.getAppPath(), 'drizzle')
+}
+
+/**
+ * Run database migrations using Drizzle's migrate function.
  *
- * For a production app, you would use Drizzle Kit to generate migration files.
- * For simplicity, we use push-style migrations here (creates tables directly).
+ * How it works:
+ * 1. Reads SQL migration files from the `drizzle/` folder
+ * 2. Tracks applied migrations in `__drizzle_migrations` table
+ * 3. Only applies migrations that haven't been run yet
+ * 4. Runs migrations in order based on timestamp in filename
+ *
+ * Migration files are generated during development with `pnpm db:generate`
+ * and bundled with the app for production.
  */
 function runMigrations(): void {
-  if (!sqliteDb) return
+  if (!db) return
 
-  logger.info(LogCategory.AI, 'Running database migrations...')
+  const migrationsPath = getMigrationsPath()
+  logger.info(LogCategory.AI, 'Running database migrations...', { path: migrationsPath })
 
-  // Create conversations table
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS conversations (
-      id TEXT PRIMARY KEY,
-      session_type TEXT NOT NULL,
-      repo_full_name TEXT,
-      pr_number INTEGER,
-      pr_title TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )
-  `)
-
-  // Create messages table with foreign key
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id TEXT PRIMARY KEY,
-      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      thinking TEXT,
-      display_label TEXT,
-      created_at INTEGER NOT NULL
-    )
-  `)
-
-  // Create index on conversation_id for faster lookups
-  sqliteDb.exec(`
-    CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)
-  `)
-
-  // Create custom_prompts table
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS custom_prompts (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      prompt TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    )
-  `)
-
-  // Create ai_usage table
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS ai_usage (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      model TEXT NOT NULL,
-      input_tokens INTEGER NOT NULL,
-      output_tokens INTEGER NOT NULL,
-      input_cost_usd REAL NOT NULL,
-      output_cost_usd REAL NOT NULL,
-      created_at INTEGER NOT NULL
-    )
-  `)
-
-  // Create index on created_at for usage queries
-  sqliteDb.exec(`
-    CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at ON ai_usage(created_at)
-  `)
-
-  logger.info(LogCategory.AI, 'Database migrations completed')
+  try {
+    migrate(db, { migrationsFolder: migrationsPath })
+    logger.info(LogCategory.AI, 'Database migrations completed successfully')
+  } catch (error) {
+    // Log but don't throw - app can continue with existing schema
+    logger.error(LogCategory.AI, 'Migration error', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
 }
 
 // =============================================================================

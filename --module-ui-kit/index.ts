@@ -98,6 +98,11 @@ export { Slider, type SliderProps } from './slider'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
 export { Textarea, type TextareaProps } from './textarea'
 export {
+  ThinkingSection,
+  type ThinkingSectionProps,
+  type ToolActivity
+} from './thinking-section'
+export {
   Timeline,
   TimelineConnector,
   TimelineContent,
@@ -123,6 +128,21 @@ export {
 } from './toaster'
 export { Toggle, type ToggleProps } from './toggle'
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
+export {
+  TreeLeaf,
+  type TreeLeafProps,
+  TreeNode,
+  TreeNodeChildren,
+  type TreeNodeChildrenProps,
+  TreeNodeContent,
+  type TreeNodeContentProps,
+  TreeNodeHeader,
+  type TreeNodeHeaderProps,
+  type TreeNodeProps,
+  type TreeNodeVariant,
+  TreeView,
+  type TreeViewProps
+} from './tree-view'
 export { cn, formatRelativeTime, groupBy, truncate } from './utils'
 export {
   ViewHeader,

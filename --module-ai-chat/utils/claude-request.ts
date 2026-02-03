@@ -67,6 +67,7 @@ When asked to generate a code review, you can output a structured JSON format th
 - "comment": Feedback without approval/rejection
 
 **Important:**
+- Make sure you are looking at the most recent commit of the branch related to the PR. Feel free to pull the latest changes from the branch before generating a review.
 - Only use this JSON format when asked to "generate review" or similar
 - Each comment must reference an exact file path and line number from the changed files
 - Be constructive and actionable

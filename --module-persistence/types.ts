@@ -43,6 +43,22 @@ export interface NewConversation {
 // Message Types
 // =============================================================================
 
+/**
+ * Metadata stored with a message (JSON serialized in database)
+ */
+export interface MessageMetadata {
+  /** Claude-generated PR review data */
+  reviewData?: {
+    summary: string
+    verdict: 'approve' | 'request_changes' | 'comment'
+    comments: Array<{
+      file: string
+      line: number
+      body: string
+    }>
+  }
+}
+
 export interface Message {
   id: string
   conversationId: string
@@ -50,6 +66,8 @@ export interface Message {
   content: string
   thinking: string | null
   displayLabel: string | null
+  /** JSON metadata (parsed from database) */
+  metadata: MessageMetadata | null
   createdAt: number
 }
 
@@ -60,6 +78,8 @@ export interface NewMessage {
   content: string
   thinking?: string | null
   displayLabel?: string | null
+  /** Metadata to store with the message */
+  metadata?: MessageMetadata | null
   createdAt?: number
 }
 
@@ -119,4 +139,38 @@ export interface AIUsageStats {
 export interface ConversationWithMessages {
   conversation: Conversation
   messages: Message[]
+}
+
+// =============================================================================
+// Daily Report Types
+// =============================================================================
+
+export interface DailyReport {
+  id: string
+  date: string
+  content: string
+  summary: string | null
+  eventCount: number
+  analyzedRepos: string | null
+  analyzedPRs: string | null
+  generationDurationMs: number | null
+  toolsUsed: string | null
+  thinking: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface NewDailyReport {
+  id: string
+  date: string
+  content: string
+  summary?: string | null
+  eventCount: number
+  analyzedRepos?: string | null
+  analyzedPRs?: string | null
+  generationDurationMs?: number | null
+  toolsUsed?: string | null
+  thinking?: string | null
+  createdAt?: number
+  updatedAt?: number
 }

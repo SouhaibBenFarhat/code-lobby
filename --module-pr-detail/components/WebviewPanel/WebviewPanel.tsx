@@ -24,7 +24,9 @@ import {
   ArrowRight,
   ExternalLink,
   Maximize2,
+  Minus,
   Monitor,
+  Plus,
   RefreshCw,
   Scissors,
   Smartphone,
@@ -116,6 +118,12 @@ export function WebviewPanel({
   const [hasNewMessage, setHasNewMessage] = useState(false)
   const messageIdRef = useRef(0)
 
+  // Zoom state
+  const [zoomFactor, setZoomFactor] = useState(1.0)
+  const ZOOM_MIN = 0.25
+  const ZOOM_MAX = 3.0
+  const ZOOM_STEP = 0.1
+
   // Count warnings and errors
   const warningCount = consoleMessages.filter((m) => m.level === 'warning').length
   const errorCount = consoleMessages.filter((m) => m.level === 'error').length
@@ -175,6 +183,9 @@ export function WebviewPanel({
       if (webview) {
         setCanGoBack(webview.canGoBack())
         setCanGoForward(webview.canGoForward())
+        // Sync zoom factor with webview's actual zoom level
+        const factor = webview.getZoomFactor()
+        setZoomFactor(factor)
       }
     }
 
@@ -281,6 +292,30 @@ export function WebviewPanel({
       window.open(currentUrl, '_blank')
     }
   }, [currentUrl])
+
+  // Zoom handlers
+  const handleZoomIn = useCallback(() => {
+    const newZoom = Math.min(zoomFactor + ZOOM_STEP, ZOOM_MAX)
+    setZoomFactor(newZoom)
+    if (webviewRef.current) {
+      webviewRef.current.setZoomFactor(newZoom)
+    }
+  }, [zoomFactor])
+
+  const handleZoomOut = useCallback(() => {
+    const newZoom = Math.max(zoomFactor - ZOOM_STEP, ZOOM_MIN)
+    setZoomFactor(newZoom)
+    if (webviewRef.current) {
+      webviewRef.current.setZoomFactor(newZoom)
+    }
+  }, [zoomFactor])
+
+  const handleZoomReset = useCallback(() => {
+    setZoomFactor(1.0)
+    if (webviewRef.current) {
+      webviewRef.current.setZoomFactor(1.0)
+    }
+  }, [])
 
   // Start screenshot selection mode
   const handleStartScreenshot = useCallback(() => {
@@ -513,6 +548,52 @@ export function WebviewPanel({
               </TooltipContent>
             </Tooltip>
           ))}
+        </div>
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-0.5 border-l pl-2 mr-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleZoomOut}
+                disabled={zoomFactor <= ZOOM_MIN}
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom out</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleZoomReset}
+                className="px-1.5 text-xs text-muted-foreground hover:text-foreground tabular-nums min-w-[40px] text-center"
+              >
+                {Math.round(zoomFactor * 100)}%
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Reset zoom</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleZoomIn}
+                disabled={zoomFactor >= ZOOM_MAX}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom in</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Screenshot button */}

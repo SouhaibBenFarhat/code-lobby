@@ -38,7 +38,34 @@ import {
 } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewComment, ReviewData, ReviewVerdict } from '../../types'
-import { formatVerdict, getVerdictColor } from '../../utils/review-parser'
+
+/**
+ * Format verdict for display
+ */
+function formatVerdict(verdict: ReviewVerdict): string {
+  switch (verdict) {
+    case 'approve':
+      return 'Approve'
+    case 'request_changes':
+      return 'Request Changes'
+    case 'comment':
+      return 'Comment'
+  }
+}
+
+/**
+ * Get verdict color class
+ */
+function getVerdictColor(verdict: ReviewVerdict): string {
+  switch (verdict) {
+    case 'approve':
+      return 'text-green-500'
+    case 'request_changes':
+      return 'text-orange-500'
+    case 'comment':
+      return 'text-blue-500'
+  }
+}
 
 export interface ReviewPreviewModalProps {
   isOpen: boolean

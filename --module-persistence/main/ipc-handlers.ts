@@ -7,12 +7,19 @@
 
 import { LogCategory, mainLogger as logger } from '@logger/main'
 import { ipcMain } from 'electron'
-
+import { getRawDatabase } from './connection'
 import { aiUsageRepo } from './repositories/ai-usage'
 import { conversationsRepo } from './repositories/conversations'
 import { customPromptsRepo } from './repositories/custom-prompts'
+import { dailyReportsRepo } from './repositories/daily-reports'
 import { messagesRepo } from './repositories/messages'
-import type { NewAIUsageRecord, NewConversation, NewCustomPrompt, NewMessage } from './schema'
+import type {
+  NewAIUsageRecord,
+  NewConversation,
+  NewCustomPrompt,
+  NewDailyReport,
+  NewMessage
+} from './schema'
 
 /**
  * Register all persistence-related IPC handlers.
@@ -254,6 +261,143 @@ export function registerPersistenceIpcHandlers(): void {
       return { success: true, data: aiUsageRepo.clear() }
     } catch (error) {
       logger.error(LogCategory.AI, 'Failed to clear AI usage', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  // ===========================================================================
+  // Daily Reports
+  // ===========================================================================
+
+  ipcMain.handle('db:dailyReports:list', async () => {
+    try {
+      return { success: true, data: dailyReportsRepo.list() }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to list daily reports', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:dailyReports:get', async (_, id: string) => {
+    try {
+      return { success: true, data: dailyReportsRepo.get(id) }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to get daily report', { error, id })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:dailyReports:getByDate', async (_, date: string) => {
+    try {
+      return { success: true, data: dailyReportsRepo.getByDate(date) }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to get daily report by date', { error, date })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:dailyReports:create', async (_, data: NewDailyReport) => {
+    try {
+      return { success: true, data: dailyReportsRepo.create(data) }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to create daily report', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:dailyReports:upsert', async (_, data: NewDailyReport) => {
+    try {
+      return { success: true, data: dailyReportsRepo.upsert(data) }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to upsert daily report', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle(
+    'db:dailyReports:update',
+    async (_, id: string, data: Partial<Omit<NewDailyReport, 'id' | 'createdAt'>>) => {
+      try {
+        return { success: true, data: dailyReportsRepo.update(id, data) }
+      } catch (error) {
+        logger.error(LogCategory.AI, 'Failed to update daily report', { error, id })
+        return { success: false, error: String(error) }
+      }
+    }
+  )
+
+  ipcMain.handle('db:dailyReports:delete', async (_, id: string) => {
+    try {
+      return { success: true, data: dailyReportsRepo.delete(id) }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to delete daily report', { error, id })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:dailyReports:listRecent', async (_, limit?: number) => {
+    try {
+      return { success: true, data: dailyReportsRepo.listRecent(limit) }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to list recent daily reports', { error })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  // ===========================================================================
+  // Dynamic Table Access (for Database Viewer)
+  // ===========================================================================
+
+  ipcMain.handle('db:tables:list', async () => {
+    try {
+      const db = getRawDatabase()
+      // Get all tables from sqlite_master
+      const allTables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+        .all() as Array<{ name: string }>
+      // Filter out SQLite internal tables and Drizzle migration tables
+      const tables = allTables
+        .map((r) => r.name)
+        .filter((name) => !name.startsWith('sqlite_') && !name.startsWith('__'))
+        .sort()
+      return { success: true, data: tables }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to list tables', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:tables:query', async (_, tableName: string, limit?: number) => {
+    try {
+      const db = getRawDatabase()
+      // Validate table name to prevent SQL injection (only allow alphanumeric and underscore)
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+        return { success: false, error: 'Invalid table name' }
+      }
+      const safeLimit = Math.min(limit || 1000, 10000)
+      const result = db.prepare(`SELECT * FROM ${tableName} LIMIT ${safeLimit}`).all()
+      return { success: true, data: result }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to query table', { error, tableName })
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('db:tables:count', async (_, tableName: string) => {
+    try {
+      const db = getRawDatabase()
+      // Validate table name to prevent SQL injection
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+        return { success: false, error: 'Invalid table name' }
+      }
+      const result = db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as
+        | { count: number }
+        | undefined
+      return { success: true, data: result?.count ?? 0 }
+    } catch (error) {
+      logger.error(LogCategory.AI, 'Failed to count table rows', { error, tableName })
       return { success: false, error: String(error) }
     }
   })

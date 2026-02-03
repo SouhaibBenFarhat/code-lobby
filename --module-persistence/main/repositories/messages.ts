@@ -10,6 +10,50 @@ import { getDatabase } from '../connection'
 import { type Message, messages, type NewMessage } from '../schema'
 import { conversationsRepo } from './conversations'
 
+// Type for parsed message with metadata
+interface ParsedMessage extends Omit<Message, 'metadata'> {
+  metadata: Record<string, unknown> | null
+}
+
+// Input type that accepts metadata as either string or object
+type MessageInput = Omit<NewMessage, 'metadata'> & {
+  metadata?: string | Record<string, unknown> | null
+}
+
+/**
+ * Parse metadata JSON string to object
+ */
+function parseMetadata(metadataStr: string | null): Record<string, unknown> | null {
+  if (!metadataStr) return null
+  try {
+    return JSON.parse(metadataStr)
+  } catch {
+    console.error('[messagesRepo] Failed to parse metadata:', metadataStr)
+    return null
+  }
+}
+
+/**
+ * Serialize metadata to JSON string (accepts string, object, or null)
+ */
+function serializeMetadata(
+  metadata: string | Record<string, unknown> | null | undefined
+): string | null {
+  if (metadata === null || metadata === undefined) return null
+  if (typeof metadata === 'string') return metadata
+  return JSON.stringify(metadata)
+}
+
+/**
+ * Transform database message to include parsed metadata
+ */
+function transformMessage(msg: Message): ParsedMessage {
+  return {
+    ...msg,
+    metadata: parseMetadata(msg.metadata)
+  }
+}
+
 /**
  * Messages repository with all database operations
  */
@@ -17,41 +61,50 @@ export const messagesRepo = {
   /**
    * Get all messages (limited for debug purposes)
    */
-  list(limit = 100): Message[] {
+  list(limit = 100): ParsedMessage[] {
     const db = getDatabase()
-    return db.select().from(messages).orderBy(messages.createdAt).limit(limit).all()
+    const msgs = db.select().from(messages).orderBy(messages.createdAt).limit(limit).all()
+    return msgs.map(transformMessage)
   },
 
   /**
    * Get all messages for a conversation, ordered by creation time
    */
-  listForConversation(conversationId: string): Message[] {
+  listForConversation(conversationId: string): ParsedMessage[] {
     const db = getDatabase()
-    return db
+    const msgs = db
       .select()
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt)
       .all()
+    return msgs.map(transformMessage)
   },
 
   /**
    * Get a message by ID
    */
-  get(id: string): Message | undefined {
+  get(id: string): ParsedMessage | undefined {
     const db = getDatabase()
-    return db.select().from(messages).where(eq(messages.id, id)).get()
+    const msg = db.select().from(messages).where(eq(messages.id, id)).get()
+    return msg ? transformMessage(msg) : undefined
   },
 
   /**
    * Add a message to a conversation
    */
-  add(data: NewMessage): Message {
+  add(data: MessageInput): ParsedMessage {
     const db = getDatabase()
     const now = Date.now()
 
-    const message: NewMessage = {
-      ...data,
+    const message = {
+      id: data.id,
+      conversationId: data.conversationId,
+      role: data.role,
+      content: data.content,
+      thinking: data.thinking ?? null,
+      displayLabel: data.displayLabel ?? null,
+      metadata: serializeMetadata(data.metadata),
       createdAt: data.createdAt ?? now
     }
 
@@ -68,14 +121,20 @@ export const messagesRepo = {
   /**
    * Add multiple messages to a conversation (batch insert)
    */
-  addMany(msgs: NewMessage[]): void {
+  addMany(msgs: MessageInput[]): void {
     if (msgs.length === 0) return
 
     const db = getDatabase()
     const now = Date.now()
 
     const messagesToInsert = msgs.map((m) => ({
-      ...m,
+      id: m.id,
+      conversationId: m.conversationId,
+      role: m.role,
+      content: m.content,
+      thinking: m.thinking ?? null,
+      displayLabel: m.displayLabel ?? null,
+      metadata: serializeMetadata(m.metadata),
       createdAt: m.createdAt ?? now
     }))
 
@@ -92,11 +151,19 @@ export const messagesRepo = {
    */
   update(
     id: string,
-    data: Partial<Omit<Message, 'id' | 'conversationId' | 'createdAt'>>
-  ): Message | undefined {
+    data: Partial<Omit<Message, 'id' | 'conversationId' | 'createdAt' | 'metadata'>> & {
+      metadata?: string | Record<string, unknown> | null
+    }
+  ): ParsedMessage | undefined {
     const db = getDatabase()
 
-    db.update(messages).set(data).where(eq(messages.id, id)).run()
+    // Serialize metadata if provided
+    const updateData: Record<string, unknown> = { ...data }
+    if ('metadata' in data) {
+      updateData.metadata = serializeMetadata(data.metadata)
+    }
+
+    db.update(messages).set(updateData).where(eq(messages.id, id)).run()
 
     return this.get(id)
   },

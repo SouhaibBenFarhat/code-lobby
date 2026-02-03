@@ -50,7 +50,6 @@ export type {
   PRContext,
   QueuedMessage,
   QuickPrompt,
-  RawReviewData,
   ReviewComment,
   ReviewData,
   ReviewFileGroup,
@@ -65,11 +64,7 @@ export {
   buildClaudeHeaders,
   buildClaudeRequestBody,
   buildSystemPrompt,
-  // Review parsing utilities
-  containsReviewJson,
   formatMessagesForClaude,
-  getDisplayContentWithoutReview,
-  parseReviewFromMessage,
   supportsThinking
 } from './utils'
 export { calculateTotalTokens, estimateTokens } from './utils/tokens'

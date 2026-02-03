@@ -506,8 +506,9 @@ export interface ElectronAPI {
   getPRAnalysisPanelOpen: (prId: string) => Promise<boolean>
   setPRAnalysisPanelOpen: (prId: string, isOpen: boolean) => Promise<{ success: boolean }>
 
-  // Generate Daily Speech from user events
-  generateDailySpeech: (context: {
+  // Generate Daily Speech from user events (streaming with Claude Code)
+  generateDailySpeechStreaming: (options: {
+    sessionId: string
     username: string
     date: string
     events: Array<{
@@ -517,14 +518,50 @@ export interface ElectronAPI {
       prNumber?: number
       prTitle?: string
       prDescription?: string
+      branchName?: string
+      prUrl?: string
+      commentCount?: number
+      reviewState?: string
       timestamp: string
     }>
-  }) => Promise<{
-    success: boolean
-    content?: string
-    error?: string
-    usage?: { inputTokens: number; outputTokens: number }
-  }>
+    githubToken: string
+  }) => Promise<{ success: boolean; sessionId?: string; error?: string }>
+
+  stopDailySpeech: (sessionId: string) => Promise<boolean>
+
+  onDailySpeechChunk: (
+    callback: (data: {
+      sessionId: string
+      event: {
+        type: 'text' | 'thinking' | 'tool_use' | 'result'
+        content?: string
+        thinking?: string
+        tool_name?: string
+        input?: Record<string, unknown>
+        result?: string
+        cost_usd?: number
+        duration_ms?: number
+      }
+    }) => void
+  ) => () => void
+
+  onDailySpeechDone: (
+    callback: (data: {
+      sessionId: string
+      success: boolean
+      content?: string
+      thinking?: string | null
+      metadata?: {
+        eventCount: number
+        analyzedRepos: string[]
+        analyzedPRs: string[]
+        toolsUsed: string[]
+        generationDurationMs: number
+      }
+    }) => void
+  ) => () => void
+
+  onDailySpeechError: (callback: (data: { sessionId: string; error: string }) => void) => () => void
 
   // PR Chat (AI chat linked to specific PRs)
   getPRChats: () => Promise<
@@ -772,6 +809,7 @@ export interface ElectronAPI {
             content: string
             thinking: string | null
             displayLabel: string | null
+            metadata: unknown
             createdAt: number
           }>
         }
@@ -851,6 +889,7 @@ export interface ElectronAPI {
           content: string
           thinking: string | null
           displayLabel: string | null
+          metadata: unknown
           createdAt: number
         }>
         error?: string
@@ -864,6 +903,7 @@ export interface ElectronAPI {
           content: string
           thinking: string | null
           displayLabel: string | null
+          metadata: unknown
           createdAt: number
         }>
         error?: string
@@ -875,6 +915,7 @@ export interface ElectronAPI {
         content: string
         thinking?: string | null
         displayLabel?: string | null
+        metadata?: unknown
       }) => Promise<{
         success: boolean
         data?: {
@@ -884,6 +925,7 @@ export interface ElectronAPI {
           content: string
           thinking: string | null
           displayLabel: string | null
+          metadata: unknown
           createdAt: number
         }
         error?: string
@@ -896,6 +938,7 @@ export interface ElectronAPI {
           content: string
           thinking?: string | null
           displayLabel?: string | null
+          metadata?: unknown
         }>
       ) => Promise<{ success: boolean; error?: string }>
       update: (
@@ -905,6 +948,7 @@ export interface ElectronAPI {
           content?: string
           thinking?: string | null
           displayLabel?: string | null
+          metadata?: unknown
         }
       ) => Promise<{
         success: boolean
@@ -915,6 +959,7 @@ export interface ElectronAPI {
           content: string
           thinking: string | null
           displayLabel: string | null
+          metadata: unknown
           createdAt: number
         }
         error?: string
@@ -1012,6 +1057,180 @@ export interface ElectronAPI {
         error?: string
       }>
       clear: () => Promise<{ success: boolean; data?: number; error?: string }>
+    }
+
+    // Daily Reports
+    dailyReports: {
+      list: () => Promise<{
+        success: boolean
+        data?: Array<{
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }>
+        error?: string
+      }>
+      get: (id: string) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      getByDate: (date: string) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      create: (data: {
+        id: string
+        date: string
+        content: string
+        summary?: string | null
+        eventCount: number
+        analyzedRepos?: string | null
+        analyzedPRs?: string | null
+        generationDurationMs?: number | null
+        toolsUsed?: string | null
+        thinking?: string | null
+      }) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      upsert: (data: {
+        id: string
+        date: string
+        content: string
+        summary?: string | null
+        eventCount: number
+        analyzedRepos?: string | null
+        analyzedPRs?: string | null
+        generationDurationMs?: number | null
+        toolsUsed?: string | null
+        thinking?: string | null
+      }) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      update: (
+        id: string,
+        data: {
+          content?: string
+          summary?: string | null
+          analyzedRepos?: string | null
+          analyzedPRs?: string | null
+          generationDurationMs?: number | null
+          toolsUsed?: string | null
+          thinking?: string | null
+        }
+      ) => Promise<{
+        success: boolean
+        data?: {
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }
+        error?: string
+      }>
+      delete: (id: string) => Promise<{ success: boolean; data?: boolean; error?: string }>
+      listRecent: (limit?: number) => Promise<{
+        success: boolean
+        data?: Array<{
+          id: string
+          date: string
+          content: string
+          summary: string | null
+          eventCount: number
+          analyzedRepos: string | null
+          analyzedPRs: string | null
+          generationDurationMs: number | null
+          toolsUsed: string | null
+          thinking: string | null
+          createdAt: number
+          updatedAt: number
+        }>
+        error?: string
+      }>
+    }
+
+    // Dynamic table access (for Database Viewer)
+    tables: {
+      list: () => Promise<{ success: boolean; data?: string[]; error?: string }>
+      query: (
+        tableName: string,
+        limit?: number
+      ) => Promise<{ success: boolean; data?: Record<string, unknown>[]; error?: string }>
+      count: (tableName: string) => Promise<{ success: boolean; data?: number; error?: string }>
     }
   }
 }

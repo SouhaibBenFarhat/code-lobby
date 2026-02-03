@@ -35,7 +35,16 @@ export {
   type ReadyForReviewButtonProps
 } from './ReadyForReviewButton'
 export { ReopenButton, type ReopenButtonProps } from './ReopenButton'
-export { ReviewerCard, type ReviewerCardProps } from './ReviewerCard'
+export {
+  CommentNode,
+  type CommentNodeProps,
+  FileNode,
+  type FileNodeProps,
+  ReviewerNode,
+  type ReviewerNodeProps,
+  ReviewTree,
+  type ReviewTreeProps
+} from './ReviewTree'
 // Types (DiffLine is now in @ui-kit)
 export type {
   CheckRun,

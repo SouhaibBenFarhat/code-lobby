@@ -1168,10 +1168,8 @@ describe('GitHub API', () => {
   })
 
   describe('fetchUserEvents', () => {
-    it('fetches and transforms user events from last 24 hours', async () => {
-      const now = new Date()
-      const recentTime = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
-      const oldTime = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString() // 48 hours ago
+    it('fetches and transforms user events', async () => {
+      const recentTime = new Date().toISOString()
 
       mockFetch.mockResolvedValueOnce(
         mockResponse([
@@ -1198,14 +1196,6 @@ describe('GitHub API', () => {
               pull_request: { number: 123, title: 'New feature', state: 'open' }
             },
             created_at: recentTime
-          },
-          {
-            id: '3',
-            type: 'PushEvent',
-            actor: { login: 'user', avatar_url: 'https://example.com/avatar' },
-            repo: { name: 'org/old-repo' },
-            payload: { commits: [{ sha: 'old', message: 'Old commit' }] },
-            created_at: oldTime // Should be filtered out
           }
         ])
       )

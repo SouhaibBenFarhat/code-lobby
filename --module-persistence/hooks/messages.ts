@@ -12,7 +12,7 @@ import {
   useQueryClient
 } from '@tanstack/react-query'
 
-import type { DbResult, Message, NewMessage } from '../types'
+import type { DbResult, Message, MessageMetadata, NewMessage } from '../types'
 import { conversationKeys } from './conversations'
 
 // =============================================================================
@@ -37,10 +37,13 @@ export function useMessages(conversationId: string | null): UseQueryResult<Messa
     queryKey: messageKeys.forConversation(conversationId || ''),
     queryFn: async () => {
       if (!conversationId) return []
-      const result: DbResult<Message[]> =
-        await window.electron.db.messages.listForConversation(conversationId)
+      const result = await window.electron.db.messages.listForConversation(conversationId)
       if (!result.success) throw new Error(result.error || 'Failed to load messages')
-      return result.data || []
+      // Transform messages to include properly typed metadata
+      return (result.data || []).map((m) => ({
+        ...m,
+        metadata: (m.metadata as MessageMetadata | null) ?? null
+      }))
     },
     enabled: !!conversationId
   })
@@ -58,11 +61,16 @@ export function useAddMessage(): UseMutationResult<Message, Error, NewMessage, u
 
   return useMutation({
     mutationFn: async (data: NewMessage) => {
-      const result: DbResult<Message> = await window.electron.db.messages.add(data)
+      const result = await window.electron.db.messages.add(
+        data as Parameters<typeof window.electron.db.messages.add>[0]
+      )
       if (!result.success || !result.data) {
         throw new Error(result.error || 'Failed to add message')
       }
-      return result.data
+      return {
+        ...result.data,
+        metadata: (result.data.metadata as MessageMetadata | null) ?? null
+      }
     },
     onSuccess: (message) => {
       // Invalidate messages for this conversation
@@ -93,7 +101,9 @@ export function useAddMessages(): UseMutationResult<
   return useMutation({
     mutationFn: async ({ messages }) => {
       if (messages.length === 0) return
-      const result: DbResult<void> = await window.electron.db.messages.addMany(messages)
+      const result: DbResult<void> = await window.electron.db.messages.addMany(
+        messages as Parameters<typeof window.electron.db.messages.addMany>[0]
+      )
       if (!result.success) throw new Error(result.error || 'Failed to add messages')
     },
     onSuccess: (_, { messages }) => {
@@ -130,14 +140,17 @@ export function useUpdateMessage(): UseMutationResult<
 
   return useMutation({
     mutationFn: async ({ id, data }) => {
-      const result: DbResult<Message | undefined> = await window.electron.db.messages.update(
+      const result = await window.electron.db.messages.update(
         id,
-        data
+        data as Parameters<typeof window.electron.db.messages.update>[1]
       )
       if (!result.success || !result.data) {
         throw new Error(result.error || 'Failed to update message')
       }
-      return result.data
+      return {
+        ...result.data,
+        metadata: (result.data.metadata as MessageMetadata | null) ?? null
+      }
     },
     onSuccess: (_message, { conversationId }) => {
       queryClient.invalidateQueries({

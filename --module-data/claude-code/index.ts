@@ -15,8 +15,10 @@ export {
   useClearSession,
   useDeleteSession,
   useIsStreaming,
+  useMessageReview,
   useSendMessage,
   useSessionMessages,
+  useSessionReviews,
   useStopClaude,
   useThinking,
   useToolActivity
@@ -66,6 +68,7 @@ export type {
   ClaudeStartRequest,
   ClaudeStreamChunk,
   FormattedActivity,
+  MessageReviewData,
   RepoContext,
   SessionStatus,
   StoredSession,

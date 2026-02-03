@@ -12,7 +12,14 @@ import {
   useQueryClient
 } from '@tanstack/react-query'
 
-import type { Conversation, ConversationWithMessages, DbResult, NewConversation } from '../types'
+import type {
+  Conversation,
+  ConversationWithMessages,
+  DbResult,
+  Message,
+  MessageMetadata,
+  NewConversation
+} from '../types'
 
 // =============================================================================
 // Query Keys
@@ -75,10 +82,20 @@ export function useConversationWithMessages(
     queryKey: conversationKeys.withMessages(id || ''),
     queryFn: async () => {
       if (!id) return null
-      const result: DbResult<ConversationWithMessages | undefined> =
-        await window.electron.db.conversations.getWithMessages(id)
+      const result = await window.electron.db.conversations.getWithMessages(id)
       if (!result.success) throw new Error(result.error || 'Failed to load conversation')
-      return result.data || null
+      if (!result.data) return null
+
+      // Transform messages to include properly typed metadata
+      const messages: Message[] = result.data.messages.map((m) => ({
+        ...m,
+        metadata: (m.metadata as MessageMetadata | null) ?? null
+      }))
+
+      return {
+        conversation: result.data.conversation,
+        messages
+      }
     },
     enabled: !!id
   })

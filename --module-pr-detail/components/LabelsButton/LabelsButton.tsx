@@ -18,7 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@ui-kit'
-import { Check, Loader2, RefreshCw, Search, Tag } from 'lucide-react'
+import { Check, Loader2, Plus, RefreshCw, Search } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 
 import { useSelectedPR } from '../../hooks'
@@ -33,7 +33,6 @@ export function LabelsButton(): React.JSX.Element | null {
   // Get repo full name from PR (null safe)
   const repoFullName = pr?.base.repo.full_name ?? null
   const currentLabels = pr?.labels ?? []
-  const labelCount = currentLabels.length
   const prNumber = pr?.number ?? 0
 
   // Fetch available labels for the repository
@@ -112,29 +111,16 @@ export function LabelsButton(): React.JSX.Element | null {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 px-3 gap-1.5 font-medium">
-              <Tag className="w-3.5 h-3.5" />
-              <span className="text-xs">Labels</span>
-              {labelCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold">
-                  {labelCount}
-                </span>
-              )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-5 w-5 text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="w-3 h-3" />
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent side="bottom">
-          {labelCount > 0 ? (
-            <>
-              <p className="font-medium">Labels ({labelCount})</p>
-              <p className="text-xs text-muted-foreground">
-                {currentLabels.map((l) => l.name).join(', ')}
-              </p>
-            </>
-          ) : (
-            <p>Add labels to this PR</p>
-          )}
-        </TooltipContent>
+        <TooltipContent side="bottom">Add labels</TooltipContent>
       </Tooltip>
 
       <PopoverContent className="w-64 p-0" align="start">

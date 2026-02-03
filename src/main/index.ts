@@ -31,7 +31,6 @@ import {
   extractJiraTicket,
   extractPreviewUrl,
   fetchModels as fetchClaudeModels,
-  generateDailySpeech,
   getDefaultModel,
   sendMessage as sendClaudeMessage,
   sendMessageStreaming as sendClaudeMessageStreaming
@@ -41,6 +40,7 @@ import {
   stopAllSessions as stopAllClaudeSessions,
   stopClaudeSession
 } from './claude-code-relay'
+import { startDailySpeechGeneration, stopDailySpeechGeneration } from './daily-speech-relay'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
 import {
   addChatMessage,
@@ -877,12 +877,13 @@ function setupIPCHandlers(): void {
     return { success: true }
   })
 
-  // Generate daily speech from user events using AI
+  // Generate daily speech from user events using Claude Code (streaming with thinking)
   ipcMain.handle(
-    'generate-daily-speech',
+    'generate-daily-speech-streaming',
     async (
       _,
-      context: {
+      options: {
+        sessionId: string
         username: string
         date: string
         events: Array<{
@@ -892,25 +893,42 @@ function setupIPCHandlers(): void {
           prNumber?: number
           prTitle?: string
           prDescription?: string
+          branchName?: string
+          prUrl?: string
+          commentCount?: number
+          reviewState?: string
           timestamp: string
         }>
+        githubToken: string
       }
     ) => {
+      if (!mainWindow) {
+        return { success: false, error: 'Main window not available' }
+      }
+
       const apiKey = getClaudeApiKey()
       if (!apiKey) {
         return { success: false, error: 'No Claude API key configured' }
       }
 
-      logger.info(LogCategory.API, 'Generating daily speech', {
-        username: context.username,
-        date: context.date,
-        eventCount: context.events.length
+      logger.info(LogCategory.API, 'Starting streaming daily speech generation', {
+        sessionId: options.sessionId,
+        username: options.username,
+        date: options.date,
+        eventCount: options.events.length
       })
 
-      const result = await generateDailySpeech(apiKey, context)
-      return result
+      // Start the generation (async, streams results via IPC)
+      startDailySpeechGeneration(mainWindow, options)
+
+      return { success: true, sessionId: options.sessionId }
     }
   )
+
+  // Stop daily speech generation
+  ipcMain.handle('stop-daily-speech', (_, sessionId: string) => {
+    return stopDailySpeechGeneration(sessionId)
+  })
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PR CHAT OPERATIONS

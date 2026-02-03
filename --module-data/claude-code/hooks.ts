@@ -23,8 +23,10 @@ import {
 } from './parser'
 import {
   addMessageToSession,
+  cacheSessionReview,
   clearSessionMessages as clearStoredMessages,
   deleteSession as deleteStoredSession,
+  getSessionReviews,
   loadSession
 } from './persistence'
 import type {
@@ -58,6 +60,8 @@ export const claudeKeys = {
  */
 function createInitialSession(sessionId: string, repoContext?: RepoContext): ClaudeSession {
   const stored = loadSession(sessionId)
+  // Load persisted reviews from cache
+  const persistedReviews = getSessionReviews(sessionId)
 
   return {
     id: sessionId,
@@ -68,6 +72,8 @@ function createInitialSession(sessionId: string, repoContext?: RepoContext): Cla
     activity: null,
     lastToolResult: null,
     toolHistory: [],
+    pendingReviewData: null,
+    reviews: persistedReviews, // Load reviews from database cache
     error: null,
     repoContext: repoContext || stored?.repoContext,
     createdAt: stored?.createdAt || Date.now(),
@@ -288,6 +294,8 @@ export function useClearSession(): UseMutationResult<
           activity: null,
           lastToolResult: null,
           toolHistory: [],
+          pendingReviewData: null,
+          reviews: {},
           error: null,
           updatedAt: Date.now()
         }
@@ -375,16 +383,23 @@ export function useClaudeStreamListener(): void {
         // Finalize the session
         const finalSession = finalizeSession(old, success, error)
 
-        // Persist the final assistant message
+        // Persist the final assistant message with review data if present
         if (old.currentStream) {
+          const messageId = generateMessageId()
           const assistantMessage: ClaudeMessage = {
-            id: generateMessageId(),
+            id: messageId,
             role: 'assistant',
             content: old.currentStream,
             thinking: old.thinking || undefined,
+            hasReview: !!old.pendingReviewData,
             timestamp: Date.now()
           }
-          addMessageToSession(sessionId, assistantMessage)
+          // Pass the pending review data to be stored in message metadata
+          addMessageToSession(sessionId, assistantMessage, old.pendingReviewData || undefined)
+          // Also cache the review for immediate access
+          if (old.pendingReviewData) {
+            cacheSessionReview(sessionId, messageId, old.pendingReviewData)
+          }
         }
 
         return finalSession
@@ -540,15 +555,25 @@ function processStreamEvent(session: ClaudeSession, event: StreamEvent): ClaudeS
  */
 function finalizeSession(session: ClaudeSession, success: boolean, error?: string): ClaudeSession {
   // Create the assistant message from the streamed content
+  const messageId = generateMessageId()
+  const hasReview = !!session.pendingReviewData
+
   const assistantMessage: ClaudeMessage | null = session.currentStream
     ? {
-        id: generateMessageId(),
+        id: messageId,
         role: 'assistant',
         content: session.currentStream,
         thinking: session.thinking || undefined,
+        hasReview, // Flag that this message has an associated review
         timestamp: Date.now()
       }
     : null
+
+  // Store review in the reviews map if present
+  const updatedReviews = { ...session.reviews }
+  if (hasReview && assistantMessage && session.pendingReviewData) {
+    updatedReviews[messageId] = session.pendingReviewData
+  }
 
   return {
     ...session,
@@ -557,6 +582,8 @@ function finalizeSession(session: ClaudeSession, success: boolean, error?: strin
     currentStream: '',
     thinking: null,
     activity: null,
+    pendingReviewData: null, // Clear pending review after attaching
+    reviews: updatedReviews,
     error: success ? null : error || 'Session failed',
     updatedAt: Date.now()
   }
@@ -578,11 +605,13 @@ export interface ClaudeReviewData {
 /**
  * Listen for Claude review events (when Claude generates a structured review)
  * This uses a tool-based approach - the main process detects review JSON and emits a dedicated event
+ * Also stores the review in session.pendingReviewData so it gets attached to the message on finalization
  */
 export function useClaudeReviewListener(
   sessionId: string | null,
   onReview: (review: ClaudeReviewData) => void
 ): void {
+  const queryClient = useQueryClient()
   const onReviewRef = useRef(onReview)
   onReviewRef.current = onReview
 
@@ -592,12 +621,21 @@ export function useClaudeReviewListener(
     const unsubscribe = window.electron.onClaudeReview((data) => {
       // Only handle reviews for our session
       if (data.sessionId === sessionId) {
+        // Store in session so it gets attached to the message on finalization
+        queryClient.setQueryData<ClaudeSession>(claudeKeys.session(sessionId), (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pendingReviewData: data.review
+          }
+        })
+        // Also call the callback for immediate UI updates (floating button)
         onReviewRef.current(data.review)
       }
     })
 
     return unsubscribe
-  }, [sessionId])
+  }, [sessionId, queryClient])
 }
 
 // =============================================================================
@@ -638,4 +676,20 @@ export function useToolActivity(sessionId: string): ToolActivity | null {
 export function useThinking(sessionId: string): string | null {
   const { data: session } = useClaudeSession(sessionId)
   return session?.thinking || null
+}
+
+/**
+ * Get review data for a specific message
+ */
+export function useMessageReview(sessionId: string, messageId: string): ClaudeReviewData | null {
+  const { data: session } = useClaudeSession(sessionId)
+  return session?.reviews?.[messageId] || null
+}
+
+/**
+ * Get all reviews in a session (keyed by message ID)
+ */
+export function useSessionReviews(sessionId: string): Record<string, ClaudeReviewData> {
+  const { data: session } = useClaudeSession(sessionId)
+  return session?.reviews || {}
 }

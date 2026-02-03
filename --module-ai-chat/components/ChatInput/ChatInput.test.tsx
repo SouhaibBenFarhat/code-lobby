@@ -206,14 +206,8 @@ describe('ChatInput', () => {
     it('renders ContextIndicator', () => {
       render(<ChatInput {...defaultProps} />)
 
-      // The ContextIndicator should be present (shows token count)
-      expect(screen.getByText(/Enter to send/)).toBeInTheDocument()
-    })
-
-    it('shows queue hint when sending', () => {
-      render(<ChatInput {...defaultProps} isSending={true} />)
-
-      expect(screen.getByText(/Enter to queue/)).toBeInTheDocument()
+      // The ContextIndicator should be present (shows token count via slider)
+      expect(screen.getByRole('slider')).toBeInTheDocument()
     })
   })
 

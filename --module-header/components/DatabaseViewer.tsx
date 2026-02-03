@@ -36,35 +36,32 @@ export function DatabaseViewer(): React.JSX.Element {
     setError(null)
 
     try {
-      const convResult = await window.electron.db.conversations.list()
-      const conversations = convResult.success ? (convResult.data ?? []) : []
+      // Dynamically discover all tables
+      const tablesResult = await window.electron.db.tables.list()
+      if (!tablesResult.success || !tablesResult.data) {
+        throw new Error(tablesResult.error || 'Failed to list tables')
+      }
 
-      const messagesResult = await window.electron.db.messages.list()
-      const messages = messagesResult.success ? (messagesResult.data ?? []) : []
+      const tableNames = tablesResult.data
 
-      const promptsResult = await window.electron.db.customPrompts.list()
-      const prompts = promptsResult.success ? (promptsResult.data ?? []) : []
+      // Fetch count and data for each table
+      const tableDataPromises = tableNames.map(async (name) => {
+        const [countResult, dataResult] = await Promise.all([
+          window.electron.db.tables.count(name),
+          window.electron.db.tables.query(name, 1000)
+        ])
+        return {
+          name,
+          count: countResult.success ? (countResult.data ?? 0) : 0,
+          rows: dataResult.success ? (dataResult.data ?? []) : []
+        }
+      })
 
-      const usageResult = await window.electron.db.aiUsage.listRecent(1000)
-      const usage = usageResult.success ? (usageResult.data ?? []) : []
+      const allTables = await Promise.all(tableDataPromises)
+      setTables(allTables)
 
-      setTables([
-        {
-          name: 'conversations',
-          count: conversations.length,
-          rows: conversations as Record<string, unknown>[]
-        },
-        { name: 'messages', count: messages.length, rows: messages as Record<string, unknown>[] },
-        {
-          name: 'custom_prompts',
-          count: prompts.length,
-          rows: prompts as Record<string, unknown>[]
-        },
-        { name: 'ai_usage', count: usage.length, rows: usage as Record<string, unknown>[] }
-      ])
-
-      if (!selectedTable) {
-        setSelectedTable('conversations')
+      if (!selectedTable && allTables.length > 0) {
+        setSelectedTable(allTables[0].name)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data')

@@ -275,8 +275,10 @@ export {
   useClearSession,
   useDeleteSession,
   useIsStreaming,
+  useMessageReview,
   useSendMessage,
   useSessionMessages,
+  useSessionReviews,
   useStopClaude,
   useThinking,
   useToolActivity

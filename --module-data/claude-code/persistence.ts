@@ -7,7 +7,13 @@
  * This replaces the previous localStorage-based implementation with SQLite.
  */
 
-import type { ClaudeMessage, RepoContext, StoredSession, StoredSessions } from './types'
+import type {
+  ClaudeMessage,
+  MessageReviewData,
+  RepoContext,
+  StoredSession,
+  StoredSessions
+} from './types'
 
 // =============================================================================
 // Session ID Helpers
@@ -48,29 +54,55 @@ export function parsePRSessionId(
 // =============================================================================
 
 /**
+ * Result of loading all sessions - includes both sessions and reviews
+ */
+export interface LoadAllSessionsResult {
+  sessions: StoredSessions
+  reviews: Record<string, Record<string, MessageReviewData>>
+}
+
+/**
  * Load all stored sessions from SQLite
  */
-export async function loadAllSessionsAsync(): Promise<StoredSessions> {
+export async function loadAllSessionsAsync(): Promise<LoadAllSessionsResult> {
   try {
     const result = await window.electron.db.conversations.list()
-    if (!result.success || !result.data) return {}
+    if (!result.success || !result.data) {
+      return { sessions: {}, reviews: {} }
+    }
 
     const sessions: StoredSessions = {}
+    const allReviews: Record<string, Record<string, MessageReviewData>> = {}
 
     // Load messages for each conversation
     for (const conv of result.data) {
       const messagesResult = await window.electron.db.messages.listForConversation(conv.id)
+      const sessionReviews: Record<string, MessageReviewData> = {}
+
       const messages: ClaudeMessage[] =
         messagesResult.success && messagesResult.data
-          ? messagesResult.data.map((m) => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              displayLabel: m.displayLabel || undefined,
-              thinking: m.thinking || undefined,
-              timestamp: m.createdAt
-            }))
+          ? messagesResult.data.map((m) => {
+              // Extract review data from metadata if present
+              const metadata = m.metadata as { reviewData?: MessageReviewData } | null
+              if (metadata?.reviewData) {
+                sessionReviews[m.id] = metadata.reviewData
+              }
+
+              return {
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                displayLabel: m.displayLabel || undefined,
+                thinking: m.thinking || undefined,
+                hasReview: !!metadata?.reviewData,
+                timestamp: m.createdAt
+              }
+            })
           : []
+
+      if (Object.keys(sessionReviews).length > 0) {
+        allReviews[conv.id] = sessionReviews
+      }
 
       sessions[conv.id] = {
         id: conv.id,
@@ -89,35 +121,53 @@ export async function loadAllSessionsAsync(): Promise<StoredSessions> {
       }
     }
 
-    return sessions
+    return { sessions, reviews: allReviews }
   } catch (error) {
     console.error('[ClaudeCode] Failed to load sessions:', error)
-    return {}
+    return { sessions: {}, reviews: {} }
   }
+}
+
+/**
+ * Loaded session with optional reviews
+ */
+export interface LoadedSession extends StoredSession {
+  reviews?: Record<string, MessageReviewData>
 }
 
 /**
  * Load a single session by ID (async)
  */
-export async function loadSessionAsync(sessionId: string): Promise<StoredSession | null> {
+export async function loadSessionAsync(sessionId: string): Promise<LoadedSession | null> {
   try {
     const result = await window.electron.db.conversations.getWithMessages(sessionId)
     if (!result.success || !result.data) return null
 
     const { conversation: conv, messages: dbMessages } = result.data
+    const reviews: Record<string, MessageReviewData> = {}
 
-    const messages: ClaudeMessage[] = dbMessages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      displayLabel: m.displayLabel || undefined,
-      thinking: m.thinking || undefined,
-      timestamp: m.createdAt
-    }))
+    const messages: ClaudeMessage[] = dbMessages.map((m) => {
+      // Extract review data from metadata if present
+      const metadata = m.metadata as { reviewData?: MessageReviewData } | null
+      if (metadata?.reviewData) {
+        reviews[m.id] = metadata.reviewData
+      }
+
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        displayLabel: m.displayLabel || undefined,
+        thinking: m.thinking || undefined,
+        hasReview: !!metadata?.reviewData,
+        timestamp: m.createdAt
+      }
+    })
 
     return {
       id: conv.id,
       messages,
+      reviews: Object.keys(reviews).length > 0 ? reviews : undefined,
       repoContext:
         conv.repoFullName && conv.prNumber
           ? {
@@ -142,8 +192,9 @@ export async function loadSessionAsync(sessionId: string): Promise<StoredSession
 export async function addMessageToSessionAsync(
   sessionId: string,
   message: ClaudeMessage,
-  repoContext?: RepoContext
-): Promise<StoredSession> {
+  repoContext?: RepoContext,
+  reviewData?: MessageReviewData
+): Promise<LoadedSession> {
   try {
     // Ensure conversation exists
     const sessionType = sessionId.startsWith('pr-') ? 'pr' : 'general'
@@ -157,14 +208,18 @@ export async function addMessageToSessionAsync(
       prTitle: null
     })
 
-    // Add the message
+    // Build metadata object if we have review data
+    const metadata = reviewData ? { reviewData } : null
+
+    // Add the message with optional review metadata
     await window.electron.db.messages.add({
       id: message.id,
       conversationId: sessionId,
       role: message.role,
       content: message.content,
       thinking: message.thinking || null,
-      displayLabel: message.displayLabel || null
+      displayLabel: message.displayLabel || null,
+      metadata
     })
 
     // Return the updated session
@@ -173,6 +228,7 @@ export async function addMessageToSessionAsync(
       session || {
         id: sessionId,
         messages: [message],
+        reviews: reviewData ? { [message.id]: reviewData } : undefined,
         repoContext,
         createdAt: Date.now(),
         updatedAt: Date.now()
@@ -219,6 +275,7 @@ export async function clearSessionMessagesAsync(sessionId: string): Promise<void
 // =============================================================================
 
 let sessionCache: StoredSessions = {}
+let reviewsCache: Record<string, Record<string, MessageReviewData>> = {}
 let cacheLoaded = false
 let cacheLoadPromise: Promise<void> | null = null
 
@@ -230,11 +287,34 @@ export async function initSessionCache(): Promise<void> {
   if (cacheLoadPromise) return cacheLoadPromise
 
   cacheLoadPromise = (async () => {
-    sessionCache = await loadAllSessionsAsync()
+    const { sessions, reviews } = await loadAllSessionsAsync()
+    sessionCache = sessions
+    reviewsCache = reviews
     cacheLoaded = true
   })()
 
   return cacheLoadPromise
+}
+
+/**
+ * Get cached reviews for a session
+ */
+export function getSessionReviews(sessionId: string): Record<string, MessageReviewData> {
+  return reviewsCache[sessionId] || {}
+}
+
+/**
+ * Add a review to the cache (called when review is generated)
+ */
+export function cacheSessionReview(
+  sessionId: string,
+  messageId: string,
+  review: MessageReviewData
+): void {
+  if (!reviewsCache[sessionId]) {
+    reviewsCache[sessionId] = {}
+  }
+  reviewsCache[sessionId][messageId] = review
 }
 
 /**
@@ -257,7 +337,11 @@ export function loadSession(sessionId: string): StoredSession | null {
  * Add a message to a session (fire-and-forget with cache update)
  * @deprecated Use addMessageToSessionAsync instead
  */
-export function addMessageToSession(sessionId: string, message: ClaudeMessage): StoredSession {
+export function addMessageToSession(
+  sessionId: string,
+  message: ClaudeMessage,
+  reviewData?: MessageReviewData
+): StoredSession {
   // Update cache immediately
   const existing = sessionCache[sessionId]
   const session: StoredSession = existing || {
@@ -271,8 +355,8 @@ export function addMessageToSession(sessionId: string, message: ClaudeMessage): 
   session.updatedAt = Date.now()
   sessionCache[sessionId] = session
 
-  // Persist async (fire-and-forget)
-  addMessageToSessionAsync(sessionId, message, session.repoContext).catch((err) => {
+  // Persist async (fire-and-forget) - include review data if present
+  addMessageToSessionAsync(sessionId, message, session.repoContext, reviewData).catch((err) => {
     console.error('[ClaudeCode] Failed to persist message:', err)
   })
 

@@ -391,6 +391,44 @@ function EventItem({ event }: { event: UserEvent }): React.JSX.Element {
   )
 }
 
+// Group events by date
+function groupEventsByDate(events: UserEvent[]): Map<string, UserEvent[]> {
+  const groups = new Map<string, UserEvent[]>()
+
+  for (const event of events) {
+    const date = new Date(event.timestamp).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+    const existing = groups.get(date) || []
+    groups.set(date, [...existing, event])
+  }
+
+  return groups
+}
+
+// Format date label (Today, Yesterday, or date)
+function formatDateLabel(dateStr: string): string {
+  const eventDate = new Date(dateStr)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  // Reset time for comparison
+  const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+
+  if (eventDateOnly.getTime() === todayOnly.getTime()) {
+    return 'Today'
+  }
+  if (eventDateOnly.getTime() === yesterdayOnly.getTime()) {
+    return 'Yesterday'
+  }
+  return dateStr
+}
+
 // Events list content
 function EventsContent({
   events,
@@ -405,6 +443,8 @@ function EventsContent({
   onRefresh: () => void
   onGenerateDaily: () => void
 }): React.JSX.Element {
+  const groupedEvents = useMemo(() => groupEventsByDate(events), [events])
+
   if (isLoading && events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2">
@@ -434,18 +474,19 @@ function EventsContent({
         <div className="p-2 bg-muted rounded-full">
           <Calendar className="w-4 h-4 text-muted-foreground" />
         </div>
-        <p className="text-xs text-muted-foreground">No activity in the last 24h</p>
+        <p className="text-xs text-muted-foreground">No recent activity</p>
         <p className="text-[10px] text-muted-foreground/70">Your events will appear here</p>
       </div>
     )
   }
 
   return (
-    <div className="divide-y divide-border/30">
+    <div>
+      {/* Header */}
       <div className="px-3 py-2 bg-muted/30 border-b border-border/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium">Last 24 Hours</span>
+            <span className="text-xs font-medium">Recent Activity</span>
             <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {events.length}
             </span>
@@ -461,8 +502,27 @@ function EventsContent({
           </Button>
         </div>
       </div>
-      {events.map((event) => (
-        <EventItem key={event.id} event={event} />
+
+      {/* Grouped events */}
+      {Array.from(groupedEvents.entries()).map(([date, dateEvents]) => (
+        <div key={date}>
+          {/* Date header */}
+          <div className="px-3 py-1.5 bg-muted border-b border-border/30 sticky top-0">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground">
+                {formatDateLabel(date)}
+              </span>
+              <span className="text-[9px] text-muted-foreground/60">({dateEvents.length})</span>
+            </div>
+          </div>
+          {/* Events for this date */}
+          <div className="divide-y divide-border/30">
+            {dateEvents.map((event) => (
+              <EventItem key={event.id} event={event} />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   )

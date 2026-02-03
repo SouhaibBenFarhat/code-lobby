@@ -167,7 +167,7 @@ export function ChatInput({
           disabled={isSending || streaming.isStreaming || (linkedPRChat && !isContextValid)}
         />
 
-        <div className="flex gap-2 items-end">
+        <div className="relative">
           <textarea
             ref={textareaRef}
             placeholder={
@@ -183,19 +183,20 @@ export function ChatInput({
               adjustTextareaHeight()
             }}
             onKeyDown={handleKeyDown}
-            className="flex-1 min-h-[72px] max-h-[200px] px-3 py-2 text-sm rounded-[8px] border border-border bg-secondary/50 resize-none transition-colors duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] placeholder:text-muted-foreground/60 hover:border-border/80 hover:bg-secondary/70 focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_rgba(0,122,255,0.15)]"
+            className="w-full min-h-[72px] max-h-[200px] px-3 py-2 pr-12 text-sm rounded-[8px] border border-border bg-secondary/50 resize-none transition-colors duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] placeholder:text-muted-foreground/60 hover:border-border/80 hover:bg-secondary/70 focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_rgba(0,122,255,0.15)]"
             style={{ height: '72px' }}
           />
-          <div className="flex flex-col gap-1 mb-1">
+          {/* FAB Send/Stop Button */}
+          <div className="absolute bottom-4 right-2">
             {streaming.isStreaming && onStopStreaming ? (
               <Button
                 onClick={onStopStreaming}
                 variant="destructive"
                 size="icon"
-                className="h-9 w-9 flex-shrink-0"
+                className="h-6 w-6 rounded-full shadow-sm"
                 title="Stop streaming"
               >
-                <Square className="w-4 h-4" />
+                <Square className="w-3 h-3" />
               </Button>
             ) : (
               <Button
@@ -203,60 +204,52 @@ export function ChatInput({
                 disabled={!input.trim()}
                 size="icon"
                 className={cn(
-                  'h-9 w-9 flex-shrink-0',
+                  'h-6 w-6 rounded-full shadow-sm',
                   isSending && input.trim() && 'bg-primary/70'
                 )}
                 title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-3 h-3" />
               </Button>
             )}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <ContextIndicator
-              messages={messages}
-              streamingContent={streaming.content}
-              streamingThinking={streaming.thinking}
-              model={selectedModel}
-              inputText={input}
-            />
+        <div className="flex items-center gap-3">
+          <ContextIndicator
+            messages={messages}
+            streamingContent={streaming.content}
+            streamingThinking={streaming.thinking}
+            model={selectedModel}
+            inputText={input}
+          />
 
-            {/* Compact Thinking Budget Slider */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center">
-                  <Slider
-                    value={[thinkingBudget]}
-                    min={THINKING_MIN}
-                    max={THINKING_MAX}
-                    step={THINKING_STEP}
-                    onValueChange={(values) => onThinkingBudgetChange(values[0])}
-                    className="w-16"
-                  />
-                  <span
-                    className={cn(
-                      'text-[10px] tabular-nums ml-1',
-                      thinkingBudget > 0 ? 'text-primary' : 'text-muted-foreground'
-                    )}
-                  >
-                    {formatThinkingBudgetCompact(thinkingBudget)}
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Extended thinking:{' '}
-                {thinkingBudget === 0 ? 'Disabled' : `${thinkingBudget.toLocaleString()} tokens`}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground shrink-0">
-            {isSending
-              ? 'Enter to queue • Shift+Enter for new line'
-              : 'Enter to send • Shift+Enter for new line'}
-          </p>
+          {/* Compact Thinking Budget Slider */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center">
+                <Slider
+                  value={[thinkingBudget]}
+                  min={THINKING_MIN}
+                  max={THINKING_MAX}
+                  step={THINKING_STEP}
+                  onValueChange={(values) => onThinkingBudgetChange(values[0])}
+                  className="w-16"
+                />
+                <span
+                  className={cn(
+                    'text-[10px] tabular-nums ml-1',
+                    thinkingBudget > 0 ? 'text-primary' : 'text-muted-foreground'
+                  )}
+                >
+                  {formatThinkingBudgetCompact(thinkingBudget)}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              Extended thinking:{' '}
+              {thinkingBudget === 0 ? 'Disabled' : `${thinkingBudget.toLocaleString()} tokens`}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

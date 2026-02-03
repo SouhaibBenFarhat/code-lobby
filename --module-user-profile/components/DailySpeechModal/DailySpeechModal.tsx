@@ -2,22 +2,19 @@
  * DailySpeechModal - Modal for generating and viewing daily standup speeches
  *
  * Features:
- * - Generate AI-powered daily standup from GitHub activity
- * - Edit generated speech before saving
- * - View history of past speeches
- * - Detailed loading progress
+ * - History list view with generate button
+ * - AI-powered daily standup using Claude Code
+ * - Real-time thinking display during generation
+ * - MarkdownEditor for editing before saving
  */
 
+import { useClaudeApiKeyStatus, useCurrentUser, useGitHubToken } from '@data'
 import {
-  type DailySpeech,
-  type UserEvent,
-  useAddAIUsage,
-  useClaudeApiKey,
-  useCurrentUser,
-  useDailySpeeches,
-  useDeleteDailySpeech,
-  useSaveDailySpeech
-} from '@data'
+  type DailyReport,
+  useDeleteDailyReport,
+  useRecentDailyReports,
+  useUpsertDailyReport
+} from '@persistence'
 import {
   Button,
   cn,
@@ -26,34 +23,66 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Flex,
   MarkdownContent,
-  Progress,
+  MarkdownEditor,
   ScrollArea,
-  Textarea
+  ThinkingSection
 } from '@ui-kit'
 import {
   AlertCircle,
+  ArrowLeft,
   Calendar,
-  ChevronRight,
-  Clock,
-  Edit3,
+  ChevronDown,
+  ChevronUp,
   History,
   Loader2,
-  RefreshCw,
+  Plus,
   Save,
   Sparkles,
   Trash2,
   X
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { calculateTokenCost, DEFAULT_MODEL } from '../../../--module-ai-chat/utils/claude-request'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-interface GenerationProgress {
-  stage: 'idle' | 'fetching-prs' | 'generating' | 'done' | 'error'
-  message: string
-  /** Progress percentage from 0 to 100 */
-  percent: number
-  prProgress?: { current: number; total: number }
+// =============================================================================
+// Types
+// =============================================================================
+
+interface InternalToolActivity {
+  name: string
+  input: string
+  timestamp: number
+}
+
+interface GenerationState {
+  stage: 'idle' | 'generating' | 'done' | 'error'
+  thinking: string
+  streamedContent: string
+  currentTool: InternalToolActivity | null
+  toolHistory: InternalToolActivity[]
+  error?: string
+}
+
+interface UnsavedReport {
+  content: string
+  thinking: string | null
+  eventCount: number
+  analyzedRepos: string | null
+  analyzedPRs: string | null
+  generationDurationMs: number | null
+  toolsUsed: string | null
+}
+
+interface UserEvent {
+  id: string
+  type: string
+  title: string
+  description?: string
+  repoName?: string
+  prNumber?: number
+  timestamp: string
+  icon?: string
 }
 
 interface DailySpeechModalProps {
@@ -62,143 +91,199 @@ interface DailySpeechModalProps {
   events: UserEvent[]
 }
 
+// View states for the modal
+type ViewState = 'history' | 'generating' | 'editing'
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function formatToolInput(input: unknown): string {
+  if (typeof input === 'string') {
+    return input.length > 100 ? `${input.slice(0, 100)}...` : input
+  }
+  if (typeof input === 'object' && input !== null) {
+    const str = JSON.stringify(input)
+    return str.length > 100 ? `${str.slice(0, 100)}...` : str
+  }
+  return String(input)
+}
+
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
 export function DailySpeechModal({
   isOpen,
   onClose,
   events
 }: DailySpeechModalProps): React.JSX.Element {
-  const { data: claudeApiKey } = useClaudeApiKey()
+  const { data: apiKeyStatus } = useClaudeApiKeyStatus()
   const { data: user } = useCurrentUser()
-  const { data: speeches = [] } = useDailySpeeches()
-  const saveSpeech = useSaveDailySpeech()
-  const deleteSpeech = useDeleteDailySpeech()
-  const addAIUsage = useAddAIUsage()
+  const { data: githubToken } = useGitHubToken()
+  const hasApiKey = apiKeyStatus?.hasKey ?? false
+  const { data: reports = [] } = useRecentDailyReports(30)
+  const upsertReport = useUpsertDailyReport()
+  const deleteReport = useDeleteDailyReport()
 
-  // Current speech state
-  const [currentSpeech, setCurrentSpeech] = useState<DailySpeech | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedContent, setEditedContent] = useState('')
-  const [showHistory, setShowHistory] = useState(false)
+  // View state
+  const [view, setView] = useState<ViewState>('history')
+  const [editContent, setEditContent] = useState('')
+  const [unsavedReport, setUnsavedReport] = useState<UnsavedReport | null>(null)
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
+  const [showThinking, setShowThinking] = useState(false)
 
   // Generation state
-  const [progress, setProgress] = useState<GenerationProgress>({
+  const [state, setState] = useState<GenerationState>({
     stage: 'idle',
-    message: '',
-    percent: 0
+    thinking: '',
+    streamedContent: '',
+    currentTool: null,
+    toolHistory: []
   })
 
-  // Get today's date string in local timezone (YYYY-MM-DD)
-  const getLocalDateString = (date: Date): string => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  // Parse a YYYY-MM-DD date string as local time (not UTC)
-  const parseLocalDate = (dateStr: string): Date => {
-    const [year, month, day] = dateStr.split('-').map(Number)
-    return new Date(year, month - 1, day)
-  }
+  // Refs for cleanup
+  const cleanupRefs = useRef<Array<() => void>>([])
+  const sessionIdRef = useRef<string | null>(null)
 
   const today = getLocalDateString(new Date())
-
-  // Check if we have a speech for today
-  const todaysSpeech = speeches.find((s) => s.date === today)
-
-  // Load today's speech on open
-  useEffect(() => {
-    if (isOpen && todaysSpeech && !currentSpeech) {
-      setCurrentSpeech(todaysSpeech)
-    }
-  }, [isOpen, todaysSpeech, currentSpeech])
 
   // Reset state when closing
   useEffect(() => {
     if (!isOpen) {
-      setCurrentSpeech(null)
-      setIsEditing(false)
-      setEditedContent('')
-      setShowHistory(false)
-      setProgress({ stage: 'idle', message: '', percent: 0 })
+      for (const cleanup of cleanupRefs.current) {
+        cleanup()
+      }
+      cleanupRefs.current = []
+
+      setView('history')
+      setEditContent('')
+      setUnsavedReport(null)
+      setExpandedReportId(null)
+      setShowThinking(false)
+      setState({
+        stage: 'idle',
+        thinking: '',
+        streamedContent: '',
+        currentTool: null,
+        toolHistory: []
+      })
     }
   }, [isOpen])
 
-  // Fetch PR descriptions for events that have prNumber
-  const fetchPRDescriptions = useCallback(
-    async (eventsWithPRs: UserEvent[]): Promise<Map<string, string>> => {
-      const descriptions = new Map<string, string>()
-      const prsToFetch = eventsWithPRs.filter((e) => e.prNumber && e.repoName)
-      const total = prsToFetch.length
-
-      for (let i = 0; i < total; i++) {
-        const event = prsToFetch[i]
-        // PR fetching is 0-70% of progress (leave 30% for AI generation)
-        const percent = Math.round(((i + 1) / total) * 70)
-        setProgress({
-          stage: 'fetching-prs',
-          message: `Fetching PR ${i + 1}/${total}: ${event.title}`,
-          percent,
-          prProgress: { current: i + 1, total }
-        })
-
-        // Add a small delay to be gentle on rate limits
-        if (i > 0) {
-          await new Promise((r) => setTimeout(r, 200))
-        }
-
-        // For now, we'll use the event description as PR description
-        // In a full implementation, you'd fetch from GitHub API
-        const key = `${event.repoName}#${event.prNumber}`
-        descriptions.set(key, event.description || '')
-      }
-
-      return descriptions
-    },
-    []
-  )
-
   // Generate daily speech
   const handleGenerate = useCallback(async () => {
-    if (!user || !claudeApiKey) return
+    if (!user || !hasApiKey || !githubToken) return
 
-    setProgress({ stage: 'fetching-prs', message: 'Preparing events...', percent: 5 })
+    const sessionId = `daily-${Date.now()}`
+    sessionIdRef.current = sessionId
 
-    try {
-      // Get PR descriptions for events with PR numbers
-      const eventsWithPRs = events.filter((e) => e.prNumber)
+    setView('generating')
+    setState({
+      stage: 'generating',
+      thinking: '',
+      streamedContent: '',
+      currentTool: null,
+      toolHistory: []
+    })
 
-      // If no PRs to fetch, skip to 70%
-      if (eventsWithPRs.length === 0) {
-        setProgress({ stage: 'fetching-prs', message: 'No PRs to fetch', percent: 70 })
+    // Setup event listeners
+    const chunkCleanup = window.electron.onDailySpeechChunk((data) => {
+      if (data.sessionId !== sessionId) return
+
+      const { event } = data
+
+      if (event.type === 'thinking' && event.thinking) {
+        setState((prev) => ({
+          ...prev,
+          thinking: prev.thinking + event.thinking
+        }))
+      } else if (event.type === 'text' && event.content) {
+        setState((prev) => ({
+          ...prev,
+          streamedContent: prev.streamedContent + event.content
+        }))
+      } else if (event.type === 'tool_use' && event.tool_name) {
+        const activity: InternalToolActivity = {
+          name: event.tool_name,
+          input: event.input ? formatToolInput(event.input) : '',
+          timestamp: Date.now()
+        }
+        setState((prev) => ({
+          ...prev,
+          currentTool: activity,
+          toolHistory: [...prev.toolHistory, activity]
+        }))
       }
+    })
 
-      const prDescriptions = await fetchPRDescriptions(eventsWithPRs)
+    const doneCleanup = window.electron.onDailySpeechDone((data) => {
+      if (data.sessionId !== sessionId) return
 
-      // AI generation phase: 70-95%
-      setProgress({ stage: 'generating', message: 'Generating speech with AI...', percent: 75 })
+      if (data.success && data.content) {
+        const unsaved: UnsavedReport = {
+          content: data.content,
+          thinking: data.thinking || null,
+          eventCount: events.length,
+          analyzedRepos: data.metadata?.analyzedRepos
+            ? JSON.stringify(data.metadata.analyzedRepos)
+            : null,
+          analyzedPRs: data.metadata?.analyzedPRs
+            ? JSON.stringify(data.metadata.analyzedPRs)
+            : null,
+          generationDurationMs: data.metadata?.generationDurationMs || null,
+          toolsUsed: data.metadata?.toolsUsed ? JSON.stringify(data.metadata.toolsUsed) : null
+        }
 
-      // Build context for AI
+        setUnsavedReport(unsaved)
+        setEditContent(data.content)
+        setView('editing')
+        setState((prev) => ({
+          ...prev,
+          stage: 'done',
+          currentTool: null
+        }))
+      }
+    })
+
+    const errorCleanup = window.electron.onDailySpeechError((data) => {
+      if (data.sessionId !== sessionId) return
+
+      setState((prev) => ({
+        ...prev,
+        stage: 'error',
+        error: data.error,
+        currentTool: null
+      }))
+    })
+
+    cleanupRefs.current = [chunkCleanup, doneCleanup, errorCleanup]
+
+    // Start generation
+    try {
       const contextEvents = events.map((e) => ({
         type: e.type,
         description: e.description || e.title,
         repoName: e.repoName,
         prNumber: e.prNumber,
         prTitle: e.title,
-        prDescription: e.prNumber ? prDescriptions.get(`${e.repoName}#${e.prNumber}`) : undefined,
         timestamp: e.timestamp
       }))
 
-      // Simulate progress while waiting for AI
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => ({
-          ...prev,
-          percent: Math.min(prev.percent + 2, 95)
-        }))
-      }, 500)
-
-      // Call the main process to generate speech
-      const result = await window.electron.generateDailySpeech({
+      await window.electron.generateDailySpeechStreaming({
+        sessionId,
         username: user.login,
         date: new Date().toLocaleDateString('en-US', {
           weekday: 'long',
@@ -206,375 +291,372 @@ export function DailySpeechModal({
           month: 'long',
           day: 'numeric'
         }),
-        events: contextEvents
+        events: contextEvents,
+        githubToken
       })
-
-      clearInterval(progressInterval)
-
-      if (result.success && result.content) {
-        // Track AI usage for cost display
-        if (result.usage) {
-          const { inputCostUsd, outputCostUsd } = calculateTokenCost(
-            DEFAULT_MODEL,
-            result.usage.inputTokens,
-            result.usage.outputTokens
-          )
-          addAIUsage.mutate({
-            inputTokens: result.usage.inputTokens,
-            outputTokens: result.usage.outputTokens,
-            inputCostUsd,
-            outputCostUsd
-          })
-        }
-
-        const newSpeech: DailySpeech = {
-          id: `speech-${Date.now()}`,
-          date: today,
-          content: result.content,
-          metadata: {
-            generatedAt: new Date().toISOString(),
-            eventCount: events.length,
-            prsFetched: eventsWithPRs.length
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-
-        // Save to TanStack cache (persisted)
-        saveSpeech.mutate(newSpeech)
-        setCurrentSpeech(newSpeech)
-        setProgress({ stage: 'done', message: 'Speech generated!', percent: 100 })
-      } else {
-        setProgress({
-          stage: 'error',
-          message: result.error || 'Failed to generate speech',
-          percent: 0
-        })
-      }
     } catch (error) {
-      setProgress({
+      setState((prev) => ({
+        ...prev,
         stage: 'error',
-        message: error instanceof Error ? error.message : 'An error occurred',
-        percent: 0
-      })
+        error: error instanceof Error ? error.message : 'An error occurred'
+      }))
     }
-  }, [user, claudeApiKey, events, fetchPRDescriptions, saveSpeech, today, addAIUsage.mutate])
+  }, [user, hasApiKey, githubToken, events])
 
-  // Save edited speech
+  // Stop generation
+  const handleStop = useCallback(() => {
+    if (sessionIdRef.current) {
+      window.electron.stopDailySpeech(sessionIdRef.current)
+    }
+    setView('history')
+  }, [])
+
+  // Save the report
   const handleSave = useCallback(() => {
-    if (!currentSpeech || !editedContent.trim()) return
+    if (!unsavedReport || !editContent.trim()) return
 
-    const updatedSpeech: DailySpeech = {
-      ...currentSpeech,
-      content: editedContent,
-      updatedAt: new Date().toISOString()
+    const report: DailyReport = {
+      id: `report-${Date.now()}`,
+      date: today,
+      content: editContent,
+      summary: null,
+      eventCount: unsavedReport.eventCount,
+      analyzedRepos: unsavedReport.analyzedRepos,
+      analyzedPRs: unsavedReport.analyzedPRs,
+      generationDurationMs: unsavedReport.generationDurationMs,
+      toolsUsed: unsavedReport.toolsUsed,
+      thinking: unsavedReport.thinking,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     }
 
-    saveSpeech.mutate(updatedSpeech)
-    setCurrentSpeech(updatedSpeech)
-    setIsEditing(false)
-  }, [currentSpeech, editedContent, saveSpeech])
-
-  // Start editing
-  const handleEdit = useCallback(() => {
-    if (currentSpeech) {
-      setEditedContent(currentSpeech.content)
-      setIsEditing(true)
-    }
-  }, [currentSpeech])
-
-  // Cancel editing
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false)
-    setEditedContent('')
-  }, [])
-
-  // Select a speech from history
-  const handleSelectSpeech = useCallback((speech: DailySpeech) => {
-    setCurrentSpeech(speech)
-    setShowHistory(false)
-    setIsEditing(false)
-  }, [])
-
-  // Delete a speech from history
-  const handleDeleteSpeech = useCallback(
-    (e: React.MouseEvent, speechId: string) => {
-      e.stopPropagation() // Prevent selecting the speech
-      deleteSpeech.mutate(speechId)
-      // If we deleted the current speech, clear it
-      if (currentSpeech?.id === speechId) {
-        setCurrentSpeech(null)
+    upsertReport.mutate(report, {
+      onSuccess: () => {
+        setUnsavedReport(null)
+        setEditContent('')
+        setView('history')
       }
+    })
+  }, [unsavedReport, editContent, today, upsertReport])
+
+  // Discard and go back
+  const handleDiscard = useCallback(() => {
+    setUnsavedReport(null)
+    setEditContent('')
+    setView('history')
+    setState({
+      stage: 'idle',
+      thinking: '',
+      streamedContent: '',
+      currentTool: null,
+      toolHistory: []
+    })
+  }, [])
+
+  // Delete a report from history
+  const handleDeleteReport = useCallback(
+    (e: React.MouseEvent, reportId: string) => {
+      e.stopPropagation()
+      deleteReport.mutate(reportId)
     },
-    [deleteSpeech, currentSpeech]
+    [deleteReport]
   )
 
-  // Render progress indicator
-  const renderProgress = (): React.JSX.Element => (
-    <div className="flex flex-col items-center justify-center py-12 gap-6 px-8">
-      {/* Progress bar */}
-      <div className="w-full max-w-xs space-y-2">
-        <Progress value={progress.percent} size="md" />
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{progress.percent}%</span>
-          {progress.prProgress && (
-            <span>
-              PR {progress.prProgress.current}/{progress.prProgress.total}
-            </span>
+  // Toggle expand/collapse for a history report
+  const handleToggleExpand = useCallback((reportId: string) => {
+    setExpandedReportId((prev) => (prev === reportId ? null : reportId))
+  }, [])
+
+  // ==========================================================================
+  // Render Functions
+  // ==========================================================================
+
+  // Render the history list view
+  const renderHistoryView = (): React.JSX.Element => (
+    <Flex direction="col" gap="none" className="h-full">
+      {/* Header with Generate button */}
+      <Flex align="center" justify="end" className="px-6 py-4 shrink-0">
+        <Button
+          onClick={handleGenerate}
+          disabled={!hasApiKey || !githubToken || events.length === 0}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Generate
+        </Button>
+      </Flex>
+
+      {/* History list */}
+      <ScrollArea className="flex-1">
+        {reports.length === 0 ? (
+          <Flex direction="col" align="center" justify="center" gap="lg" className="h-full py-16">
+            <div className="p-4 bg-muted rounded-full">
+              <History className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-medium">No reports yet</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Generate your first standup to see it here
+              </p>
+            </div>
+          </Flex>
+        ) : (
+          <Flex direction="col" gap="sm" className="p-4">
+            {reports.map((report) => {
+              const isExpanded = expandedReportId === report.id
+              const dateFormatted = parseLocalDate(report.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric'
+              })
+              const timeFormatted = new Date(report.createdAt).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+              const contentLines = report.content.split('\n').filter((line) => line.trim())
+              const summary =
+                contentLines.find((line) => !line.startsWith('#'))?.slice(0, 100) ||
+                report.content.slice(0, 100)
+
+              return (
+                <div
+                  key={report.id}
+                  className={cn(
+                    'border rounded-lg overflow-hidden transition-all',
+                    isExpanded ? 'bg-muted/30' : 'hover:bg-muted/20'
+                  )}
+                >
+                  {/* Header */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleExpand(report.id)}
+                    className="w-full px-4 py-3 text-left"
+                  >
+                    <Flex align="start" justify="between" gap="md">
+                      <Flex direction="col" gap="xs" className="flex-1 min-w-0">
+                        <Flex align="center" gap="sm">
+                          <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="font-medium">{dateFormatted}</span>
+                          <span className="text-xs text-muted-foreground">{timeFormatted}</span>
+                        </Flex>
+                        {!isExpanded && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {summary}
+                            {summary.length >= 100 && '...'}
+                          </p>
+                        )}
+                      </Flex>
+                      <Flex align="center" gap="sm" className="shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDeleteReport(e, report.id)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </Flex>
+                    </Flex>
+                  </button>
+
+                  {/* Expanded content */}
+                  {isExpanded && (
+                    <Flex direction="col" gap="none" className="border-t">
+                      <div className="p-4">
+                        <MarkdownContent
+                          content={report.content}
+                          className="prose prose-sm prose-neutral dark:prose-invert max-w-none"
+                        />
+                      </div>
+                      {report.thinking && (
+                        <ThinkingSection
+                          thinking={report.thinking}
+                          isExpanded={showThinking}
+                          onExpandedChange={setShowThinking}
+                          maxHeight={80}
+                        />
+                      )}
+                    </Flex>
+                  )}
+                </div>
+              )
+            })}
+          </Flex>
+        )}
+      </ScrollArea>
+
+      {/* Footer hint */}
+      {(!hasApiKey || !githubToken) && (
+        <div className="px-6 py-3 border-t bg-muted/30 text-sm text-muted-foreground text-center">
+          {!hasApiKey && !githubToken
+            ? 'Configure Claude API key and GitHub token to generate reports'
+            : !hasApiKey
+              ? 'Configure your Claude API key to generate reports'
+              : 'GitHub token required to generate reports'}
+        </div>
+      )}
+    </Flex>
+  )
+
+  // Render the generating view
+  const renderGeneratingView = (): React.JSX.Element => (
+    <Flex direction="col" gap="none" className="h-full">
+      {/* Header */}
+      <Flex align="center" justify="between" className="px-6 py-4 border-b shrink-0">
+        <Flex align="center" gap="sm">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <span className="font-medium">Generating...</span>
+        </Flex>
+        <Button variant="outline" size="sm" onClick={handleStop}>
+          <X className="w-4 h-4 mr-2" />
+          Cancel
+        </Button>
+      </Flex>
+
+      {/* Thinking panel */}
+      <ThinkingSection
+        thinking={state.thinking}
+        isStreaming={state.stage === 'generating'}
+        currentTool={
+          state.currentTool
+            ? { name: state.currentTool.name, input: state.currentTool.input }
+            : null
+        }
+        toolCount={state.toolHistory.length}
+        maxHeight={128}
+        autoScroll
+      />
+
+      {/* Streaming content */}
+      <ScrollArea className="flex-1">
+        <div className="p-6">
+          {state.streamedContent ? (
+            <MarkdownContent
+              content={state.streamedContent}
+              className="prose prose-neutral dark:prose-invert max-w-none"
+            />
+          ) : (
+            <Flex direction="col" align="center" justify="center" gap="md" className="py-16">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              <div className="text-center">
+                <p className="text-base font-medium">Analyzing your GitHub activity...</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Claude is reading your code changes and PRs
+                </p>
+              </div>
+            </Flex>
           )}
         </div>
-      </div>
+      </ScrollArea>
 
-      {/* Stage indicator */}
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-          <span className="text-sm font-medium">
-            {progress.stage === 'fetching-prs' ? 'Fetching PR details' : 'Generating speech'}
-          </span>
+      {/* Error state */}
+      {state.stage === 'error' && (
+        <div className="px-6 py-4 border-t bg-destructive/10">
+          <Flex align="center" gap="sm" className="text-destructive">
+            <AlertCircle className="w-4 h-4" />
+            <span className="text-sm">{state.error}</span>
+          </Flex>
         </div>
-        <p className="text-xs text-muted-foreground text-center max-w-xs">{progress.message}</p>
-      </div>
-    </div>
-  )
-
-  // Render error state
-  const renderError = (): React.JSX.Element => (
-    <div className="flex flex-col items-center justify-center py-12 gap-4">
-      <div className="p-3 bg-destructive/10 rounded-full">
-        <AlertCircle className="w-6 h-6 text-destructive" />
-      </div>
-      <p className="text-sm text-destructive text-center max-w-xs">{progress.message}</p>
-      <Button variant="outline" size="sm" onClick={handleGenerate}>
-        <RefreshCw className="w-3.5 h-3.5 mr-2" />
-        Try Again
-      </Button>
-    </div>
-  )
-
-  // Render empty state (no events)
-  const renderEmptyState = (): React.JSX.Element => (
-    <div className="flex flex-col items-center justify-center py-12 gap-4">
-      <div className="p-3 bg-muted rounded-full">
-        <Calendar className="w-6 h-6 text-muted-foreground" />
-      </div>
-      <div className="text-center">
-        <p className="text-sm font-medium">No activity to summarize</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Your GitHub activity from the last 24 hours will appear here
-        </p>
-      </div>
-    </div>
-  )
-
-  // Render initial state (ready to generate)
-  const renderReadyState = (): React.JSX.Element => (
-    <div className="flex flex-col items-center justify-center py-12 gap-4">
-      <div className="p-3 bg-primary/10 rounded-full">
-        <Sparkles className="w-6 h-6 text-primary" />
-      </div>
-      <div className="text-center">
-        <p className="text-sm font-medium">Generate your daily standup</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          AI will summarize your {events.length} event{events.length !== 1 ? 's' : ''} from the last
-          24 hours
-        </p>
-      </div>
-      <Button onClick={handleGenerate} disabled={!claudeApiKey}>
-        <Sparkles className="w-4 h-4 mr-2" />
-        Generate Speech
-      </Button>
-      {!claudeApiKey && (
-        <p className="text-xs text-muted-foreground">Configure your Claude API key first</p>
       )}
-    </div>
+    </Flex>
   )
 
-  // Render speech content (only called when currentSpeech exists)
-  const renderSpeechContent = (speech: DailySpeech): React.JSX.Element => {
-    return (
-      <div className="flex flex-col h-full">
-        {/* Metadata */}
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {parseLocalDate(speech.date).toLocaleDateString('en-US', {
+  // Render the editing view (after generation)
+  const renderEditingView = (): React.JSX.Element => (
+    <Flex direction="col" gap="none" className="h-full">
+      {/* Header */}
+      <Flex align="center" justify="between" className="px-6 py-4 border-b shrink-0">
+        <Flex align="center" gap="sm">
+          <Button variant="ghost" size="sm" onClick={handleDiscard} className="h-8 w-8 p-0">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <span className="font-medium">Edit & Save</span>
+          <span className="text-xs text-muted-foreground bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded">
+            Unsaved
+          </span>
+        </Flex>
+        <Flex gap="sm">
+          <Button variant="ghost" onClick={handleDiscard}>
+            Discard
+          </Button>
+          <Button onClick={handleSave} disabled={!editContent.trim() || upsertReport.isPending}>
+            {upsertReport.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            Save
+          </Button>
+        </Flex>
+      </Flex>
+
+      {/* Metadata */}
+      {unsavedReport && (
+        <Flex
+          align="center"
+          gap="md"
+          className="px-6 py-2 border-b bg-muted/30 text-xs text-muted-foreground"
+        >
+          <Flex align="center" gap="xs">
+            <Calendar className="w-3 h-3" />
+            <span>
+              {new Date().toLocaleDateString('en-US', {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric'
               })}
             </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {new Date(speech.metadata.generatedAt).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </span>
-            <span>{speech.metadata.eventCount} events</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {!isEditing && (
-              <Button variant="ghost" size="sm" onClick={handleEdit} className="h-7 text-xs">
-                <Edit3 className="w-3 h-3 mr-1" />
-                Edit
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4">
-            {isEditing ? (
-              <Textarea
-                value={editedContent}
-                onChange={(e) => setEditedContent(e.target.value)}
-                className="min-h-[300px] font-mono text-sm"
-                placeholder="Edit your speech..."
-              />
-            ) : (
-              <MarkdownContent content={speech.content} className="prose-sm" />
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/30">
-          {isEditing ? (
-            <>
-              <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={!editedContent.trim()}>
-                <Save className="w-3.5 h-3.5 mr-1.5" />
-                Save Changes
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)}>
-                <History className="w-3.5 h-3.5 mr-1.5" />
-                History ({speeches.length})
-              </Button>
-              <Button size="sm" onClick={handleGenerate} disabled={!claudeApiKey}>
-                <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                Regenerate
-              </Button>
-            </>
+          </Flex>
+          <span>{unsavedReport.eventCount} events analyzed</span>
+          {unsavedReport.analyzedRepos && (
+            <span>{JSON.parse(unsavedReport.analyzedRepos).length} repos</span>
           )}
-        </div>
-      </div>
-    )
-  }
+        </Flex>
+      )}
 
-  // Render history view
-  const renderHistory = (): React.JSX.Element => (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h3 className="text-sm font-medium">Speech History</h3>
-        <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)} className="h-7">
-          <X className="w-3.5 h-3.5" />
-        </Button>
+      {/* Markdown Editor */}
+      <div className="flex-1 p-4 overflow-hidden">
+        <MarkdownEditor
+          value={editContent}
+          onChange={setEditContent}
+          height={400}
+          placeholder="Edit your standup report..."
+          defaultTab="write"
+          className="h-full"
+        />
       </div>
-      <ScrollArea className="flex-1">
-        {speeches.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <History className="w-6 h-6 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No speeches yet</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {speeches.map((speech) => (
-              <div
-                key={speech.id}
-                className={cn(
-                  'w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors group relative',
-                  currentSpeech?.id === speech.id && 'bg-muted'
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSelectSpeech(speech)}
-                  className="w-full text-left"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {parseLocalDate(speech.date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {speech.metadata.eventCount} events • Generated{' '}
-                        {new Date(speech.metadata.generatedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                    {speech.content.slice(0, 150)}...
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleDeleteSpeech(e, speech.id)}
-                  className="absolute top-3 right-10 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
-                  title="Delete speech"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
-    </div>
+    </Flex>
   )
 
   // Determine what to render
   const renderContent = (): React.JSX.Element => {
-    if (showHistory) {
-      return renderHistory()
+    switch (view) {
+      case 'generating':
+        return renderGeneratingView()
+      case 'editing':
+        return renderEditingView()
+      default:
+        return renderHistoryView()
     }
-
-    if (progress.stage === 'fetching-prs' || progress.stage === 'generating') {
-      return renderProgress()
-    }
-
-    if (progress.stage === 'error') {
-      return renderError()
-    }
-
-    if (currentSpeech) {
-      return renderSpeechContent(currentSpeech)
-    }
-
-    if (events.length === 0) {
-      return renderEmptyState()
-    }
-
-    return renderReadyState()
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] h-[500px] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-primary" />
+      <DialogContent className="sm:max-w-[800px] h-[80vh] max-h-[700px] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
+          <DialogTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
             Daily Standup
           </DialogTitle>
-          <DialogDescription className="text-xs">
-            AI-generated summary of your GitHub activity
+          <DialogDescription className="text-sm">
+            Generate AI-powered daily summaries from your GitHub activity
           </DialogDescription>
         </DialogHeader>
+
         <div className="flex-1 overflow-hidden">{renderContent()}</div>
       </DialogContent>
     </Dialog>

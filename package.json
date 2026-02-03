@@ -27,6 +27,8 @@
     "lint:fix": "biome check --write --unsafe .",
     "format": "biome format --write .",
     "prepare": "husky",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
     "db:studio": "sqlite_web \"$HOME/Library/Application Support/codelobby/codelobby.db\"",
     "db:open": "open -a 'DB Browser for SQLite' \"$HOME/Library/Application Support/codelobby/codelobby.db\"",
     "db:cli": "sqlite3 \"$HOME/Library/Application Support/codelobby/codelobby.db\"",
@@ -78,7 +80,8 @@
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
@@ -116,6 +119,13 @@
     },
     "files": [
       "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "drizzle",
+        "to": "drizzle",
+        "filter": ["**/*.sql", "meta/**/*"]
+      }
     ],
     "mac": {
       "target": "dmg",

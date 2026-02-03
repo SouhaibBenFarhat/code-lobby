@@ -9,6 +9,7 @@
  * Note: Review detection is handled via tool events, not text parsing
  */
 
+import type { ClaudeReviewData } from '@data'
 import {
   Avatar,
   AvatarFallback,
@@ -21,9 +22,10 @@ import {
   MarkdownContent,
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
+  ThinkingSection
 } from '@ui-kit'
-import { Brain, ChevronRight, MessageSquarePlus, MoreHorizontal, User } from 'lucide-react'
+import { ClipboardCheck, MessageSquarePlus, MoreHorizontal, User } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 import type { ChatMessage, GitHubUser } from '../../types'
 import { MessageErrorBoundary } from '../MessageErrorBoundary'
@@ -34,16 +36,27 @@ export interface MessageBubbleProps {
   expandedThinking: Set<string>
   toggleThinkingExpanded: (id: string) => void
   user?: GitHubUser | null
+  // Review support - for messages that generated code reviews
+  review?: ClaudeReviewData
+  onOpenReview?: (review: ClaudeReviewData) => void
 }
 
 function MessageBubbleInner({
   message,
   expandedThinking,
   toggleThinkingExpanded,
-  user
+  user,
+  review,
+  onOpenReview
 }: MessageBubbleProps): React.JSX.Element {
   const [showCommentModal, setShowCommentModal] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const handleOpenReview = useCallback(() => {
+    if (review && onOpenReview) {
+      onOpenReview(review)
+    }
+  }, [review, onOpenReview])
 
   // Get display content - for user messages with displayLabel, show the label instead of full prompt
   const displayContent = useMemo(() => {
@@ -86,45 +99,12 @@ function MessageBubbleInner({
             <div className="space-y-0">
               {/* Thinking section (collapsible) */}
               {message.thinking && (
-                <div
-                  className={cn(
-                    'border-b transition-colors',
-                    expandedThinking.has(message.id)
-                      ? 'border-primary/20 bg-primary/5'
-                      : 'border-border/50'
-                  )}
-                >
-                  <Button
-                    variant="unstyled"
-                    size="none"
-                    onClick={() => toggleThinkingExpanded(message.id)}
-                    className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <ChevronRight
-                      className={cn(
-                        'w-3 h-3 transition-transform',
-                        expandedThinking.has(message.id) && 'rotate-90'
-                      )}
-                    />
-                    <Brain
-                      className={cn(
-                        'w-3.5 h-3.5',
-                        expandedThinking.has(message.id) && 'text-primary'
-                      )}
-                    />
-                    <span>Thinking</span>
-                    <span className="text-[10px] text-muted-foreground/60 ml-auto">
-                      Click to {expandedThinking.has(message.id) ? 'hide' : 'show'}
-                    </span>
-                  </Button>
-                  {expandedThinking.has(message.id) && (
-                    <div className="px-3 pb-3 text-xs text-muted-foreground/90 bg-primary/5 border-l-2 border-primary/40 ml-3 mr-3 mb-2 rounded">
-                      <pre className="whitespace-pre-wrap font-mono text-[11px] max-h-64 overflow-y-auto leading-relaxed">
-                        {message.thinking}
-                      </pre>
-                    </div>
-                  )}
-                </div>
+                <ThinkingSection
+                  thinking={message.thinking}
+                  isExpanded={expandedThinking.has(message.id)}
+                  onExpandedChange={() => toggleThinkingExpanded(message.id)}
+                  showHint
+                />
               )}
 
               {/* Message content */}
@@ -136,10 +116,24 @@ function MessageBubbleInner({
                     </MessageErrorBoundary>
                   </div>
                 )}
+
+                {/* Review button - shown for messages that generated a code review */}
+                {review && onOpenReview && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="mt-2 flex items-center gap-1.5"
+                    onClick={handleOpenReview}
+                  >
+                    <ClipboardCheck className="w-3.5 h-3.5" />
+                    View Review ({review.comments.length} comment
+                    {review.comments.length !== 1 ? 's' : ''})
+                  </Button>
+                )}
               </div>
             </div>
           ) : (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
           )}
         </div>
 

@@ -887,7 +887,7 @@ function ContextIndicator({ messages, model }: Props) {
 ### 2.1 AI Tool Execution 🔴 Not Started
 > Enable Claude to execute actions on behalf of the user
 
-**Reference Implementation:** `src/main/ai-tools.reference.ts`
+**Note:** Tool execution is now implemented via Claude Agent SDK in `src/main/claude-code-relay.ts`
 
 **16 Tools Defined:**
 | Tool | Purpose |

@@ -22,13 +22,14 @@ import {
   useDeleteCustomPrompt,
   usePRFiles,
   useSendMessage,
+  useSessionReviews,
   useSetClaudeApiKey,
   useStopClaude,
   useSubmitPRReviewWithComments,
   useUpdateCustomPrompt
 } from '@data'
 import { Button } from '@ui-kit'
-import { ArrowDown, ClipboardCheck, Loader2 } from 'lucide-react'
+import { ArrowDown, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useThrottledValue } from '../../hooks'
 import type {
@@ -101,6 +102,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // ═══════════════════════════════════════════════════════════════════════════
 
   const { data: session } = useClaudeSession(sessionId ?? 'no-pr')
+  const sessionReviews = useSessionReviews(sessionId ?? 'no-pr')
   const sendMessageMutation = useSendMessage()
   const stopClaudeMutation = useStopClaude()
   const clearSessionMutation = useClearSession()
@@ -138,9 +140,6 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     review: ReviewData | null
   }>({ isOpen: false, review: null })
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
-
-  // Pending review from Claude (shows button, doesn't auto-open modal)
-  const [pendingReview, setPendingReview] = useState<ReviewData | null>(null)
 
   // Message queue - stores messages to send after current streaming completes
   const [messageQueue, setMessageQueue] = useState<QueuedMessage[]>([])
@@ -392,7 +391,6 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   useEffect(() => {
     if (selectedPR) {
       setUserScrolledUp(false)
-      setPendingReview(null) // Clear any pending review from previous PR
       setTimeout(() => scrollToBottom(false), 100)
     }
   }, [selectedPR, scrollToBottom])
@@ -511,11 +509,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     setReviewPreview({ isOpen: true, review })
   }, [])
 
-  // Listen for Claude review events (tool-based approach)
-  // This callback converts ClaudeReviewData to ReviewData format and shows a button
-  const handleClaudeReview = useCallback((review: ClaudeReviewData) => {
-    // Convert ClaudeReviewData to ReviewData format (add IDs to comments)
-    const reviewData: ReviewData = {
+  // Convert ClaudeReviewData to ReviewData format (add IDs to comments)
+  const convertToReviewData = useCallback((review: ClaudeReviewData): ReviewData => {
+    return {
       summary: review.summary,
       verdict: review.verdict,
       comments: review.comments.map((c, i) => ({
@@ -525,20 +521,20 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         body: c.body
       }))
     }
-    // Set pending review - button will appear, user clicks to open modal
-    setPendingReview(reviewData)
   }, [])
 
-  // Hook into Claude review events (tool-based, not parsing)
-  useClaudeReviewListener(sessionId, handleClaudeReview)
+  // Handler for opening a review from the message history (ClaudeReviewData -> ReviewData)
+  const handleOpenMessageReview = useCallback(
+    (review: ClaudeReviewData) => {
+      handleOpenReview(convertToReviewData(review))
+    },
+    [handleOpenReview, convertToReviewData]
+  )
 
-  // Handler for clicking the "Open Review" button
-  const handleOpenPendingReview = useCallback(() => {
-    if (pendingReview) {
-      handleOpenReview(pendingReview)
-      setPendingReview(null) // Clear pending after opening
-    }
-  }, [pendingReview, handleOpenReview])
+  // Listen for Claude review events (tool-based approach)
+  // The hook stores the review in session.pendingReviewData, which gets attached to the message on finalization
+  // We pass a no-op callback since we don't need to do anything else (review button shows in message bubble)
+  useClaudeReviewListener(sessionId, () => {})
 
   const _handleRemoveQueuedMessage = useCallback((id: string) => {
     setMessageQueue((prev) => prev.filter((m) => m.id !== id))
@@ -556,6 +552,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         content: m.content,
         displayLabel: m.displayLabel, // Show this instead of full content for quick actions
         thinking: m.thinking,
+        hasReview: m.hasReview, // Flag for messages that have an associated review
         timestamp: new Date(m.timestamp).toISOString()
       })),
     [messages]
@@ -666,22 +663,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
                 onScroll={handleScroll}
                 onVirtualizerReady={handleVirtualizerReady}
                 user={user}
+                sessionReviews={sessionReviews}
+                onOpenReview={handleOpenMessageReview}
               />
-            )}
-
-            {/* Review ready button - appears when Claude generates a review */}
-            {pendingReview && !streaming.isStreaming && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
-                <Button
-                  onClick={handleOpenPendingReview}
-                  className="flex items-center gap-2 shadow-lg"
-                  variant="default"
-                >
-                  <ClipboardCheck className="w-4 h-4" />
-                  Open Review ({pendingReview.comments.length} comment
-                  {pendingReview.comments.length !== 1 ? 's' : ''})
-                </Button>
-              </div>
             )}
           </>
         )}

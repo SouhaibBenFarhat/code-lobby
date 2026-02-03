@@ -13,6 +13,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { LogCategory, mainLogger as logger } from '@logger/main'
 import type { BrowserWindow } from 'electron'
+import { z } from 'zod'
 import { getClaudeApiKey } from './store'
 
 // =============================================================================
@@ -31,206 +32,87 @@ interface ReviewData {
   verdict: 'approve' | 'request_changes' | 'comment'
 }
 
-/**
- * Check if JSON has balanced braces/brackets (complete JSON)
- */
-function isJsonComplete(jsonStr: string): boolean {
-  let braceCount = 0
-  let bracketCount = 0
-  let inString = false
-  let escaped = false
-
-  for (let i = 0; i < jsonStr.length; i++) {
-    const char = jsonStr[i]
-    if (escaped) {
-      escaped = false
-      continue
-    }
-    if (char === '\\') {
-      escaped = true
-      continue
-    }
-    if (char === '"') {
-      inString = !inString
-      continue
-    }
-    if (inString) continue
-    if (char === '{') braceCount++
-    else if (char === '}') braceCount--
-    else if (char === '[') bracketCount++
-    else if (char === ']') bracketCount--
-  }
-
-  return braceCount === 0 && bracketCount === 0 && !inString
-}
-
-// Tool tags - Claude "calls" tools by outputting these XML-style blocks
-const REVIEW_TOOL_START = '<codelobby_submit_review>'
-const REVIEW_TOOL_END = '</codelobby_submit_review>'
+// =============================================================================
+// MCP Server for Custom Tools
+// =============================================================================
 
 /**
- * Streaming tool call filter
- * Accumulates text and strips out <codelobby_submit_review>...</codelobby_submit_review> blocks
+ * Create the CodeLobby MCP server with the prepare_review tool
+ * The tool callback emits the review event to the renderer
  */
-class ToolCallFilter {
-  private buffer = ''
+function createCodeLobbyMcpServer(
+  mainWindow: BrowserWindow,
+  sessionId: string,
+  sdkTool: typeof import('@anthropic-ai/claude-agent-sdk').tool,
+  sdkCreateMcpServer: typeof import('@anthropic-ai/claude-agent-sdk').createSdkMcpServer
+) {
+  return sdkCreateMcpServer({
+    name: 'codelobby-tools',
+    version: '1.0.0',
+    tools: [
+      sdkTool(
+        'prepare_review',
+        'Prepare a PR review draft for the user to preview and submit. This does NOT submit to GitHub - the user must manually review and submit it themselves.',
+        {
+          summary: z.string().describe('Brief 1-2 sentence review summary'),
+          comments: z
+            .array(
+              z.object({
+                file: z.string().describe('File path relative to repo root'),
+                line: z.number().describe('Line number in the file'),
+                body: z.string().describe('The review comment text')
+              })
+            )
+            .describe('Array of inline comments on specific lines'),
+          verdict: z
+            .enum(['approve', 'request_changes', 'comment'])
+            .describe(
+              'Review verdict: "approve" (good code), "request_changes" (must fix), or "comment" (feedback only)'
+            )
+        },
+        async (args) => {
+          const reviewData: ReviewData = {
+            summary: args.summary,
+            comments: args.comments.map((c: { file: string; line: number; body: string }) => ({
+              file: c.file,
+              line: c.line,
+              body: c.body
+            })),
+            verdict: args.verdict
+          }
 
-  /**
-   * Process incoming text chunk and return only displayable content
-   * Tool call content is stripped out
-   */
-  processChunk(text: string): string {
-    this.buffer += text
+          logger.info(LogCategory.AI, 'Review tool called', {
+            sessionId,
+            commentsCount: reviewData.comments.length,
+            verdict: reviewData.verdict
+          })
 
-    // Check if we have a complete tool call to strip
-    const startIdx = this.buffer.indexOf(REVIEW_TOOL_START)
-    const endIdx = this.buffer.indexOf(REVIEW_TOOL_END)
+          // Emit the review event - this triggers the "Open Review" button in the UI
+          mainWindow.webContents.send('claude:review', {
+            sessionId,
+            review: reviewData
+          })
 
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      // We have a complete tool call - strip it out
-      const before = this.buffer.slice(0, startIdx)
-      const after = this.buffer.slice(endIdx + REVIEW_TOOL_END.length)
-      this.buffer = after
-      return before
-    }
-
-    if (startIdx !== -1) {
-      // Tool call started but not finished - emit everything before it, keep rest buffered
-      const before = this.buffer.slice(0, startIdx)
-      this.buffer = this.buffer.slice(startIdx)
-      return before
-    }
-
-    // Check if buffer might end with partial start tag (e.g., "<codelobby_sub")
-    // We need to hold back potential partial matches
-    const partialMatch = this.getPartialTagMatch()
-    if (partialMatch > 0) {
-      const safeToEmit = this.buffer.slice(0, -partialMatch)
-      this.buffer = this.buffer.slice(-partialMatch)
-      return safeToEmit
-    }
-
-    // No tool call detected - emit everything
-    const result = this.buffer
-    this.buffer = ''
-    return result
-  }
-
-  /**
-   * Check if buffer ends with a partial match of the start tag
-   * Returns the length of the partial match, or 0 if none
-   */
-  private getPartialTagMatch(): number {
-    // Check increasingly longer suffixes of buffer against tag prefix
-    for (let len = Math.min(this.buffer.length, REVIEW_TOOL_START.length - 1); len >= 1; len--) {
-      const suffix = this.buffer.slice(-len)
-      if (REVIEW_TOOL_START.startsWith(suffix)) {
-        return len
-      }
-    }
-    return 0
-  }
-
-  /**
-   * Get any remaining buffered content (called at end of stream)
-   */
-  flush(): string {
-    // At end of stream, if we're holding a partial tag that never completed,
-    // it wasn't actually a tag - emit it
-    // But if we're inside an incomplete tool call (has start but no end), discard it
-    if (this.buffer.includes(REVIEW_TOOL_START)) {
-      // Incomplete tool call - strip from start tag onwards
-      const idx = this.buffer.indexOf(REVIEW_TOOL_START)
-      const result = this.buffer.slice(0, idx)
-      this.buffer = ''
-      return result
-    }
-    const result = this.buffer
-    this.buffer = ''
-    return result
-  }
-
-  /**
-   * Reset filter state
-   */
-  reset(): void {
-    this.buffer = ''
-  }
-}
-
-/**
- * Remove tool call blocks from text (for clean display)
- * Tool calls are extracted separately and not shown to users
- */
-function stripToolCallsFromText(content: string): string {
-  if (!content) return content
-
-  const startIdx = content.indexOf(REVIEW_TOOL_START)
-  const endIdx = content.indexOf(REVIEW_TOOL_END)
-
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    // Remove the tool call block (inclusive of tags)
-    const result = content.slice(0, startIdx) + content.slice(endIdx + REVIEW_TOOL_END.length)
-    return result.replace(/\n{3,}/g, '\n\n').trim()
-  }
-
-  return content
-}
-
-/**
- * Extract review tool call from Claude's response
- * Looks for JSON inside <codelobby_submit_review> tags (tool call pattern)
- */
-function extractReviewFromResponse(content: string): ReviewData | null {
-  if (!content) return null
-
-  // Look for the review tool call
-  const startIdx = content.indexOf(REVIEW_TOOL_START)
-  const endIdx = content.indexOf(REVIEW_TOOL_END)
-
-  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
-    return null
-  }
-
-  // Extract the JSON from the tool call
-  const jsonStr = content.slice(startIdx + REVIEW_TOOL_START.length, endIdx).trim()
-
-  if (!jsonStr || !isJsonComplete(jsonStr)) return null
-
-  try {
-    const parsed = JSON.parse(jsonStr)
-
-    // Validate structure
-    if (typeof parsed.summary !== 'string') return null
-    if (!Array.isArray(parsed.comments)) return null
-    if (!['approve', 'request_changes', 'comment'].includes(parsed.verdict)) return null
-
-    // Validate and map comments
-    const validComments: ReviewComment[] = []
-    for (const c of parsed.comments) {
-      if (
-        typeof c === 'object' &&
-        c !== null &&
-        typeof c.file === 'string' &&
-        typeof c.line === 'number' &&
-        typeof c.body === 'string'
-      ) {
-        validComments.push({ file: c.file, line: c.line, body: c.body })
-      }
-    }
-
-    return {
-      summary: parsed.summary,
-      comments: validComments,
-      verdict: parsed.verdict
-    }
-  } catch {
-    return null
-  }
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Review submitted successfully with ${reviewData.comments.length} comment(s) and verdict: ${reviewData.verdict}`
+              }
+            ]
+          }
+        }
+      )
+    ]
+  })
 }
 
 // Import the SDK dynamically (ESM module)
 let queryFn: typeof import('@anthropic-ai/claude-agent-sdk').query | null = null
+let createSdkMcpServerFn:
+  | typeof import('@anthropic-ai/claude-agent-sdk').createSdkMcpServer
+  | null = null
+let toolFn: typeof import('@anthropic-ai/claude-agent-sdk').tool | null = null
 
 // =============================================================================
 // Types
@@ -495,39 +377,29 @@ The user hasn't selected a specific PR. You can still help with general coding q
 
 ## Code Review Tool
 
-You have access to a \`codelobby_submit_review\` tool for submitting PR reviews to GitHub.
+You have access to the \`mcp__codelobby-tools__prepare_review\` tool for preparing PR review drafts.
 
-When asked to "generate a review", "create a review", or "review this PR" or anything in that context of reviewing code:
+**IMPORTANT**: This tool does NOT submit to GitHub! It only creates a draft that the user can preview and choose to submit manually. You are NOT submitting anything - you are preparing a draft for the user's approval.
+
+When asked to "generate a review", "create a review", or "review this PR":
 
 1. **First**, read claude.md/CLAUDE.md in the project (if it exists) and ensure the code is compliant with its guidelines
 2. **Second**, write your analysis as human-readable text explaining your findings
-3. Also check readme.md/README.md in the project (if it exists) and ensure the code is compliant with its guidelines.
-5. Check the coverage of the code, sometimes can be found in the comments of the PR. if not try to locate untested files and mention in the summary.
-6. Check for memory leaks, or security issues, feel free to access websearch if needed, especially if new libraries are used.
-7. Ensure there is no excessive logging or console.logs, suggest that some console.logs can be reported to sentry.io if needed.
-8. ensure accessibility is respected but don't over obsess about it.
-9. add. **Then**, call the review tool by outputting this EXACT format at the END:
-
-<codelobby_submit_review>
-{"summary":"Brief summary","comments":[{"file":"path/to/file.ts","line":42,"body":"Your comment"}],"verdict":"approve|request_changes|comment"}
-</codelobby_submit_review>
-
-**Tool Parameters:**
-- \`summary\` (string): 1-2 sentence review summary
-- \`comments\` (array): Each with \`file\` (string), \`line\` (number), \`body\` (string)  
-- \`verdict\`: "approve" (good code), "request_changes" (must fix), or "comment" (feedback only)
+3. Also check readme.md/README.md in the project (if it exists) and ensure the code is compliant
+4. Check the coverage of the code, locate untested files and mention in the summary
+5. Check for memory leaks or security issues, use websearch if needed for new libraries
+6. Ensure there is no excessive logging or console.logs
+7. Ensure accessibility is respected but don't over obsess about it
+8. **Finally**, call the \`mcp__codelobby-tools__prepare_review\` tool to create the review draft
 
 **CRITICAL Review Guidelines:**
 - **NO praise comments** - Do NOT add comments that just say something is good/well done
 - **Only actionable feedback** - Comments should identify issues, bugs, improvements, or concerns
-- **If code is good** - Use verdict "approve" with a SHORT encouraging summary (e.g., "Clean implementation, good to merge!") and an EMPTY comments array
+- **If code is good** - Use verdict "approve" with a SHORT encouraging summary and an EMPTY comments array
 - **Quality over quantity** - Fewer meaningful comments are better than many trivial ones
 - Each comment MUST have exact file path and line number from the changed files
-
-**Important:**
-- The tool call block is automatically extracted and NOT shown to users
-- Write your human-readable analysis BEFORE calling the tool
-- Only call this tool when explicitly asked to generate/create a review`)
+- Only call this tool when explicitly asked to generate/create a review
+- **Remember**: You are NOT submitting - you are preparing a draft for the user to review and submit`)
 
   return sections.join('\n')
 }
@@ -545,8 +417,16 @@ function safeStringify(value: unknown): string {
   return String(value)
 }
 
-async function loadSdk(): Promise<typeof import('@anthropic-ai/claude-agent-sdk').query> {
-  if (queryFn) return queryFn
+interface SdkExports {
+  query: typeof import('@anthropic-ai/claude-agent-sdk').query
+  createSdkMcpServer: typeof import('@anthropic-ai/claude-agent-sdk').createSdkMcpServer
+  tool: typeof import('@anthropic-ai/claude-agent-sdk').tool
+}
+
+async function loadSdk(): Promise<SdkExports> {
+  if (queryFn && createSdkMcpServerFn && toolFn) {
+    return { query: queryFn, createSdkMcpServer: createSdkMcpServerFn, tool: toolFn }
+  }
 
   try {
     logger.info(LogCategory.AI, 'Loading Claude Agent SDK...', {
@@ -554,8 +434,10 @@ async function loadSdk(): Promise<typeof import('@anthropic-ai/claude-agent-sdk'
     })
     const sdk = await import('@anthropic-ai/claude-agent-sdk')
     queryFn = sdk.query
+    createSdkMcpServerFn = sdk.createSdkMcpServer
+    toolFn = sdk.tool
     logger.info(LogCategory.AI, 'Claude Agent SDK loaded successfully')
-    return queryFn
+    return { query: queryFn, createSdkMcpServer: createSdkMcpServerFn, tool: toolFn }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err)
     const errorStack = err instanceof Error ? err.stack : undefined
@@ -646,7 +528,15 @@ export async function startClaudeSession(
   activeSessions.set(sessionId, abortController)
 
   try {
-    const query = await loadSdk()
+    const { query, createSdkMcpServer, tool: sdkTool } = await loadSdk()
+
+    // Create the CodeLobby MCP server with custom tools (e.g., prepare_review)
+    const codelobbyMcpServer = createCodeLobbyMcpServer(
+      mainWindow,
+      sessionId,
+      sdkTool,
+      createSdkMcpServer
+    )
 
     // Build SDK options
     const sdkOptions: Record<string, unknown> = {
@@ -654,7 +544,13 @@ export async function startClaudeSession(
       cwd,
       systemPrompt,
       permissionMode: 'bypassPermissions',
-      includePartialMessages: true
+      includePartialMessages: true,
+      // Register our custom MCP server
+      mcpServers: {
+        'codelobby-tools': codelobbyMcpServer
+      },
+      // Allow our custom review tool
+      allowedTools: ['mcp__codelobby-tools__prepare_review']
     }
 
     // Model configuration
@@ -690,7 +586,8 @@ export async function startClaudeSession(
       thinkingTokens: config.enableExtendedThinking
         ? config.maxThinkingTokens || DEFAULT_THINKING_TOKENS
         : 0,
-      hasHistory: !!conversationHistory?.length
+      hasHistory: !!conversationHistory?.length,
+      hasMcpServer: true
     })
 
     const result = query({
@@ -704,8 +601,6 @@ export async function startClaudeSession(
     // Track current tool being called (for accumulating input from deltas)
     let currentToolName: string | null = null
     let currentToolInput = ''
-    // Filter to intercept tool call content during streaming
-    const toolCallFilter = new ToolCallFilter()
 
     for await (const message of result) {
       if (abortController.signal.aborted) {
@@ -746,12 +641,11 @@ export async function startClaudeSession(
           if (sdkEvent.delta?.type === 'text_delta') {
             const text = safeStringify(sdkEvent.delta.text)
             accumulatedText += text
-            // Filter out tool call content before sending to UI
-            const displayText = toolCallFilter.processChunk(text)
-            if (displayText) {
+            // Send text directly to UI (MCP tools handle review separately)
+            if (text) {
               mainWindow.webContents.send('claude:chunk', {
                 sessionId,
-                event: { type: 'assistant', message: { content: displayText } }
+                event: { type: 'assistant', message: { content: text } }
               })
             }
           } else if (sdkEvent.delta?.type === 'thinking_delta') {
@@ -824,36 +718,9 @@ export async function startClaudeSession(
       } else if (message.type === 'result') {
         totalCost = (message as any).total_cost_usd || 0
         const rawResult = (message as any).result
-        let resultText = safeStringify(rawResult) || accumulatedText
+        const resultText = safeStringify(rawResult) || accumulatedText
 
-        // Flush any remaining buffered content from the filter
-        const remainingText = toolCallFilter.flush()
-        if (remainingText) {
-          mainWindow.webContents.send('claude:chunk', {
-            sessionId,
-            event: { type: 'assistant', message: { content: remainingText } }
-          })
-        }
-
-        // Check for review data in the final result (using unfiltered accumulatedText)
-        const reviewData = extractReviewFromResponse(accumulatedText)
-        if (reviewData) {
-          logger.info(LogCategory.AI, 'Review detected in response', {
-            sessionId,
-            commentsCount: reviewData.comments.length,
-            verdict: reviewData.verdict
-          })
-
-          // Strip the tool call from the text so users don't see it
-          resultText = stripToolCallsFromText(resultText)
-
-          // Emit dedicated review event - this triggers the "Open Review" button
-          mainWindow.webContents.send('claude:review', {
-            sessionId,
-            review: reviewData
-          })
-        }
-
+        // Review is now handled by MCP tool callback (no text parsing needed)
         mainWindow.webContents.send('claude:chunk', {
           sessionId,
           event: {

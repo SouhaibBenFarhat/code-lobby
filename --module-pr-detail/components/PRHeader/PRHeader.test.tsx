@@ -132,10 +132,13 @@ describe('PRHeader', () => {
         initialUser: mockUser
       })
 
-      // Find close button - it's the last icon button after separator
-      const buttons = container.querySelectorAll('button')
-      const closeButton = buttons[buttons.length - 1]
-      fireEvent.click(closeButton)
+      // Find close button by its X icon
+      const xIcon = container.querySelector('.lucide-x')
+      const closeButton = xIcon?.closest('button')
+      expect(closeButton).toBeInTheDocument()
+      if (closeButton) {
+        fireEvent.click(closeButton)
+      }
 
       expect(mockOnClose).toHaveBeenCalled()
     })

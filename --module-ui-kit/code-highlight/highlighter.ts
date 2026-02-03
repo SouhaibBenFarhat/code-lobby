@@ -259,34 +259,85 @@ export function tokenizeLine(line: string, language: string): HljsToken[] {
 
 /**
  * Parse highlight.js HTML output into tokens.
+ * Handles nested spans by recursively processing inner content.
  */
 function parseHljsHtml(html: string): HljsToken[] {
   const tokens: HljsToken[] = []
 
-  // Match spans with classes and plain text
-  const regex = /(<span class="([^"]+)">([^<]*)<\/span>)|([^<]+)/g
-  let match = regex.exec(html)
+  // Use a stack-based approach to handle nested spans
+  let pos = 0
+  const len = html.length
 
-  while (match !== null) {
-    if (match[1]) {
-      // Span with class
-      const className = match[2]
-      const content = decodeHtml(match[3])
-      const color = getColorForClass(className)
-      if (content) {
-        tokens.push({ content, color })
+  while (pos < len) {
+    // Check for span start
+    if (html.slice(pos, pos + 12) === '<span class=') {
+      // Find the class name
+      const classStart = pos + 13 // After '<span class="'
+      const classEnd = html.indexOf('"', classStart)
+      if (classEnd === -1) {
+        // Malformed, treat rest as plain text
+        tokens.push({ content: decodeHtml(html.slice(pos)), color: GITHUB_DARK_COLORS.default })
+        break
       }
-    } else if (match[4]) {
-      // Plain text
-      const content = decodeHtml(match[4])
+
+      const className = html.slice(classStart, classEnd)
+      const contentStart = classEnd + 2 // After '">'
+
+      // Find matching </span> - need to handle nesting
+      let depth = 1
+      let contentEnd = contentStart
+      while (depth > 0 && contentEnd < len) {
+        if (html.slice(contentEnd, contentEnd + 6) === '<span ') {
+          depth++
+          contentEnd += 6
+        } else if (html.slice(contentEnd, contentEnd + 7) === '</span>') {
+          depth--
+          if (depth === 0) break
+          contentEnd += 7
+        } else {
+          contentEnd++
+        }
+      }
+
+      // Extract inner content and recursively parse it
+      const innerHtml = html.slice(contentStart, contentEnd)
+      const innerTokens = parseHljsHtml(innerHtml)
+
+      // Apply color from outer span to inner tokens that have default color
+      const color = getColorForClass(className)
+      for (const token of innerTokens) {
+        if (token.color === GITHUB_DARK_COLORS.default) {
+          token.color = color
+        }
+        tokens.push(token)
+      }
+
+      pos = contentEnd + 7 // Move past </span>
+    } else if (html[pos] === '<') {
+      // Skip unknown tags
+      const tagEnd = html.indexOf('>', pos)
+      if (tagEnd !== -1) {
+        pos = tagEnd + 1
+      } else {
+        pos++
+      }
+    } else {
+      // Plain text - find next tag or end
+      let textEnd = pos
+      while (textEnd < len && html[textEnd] !== '<') {
+        textEnd++
+      }
+      const content = decodeHtml(html.slice(pos, textEnd))
       if (content) {
         tokens.push({ content, color: GITHUB_DARK_COLORS.default })
       }
+      pos = textEnd
     }
-    match = regex.exec(html)
   }
 
-  return tokens.length > 0 ? tokens : [{ content: html, color: GITHUB_DARK_COLORS.default }]
+  return tokens.length > 0
+    ? tokens
+    : [{ content: decodeHtml(html), color: GITHUB_DARK_COLORS.default }]
 }
 
 /** Decode HTML entities */

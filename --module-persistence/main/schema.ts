@@ -65,6 +65,13 @@ export const messages = sqliteTable('messages', {
   /** Short display label (for quick actions, shows instead of full content) */
   displayLabel: text('display_label'),
 
+  /**
+   * JSON metadata for storing additional data like:
+   * - reviewData: Claude-generated PR review (ReviewData)
+   * - Any future extensible metadata
+   */
+  metadata: text('metadata'),
+
   /** Creation timestamp (Unix epoch ms) */
   createdAt: integer('created_at').notNull()
 })
@@ -135,3 +142,51 @@ export type NewCustomPrompt = typeof customPrompts.$inferInsert
 
 export type AIUsageRecord = typeof aiUsage.$inferSelect
 export type NewAIUsageRecord = typeof aiUsage.$inferInsert
+
+// =============================================================================
+// Daily Reports Table
+// =============================================================================
+
+/**
+ * Stores AI-generated daily work summaries
+ */
+export const dailyReports = sqliteTable('daily_reports', {
+  /** Unique report ID */
+  id: text('id').primaryKey(),
+
+  /** Date of the report (YYYY-MM-DD) */
+  date: text('date').notNull(),
+
+  /** Generated markdown content */
+  content: text('content').notNull(),
+
+  /** Short 1-2 sentence summary */
+  summary: text('summary'),
+
+  /** Number of events analyzed */
+  eventCount: integer('event_count').notNull(),
+
+  /** JSON array of repo names that were analyzed */
+  analyzedRepos: text('analyzed_repos'),
+
+  /** JSON array of PR identifiers that were analyzed */
+  analyzedPRs: text('analyzed_prs'),
+
+  /** Time taken to generate the report (in ms) */
+  generationDurationMs: integer('generation_duration_ms'),
+
+  /** JSON array of tools Claude used during generation */
+  toolsUsed: text('tools_used'),
+
+  /** Claude's thinking/reasoning during generation */
+  thinking: text('thinking'),
+
+  /** Creation timestamp (Unix epoch ms) */
+  createdAt: integer('created_at').notNull(),
+
+  /** Last update timestamp (Unix epoch ms) */
+  updatedAt: integer('updated_at').notNull()
+})
+
+export type DailyReport = typeof dailyReports.$inferSelect
+export type NewDailyReport = typeof dailyReports.$inferInsert

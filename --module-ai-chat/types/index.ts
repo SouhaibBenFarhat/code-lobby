@@ -132,7 +132,6 @@ export interface LinkedPRChat {
 
 // Review types (for Claude-generated PR reviews)
 export type {
-  RawReviewData,
   ReviewComment,
   ReviewData,
   ReviewFileGroup,

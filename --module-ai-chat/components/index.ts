@@ -2,6 +2,8 @@
  * Component exports for AI Chat module
  */
 
+// Re-export ThinkingSection from UI kit for backwards compatibility
+export { ThinkingSection, type ThinkingSectionProps, type ToolActivity } from '@ui-kit'
 // UI Components
 export { AddCustomPromptModal, type AddCustomPromptModalProps } from './AddCustomPromptModal'
 // Main component
@@ -36,7 +38,6 @@ export {
   StreamingStateIndicator,
   type StreamingStateIndicatorProps
 } from './StreamingStateIndicator'
-export { ThinkingSection } from './ThinkingSection'
 export { ToolActivityIndicator } from './ToolActivityIndicator'
 
 // Note: VirtualizedMessageList, QueuedMessageBubble are not exported (unused).

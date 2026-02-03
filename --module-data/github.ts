@@ -1091,7 +1091,7 @@ export interface UserEvent {
 }
 
 /**
- * Fetch user events for today
+ * Fetch user events (up to 100 most recent)
  * Uses GET /users/{username}/events endpoint
  */
 export async function fetchUserEvents(token: string, username: string): Promise<UserEvent[]> {
@@ -1104,27 +1104,19 @@ export async function fetchUserEvents(token: string, username: string): Promise<
     return []
   }
 
-  // Get timestamp from 24 hours ago
-  const twentyFourHoursAgo = new Date()
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
-
-  // Filter events from the last 24 hours and transform them
-  const recentEvents = events
+  // Filter and transform events
+  const transformedEvents = events
     .filter((event: GitHubEvent) => {
-      const eventDate = new Date(event.created_at)
-      if (eventDate < twentyFourHoursAgo) return false
-
       // Skip PushEvents with 0 commits (force pushes, branch syncs, etc.)
       if (event.type === 'PushEvent') {
         const commits = event.payload.commits || []
         if (commits.length === 0) return false
       }
-
       return true
     })
     .map((event: GitHubEvent) => transformEvent(event))
 
-  return recentEvents
+  return transformedEvents
 }
 
 function transformEvent(event: GitHubEvent): UserEvent {
