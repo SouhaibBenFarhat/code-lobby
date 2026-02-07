@@ -525,3 +525,62 @@ export function useUploadScreenshot(): UseMutationResult<
     }
   })
 }
+/**
+ * Resolve a review thread
+ */
+export function useResolveReviewThread(): UseMutationResult<
+  github.MutationResult,
+  Error,
+  { threadId: string; repoFullName: string; prNumber: number }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      threadId
+    }: {
+      threadId: string
+      repoFullName: string
+      prNumber: number
+    }) => {
+      const token = getToken(qc)
+      return github.resolveReviewThread(token, threadId)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate PR detail to refresh resolved status
+      qc.invalidateQueries({
+        queryKey: keys.prDetail(repoFullName, prNumber)
+      })
+    }
+  })
+}
+
+/**
+ * Unresolve a review thread
+ */
+export function useUnresolveReviewThread(): UseMutationResult<
+  github.MutationResult,
+  Error,
+  { threadId: string; repoFullName: string; prNumber: number }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      threadId
+    }: {
+      threadId: string
+      repoFullName: string
+      prNumber: number
+    }) => {
+      const token = getToken(qc)
+      return github.unresolveReviewThread(token, threadId)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      // Invalidate PR detail to refresh resolved status
+      qc.invalidateQueries({
+        queryKey: keys.prDetail(repoFullName, prNumber)
+      })
+    }
+  })
+}

@@ -44,6 +44,7 @@ export interface ReviewerFeedback {
   reviewDate: string | null
   inlineComments: Array<{
     id: string
+    threadId: string
     body: string
     created_at: string
     path: string

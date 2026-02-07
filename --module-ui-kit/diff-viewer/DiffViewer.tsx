@@ -42,6 +42,10 @@ export interface DiffViewerProps {
   comments?: DiffComment[]
   /** Custom render function for comments (receives comment and returns ReactNode) */
   renderComment?: (comment: DiffComment) => React.ReactNode
+  /** Line number to focus on - only show lines around this line */
+  focusLine?: number
+  /** Number of context lines to show before and after focusLine (default: 3) */
+  contextLines?: number
 }
 
 /** Parse unified diff patch into structured lines */
@@ -84,14 +88,68 @@ function parseDiffLines(patch: string | null): DiffLine[] {
 /** Token cache to avoid re-highlighting */
 const tokenCache = new Map<string, Map<number, HljsToken[]>>()
 
+/** Line with original index for token mapping */
+interface IndexedLine extends DiffLine {
+  originalIndex: number
+}
+
 export function DiffViewer({
   patch,
   fileName,
   className,
   comments = [],
-  renderComment
+  renderComment,
+  focusLine,
+  contextLines = 3
 }: DiffViewerProps): React.JSX.Element {
-  const lines = useMemo(() => parseDiffLines(patch), [patch])
+  const allLines = useMemo(() => parseDiffLines(patch), [patch])
+
+  // Filter lines to show only around focusLine if specified, preserving original indices
+  const lines = useMemo((): IndexedLine[] => {
+    const indexedLines = allLines.map((line, idx) => ({ ...line, originalIndex: idx }))
+
+    if (focusLine === undefined) return indexedLines
+
+    // Find lines that are within contextLines of the focusLine
+    const filteredLines: IndexedLine[] = []
+    let lastHeaderIndex = -1
+
+    for (let i = 0; i < indexedLines.length; i++) {
+      const line = indexedLines[i]
+
+      // Track headers
+      if (line.type === 'header') {
+        lastHeaderIndex = i
+        continue
+      }
+
+      // Check if this line is within range of focusLine
+      const lineNum = line.newLineNum ?? line.oldLineNum
+      if (lineNum !== undefined) {
+        const distance = Math.abs(lineNum - focusLine)
+        if (distance <= contextLines) {
+          // Include the header if we haven't added it yet and there's a recent one
+          if (
+            lastHeaderIndex !== -1 &&
+            !filteredLines.some((l) => l.originalIndex === lastHeaderIndex)
+          ) {
+            filteredLines.push(indexedLines[lastHeaderIndex])
+          }
+          filteredLines.push(line)
+        }
+      }
+
+      // Include info lines (like "No newline at end of file") if they follow included content
+      if (line.type === 'info' && filteredLines.length > 0) {
+        const lastIncluded = filteredLines[filteredLines.length - 1]
+        if (lastIncluded && lastIncluded.type !== 'header' && lastIncluded.type !== 'info') {
+          filteredLines.push(line)
+        }
+      }
+    }
+
+    return filteredLines
+  }, [allLines, focusLine, contextLines])
   const [tokenizedLines, setTokenizedLines] = useState<Map<number, HljsToken[]>>(new Map())
   const [highlightStatus, setHighlightStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     'idle'
@@ -111,15 +169,16 @@ export function DiffViewer({
   }, [comments])
 
   // Extract code content for highlighting (excluding headers and info lines)
+  // Use allLines to ensure all tokens are available for filtered views
   const codeLines = useMemo(() => {
-    return lines
+    return allLines
       .map((line, index) => ({
         index,
         content: line.content,
         type: line.type
       }))
       .filter((l) => l.type !== 'header' && l.type !== 'info')
-  }, [lines])
+  }, [allLines])
 
   useEffect(() => {
     if (!patch || codeLines.length === 0) {
@@ -174,10 +233,10 @@ export function DiffViewer({
 
   return (
     <div className={cn('overflow-x-auto bg-[#0d1117] dark:bg-[#0d1117] rounded-b-md', className)}>
-      <table className="w-full text-[11px] font-mono leading-relaxed">
+      <table className="w-full text-[11px] font-mono border-collapse">
         <tbody>
-          {lines.map((line, lineIndex) => {
-            const lineKey = `${fileName}-${line.type}-${line.oldLineNum ?? 'x'}-${line.newLineNum ?? 'x'}-${lineIndex}`
+          {lines.map((line) => {
+            const lineKey = `${fileName}-${line.type}-${line.oldLineNum ?? 'x'}-${line.newLineNum ?? 'x'}-${line.originalIndex}`
 
             const bgClass =
               line.type === 'addition'
@@ -211,26 +270,29 @@ export function DiffViewer({
                   ? 'text-destructive'
                   : 'text-muted-foreground'
 
-            const tokens = tokenizedLines.get(lineIndex)
+            // Use originalIndex for token lookup to work with filtered views
+            const tokens = tokenizedLines.get(line.originalIndex)
 
             // Get comments for this line (use newLineNum for additions/context, skip for deletions)
             const lineComments =
               line.newLineNum !== undefined ? commentsByLine.get(line.newLineNum) || [] : []
 
+            // For new files (all additions), only show the new line number
+            const lineNum = line.newLineNum ?? line.oldLineNum ?? ''
+
             return (
               <React.Fragment key={lineKey}>
-                <tr className={cn(bgClass, 'hover:bg-muted/20')}>
-                  {/* Line numbers */}
-                  <td className="w-10 text-right pr-2 text-muted-foreground/50 select-none border-r border-border/30 sticky left-0 bg-inherit">
-                    {line.oldLineNum || ''}
-                  </td>
-                  <td className="w-10 text-right pr-2 text-muted-foreground/50 select-none border-r border-border/30">
-                    {line.newLineNum || ''}
+                <tr className={cn(bgClass, 'hover:bg-muted/20 h-5')}>
+                  {/* Single line number column */}
+                  <td className="w-12 min-w-12 text-right pr-2 text-muted-foreground/50 select-none border-r border-border/30 align-top">
+                    {lineNum}
                   </td>
                   {/* Prefix (+/-/space) */}
-                  <td className={cn('w-4 text-center select-none', prefixClass)}>{prefix}</td>
+                  <td className={cn('w-4 min-w-4 text-center select-none align-top', prefixClass)}>
+                    {prefix}
+                  </td>
                   {/* Content with syntax highlighting */}
-                  <td className={cn('pl-2 pr-4 whitespace-pre', textClass)}>
+                  <td className={cn('pl-2 pr-4 whitespace-pre align-top', textClass)}>
                     {line.type === 'header' || line.type === 'info' ? (
                       line.content
                     ) : tokens && tokens.length > 0 ? (
@@ -245,7 +307,7 @@ export function DiffViewer({
                 {/* Inline comments */}
                 {lineComments.map((comment) => (
                   <tr key={`comment-${comment.id}`} className="bg-transparent">
-                    <td colSpan={4} className="p-0">
+                    <td colSpan={3} className="p-0">
                       {renderComment ? (
                         renderComment(comment)
                       ) : (

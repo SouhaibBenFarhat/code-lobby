@@ -12,7 +12,7 @@ export const queryClient: QueryClient = new QueryClient({
       staleTime: 1000 * 60 * 60, // 1 hour
       gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days - keep in cache for persistence
       retry: 1,
-      refetchOnWindowFocus: false
+      refetchOnWindowFocus: true // Refetch stale data when app regains focus
     },
     mutations: {
       retry: 0

@@ -5,6 +5,7 @@
 /** Inline comment data */
 export interface InlineComment {
   id: string
+  threadId: string
   body: string
   created_at: string
   path: string

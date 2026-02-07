@@ -1,7 +1,19 @@
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification, session, shell } from 'electron'
 import { fixPath } from './fix-path'
+
+// =============================================================================
+// CONTEXT MENU - Enable right-click copy/paste/cut everywhere in the app
+// Uses dynamic import because electron-context-menu is ESM-only
+// =============================================================================
+import('electron-context-menu').then(({ default: contextMenu }) => {
+  contextMenu({
+    showSaveImageAs: true,
+    showCopyImage: true,
+    showInspectElement: !app.isPackaged // Only show "Inspect Element" in dev mode
+  })
+})
 
 // =============================================================================
 // FIX PATH FOR PACKAGED APP
@@ -181,6 +193,40 @@ function setupIPCHandlers(): void {
     factoryReset()
     logger.info(LogCategory.APP, 'Factory reset complete - app is now in fresh install state')
     return { success: true }
+  })
+
+  // Clear webview browsing data (cookies, cache, storage) - clears EVERYTHING
+  ipcMain.handle('clear-webview-data', async () => {
+    try {
+      logger.info(LogCategory.APP, 'Clearing webview browsing data')
+      // Clear all storage types
+      await session.defaultSession.clearStorageData({
+        storages: [
+          // 'appcache', // Application cache (deprecated/unsupported in Electron, removed for type safety)
+          'cookies', // All cookies
+          'filesystem', // File System API
+          'indexdb', // IndexedDB
+          'localstorage', // localStorage
+          'shadercache', // GPU shader cache
+          'websql', // WebSQL databases
+          'serviceworkers', // Service workers
+          'cachestorage' // Cache Storage API
+        ]
+      })
+      // Clear HTTP cache
+      await session.defaultSession.clearCache()
+      // Clear host resolver cache (DNS)
+      await session.defaultSession.clearHostResolverCache()
+      // Clear authentication cache
+      await session.defaultSession.clearAuthCache()
+      logger.info(LogCategory.APP, 'Webview browsing data cleared successfully')
+      return { success: true }
+    } catch (error) {
+      logger.error(LogCategory.APP, 'Failed to clear webview data', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return { success: false, error: (error as Error).message }
+    }
   })
 
   // Memory usage - returns process memory info

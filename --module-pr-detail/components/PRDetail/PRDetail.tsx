@@ -243,6 +243,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
         if (!group) continue
         group.inlineComments.push({
           id: comment.id,
+          threadId: thread.id,
           body: comment.body,
           created_at: comment.created_at,
           path: thread.path,
@@ -554,6 +555,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                                 comment={comment}
                                 repoFullName={selectedPRId.repoFullName}
                                 prNumber={selectedPRId.prNumber}
+                                onOpenInWebview={handleAddTab}
                               />
                             </div>
                           ))}
@@ -588,7 +590,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                 {/* Reviews content (Reviews tab) - Tree-based display */}
                 {commentTab === 'reviews' && (
                   <Col span="full">
-                    <ReviewTree reviewers={reviewsByReviewer} prUrl={pr.html_url} />
+                    <ReviewTree reviewers={reviewsByReviewer} />
                   </Col>
                 )}
               </Row>

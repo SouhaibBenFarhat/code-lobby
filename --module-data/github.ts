@@ -1521,3 +1521,39 @@ export async function uploadScreenshot(
     url: policy.href
   }
 }
+
+/**
+ * Resolve a review thread
+ */
+export async function resolveReviewThread(
+  token: string,
+  threadId: string
+): Promise<MutationResult> {
+  const mutation = `
+    mutation($threadId: ID!) {
+      resolveReviewThread(input: { threadId: $threadId }) {
+        thread { id isResolved }
+      }
+    }
+  `
+  await graphql(token, mutation, { threadId })
+  return { success: true }
+}
+
+/**
+ * Unresolve a review thread
+ */
+export async function unresolveReviewThread(
+  token: string,
+  threadId: string
+): Promise<MutationResult> {
+  const mutation = `
+    mutation($threadId: ID!) {
+      unresolveReviewThread(input: { threadId: $threadId }) {
+        thread { id isResolved }
+      }
+    }
+  `
+  await graphql(token, mutation, { threadId })
+  return { success: true }
+}

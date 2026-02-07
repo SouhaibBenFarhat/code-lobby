@@ -35,6 +35,7 @@ export {
   DiffViewer,
   type DiffViewerProps
 } from './diff-viewer'
+export { FileHeader, type FileHeaderProps } from './file-header'
 export { type FileTab, FileTabBar, type FileTabBarProps } from './file-tab-bar'
 export { Flex, type FlexProps } from './flex'
 export { FloatingWindow, type FloatingWindowProps } from './floating-window'

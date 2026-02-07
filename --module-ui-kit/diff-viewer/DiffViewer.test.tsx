@@ -102,16 +102,16 @@ describe('DiffViewer', () => {
       expect(lineNumCell).toBeInTheDocument()
     })
 
-    it('should display both line numbers for context lines', () => {
+    it('should display line number for context lines', () => {
       const patch = `@@ -1,1 +1,1 @@
  context line`
 
       render(<DiffViewer patch={patch} fileName="test.ts" />)
 
-      // Both old and new line number should be 1
+      // Line number should be displayed (single column now)
       const cells = screen.getAllByRole('cell')
       const lineNumCells = cells.filter((cell) => cell.textContent === '1')
-      expect(lineNumCells.length).toBeGreaterThanOrEqual(2)
+      expect(lineNumCells.length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -202,6 +202,306 @@ describe('DiffViewer', () => {
       // Check that the table contains the expected content
       expect(container.textContent).toContain('hello')
       expect(container.textContent).toContain('template')
+    })
+  })
+
+  describe('table structure', () => {
+    it('should have exactly 3 columns per row (line number, prefix, content)', () => {
+      const patch = `@@ -1,2 +1,3 @@
+ context line
++added line
+-removed line`
+
+      render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      const rows = screen.getAllByRole('row')
+      // Each row should have 3 cells (line number, prefix, content)
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td')
+        expect(cells.length).toBe(3)
+      }
+    })
+
+    it('should not duplicate line numbers in the same row', () => {
+      const patch = `@@ -1,3 +1,3 @@
+ line one
+ line two
+ line three`
+
+      render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      const rows = screen.getAllByRole('row')
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td')
+        // First cell is line number, should only appear once per row
+        const lineNumCell = cells[0]
+        const lineNum = lineNumCell?.textContent
+        if (lineNum && lineNum !== '') {
+          // Count how many times this line number appears in the row
+          const allCellTexts = Array.from(cells).map((c) => c.textContent)
+          const count = allCellTexts.filter((t) => t === lineNum).length
+          expect(count).toBe(1)
+        }
+      }
+    })
+
+    it('should have consistent row heights without large gaps', () => {
+      const patch = `@@ -1,5 +1,5 @@
+ line one
+ line two
+ line three
+ line four
+ line five`
+
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      const rows = container.querySelectorAll('tr')
+      // All content rows should have h-5 class for consistent height
+      const contentRows = Array.from(rows).filter((row) => row.classList.contains('h-5'))
+      // Should have at least 5 content rows (excluding header)
+      expect(contentRows.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('should use border-collapse for tight table layout', () => {
+      const patch = `@@ -1,1 +1,1 @@
+ line`
+
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      const table = container.querySelector('table')
+      expect(table).toHaveClass('border-collapse')
+    })
+  })
+
+  describe('new file diffs (all additions)', () => {
+    it('should display sequential line numbers without gaps for new files', () => {
+      const patch = `@@ -0,0 +1,5 @@
++line 1
++line 2
++line 3
++line 4
++line 5`
+
+      render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      const cells = screen.getAllByRole('cell')
+      // Check that line numbers 1-5 exist
+      for (let i = 1; i <= 5; i++) {
+        const lineNumCell = cells.find((cell) => cell.textContent === String(i))
+        expect(lineNumCell).toBeInTheDocument()
+      }
+    })
+
+    it('should not show old line numbers for pure additions', () => {
+      const patch = `@@ -0,0 +1,3 @@
++new file line 1
++new file line 2
++new file line 3`
+
+      render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      // Should not have "0" displayed as a line number (old file line)
+      // The hunk header may contain "0" but not as a standalone line number cell
+      const cells = screen.getAllByRole('cell')
+      const lineNumCells = cells.filter((cell) => {
+        // First cell of each row is the line number
+        return cell.classList.contains('text-muted-foreground/50')
+      })
+
+      // None of the line number cells should contain just "0"
+      for (const cell of lineNumCells) {
+        if (cell.textContent === '0') {
+          // This would indicate the old line number is being shown incorrectly
+          expect(cell.textContent).not.toBe('0')
+        }
+      }
+    })
+  })
+
+  describe('focusLine and contextLines', () => {
+    it('should show only lines around focusLine when specified', () => {
+      const patch = `@@ -1,10 +1,10 @@
+ line 1
+ line 2
+ line 3
+ line 4
+ line 5
+ line 6
+ line 7
+ line 8
+ line 9
+ line 10`
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" focusLine={5} contextLines={2} />
+      )
+
+      // Should show lines 3, 4, 5, 6, 7 (focusLine=5, contextLines=2)
+      expect(container.textContent).toContain('line 3')
+      expect(container.textContent).toContain('line 4')
+      expect(container.textContent).toContain('line 5')
+      expect(container.textContent).toContain('line 6')
+      expect(container.textContent).toContain('line 7')
+
+      // Should NOT show lines 1, 2, 8, 9, 10
+      expect(container.textContent).not.toContain('line 1')
+      expect(container.textContent).not.toContain('line 2')
+      expect(container.textContent).not.toContain('line 8')
+      expect(container.textContent).not.toContain('line 9')
+      expect(container.textContent).not.toContain('line 10')
+    })
+
+    it('should use default contextLines of 3 when not specified', () => {
+      const patch = `@@ -1,10 +1,10 @@
+ line 1
+ line 2
+ line 3
+ line 4
+ line 5
+ line 6
+ line 7
+ line 8
+ line 9
+ line 10`
+
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" focusLine={5} />)
+
+      // With default contextLines=3, should show lines 2-8
+      expect(container.textContent).toContain('line 2')
+      expect(container.textContent).toContain('line 5')
+      expect(container.textContent).toContain('line 8')
+
+      // Should NOT show lines outside the range
+      expect(container.textContent).not.toContain('line 1')
+      expect(container.textContent).not.toContain('line 9')
+      expect(container.textContent).not.toContain('line 10')
+    })
+
+    it('should show all lines when focusLine is not specified', () => {
+      const patch = `@@ -1,5 +1,5 @@
+ line 1
+ line 2
+ line 3
+ line 4
+ line 5`
+
+      const { container } = render(<DiffViewer patch={patch} fileName="test.ts" />)
+
+      // All lines should be visible
+      expect(container.textContent).toContain('line 1')
+      expect(container.textContent).toContain('line 2')
+      expect(container.textContent).toContain('line 3')
+      expect(container.textContent).toContain('line 4')
+      expect(container.textContent).toContain('line 5')
+    })
+
+    it('should handle focusLine at the beginning of the file', () => {
+      const patch = `@@ -1,5 +1,5 @@
+ line 1
+ line 2
+ line 3
+ line 4
+ line 5`
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" focusLine={1} contextLines={2} />
+      )
+
+      // Should show lines 1, 2, 3
+      expect(container.textContent).toContain('line 1')
+      expect(container.textContent).toContain('line 2')
+      expect(container.textContent).toContain('line 3')
+
+      // Should NOT show lines 4, 5
+      expect(container.textContent).not.toContain('line 4')
+      expect(container.textContent).not.toContain('line 5')
+    })
+
+    it('should handle focusLine at the end of the file', () => {
+      const patch = `@@ -1,5 +1,5 @@
+ line 1
+ line 2
+ line 3
+ line 4
+ line 5`
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" focusLine={5} contextLines={2} />
+      )
+
+      // Should show lines 3, 4, 5
+      expect(container.textContent).toContain('line 3')
+      expect(container.textContent).toContain('line 4')
+      expect(container.textContent).toContain('line 5')
+
+      // Should NOT show lines 1, 2
+      expect(container.textContent).not.toContain('line 1')
+      expect(container.textContent).not.toContain('line 2')
+    })
+
+    it('should include hunk header when showing filtered lines', () => {
+      const patch = `@@ -10,5 +10,5 @@
+ line 10
+ line 11
+ line 12
+ line 13
+ line 14`
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" focusLine={12} contextLines={1} />
+      )
+
+      // Should include the hunk header
+      expect(container.textContent).toContain('@@ -10,5 +10,5 @@')
+
+      // Should show lines 11, 12, 13
+      expect(container.textContent).toContain('line 11')
+      expect(container.textContent).toContain('line 12')
+      expect(container.textContent).toContain('line 13')
+
+      // Should NOT show lines 10, 14
+      expect(container.textContent).not.toContain('line 10')
+      expect(container.textContent).not.toContain('line 14')
+    })
+
+    it('should work with additions and deletions around focusLine', () => {
+      const patch = `@@ -1,5 +1,6 @@
+ context 1
+-deleted line
++added line
+ context 2
+ context 3
+ context 4`
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" focusLine={2} contextLines={1} />
+      )
+
+      // Should show lines around line 2 (the added/deleted lines)
+      expect(container.textContent).toContain('context 1')
+      expect(container.textContent).toContain('context 2')
+    })
+
+    it('should handle contextLines of 0 showing only the exact line', () => {
+      const patch = `@@ -1,5 +1,5 @@
+ line 1
+ line 2
+ line 3
+ line 4
+ line 5`
+
+      const { container } = render(
+        <DiffViewer patch={patch} fileName="test.ts" focusLine={3} contextLines={0} />
+      )
+
+      // Should show only line 3
+      expect(container.textContent).toContain('line 3')
+
+      // Should NOT show other lines
+      expect(container.textContent).not.toContain('line 1')
+      expect(container.textContent).not.toContain('line 2')
+      expect(container.textContent).not.toContain('line 4')
+      expect(container.textContent).not.toContain('line 5')
     })
   })
 

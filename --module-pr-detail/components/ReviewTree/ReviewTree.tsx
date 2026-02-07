@@ -1,20 +1,14 @@
 /**
- * ReviewTree - Tree-based display for PR reviews
+ * ReviewTree - Timeline display for PR reviews
  *
- * Displays reviews in a hierarchical structure:
- * - Reviewer (root)
- *   - Review Summary
- *   - Files
- *     - Comments (with diff hunks)
- *
- * Benefits over flat list:
- * - Progressive disclosure reduces visual clutter
- * - File grouping provides better context
- * - Collapsible sections let users focus on what matters
+ * Displays reviews as a card-based timeline (like CommentItem):
+ * - Vertical timeline line with start/end markers
+ * - Each review is a card with timeline dot and connector
+ * - Expandable to show inline comments with diffs
  */
 
-import { Col, cn, Row, TreeView } from '@ui-kit'
-import { CheckCircle2, FileSearch, Users, XCircle } from 'lucide-react'
+import { cn } from '@ui-kit'
+import { CheckCircle2, FileSearch, MessageSquare, XCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import type { ReviewerFeedback } from '../types'
 import { ReviewerNode } from './ReviewerNode'
@@ -23,8 +17,6 @@ import type { FileComments, ReviewerData } from './types'
 export interface ReviewTreeProps {
   /** Raw reviewer feedback data */
   reviewers: ReviewerFeedback[]
-  /** PR URL for "View in GitHub" links */
-  prUrl: string
   /** Optional className */
   className?: string
 }
@@ -85,83 +77,90 @@ function transformToReviewerData(feedback: ReviewerFeedback): ReviewerData {
   }
 }
 
-export function ReviewTree({ reviewers, prUrl, className }: ReviewTreeProps): React.JSX.Element {
+export function ReviewTree({ reviewers, className }: ReviewTreeProps): React.JSX.Element {
   // Transform data for tree display
   const reviewerData = useMemo(() => reviewers.map(transformToReviewerData), [reviewers])
 
-  // Calculate summary stats
-  const stats = useMemo(() => {
-    const approved = reviewerData.filter((r) => r.reviewState === 'approved').length
-    const changesRequested = reviewerData.filter(
-      (r) => r.reviewState === 'changes_requested'
-    ).length
-    const totalUnresolved = reviewerData.reduce((sum, r) => sum + r.totalUnresolved, 0)
-    const totalComments = reviewerData.reduce((sum, r) => sum + r.totalComments, 0)
-    return { approved, changesRequested, totalUnresolved, totalComments }
-  }, [reviewerData])
+  // Get timeline dot styling based on review state
+  const getTimelineDotClasses = (reviewState: string | undefined) => {
+    switch (reviewState) {
+      case 'approved':
+        return 'border-success'
+      case 'changes_requested':
+        return 'border-destructive'
+      default:
+        return 'border-primary'
+    }
+  }
+
+  // Get connector line color based on review state
+  const getConnectorColor = (reviewState: string | undefined) => {
+    switch (reviewState) {
+      case 'approved':
+        return 'bg-success/50'
+      case 'changes_requested':
+        return 'bg-destructive/50'
+      default:
+        return 'bg-primary/50'
+    }
+  }
+
+  // Get timeline icon based on review state
+  const getTimelineIcon = (reviewState: string | undefined) => {
+    switch (reviewState) {
+      case 'approved':
+        return <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+      case 'changes_requested':
+        return <XCircle className="w-3.5 h-3.5 text-destructive" />
+      default:
+        return <MessageSquare className="w-3.5 h-3.5 text-primary" />
+    }
+  }
 
   if (reviewerData.length === 0) {
     return (
-      <Row
-        gutter="sm"
-        justify="center"
-        align="center"
-        className={cn('flex-col py-6 text-sm text-muted-foreground', className)}
-      >
-        <Col span="auto">
-          <FileSearch className="w-5 h-5 opacity-50" />
-        </Col>
-        <Col span="auto">No reviews yet</Col>
-      </Row>
+      <div className={cn('text-center py-6 text-sm text-muted-foreground', className)}>
+        <FileSearch className="w-5 h-5 mx-auto mb-2 opacity-50" />
+        No reviews yet
+      </div>
     )
   }
 
   return (
-    <div className={className}>
-      {/* Summary header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Users className="w-3 h-3" />
-          <span>
-            {reviewerData.length} reviewer{reviewerData.length !== 1 ? 's' : ''}
-          </span>
-          {stats.totalComments > 0 && (
-            <span className="text-muted-foreground/60">
-              • {stats.totalComments} comment{stats.totalComments !== 1 ? 's' : ''}
-            </span>
-          )}
-          {stats.totalUnresolved > 0 && (
-            <span className="text-warning">• {stats.totalUnresolved} unresolved</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {stats.approved > 0 && (
-            <span className="text-success flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              {stats.approved}
-            </span>
-          )}
-          {stats.changesRequested > 0 && (
-            <span className="text-destructive flex items-center gap-1">
-              <XCircle className="w-3 h-3" />
-              {stats.changesRequested}
-            </span>
-          )}
-        </div>
-      </div>
+    <div className={cn('relative ml-2', className)}>
+      {/* Timeline line */}
+      <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
+      {/* Start marker */}
+      <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
 
-      {/* Reviewer tree nodes */}
-      <div className="space-y-3">
+      <div className="space-y-0 pt-4">
         {reviewerData.map((reviewer) => (
-          <TreeView key={reviewer.login}>
-            <ReviewerNode
-              reviewer={reviewer}
-              prUrl={prUrl}
-              defaultExpanded={reviewerData.length <= 3}
+          <div key={reviewer.login} className="relative pl-12 pb-5 group">
+            {/* Timeline dot */}
+            <div
+              className={cn(
+                'absolute left-[4px] top-3 w-[26px] h-[26px] rounded-full border-[3px] bg-background flex items-center justify-center shadow-sm transition-transform group-hover:scale-110',
+                getTimelineDotClasses(reviewer.reviewState ?? undefined)
+              )}
+            >
+              {getTimelineIcon(reviewer.reviewState ?? undefined)}
+            </div>
+
+            {/* Connector line from dot to card */}
+            <div
+              className={cn(
+                'absolute left-[30px] top-[22px] w-[18px] h-[2px]',
+                getConnectorColor(reviewer.reviewState ?? undefined)
+              )}
             />
-          </TreeView>
+
+            <ReviewerNode reviewer={reviewer} defaultExpanded={reviewerData.length <= 2} />
+          </div>
         ))}
       </div>
+
+      {/* End marker */}
+      <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
     </div>
   )
 }

@@ -148,9 +148,9 @@ describe('ReviewPreviewModal', () => {
 
     it('should show file names in sidebar', () => {
       render(<ReviewPreviewModal {...defaultProps} />)
-      // File names are truncated to show just the filename
-      expect(screen.getByText('utils.ts')).toBeInTheDocument()
-      expect(screen.getByText('api.ts')).toBeInTheDocument()
+      // File names appear in both sidebar and file headers
+      expect(screen.getAllByText('utils.ts').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('api.ts').length).toBeGreaterThan(0)
     })
 
     it('should show comment count badges in sidebar', () => {
@@ -237,8 +237,10 @@ describe('ReviewPreviewModal', () => {
   describe('file tree', () => {
     it('should display files with comments', () => {
       render(<ReviewPreviewModal {...defaultProps} />)
-      expect(screen.getByText('src/utils.ts')).toBeInTheDocument()
-      expect(screen.getByText('src/api.ts')).toBeInTheDocument()
+      // FileHeader shows filename separately from directory
+      // Files appear both in sidebar and file headers
+      expect(screen.getAllByText('utils.ts').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('api.ts').length).toBeGreaterThan(0)
     })
 
     it('should show comment count per file', () => {

@@ -71,6 +71,8 @@ export {
   useRemoveWebviewTab,
   useReopenPR,
   useResetAIUsage,
+  // Review Threads
+  useResolveReviewThread,
   // Daily Speech
   useSaveDailySpeech,
   useSaveMessage,
@@ -109,6 +111,7 @@ export {
   useToggleMyPRsFilter,
   useToggleNetworkPanel,
   useToggleRepoExpanded,
+  useUnresolveReviewThread,
   useUpdateCustomPrompt,
   useUpdateNetworkRequest,
   useUpdatePRBody,

@@ -1,22 +1,11 @@
 /**
  * FileNode - Displays a file with its comments as children
  *
- * Shows:
- * - File name (with full path on hover)
- * - Comment count and resolved/unresolved status
- * - Child comments in a tree
+ * Uses FileHeader for consistent file path display
  */
 
-import {
-  Badge,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TreeNode,
-  TreeNodeChildren,
-  TreeNodeHeader
-} from '@ui-kit'
-import { CheckCheck, FileCode, MessageSquareWarning } from 'lucide-react'
+import { cn, FileHeader, TreeNode, TreeNodeChildren } from '@ui-kit'
+import { useState } from 'react'
 import { CommentNode } from './CommentNode'
 import type { FileComments } from './types'
 
@@ -27,46 +16,29 @@ export interface FileNodeProps {
 }
 
 export function FileNode({ file, defaultExpanded = false }: FileNodeProps): React.JSX.Element {
-  return (
-    <TreeNode variant="muted" defaultExpanded={defaultExpanded}>
-      <TreeNodeHeader icon={<FileCode className="w-3.5 h-3.5" />} className="text-xs py-1.5">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="font-mono text-primary truncate">{file.fileName}</span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="font-mono text-xs">
-              {file.path}
-            </TooltipContent>
-          </Tooltip>
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const hasUnresolved = file.unresolvedCount > 0
+  const totalComments = file.comments.length
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {file.unresolvedCount > 0 && (
-              <Badge
-                variant="outline"
-                className="text-[9px] h-4 gap-0.5 text-warning border-warning/50"
-              >
-                <MessageSquareWarning className="w-2.5 h-2.5" />
-                {file.unresolvedCount} open
-              </Badge>
-            )}
-            {file.resolvedCount > 0 && (
-              <Badge
-                variant="outline"
-                className="text-[9px] h-4 gap-0.5 text-success border-success/50"
-              >
-                <CheckCheck className="w-2.5 h-2.5" />
-                {file.resolvedCount}
-              </Badge>
-            )}
-            {file.unresolvedCount === 0 && file.resolvedCount === 0 && (
-              <span className="text-[10px] text-muted-foreground">
-                {file.comments.length} comment{file.comments.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-      </TreeNodeHeader>
+  const commentInfo = hasUnresolved
+    ? `${file.unresolvedCount} open`
+    : `${totalComments} comment${totalComments !== 1 ? 's' : ''}`
+
+  return (
+    <TreeNode variant="muted" isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
+      <FileHeader
+        filePath={file.path}
+        isExpanded={isExpanded}
+        onToggle={() => setIsExpanded(!isExpanded)}
+        info={
+          <span
+            className={cn('text-[10px]', hasUnresolved ? 'text-warning' : 'text-muted-foreground')}
+          >
+            {commentInfo}
+          </span>
+        }
+        className="py-1 text-xs rounded-md"
+      />
 
       <TreeNodeChildren>
         {file.comments.map((comment) => (

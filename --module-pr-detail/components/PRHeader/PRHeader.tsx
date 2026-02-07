@@ -223,6 +223,15 @@ function PRBranchInfo({ pr }: { pr: PullRequest }) {
 
 export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
   const { pr, refresh, isRefreshing } = useSelectedPR()
+  const [copiedUrl, setCopiedUrl] = useState(false)
+
+  const copyPRUrl = useCallback(async () => {
+    if (pr?.html_url) {
+      await navigator.clipboard.writeText(pr.html_url)
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
+    }
+  }, [pr?.html_url])
 
   if (!pr) return null
 
@@ -256,6 +265,20 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Refresh PR details</TooltipContent>
+              </Tooltip>
+            </Col>
+            <Col span="auto">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyPRUrl}>
+                    {copiedUrl ? (
+                      <Check className="w-4 h-4 text-success" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{copiedUrl ? 'Copied!' : 'Copy PR URL'}</TooltipContent>
               </Tooltip>
             </Col>
             <Col span="auto">

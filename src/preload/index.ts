@@ -13,6 +13,7 @@ const electronAPI: ElectronAPI = {
   clearToken: () => ipcRenderer.invoke('clear-token'),
   clearAllData: () => ipcRenderer.invoke('clear-all-data'),
   factoryReset: () => ipcRenderer.invoke('factory-reset'),
+  clearWebviewData: () => ipcRenderer.invoke('clear-webview-data'),
 
   // TanStack Query cache persistence
   getQueryCache: () => ipcRenderer.invoke('get-query-cache'),

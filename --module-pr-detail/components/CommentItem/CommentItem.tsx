@@ -15,8 +15,17 @@ import {
   MarkdownContent,
   Row
 } from '@ui-kit'
-import { Bot, Check, ChevronRight, Copy, Loader2, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import {
+  Bot,
+  Check,
+  ChevronRight,
+  Copy,
+  ExternalLink,
+  Loader2,
+  MonitorPlay,
+  Trash2
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
 import type { CommentData } from '../types'
 
 export interface CommentItemProps {
@@ -25,20 +34,61 @@ export interface CommentItemProps {
   repoFullName: string
   /** PR number for mutations */
   prNumber: number
+  /** Callback to open a URL in the webview panel */
+  onOpenInWebview?: (url: string) => void
 }
 
 const TRUNCATE_LENGTH = 200
 
+/**
+ * Extract unique URLs from text content.
+ * Matches http/https URLs and filters out duplicates.
+ */
+function extractLinks(text: string | undefined): string[] {
+  if (!text) return []
+
+  // Match URLs starting with http:// or https://
+  const urlRegex = /https?:\/\/[^\s<>[\]()'"`,]+/gi
+  const matches = text.match(urlRegex) || []
+
+  // Remove duplicates and clean up trailing punctuation
+  const uniqueUrls = [...new Set(matches)].map((url) => {
+    // Remove trailing punctuation that might have been captured
+    return url.replace(/[.,;:!?)]+$/, '')
+  })
+
+  return uniqueUrls
+}
+
+/**
+ * Get a friendly display name for a URL
+ */
+function getUrlDisplayName(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.replace(/^www\./, '')
+    const path = parsed.pathname.slice(0, 30)
+    return `${hostname}${path.length > 1 ? path : ''}${parsed.pathname.length > 30 ? '...' : ''}`
+  } catch {
+    return url.slice(0, 40) + (url.length > 40 ? '...' : '')
+  }
+}
+
 export function CommentItem({
   comment,
   repoFullName,
-  prNumber
+  prNumber,
+  onOpenInWebview
 }: CommentItemProps): React.JSX.Element | null {
   const [isExpanded, setIsExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedLinkIndex, setCopiedLinkIndex] = useState<number | null>(null)
 
   const { data: currentUser } = useCurrentUser()
   const deleteComment = useDeletePRComment()
+
+  // Extract links from comment body
+  const extractedLinks = useMemo(() => extractLinks(comment.body), [comment.body])
 
   if (!comment.actor) return null
 
@@ -63,6 +113,12 @@ export function CommentItem({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  const handleCopyLink = async (url: string, index: number) => {
+    await navigator.clipboard.writeText(url)
+    setCopiedLinkIndex(index)
+    setTimeout(() => setCopiedLinkIndex(null), 2000)
   }
 
   const getEventBadge = () => {
@@ -239,6 +295,59 @@ export function CommentItem({
                 </Col>
               )}
             </Row>
+          </Col>
+        )}
+
+        {/* Extracted links footer */}
+        {extractedLinks.length > 0 && (
+          <Col span="full">
+            <div className="mt-2 pt-2 border-t border-border/30">
+              <div className="flex flex-col gap-1 items-start">
+                {extractedLinks.map((url) => (
+                  <div
+                    key={url}
+                    className="inline-flex items-center gap-1.5 bg-muted/50 rounded px-2 py-1 text-[10px] group/link max-w-full"
+                  >
+                    <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline truncate"
+                      title={url}
+                    >
+                      {getUrlDisplayName(url)}
+                    </a>
+                    {/* Open in CodeLobby button */}
+                    {onOpenInWebview && (
+                      <Button
+                        variant="unstyled"
+                        size="none"
+                        onClick={() => onOpenInWebview(url)}
+                        className="opacity-0 group-hover/link:opacity-100 transition-opacity p-0.5 hover:bg-muted rounded flex-shrink-0"
+                        title="Open in CodeLobby"
+                      >
+                        <MonitorPlay className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                      </Button>
+                    )}
+                    {/* Copy link button */}
+                    <Button
+                      variant="unstyled"
+                      size="none"
+                      onClick={() => handleCopyLink(url, extractedLinks.indexOf(url))}
+                      className="opacity-0 group-hover/link:opacity-100 transition-opacity p-0.5 hover:bg-muted rounded flex-shrink-0"
+                      title="Copy link"
+                    >
+                      {copiedLinkIndex === extractedLinks.indexOf(url) ? (
+                        <Check className="w-3 h-3 text-success" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </Col>
         )}
       </Row>

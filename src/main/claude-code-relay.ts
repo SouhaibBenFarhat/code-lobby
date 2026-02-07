@@ -399,6 +399,7 @@ When asked to "generate a review", "create a review", or "review this PR":
 - **Quality over quantity** - Fewer meaningful comments are better than many trivial ones
 - Each comment MUST have exact file path and line number from the changed files
 - Only call this tool when explicitly asked to generate/create a review
+- When analyzing PR changes, you MUST compare remote branches, not local state: and make you sure you sync with remote state for main and the branch you are looking at.
 - **Remember**: You are NOT submitting - you are preparing a draft for the user to review and submit`)
 
   return sections.join('\n')

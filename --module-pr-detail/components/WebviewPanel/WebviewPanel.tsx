@@ -22,7 +22,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Database,
+  Eraser,
   ExternalLink,
+  Loader2,
   Maximize2,
   Minus,
   Monitor,
@@ -32,6 +35,7 @@ import {
   Smartphone,
   Terminal,
   Trash2,
+  X,
   XCircle
 } from 'lucide-react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
@@ -58,6 +62,12 @@ interface ConsoleMessage {
   level: 'log' | 'warning' | 'error' | 'info' | 'debug'
   message: string
   timestamp: Date
+}
+
+/** LocalStorage entry */
+interface LocalStorageEntry {
+  key: string
+  value: string
 }
 
 /** Preset screen resolutions for responsive testing */
@@ -123,6 +133,14 @@ export function WebviewPanel({
   const ZOOM_MIN = 0.25
   const ZOOM_MAX = 3.0
   const ZOOM_STEP = 0.1
+
+  // Clear browsing data state
+  const [isClearing, setIsClearing] = useState(false)
+
+  // LocalStorage viewer state
+  const [storageOpen, setStorageOpen] = useState(false)
+  const [storageEntries, setStorageEntries] = useState<LocalStorageEntry[]>([])
+  const [isLoadingStorage, setIsLoadingStorage] = useState(false)
 
   // Count warnings and errors
   const warningCount = consoleMessages.filter((m) => m.level === 'warning').length
@@ -316,6 +334,79 @@ export function WebviewPanel({
       webviewRef.current.setZoomFactor(1.0)
     }
   }, [])
+
+  // Clear browsing data and reload
+  const handleClearBrowsingData = useCallback(async () => {
+    if (isClearing) return
+    setIsClearing(true)
+    try {
+      if (window.electron?.clearWebviewData) {
+        await window.electron.clearWebviewData()
+      }
+      // Reload the webview after clearing
+      webviewRef.current?.reload()
+    } catch (error) {
+      console.error('Failed to clear browsing data:', error)
+    } finally {
+      setIsClearing(false)
+    }
+  }, [isClearing])
+
+  // Fetch localStorage entries from webview
+  const fetchStorageEntries = useCallback(async () => {
+    if (!webviewRef.current || isLoadingStorage) return
+    setIsLoadingStorage(true)
+    try {
+      const entries = await webviewRef.current.executeJavaScript(`
+        (function() {
+          const entries = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key) {
+              entries.push({ key, value: localStorage.getItem(key) || '' });
+            }
+          }
+          return entries;
+        })()
+      `)
+      setStorageEntries(entries || [])
+    } catch (error) {
+      console.error('Failed to fetch localStorage:', error)
+      setStorageEntries([])
+    } finally {
+      setIsLoadingStorage(false)
+    }
+  }, [isLoadingStorage])
+
+  // Delete a localStorage entry
+  const deleteStorageEntry = useCallback(async (key: string) => {
+    if (!webviewRef.current) return
+    try {
+      await webviewRef.current.executeJavaScript(`localStorage.removeItem(${JSON.stringify(key)})`)
+      // Refresh the list
+      setStorageEntries((prev) => prev.filter((e) => e.key !== key))
+    } catch (error) {
+      console.error('Failed to delete localStorage entry:', error)
+    }
+  }, [])
+
+  // Clear all localStorage
+  const clearAllStorage = useCallback(async () => {
+    if (!webviewRef.current) return
+    try {
+      await webviewRef.current.executeJavaScript('localStorage.clear()')
+      setStorageEntries([])
+    } catch (error) {
+      console.error('Failed to clear localStorage:', error)
+    }
+  }, [])
+
+  // Fetch storage entries when popover opens
+  useEffect(() => {
+    if (storageOpen) {
+      fetchStorageEntries()
+    }
+  }, [storageOpen, fetchStorageEntries])
 
   // Start screenshot selection mode
   const handleStartScreenshot = useCallback(() => {
@@ -699,6 +790,111 @@ export function WebviewPanel({
                         </span>
                         <span className="break-all">{msg.message}</span>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {/* Clear browsing data */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleClearBrowsingData}
+              disabled={isClearing}
+            >
+              {isClearing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Eraser className="w-4 h-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Clear cookies & cache</TooltipContent>
+        </Tooltip>
+
+        {/* LocalStorage viewer */}
+        <Popover open={storageOpen} onOpenChange={setStorageOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant={storageEntries.length > 0 ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7 relative"
+            >
+              <Database className="w-4 h-4" />
+              {storageEntries.length > 0 && (
+                <Badge
+                  variant="default"
+                  className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
+                >
+                  {storageEntries.length}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="end">
+            <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/50">
+              <span className="text-sm font-medium">LocalStorage</span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={fetchStorageEntries}
+                  disabled={isLoadingStorage}
+                >
+                  <RefreshCw className={cn('w-3 h-3', isLoadingStorage && 'animate-spin')} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={clearAllStorage}
+                  disabled={storageEntries.length === 0}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+            <ScrollArea className="h-64">
+              {isLoadingStorage ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : storageEntries.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                  No localStorage entries
+                </div>
+              ) : (
+                <div className="p-2 space-y-1">
+                  {storageEntries.map((entry) => (
+                    <div
+                      key={entry.key}
+                      className="group flex items-start gap-2 px-2 py-1.5 rounded bg-muted/50 hover:bg-muted"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-foreground truncate">
+                          {entry.key}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground truncate font-mono">
+                          {entry.value.length > 100
+                            ? `${entry.value.slice(0, 100)}...`
+                            : entry.value}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive flex-shrink-0"
+                        onClick={() => deleteStorageEntry(entry.key)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
                     </div>
                   ))}
                 </div>

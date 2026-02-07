@@ -6,6 +6,7 @@ export interface ElectronAPI {
   clearToken: () => Promise<{ success: boolean }>
   clearAllData: () => Promise<{ success: boolean }>
   factoryReset: () => Promise<{ success: boolean }>
+  clearWebviewData: () => Promise<{ success: boolean; error?: string }>
 
   // TanStack Query cache persistence
   getQueryCache: () => Promise<string | null>

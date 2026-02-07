@@ -125,6 +125,8 @@ export function useSelectedPR(): UseQueryResult<PullRequest | null> {
       return pr as PullRequest
     },
     enabled: !!token && !!selectedPRId,
+    // Always refetch on mount (staleTime: 0 makes data always stale)
+    staleTime: 0,
     // Poll every 3 seconds while GitHub is computing merge status (returns UNKNOWN)
     // Stop polling once we get an actual status
     refetchInterval: (query) => {

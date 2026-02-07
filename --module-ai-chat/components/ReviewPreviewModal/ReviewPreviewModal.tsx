@@ -22,20 +22,11 @@ import {
   DialogTitle,
   type DiffComment,
   DiffViewer,
+  FileHeader,
   MarkdownEditor,
   ScrollArea
 } from '@ui-kit'
-import {
-  AlertCircle,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  FileCode,
-  Loader2,
-  MessageSquare,
-  Trash2,
-  X
-} from 'lucide-react'
+import { AlertCircle, Check, FileCode, Loader2, MessageSquare, Trash2, X } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewComment, ReviewData, ReviewVerdict } from '../../types'
 
@@ -394,23 +385,12 @@ export function ReviewPreviewModal({
                         className="border-b border-border last:border-b-0"
                       >
                         {/* File Header */}
-                        <button
-                          type="button"
-                          onClick={() => toggleFile(fileData.file)}
-                          className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left"
-                        >
-                          {expandedFiles.has(fileData.file) ? (
-                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                          )}
-                          <FileCode className="w-4 h-4 text-blue-500" />
-                          <span className="flex-1 font-mono text-sm truncate">{fileData.file}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {fileData.comments.length} comment
-                            {fileData.comments.length !== 1 ? 's' : ''}
-                          </span>
-                        </button>
+                        <FileHeader
+                          filePath={fileData.file}
+                          isExpanded={expandedFiles.has(fileData.file)}
+                          onToggle={() => toggleFile(fileData.file)}
+                          info={`${fileData.comments.length} comment${fileData.comments.length !== 1 ? 's' : ''}`}
+                        />
 
                         {/* File Content with Comments - now using @ui-kit DiffViewer */}
                         {expandedFiles.has(fileData.file) && (

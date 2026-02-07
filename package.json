@@ -67,6 +67,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.2.0",
     "drizzle-orm": "^0.45.1",
+    "electron-context-menu": "^4.1.1",
     "electron-store": "^8.1.0",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.309.0",
@@ -124,7 +125,10 @@
       {
         "from": "drizzle",
         "to": "drizzle",
-        "filter": ["**/*.sql", "meta/**/*"]
+        "filter": [
+          "**/*.sql",
+          "meta/**/*"
+        ]
       }
     ],
     "mac": {
