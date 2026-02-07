@@ -201,6 +201,10 @@ module.exports = {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(350%)" },
         },
+        "skeleton": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.65" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -219,6 +223,7 @@ module.exports = {
         "fade-in": "fade-in 0.2s ease-out",
         "fade-out": "fade-out 0.15s ease-in",
         "progress-indeterminate": "progress-indeterminate 1.5s ease-in-out infinite",
+        "skeleton": "skeleton 2.5s ease-in-out infinite",
       },
       fontFamily: {
         sans: [

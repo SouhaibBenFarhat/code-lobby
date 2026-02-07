@@ -8,9 +8,9 @@ describe('Skeleton', () => {
     const skeleton = container.firstChild as HTMLElement
 
     expect(skeleton).toBeInTheDocument()
-    expect(skeleton).toHaveClass('animate-pulse')
+    expect(skeleton).toHaveClass('animate-skeleton')
     expect(skeleton).toHaveClass('rounded-md')
-    expect(skeleton).toHaveClass('bg-surface')
+    expect(skeleton).toHaveClass('bg-border-subtle')
   })
 
   it('accepts custom className', () => {
@@ -19,7 +19,7 @@ describe('Skeleton', () => {
 
     expect(skeleton).toHaveClass('h-4')
     expect(skeleton).toHaveClass('w-24')
-    expect(skeleton).toHaveClass('animate-pulse')
+    expect(skeleton).toHaveClass('animate-skeleton')
   })
 
   it('passes through additional props', () => {
