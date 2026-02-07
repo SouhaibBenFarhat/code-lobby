@@ -27,7 +27,7 @@ export function useCurrentUser(): UseQueryResult<GitHubUser | null> {
       return github.fetchCurrentUser(token)
     },
     enabled: !!token,
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    staleTime: 60 * 1000 // 1 minute — ETag-protected REST call, 304 is free
   })
 }
 

@@ -31,6 +31,7 @@ import { useSelectedPR } from '../../hooks'
 import { ChangedFilesSection } from '../ChangedFilesSection'
 import { CIChecksSection } from '../CIChecksSection'
 import { CommentItem } from '../CommentItem'
+import { CommitHistorySection } from '../CommitHistorySection'
 import { PostCommentForm } from '../PostCommentForm'
 import { PostScreenshotModal } from '../PostScreenshotModal'
 import { PRDescription } from '../PRDescription'
@@ -341,6 +342,23 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
               <Separator />
             </Col>
 
+            {/* Commit History Section */}
+            {pr.commits && pr.commits.length > 0 && (
+              <Col span="full">
+                <CommitHistorySection
+                  commits={pr.commits}
+                  totalCommits={pr.totalCommits || pr.commits.length}
+                  repoFullName={`${pr.base.repo.owner.login}/${pr.base.repo.name}`}
+                />
+              </Col>
+            )}
+
+            {pr.commits && pr.commits.length > 0 && (
+              <Col span="full">
+                <Separator />
+              </Col>
+            )}
+
             {/* Changed Files Section */}
             <Col span="full">
               <ChangedFilesSection
@@ -348,6 +366,9 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                 prNumber={pr.number}
                 totalChanged={pr.changed_files}
                 headRef={pr.head.ref}
+                prAuthor={pr.user.login}
+                branch={pr.head.ref}
+                baseBranch={pr.base.ref}
               />
             </Col>
 

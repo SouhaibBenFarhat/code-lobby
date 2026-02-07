@@ -3,6 +3,11 @@
  *
  * A pure, generic HTTP client with no API-specific logic.
  * API-specific code (headers, auth) belongs in respective modules.
+ *
+ * Features:
+ * - ETag support for GET requests: Automatically sends If-None-Match headers
+ *   and returns cached data on 304 Not Modified responses. This saves GitHub
+ *   API rate limit points when data hasn't changed.
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -26,26 +31,70 @@ export interface RequestConfig {
 const DEFAULT_TIMEOUT = 30_000
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ETAG CACHE — lightweight store for conditional requests
+// Only stores ETag strings (~20 bytes each) and the last response data.
+// On 304 Not Modified, returns the cached response without consuming
+// a GitHub API rate limit point.
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ETagEntry {
+  etag: string
+  data: unknown
+}
+
+const etagCache = new Map<string, ETagEntry>()
+
+/** Get ETag cache stats (for debugging/monitoring) */
+export function getETagCacheStats(): { size: number; urls: string[] } {
+  return { size: etagCache.size, urls: [...etagCache.keys()] }
+}
+
+/** Clear ETag cache (e.g. on sign-out) */
+export function clearETagCache(): void {
+  etagCache.clear()
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HTTP CLIENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function request<T>(url: string, config: RequestConfig = {}): Promise<T> {
   const { method = 'GET', headers = {}, body, timeout = DEFAULT_TIMEOUT } = config
 
+  const isGet = method === 'GET'
+
   // Create abort controller for timeout
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+  // For GET requests, attach saved ETag if we have one
+  const requestHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...headers
+  }
+
+  if (isGet) {
+    const cached = etagCache.get(url)
+    if (cached) {
+      requestHeaders['If-None-Match'] = cached.etag
+    }
+  }
+
   try {
     const response = await fetch(url, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers
-      },
+      headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal
     })
+
+    // Handle 304 Not Modified — return cached data, no rate limit cost
+    if (response.status === 304 && isGet) {
+      const cached = etagCache.get(url)
+      if (cached) {
+        return cached.data as T
+      }
+    }
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => undefined)
@@ -60,7 +109,17 @@ export async function request<T>(url: string, config: RequestConfig = {}): Promi
     const text = await response.text()
     if (!text) return undefined as T
 
-    return JSON.parse(text) as T
+    const data = JSON.parse(text) as T
+
+    // Save ETag for GET requests
+    if (isGet) {
+      const etag = response.headers?.get?.('etag')
+      if (etag) {
+        etagCache.set(url, { etag, data })
+      }
+    }
+
+    return data
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       const timeoutError = new Error(`Request timeout after ${timeout}ms`) as HttpError

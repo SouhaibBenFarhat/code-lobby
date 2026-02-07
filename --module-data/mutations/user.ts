@@ -5,6 +5,7 @@
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as github from '../github'
+import { clearETagCache } from '../http'
 import { keys } from '../keys'
 import type { GitHubUser } from '../types'
 
@@ -43,6 +44,8 @@ export function useSignOut(): UseMutationResult<void, Error, void> {
       qc.setQueryData(keys.githubToken, null)
       // Clear user
       qc.setQueryData(keys.user, null)
+      // Clear HTTP ETag cache (stale ETags shouldn't persist across accounts)
+      clearETagCache()
       // Clear all GitHub-related data
       qc.removeQueries({ queryKey: keys.repos })
       qc.removeQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith?.('github') })

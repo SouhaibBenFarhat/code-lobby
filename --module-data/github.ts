@@ -5,7 +5,7 @@
 
 import { GITHUB_API, GITHUB_GRAPHQL } from './endpoints'
 import { type HttpError, http } from './http'
-import type { GitHubUser, PRFile, PullRequest, Repository } from './types'
+import type { GitHubUser, PRCommit, PRFile, PullRequest, Repository } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -484,6 +484,25 @@ export async function fetchSinglePR(
               }
             }
           }
+          allCommits: commits(first: 250) {
+            totalCount
+            nodes {
+              commit {
+                oid
+                messageHeadline
+                message
+                committedDate
+                author {
+                  name
+                  email
+                  user { login avatarUrl }
+                }
+                additions
+                deletions
+                changedFilesIfAvailable
+              }
+            }
+          }
         }
       }
     }
@@ -546,7 +565,29 @@ export async function fetchSinglePR(
         },
         diffHunk: c.diffHunk
       }))
-    }))
+    })),
+    totalCommits: pr.allCommits?.totalCount || 0,
+    commits: (pr.allCommits?.nodes || []).map(
+      (node: any): PRCommit => ({
+        oid: node.commit.oid,
+        messageHeadline: node.commit.messageHeadline,
+        message: node.commit.message,
+        committedDate: node.commit.committedDate,
+        author: {
+          name: node.commit.author?.name || 'Unknown',
+          email: node.commit.author?.email || '',
+          user: node.commit.author?.user
+            ? {
+                login: node.commit.author.user.login,
+                avatar_url: node.commit.author.user.avatarUrl || ''
+              }
+            : null
+        },
+        additions: node.commit.additions || 0,
+        deletions: node.commit.deletions || 0,
+        changedFilesCount: node.commit.changedFilesIfAvailable || 0
+      })
+    )
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }

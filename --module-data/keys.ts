@@ -48,6 +48,13 @@ export const keys = {
   repoLabels: (repoFullName: string): readonly ['github', 'repo-labels', string] =>
     ['github', 'repo-labels', repoFullName] as const,
 
+  /** PR reviewer suggestions (agentic, from git blame analysis) */
+  prReviewerSuggestions: (
+    repoFullName: string,
+    prNumber: number
+  ): readonly ['github', 'pr', string, number, 'reviewer-suggestions'] =>
+    ['github', 'pr', repoFullName, prNumber, 'reviewer-suggestions'] as const,
+
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
   rateLimit: ['github', 'rate-limit'] as const,

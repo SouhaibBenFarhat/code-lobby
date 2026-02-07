@@ -88,6 +88,24 @@ export interface CheckStatus {
   }>
 }
 
+export interface PRCommit {
+  oid: string
+  messageHeadline: string
+  message: string
+  committedDate: string
+  author: {
+    name: string
+    email: string
+    user: {
+      login: string
+      avatar_url: string
+    } | null
+  }
+  additions: number
+  deletions: number
+  changedFilesCount: number
+}
+
 export type MergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
 export type MergeStateStatus =
   | 'BEHIND'
@@ -152,6 +170,8 @@ export interface PullRequest {
   mergeable?: MergeableState
   mergeStateStatus?: MergeStateStatus
   reviewDecision?: ReviewDecision
+  commits?: PRCommit[]
+  totalCommits?: number
 }
 
 export interface PRIdentifier {

@@ -225,6 +225,7 @@ export type {
   NetworkRequest,
   PRChat,
   PRComment,
+  PRCommit,
   PRFile,
   PRIdentifier,
   PRReview,
@@ -238,6 +239,23 @@ export type {
   ReviewThread,
   ViewMode
 } from './types'
+
+// =============================================================================
+// REVIEWER SUGGESTION (AGENTIC)
+// =============================================================================
+
+export type {
+  ReviewerSuggestionResult,
+  ReviewerSuggestRequest,
+  SuggestedReviewer
+} from './reviewer-suggest'
+
+export {
+  setPendingReviewerRequest,
+  useReviewerSuggestListener,
+  useSuggestReviewers,
+  useTriggerReviewerSuggestion
+} from './reviewer-suggest'
 
 // =============================================================================
 // CLAUDE CODE CLI INTEGRATION

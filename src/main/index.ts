@@ -64,6 +64,7 @@ import {
 } from './claude-code-relay'
 import { startDailySpeechGeneration, stopDailySpeechGeneration } from './daily-speech-relay'
 import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
+import { startReviewerSuggestion } from './reviewer-suggest-relay'
 import {
   addChatMessage,
   addCustomQuickPrompt,
@@ -1057,6 +1058,46 @@ function setupIPCHandlers(): void {
   ipcMain.handle('stop-daily-speech', (_, sessionId: string) => {
     return stopDailySpeechGeneration(sessionId)
   })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // REVIEWER SUGGESTION (AGENTIC)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  ipcMain.handle(
+    'reviewer-suggest:start',
+    async (
+      _,
+      options: {
+        repoFullName: string
+        prNumber: number
+        branch: string
+        baseBranch: string
+        changedFiles: string[]
+        prAuthor: string
+        githubToken: string
+      }
+    ) => {
+      if (!mainWindow) {
+        return { success: false, error: 'Main window not available' }
+      }
+
+      const apiKey = getClaudeApiKey()
+      if (!apiKey) {
+        return { success: false, error: 'No Claude API key configured' }
+      }
+
+      logger.info(LogCategory.API, 'Starting reviewer suggestion', {
+        repo: options.repoFullName,
+        prNumber: options.prNumber,
+        fileCount: options.changedFiles.length
+      })
+
+      // Start the analysis (async, sends results via IPC)
+      startReviewerSuggestion(mainWindow, options)
+
+      return { success: true }
+    }
+  )
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PR CHAT OPERATIONS

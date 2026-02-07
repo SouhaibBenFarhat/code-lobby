@@ -15,6 +15,10 @@ export { CloseButton, type CloseButtonProps } from './CloseButton'
 export { CodeVisualizerPanel, type CodeVisualizerPanelProps } from './CodeVisualizerPanel'
 export { CommentItem, type CommentItemProps } from './CommentItem'
 export {
+  CommitHistorySection,
+  type CommitHistorySectionProps
+} from './CommitHistorySection'
+export {
   ConvertToDraftButton,
   type ConvertToDraftButtonProps
 } from './ConvertToDraftButton'
@@ -45,6 +49,10 @@ export {
   ReviewTree,
   type ReviewTreeProps
 } from './ReviewTree'
+export {
+  SuggestedReviewers,
+  type SuggestedReviewersProps
+} from './SuggestedReviewers'
 // Types (DiffLine is now in @ui-kit)
 export type {
   CheckRun,

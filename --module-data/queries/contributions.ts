@@ -61,7 +61,7 @@ export function useUserEvents(enabled = false): UseQueryResult<UserEvent[]> {
       return github.fetchUserEvents(token, user.login)
     },
     enabled: enabled && !!token && !!user?.login,
-    staleTime: 5 * 60 * 1000, // 5 minutes - events change more frequently
+    staleTime: 30 * 1000, // 30 seconds — ETag-protected REST call, 304 is free
     gcTime: 30 * 60 * 1000 // Keep in cache for 30 minutes
   })
 }

@@ -36,7 +36,7 @@ export function usePRsForRepo(repoFullName: string): UseQueryResult<PullRequest[
 }
 
 /**
- * Fetch PRs for all selected repos (per-repo caching)
+ * Fetch PRs for all selected repos (per-repo caching)I do
  * Each repo has its own cache entry - adding a new repo only fetches that repo's PRs
  */
 export function usePRs(): {
@@ -158,7 +158,9 @@ export function usePRFiles(
       const files = await github.fetchPRFiles(token, owner, repo, prNumber, totalFiles)
       return files as PRFile[]
     },
-    enabled: !!token && !!repoFullName && !!prNumber
+    enabled: !!token && !!repoFullName && !!prNumber,
+    // ETag-protected REST call — 304 is free
+    staleTime: 30 * 1000 // 30 seconds
   })
 }
 
@@ -185,8 +187,8 @@ export function useFileContent(
       return content
     },
     enabled: !!token && !!repoFullName && !!ref && !!path,
-    // File content rarely changes during review, cache for a long time
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    // ETag-protected REST call — 304 is free
+    staleTime: 60 * 1000, // 1 minute
     // Keep in cache even longer for faster switching between files
     gcTime: 60 * 60 * 1000 // 1 hour
   })
@@ -210,8 +212,8 @@ export function useRepoLabels(
       return labels
     },
     enabled: !!token && !!repoFullName,
-    // Labels don't change often, cache for a long time
-    staleTime: 60 * 60 * 1000, // 1 hour
+    // ETag-protected REST call — 304 is free
+    staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 2 * 60 * 60 * 1000 // 2 hours
   })
 }
