@@ -746,6 +746,35 @@ export interface ElectronAPI {
 
   onClaudeError: (callback: (data: { sessionId: string; error: string }) => void) => () => void
 
+  // Reviewer Suggestion (agentic git-blame analysis)
+  startReviewerSuggestion: (request: {
+    repoFullName: string
+    prNumber: number
+    branch: string
+    baseBranch: string
+    changedFiles: string[]
+    prAuthor: string
+    githubToken: string
+  }) => Promise<{ success: boolean; error?: string }>
+
+  onReviewerSuggestDone: (
+    callback: (data: {
+      reviewers: Array<{
+        login: string | null
+        name: string
+        email: string
+        linesOwned: number
+        filesOwned: number
+        recencyScore: number
+        totalScore: number
+      }>
+      analyzedFiles: number
+      timestamp: string
+    }) => void
+  ) => () => void
+
+  onReviewerSuggestError: (callback: (data: { error: string }) => void) => () => void
+
   // Claude review event - emitted when Claude generates a structured review
   onClaudeReview: (
     callback: (data: {

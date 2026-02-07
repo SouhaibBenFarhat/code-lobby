@@ -236,7 +236,7 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
   if (!pr) return null
 
   return (
-    <div className="p-4 flex-shrink-0 overflow-hidden content-header">
+    <div className="p-4 flex-shrink-0 overflow-hidden section-header">
       {/* Title and top-right actions in same row */}
       <Row gutter="sm" align="start" justify="between" wrap>
         {/* Title section with edit button adjacent */}

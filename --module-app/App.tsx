@@ -438,7 +438,7 @@ export function App(): React.JSX.Element {
           {viewMode === 'canvas' && prDetailOpen && (
             <aside
               ref={prPanelRef}
-              className="overflow-hidden flex bg-surface relative flex-shrink-0 border-l border-border shadow-[-2px_0_8px_rgba(0,0,0,0.06)] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.2)]"
+              className="overflow-hidden flex bg-background relative flex-shrink-0 border-l border-border shadow-[-2px_0_8px_rgba(0,0,0,0.06)] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.2)]"
               style={{ width: prDetailWidth, minWidth: prDetailWidth, maxWidth: prDetailWidth }}
             >
               <ResizeHandle
