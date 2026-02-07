@@ -14,8 +14,7 @@ import {
   formatRelativeTime,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  truncate
+  TooltipTrigger
 } from '@ui-kit'
 import {
   CheckCircle2,
@@ -23,7 +22,6 @@ import {
   Clock,
   ExternalLink,
   FileEdit,
-  GitBranch,
   GitPullRequest,
   Loader2,
   MessageSquare,
@@ -124,7 +122,7 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
           <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
         </div>
 
-        {/* Metadata row — single line */}
+        {/* Meta + stats row */}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground overflow-hidden">
           <span className="font-mono">#{pr.number}</span>
           <span className="text-border">·</span>
@@ -142,9 +140,6 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
             </TooltipTrigger>
             <TooltipContent>Author: {pr.user.login}</TooltipContent>
           </Tooltip>
-          <span className="text-border">·</span>
-          <GitBranch className="w-2.5 h-2.5 flex-shrink-0" />
-          <span className="truncate font-mono">{truncate(pr.head.ref, 16)}</span>
           {pr.draft && (
             <>
               <span className="text-border">·</span>
@@ -153,39 +148,13 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
               </Badge>
             </>
           )}
-        </div>
-
-        {/* Labels — only if present */}
-        {pr.labels.length > 0 && (
-          <div className="flex flex-wrap gap-0.5">
-            {pr.labels.slice(0, 3).map((label) => (
-              <span
-                key={label.name}
-                className="px-1 py-0 text-[9px] rounded-full font-medium leading-relaxed"
-                style={{
-                  backgroundColor: `#${label.color}20`,
-                  color: `#${label.color}`,
-                  border: `1px solid #${label.color}40`
-                }}
-              >
-                {truncate(label.name, 12)}
-              </span>
-            ))}
-            {pr.labels.length > 3 && (
-              <span className="px-1 text-[9px] text-muted-foreground">+{pr.labels.length - 3}</span>
-            )}
-          </div>
-        )}
-
-        {/* Stats row */}
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="text-border">·</span>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-0.5">{getCheckStatusIcon()}</div>
             </TooltipTrigger>
             <TooltipContent>{getCheckStatusText()}</TooltipContent>
           </Tooltip>
-
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-0.5">
@@ -196,30 +165,25 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
             </TooltipTrigger>
             <TooltipContent>{pr.changed_files} files changed</TooltipContent>
           </Tooltip>
-
           {totalComments > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-0.5">
-                  <MessageSquare className="w-2.5 h-2.5" />
-                  <span>{totalComments}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                {totalComments} comment{totalComments !== 1 ? 's' : ''}
-              </TooltipContent>
-            </Tooltip>
+            <>
+              <span className="text-border">·</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-0.5">
+                    <MessageSquare className="w-2.5 h-2.5" />
+                    <span>{totalComments}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {totalComments} comment{totalComments !== 1 ? 's' : ''}
+                </TooltipContent>
+              </Tooltip>
+            </>
           )}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-0.5">
-                <Clock className="w-2.5 h-2.5" />
-                <span>{formatRelativeTime(pr.created_at)}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Updated {formatRelativeTime(pr.updated_at)}</TooltipContent>
-          </Tooltip>
+          <span className="text-border">·</span>
+          <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+          <span className="flex-shrink-0">{formatRelativeTime(pr.created_at)}</span>
         </div>
       </div>
     </Button>

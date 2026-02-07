@@ -72,18 +72,7 @@ describe('PRCard', () => {
       expect(screen.getByText('johndoe')).toBeInTheDocument()
     })
 
-    it('should render labels', () => {
-      const pr = createMockPullRequest({
-        labels: [
-          { name: 'bug', color: 'ff0000' },
-          { name: 'urgent', color: '00ff00' }
-        ]
-      })
-      render(<PRCard pr={pr} />)
-
-      expect(screen.getByText('bug')).toBeInTheDocument()
-      expect(screen.getByText('urgent')).toBeInTheDocument()
-    })
+    // Labels removed from compact card layout — visible in PR detail instead
   })
 
   describe('Draft PRs', () => {
