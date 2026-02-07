@@ -17,7 +17,7 @@ describe('Input', () => {
     it('should apply default styles', () => {
       render(<Input data-testid="input" />)
       const input = screen.getByTestId('input')
-      expect(input).toHaveClass('flex', 'h-9', 'w-full', 'rounded-[8px]')
+      expect(input).toHaveClass('flex', 'h-9', 'w-full', 'rounded')
     })
 
     it('should forward ref', () => {

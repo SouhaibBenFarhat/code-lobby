@@ -6,7 +6,7 @@ import { cn } from '../utils'
 /** Button variant function with explicit typing for isolatedDeclarations */
 const buttonVariants: (props?: Record<string, unknown>) => string = cva(
   // Apple-style base: smooth transitions, subtle active state, refined focus ring
-  'inline-flex items-center justify-center whitespace-nowrap rounded-[8px] text-sm font-medium transition-all duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]',
+  'inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium transition-all duration-fast ease-theme focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]',
   {
     variants: {
       variant: {
@@ -20,7 +20,7 @@ const buttonVariants: (props?: Record<string, unknown>) => string = cva(
         // Secondary - Subtle gray background
         secondary: 'bg-secondary text-secondary-foreground hover:bg-interactive-hover',
         // Ghost - Minimal, just hover state (like Apple's toolbar buttons)
-        ghost: 'hover:bg-interactive-hover rounded-[6px]',
+        ghost: 'hover:bg-interactive-hover rounded-sm',
         // Link - Text only with underline
         link: 'text-primary underline-offset-4 hover:underline active:scale-100',
         // Unstyled - No visual styling, just semantic button with focus ring
@@ -30,11 +30,11 @@ const buttonVariants: (props?: Record<string, unknown>) => string = cva(
       },
       size: {
         default: 'h-9 px-4 py-2',
-        sm: 'h-8 px-3 text-xs rounded-[6px]',
-        lg: 'h-11 px-6 text-base rounded-[10px]',
-        icon: 'h-9 w-9 rounded-[8px]',
-        'icon-sm': 'h-7 w-7 rounded-[6px]',
-        'icon-xs': 'h-5 w-5 rounded-[4px]',
+        sm: 'h-8 px-3 text-xs rounded-sm',
+        lg: 'h-11 px-6 text-base rounded-lg',
+        icon: 'h-9 w-9 rounded',
+        'icon-sm': 'h-7 w-7 rounded-sm',
+        'icon-xs': 'h-5 w-5 rounded-xs',
         // No size constraints - for unstyled variant
         none: ''
       }

@@ -106,14 +106,15 @@ module.exports = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        /* Apple-style radii */
-        'apple-sm': '6px',
-        'apple': '10px',
-        'apple-lg': '14px',
-        'apple-xl': '20px',
+        none: '0',
+        xs: 'var(--radius-xs)',
+        sm: 'var(--radius-sm)',
+        DEFAULT: 'var(--radius)',
+        md: 'var(--radius)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        '2xl': 'calc(var(--radius-xl) * 1.5)',
+        full: '9999px',
       },
       boxShadow: {
         /* Elevation-aware shadows (use CSS variables so light/dark differ) */
@@ -128,13 +129,15 @@ module.exports = {
         'apple-xl': '0 16px 64px rgba(0, 0, 0, 0.2)',
       },
       transitionTimingFunction: {
-        /* Apple's signature easing curve */
-        'apple': 'cubic-bezier(0.25, 0.1, 0.25, 1)',
-        'apple-bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        DEFAULT: 'var(--ease)',
+        theme: 'var(--ease)',
+        bounce: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       transitionDuration: {
-        '150': '150ms',
-        '250': '250ms',
+        DEFAULT: 'var(--duration-fast)',
+        fast: 'var(--duration-fast)',
+        normal: 'var(--duration)',
+        slow: 'var(--duration-slow)',
       },
       keyframes: {
         "accordion-down": {

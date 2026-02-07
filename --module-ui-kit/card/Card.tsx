@@ -12,9 +12,9 @@ const Card: ForwardRefComponent<
       ref={ref}
       className={cn(
         // Apple-style card: larger radius, visible shadow for separation, clean border
-        'rounded-[12px] border border-border bg-card text-card-foreground',
+        'rounded-xl border border-border bg-card text-card-foreground',
         'shadow-elevation-low',
-        'transition-shadow duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]',
+        'transition-shadow duration-normal ease-theme',
         'hover:shadow-elevation-medium',
         className
       )}

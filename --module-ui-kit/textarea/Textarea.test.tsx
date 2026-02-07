@@ -25,7 +25,7 @@ describe('Textarea', () => {
     it('should have default styles', () => {
       render(<Textarea />)
       const textarea = screen.getByRole('textbox')
-      expect(textarea).toHaveClass('min-h-[80px]', 'w-full', 'rounded-[8px]')
+      expect(textarea).toHaveClass('min-h-[80px]', 'w-full', 'rounded')
     })
 
     it('should merge custom className with default styles', () => {

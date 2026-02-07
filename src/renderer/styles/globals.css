@@ -99,8 +99,18 @@
     --diff-addition-gutter: #aff5b4;
     --diff-deletion-gutter: #ffc1ba;
 
-    /* Geometry */
-    --radius: 0.75rem;
+    /* Geometry — radius scale */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+
+    /* Motion */
+    --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+    --duration-fast: 150ms;
+    --duration: 200ms;
+    --duration-slow: 350ms;
 
     /* Shadows — elevation levels (stronger for visible section separation) */
     --shadow-elevation-low: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -328,9 +338,9 @@
 .pr-card-item {
   background: oklch(var(--surface-raised));
   border: 1px solid oklch(var(--border));
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-elevation-medium);
-  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: all var(--duration) var(--ease);
 }
 
 .pr-card-item:hover {
@@ -407,19 +417,19 @@
 
 /* Apple uses ease-out curves similar to this */
 .animate-fadeIn {
-  animation: fadeIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: fadeIn 0.25s var(--ease);
 }
 
 .animate-slideUp {
-  animation: slideUp 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: slideUp var(--duration-slow) var(--ease);
 }
 
 .animate-slideIn {
-  animation: slideIn 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: slideIn 0.3s var(--ease);
 }
 
 .animate-scaleIn {
-  animation: scaleIn 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: scaleIn var(--duration) var(--ease);
 }
 
 .animate-gentle-pulse {
@@ -437,7 +447,7 @@
 /* Apple-style interactive states */
 .apple-button {
   @apply font-medium transition-all duration-150;
-  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition-timing-function: var(--ease);
 }
 
 .apple-button:active {
@@ -446,8 +456,8 @@
 
 /* Apple-style hover lift effect */
 .apple-hover-lift {
-  transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), 
-              box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: transform var(--duration) var(--ease), 
+              box-shadow var(--duration) var(--ease);
 }
 
 .apple-hover-lift:hover {
@@ -463,7 +473,7 @@
 
 /* Smooth transitions for all interactive elements */
 button, a, input, select, textarea {
-  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: all var(--duration-fast) var(--ease);
 }
 
 /* Focus rings - primary tint */

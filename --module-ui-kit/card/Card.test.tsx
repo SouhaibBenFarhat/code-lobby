@@ -22,7 +22,7 @@ describe('Card', () => {
     it('should apply default styles', () => {
       render(<Card data-testid="card">Content</Card>)
       const card = screen.getByTestId('card')
-      expect(card).toHaveClass('rounded-[12px]', 'border', 'bg-card')
+      expect(card).toHaveClass('rounded-xl', 'border', 'bg-card')
     })
 
     it('should accept custom className', () => {

@@ -183,7 +183,7 @@ export function ChatInput({
               adjustTextareaHeight()
             }}
             onKeyDown={handleKeyDown}
-            className="w-full min-h-[72px] max-h-[200px] px-3 py-2 pr-12 text-sm rounded-[8px] border border-border bg-surface resize-none transition-colors duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] placeholder:text-foreground-subtle hover:border-border hover:bg-surface-hover focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_oklch(var(--primary)/0.15)]"
+            className="w-full min-h-[72px] max-h-[200px] px-3 py-2 pr-12 text-sm rounded border border-border bg-surface resize-none transition-colors duration-fast ease-theme placeholder:text-foreground-subtle hover:border-border hover:bg-surface-hover focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_oklch(var(--primary)/0.15)]"
             style={{ height: '72px' }}
           />
           {/* FAB Send/Stop Button */}

@@ -108,10 +108,33 @@ The generator produces variables like:
 ### 4. Non-Generated CSS (manual, in `globals.css`)
 
 Everything **outside** the markers is manually maintained:
-- Shadow tokens (`--shadow-elevation-low/medium/high`)
-- Structural classes (`.header-bar`, `.section-header`, `.apple-sidebar`, etc.)
-- Animation keyframes
-- Backward-compatible aliases (`--card`, `--muted`, etc.)
+- **Geometry** — `--radius-xs/sm/md/lg/xl` (border radius scale)
+- **Motion** — `--ease`, `--duration-fast/normal/slow`
+- **Shadows** — `--shadow-elevation-low/medium/high`
+- **Structural classes** — `.header-bar`, `.section-header`, `.apple-sidebar`, etc.
+- **Animation keyframes**
+- **Backward-compatible aliases** — `--card`, `--muted`, etc.
+
+### 5. Geometry & Motion Tokens
+
+These are defined in `:root` (not generated) and referenced via Tailwind utilities:
+
+```css
+/* Radius scale */
+--radius-xs: 4px;    /* rounded-xs — tiny buttons */
+--radius-sm: 6px;    /* rounded-sm — compact buttons, ghost variant */
+--radius: 8px;       /* rounded — default controls (inputs, buttons) */
+--radius-lg: 10px;   /* rounded-lg — PR cards */
+--radius-xl: 12px;   /* rounded-xl — cards */
+
+/* Motion */
+--ease: cubic-bezier(0.25, 0.1, 0.25, 1);   /* ease-theme */
+--duration-fast: 150ms;                       /* duration-fast */
+--duration: 200ms;                            /* duration-normal */
+--duration-slow: 350ms;                       /* duration-slow */
+```
+
+To make the app feel "flatter" (Windows-like), change `--radius` to `4px` and `--ease` to `ease-out`. To make it more playful, increase radii and use a bouncier curve. No component code changes needed.
 
 ## Token Reference
 
