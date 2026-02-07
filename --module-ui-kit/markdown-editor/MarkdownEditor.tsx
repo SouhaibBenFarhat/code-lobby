@@ -212,7 +212,7 @@ function MarkdownEditorComponent({
       {activeMode === 'preview' && (
         <div data-testid={testId ? `${testId}-preview-container` : undefined}>
           {/* Custom toolbar for preview mode */}
-          <div className="markdown-editor-preview-toolbar flex items-center gap-1 px-2 py-1 border-b border-border bg-muted/30">
+          <div className="markdown-editor-preview-toolbar flex items-center gap-1 px-2 py-1 border-b border-border bg-surface">
             <button
               type="button"
               onClick={() => handleModeChange('write')}
@@ -233,7 +233,7 @@ function MarkdownEditorComponent({
               disabled={disabled}
               className={cn(
                 'custom-toolbar-button flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
-                'text-foreground bg-primary/10'
+                'text-foreground bg-info-subtle'
               )}
               aria-label="Preview mode"
               aria-pressed="true"

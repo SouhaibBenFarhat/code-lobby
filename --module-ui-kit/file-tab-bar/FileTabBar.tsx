@@ -56,7 +56,7 @@ function getFileIcon(fileName: string): React.JSX.Element {
       return <FileJson className="w-3.5 h-3.5 text-yellow-400" />
     case 'md':
     case 'mdx':
-      return <FileText className="w-3.5 h-3.5 text-gray-400" />
+      return <FileText className="w-3.5 h-3.5 text-foreground-ghost" />
     case 'css':
     case 'scss':
     case 'less':
@@ -121,7 +121,7 @@ export function FileTabBar({
     return (
       <div
         className={cn(
-          'file-tab-bar flex items-center h-9 px-3 bg-muted/30 border-b border-border/30 text-muted-foreground text-xs',
+          'file-tab-bar flex items-center h-9 px-3 bg-surface border-b border-border-subtle text-muted-foreground text-xs',
           className
         )}
       >
@@ -131,7 +131,7 @@ export function FileTabBar({
   }
 
   return (
-    <div className={cn('file-tab-bar h-9 bg-muted/30 border-b border-border/30', className)}>
+    <div className={cn('file-tab-bar h-9 bg-surface border-b border-border-subtle', className)}>
       <ScrollArea className="h-full">
         <div className="flex items-stretch h-full">
           {tabs.map((tab) => {
@@ -144,8 +144,8 @@ export function FileTabBar({
                     type="button"
                     ref={isActive ? activeTabRef : undefined}
                     className={cn(
-                      'file-tab group flex items-center gap-2 px-3 h-full cursor-pointer border-r border-border/20 transition-colors',
-                      'hover:bg-muted/50',
+                      'file-tab group flex items-center gap-2 px-3 h-full cursor-pointer border-r border-border-subtle transition-colors',
+                      'hover:bg-interactive-hover',
                       isActive
                         ? 'bg-background border-b-2 border-b-primary text-foreground'
                         : 'text-muted-foreground'
@@ -166,7 +166,7 @@ export function FileTabBar({
                       size="icon"
                       className={cn(
                         'w-4 h-4 p-0 rounded-sm flex-shrink-0 transition-opacity',
-                        'hover:bg-muted-foreground/20',
+                        'hover:bg-interactive-hover',
                         isActive
                           ? 'opacity-70 hover:opacity-100'
                           : 'opacity-0 group-hover:opacity-70'

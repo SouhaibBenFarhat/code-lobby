@@ -79,14 +79,14 @@ export function ToolActivityIndicator({
     <div className={cn('space-y-1', className)}>
       {/* Current activity - always visible */}
       {activity && Icon && (
-        <div className="bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md px-2 py-1.5">
+        <div className="bg-info-subtle text-info border border-info-border rounded-md px-2 py-1.5">
           <div className="flex items-center gap-2 text-xs">
             <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
             <Icon className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="font-medium">{label}</span>
           </div>
           {activity.input && (
-            <div className="mt-1 text-[11px] font-mono text-blue-400 bg-blue-500/10 rounded px-2 py-1 break-all">
+            <div className="mt-1 text-[11px] font-mono text-info bg-info-subtle rounded px-2 py-1 break-all">
               {activity.input}
             </div>
           )}
@@ -95,7 +95,7 @@ export function ToolActivityIndicator({
 
       {/* Tool history section */}
       {recentHistory.length > 0 && (
-        <div className="bg-muted/30 rounded-md border border-border/50">
+        <div className="bg-surface rounded-md border border-border-muted">
           {/* Header - click to expand/collapse */}
           <button
             type="button"
@@ -108,7 +108,7 @@ export function ToolActivityIndicator({
               <ChevronRight className="w-3 h-3" />
             )}
             <span className="font-medium">Tool Activity</span>
-            <span className="text-muted-foreground/60">({toolHistory.length} calls)</span>
+            <span className="text-foreground-subtle">({toolHistory.length} calls)</span>
           </button>
 
           {/* History list */}
@@ -124,9 +124,9 @@ export function ToolActivityIndicator({
                     key={entry.id}
                     className={cn(
                       'text-[10px] py-1 px-1.5 rounded border',
-                      isRunning && 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-                      isError && 'bg-red-500/10 text-red-500 border-red-500/20',
-                      !isRunning && !isError && 'text-muted-foreground border-border/30'
+                      isRunning && 'bg-info-subtle text-info border-info-border',
+                      isError && 'bg-destructive-subtle text-destructive border-destructive-border',
+                      !isRunning && !isError && 'text-muted-foreground border-border-subtle'
                     )}
                   >
                     {/* Header row */}
@@ -148,7 +148,7 @@ export function ToolActivityIndicator({
 
                       {/* Duration */}
                       {entry.duration !== undefined && (
-                        <span className="text-muted-foreground/60 ml-auto flex-shrink-0">
+                        <span className="text-foreground-subtle ml-auto flex-shrink-0">
                           {entry.duration}ms
                         </span>
                       )}
@@ -156,7 +156,7 @@ export function ToolActivityIndicator({
 
                     {/* Input - full command on separate line */}
                     {entry.input && (
-                      <div className="mt-0.5 font-mono text-[9px] opacity-80 break-all bg-black/5 dark:bg-white/5 rounded px-1 py-0.5">
+                      <div className="mt-0.5 font-mono text-[9px] opacity-80 break-all bg-surface rounded px-1 py-0.5">
                         {entry.input}
                       </div>
                     )}

@@ -117,7 +117,7 @@ export function CodeHighlight({
   return (
     <div
       className={cn(
-        'code-highlight font-mono text-xs overflow-x-auto bg-[#0d1117] p-3 rounded',
+        'code-highlight font-mono text-xs overflow-x-auto bg-code text-code-foreground p-3 rounded',
         showLineNumbers && 'with-line-numbers',
         className
       )}
@@ -131,11 +131,11 @@ export function CodeHighlight({
             return (
               <div
                 key={`line-${lineNumber}`}
-                className={cn('leading-relaxed', isHighlighted && 'bg-primary/20')}
+                className={cn('leading-relaxed', isHighlighted && 'bg-info-subtle')}
                 data-line={lineNumber}
               >
                 {showLineNumbers && (
-                  <span className="inline-block w-8 text-right pr-3 text-muted-foreground/50 select-none">
+                  <span className="inline-block w-8 text-right pr-3 text-foreground-subtle select-none">
                     {lineNumber}
                   </span>
                 )}

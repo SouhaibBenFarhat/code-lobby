@@ -47,15 +47,28 @@ const ResizeHandle: ForwardRefComponent<HTMLButtonElement, ResizeHandleProps> = 
   const isHorizontal = direction === 'horizontal'
 
   // Base styles shared by all handles
-  const baseStyles = 'border-0 p-0 flex-shrink-0 transition-colors bg-transparent'
+  // The element is 1px wide/tall (the visible divider line).
+  // A ::before pseudo-element extends the hit area to 8px so users
+  // don't have to aim at a single pixel — the hover highlight still
+  // only appears on the 1px line itself.
+  const baseStyles = cn(
+    'border-0 p-0 flex-shrink-0 relative transition-colors',
+    'before:content-[""] before:absolute before:z-10'
+  )
 
-  // Active/hover styles
-  const interactionStyles = isResizing ? 'bg-primary/50' : 'hover:bg-primary/50'
-
-  // Direction-specific styles
   const directionStyles = isHorizontal
-    ? 'w-1 cursor-col-resize' // Thin vertical bar for horizontal resize
-    : 'h-1 w-full cursor-row-resize border-t border-border' // Thin horizontal bar with top border
+    ? cn(
+        'w-px cursor-col-resize bg-border',
+        // Invisible hit area: 8px wide strip centered on the 1px line
+        'before:top-0 before:bottom-0 before:-left-[4px] before:w-[9px]',
+        isResizing ? 'bg-primary' : 'hover:bg-primary'
+      )
+    : cn(
+        'h-px w-full cursor-row-resize bg-border',
+        // Invisible hit area: 8px tall strip centered on the 1px line
+        'before:left-0 before:right-0 before:-top-[4px] before:h-[9px]',
+        isResizing ? 'bg-primary' : 'hover:bg-primary'
+      )
 
   // Position styles (for absolute positioning inside panels)
   const positionStyles = position
@@ -67,7 +80,7 @@ const ResizeHandle: ForwardRefComponent<HTMLButtonElement, ResizeHandleProps> = 
       ref={ref}
       type="button"
       aria-label={`Resize ${direction === 'horizontal' ? 'panel width' : 'panel height'}`}
-      className={cn(baseStyles, interactionStyles, directionStyles, positionStyles, className)}
+      className={cn(baseStyles, directionStyles, positionStyles, className)}
       {...props}
     />
   )

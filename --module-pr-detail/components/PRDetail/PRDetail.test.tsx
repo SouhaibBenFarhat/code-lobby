@@ -321,7 +321,7 @@ describe('PRDetail', () => {
       })
 
       await waitFor(() => {
-        const commentBodies = container.querySelectorAll('.text-foreground\\/80')
+        const commentBodies = container.querySelectorAll('.text-foreground-muted')
         const texts = Array.from(commentBodies).map((el) => el.textContent)
         // Newest should appear first
         const newestIndex = texts.findIndex((t) => t?.includes('Newest comment'))
@@ -368,7 +368,7 @@ describe('PRDetail', () => {
 
       await waitFor(() => {
         // The approved badge should appear (showing the review is interleaved)
-        const approvedBadges = container.querySelectorAll('.bg-success\\/20')
+        const approvedBadges = container.querySelectorAll('.bg-success-subtle')
         expect(approvedBadges.length).toBeGreaterThan(0)
       })
     })
@@ -408,7 +408,7 @@ describe('PRDetail', () => {
 
         // First item should be the approval (newest)
         const firstItem = timelineItems[0]
-        expect(firstItem?.querySelector('.bg-success\\/15')).toBeInTheDocument()
+        expect(firstItem?.querySelector('.bg-success-subtle')).toBeInTheDocument()
       })
     })
 

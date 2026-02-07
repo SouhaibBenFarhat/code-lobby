@@ -27,7 +27,7 @@ export function NetworkPanelHeader({
 }: NetworkPanelHeaderProps): React.JSX.Element {
   return (
     <div
-      className="flex items-center justify-between h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm flex-shrink-0 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10"
+      className="flex items-center justify-between h-10 px-3 py-2 flex-shrink-0 section-header"
       data-testid="network-panel-header"
     >
       <div className="flex items-center gap-2 min-w-0">

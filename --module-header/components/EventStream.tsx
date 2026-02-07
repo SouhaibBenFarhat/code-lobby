@@ -103,7 +103,7 @@ function getEventText(event: PREvent): string {
 
 function EventItem({ event }: EventItemProps) {
   return (
-    <div className="flex gap-3 p-3 hover:bg-muted/30 transition-colors rounded-lg animate-slideIn">
+    <div className="flex gap-3 p-3 hover:bg-interactive-hover transition-colors rounded-lg animate-slideIn">
       <div className="flex-shrink-0 mt-1">
         {event.actor ? (
           <Avatar className="h-7 w-7">
@@ -113,7 +113,7 @@ function EventItem({ event }: EventItemProps) {
             </AvatarFallback>
           </Avatar>
         ) : (
-          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+          <div className="h-7 w-7 rounded-full bg-surface flex items-center justify-center">
             {getEventIcon(event.event)}
           </div>
         )}
@@ -127,13 +127,13 @@ function EventItem({ event }: EventItemProps) {
 
         {event.prTitle && (
           <p className="text-xs text-muted-foreground truncate">
-            <span className="text-foreground/80">#{event.prNumber}</span>{' '}
+            <span className="text-foreground-muted">#{event.prNumber}</span>{' '}
             {truncate(event.prTitle, 40)}
           </p>
         )}
 
         {event.body && (
-          <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/50 rounded p-2 mt-1">
+          <p className="text-xs text-muted-foreground line-clamp-2 bg-surface rounded p-2 mt-1">
             {truncate(event.body, 100)}
           </p>
         )}

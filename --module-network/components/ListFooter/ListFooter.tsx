@@ -12,10 +12,10 @@ export interface ListFooterProps {
 export function ListFooter({ count }: ListFooterProps): React.JSX.Element {
   return (
     <div
-      className="flex items-center justify-center py-4 border-t border-border/30"
+      className="flex items-center justify-center py-4 border-t border-border-subtle"
       data-testid="list-footer"
     >
-      <p className="text-[10px] text-muted-foreground/50">
+      <p className="text-[10px] text-foreground-subtle">
         — End of list ({count} request{count !== 1 ? 's' : ''}) —
       </p>
     </div>

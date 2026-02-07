@@ -39,7 +39,7 @@ export function CheckItem({ check }: CheckItemProps): React.JSX.Element {
   const getStatusBadge = () => {
     if (check.status === 'in_progress') {
       return (
-        <Badge variant="secondary" className="bg-warning/15 text-warning text-[10px]">
+        <Badge variant="secondary" className="bg-warning-subtle text-warning text-[10px]">
           Running
         </Badge>
       )
@@ -54,19 +54,19 @@ export function CheckItem({ check }: CheckItemProps): React.JSX.Element {
     switch (check.conclusion) {
       case 'success':
         return (
-          <Badge variant="secondary" className="bg-success/15 text-success text-[10px]">
+          <Badge variant="secondary" className="bg-success-subtle text-success text-[10px]">
             Passed
           </Badge>
         )
       case 'failure':
         return (
-          <Badge variant="secondary" className="bg-destructive/15 text-destructive text-[10px]">
+          <Badge variant="secondary" className="bg-destructive-subtle text-destructive text-[10px]">
             Failed
           </Badge>
         )
       case 'timed_out':
         return (
-          <Badge variant="secondary" className="bg-destructive/15 text-destructive text-[10px]">
+          <Badge variant="secondary" className="bg-destructive-subtle text-destructive text-[10px]">
             Timed out
           </Badge>
         )
@@ -95,7 +95,7 @@ export function CheckItem({ check }: CheckItemProps): React.JSX.Element {
     <Row
       align="center"
       gutter="sm"
-      className="group py-1.5 px-2 rounded-lg hover:bg-muted/50 transition-colors"
+      className="group py-1.5 px-2 rounded-lg hover:bg-interactive-hover transition-colors"
     >
       <Col span="auto">{getStatusIcon()}</Col>
       <Col span="auto" className="flex-1 min-w-0">

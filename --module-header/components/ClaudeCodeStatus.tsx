@@ -61,7 +61,7 @@ export function ClaudeCodeStatus(): React.JSX.Element {
           <span
             className={cn(
               'absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-background z-20 transition-colors',
-              isInstalled ? 'bg-green-500' : 'bg-muted-foreground/50'
+              isInstalled ? 'bg-green-500' : 'bg-foreground-ghost'
             )}
           />
         </div>

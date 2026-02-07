@@ -173,8 +173,8 @@ export function LabelsButton(): React.JSX.Element | null {
                     disabled={isPending}
                     className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
-                      'transition-colors hover:bg-muted',
-                      isSelected && 'bg-primary/10'
+                      'transition-colors hover:bg-interactive-hover',
+                      isSelected && 'bg-info-subtle'
                     )}
                   >
                     <span

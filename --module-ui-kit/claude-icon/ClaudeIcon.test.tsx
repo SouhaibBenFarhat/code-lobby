@@ -15,7 +15,7 @@ describe('ClaudeIcon', () => {
       expect(svg.tagName).toBe('svg')
     })
 
-    it('should have correct viewBox', () => {
+    it('should have correct viewBox (blocky character)', () => {
       render(<ClaudeIcon />)
       const svg = screen.getByRole('img', { name: 'Claude AI' })
       expect(svg).toHaveAttribute('viewBox', '0 0 24 24')
@@ -59,16 +59,16 @@ describe('ClaudeIcon', () => {
   })
 
   describe('icon content', () => {
-    it('should contain a path element', () => {
+    it('should contain rect elements (blocky character)', () => {
       const { container } = render(<ClaudeIcon />)
-      const path = container.querySelector('path')
-      expect(path).toBeInTheDocument()
+      const rects = container.querySelectorAll('rect')
+      expect(rects.length).toBeGreaterThan(0)
     })
 
-    it('should have Claude coral color', () => {
+    it('should use official Claude color (#D97757) for body/arms/legs', () => {
       const { container } = render(<ClaudeIcon />)
-      const path = container.querySelector('path')
-      expect(path).toHaveAttribute('fill', '#D97757')
+      const rects = container.querySelectorAll('rect[fill="#D97757"]')
+      expect(rects.length).toBeGreaterThan(0)
     })
   })
 })

@@ -67,7 +67,7 @@ export function PRTabBar({
   )
 
   return (
-    <div className="flex items-end gap-0.5 px-2 pt-2 bg-muted/30 border-b overflow-x-auto">
+    <div className="flex items-end gap-0.5 px-2 pt-2 bg-surface-content border-b border-border-muted overflow-x-auto">
       {/* PR Detail Tab (always first) */}
       <button
         type="button"
@@ -77,7 +77,7 @@ export function PRTabBar({
           'border border-b-0',
           activeTabId === null
             ? 'bg-background border-border text-foreground'
-            : 'bg-muted/50 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
+            : 'bg-surface border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-hover'
         )}
       >
         <span className="font-mono text-xs text-muted-foreground">#{prNumber}</span>
@@ -93,7 +93,7 @@ export function PRTabBar({
             'border border-b-0',
             activeTabId === tab.id
               ? 'bg-background border-border text-foreground'
-              : 'bg-muted/50 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
+              : 'bg-surface border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-hover'
           )}
         >
           <button
@@ -101,7 +101,7 @@ export function PRTabBar({
             onClick={() => onSelectTab(tab.id)}
             className="flex items-center gap-1.5 flex-1 min-w-0"
           >
-            <Globe className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
+            <Globe className="w-3.5 h-3.5 flex-shrink-0 text-info" />
             <span className="truncate flex-1 text-left">{tab.title || getHostname(tab.url)}</span>
           </button>
           <Tooltip>
@@ -113,7 +113,7 @@ export function PRTabBar({
                   onCloseTab(tab.id)
                 }}
                 className={cn(
-                  'p-0.5 rounded hover:bg-muted-foreground/20 transition-opacity',
+                  'p-0.5 rounded hover:bg-interactive-hover transition-opacity',
                   activeTabId === tab.id
                     ? 'opacity-60 hover:opacity-100'
                     : 'opacity-0 group-hover:opacity-60'

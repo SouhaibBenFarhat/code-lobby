@@ -389,7 +389,7 @@ export function DailySpeechModal({
       <ScrollArea className="flex-1">
         {reports.length === 0 ? (
           <Flex direction="col" align="center" justify="center" gap="lg" className="h-full py-16">
-            <div className="p-4 bg-muted rounded-full">
+            <div className="p-4 bg-surface rounded-full">
               <History className="w-8 h-8 text-muted-foreground" />
             </div>
             <div className="text-center">
@@ -422,7 +422,7 @@ export function DailySpeechModal({
                   key={report.id}
                   className={cn(
                     'border rounded-lg overflow-hidden transition-all',
-                    isExpanded ? 'bg-muted/30' : 'hover:bg-muted/20'
+                    isExpanded ? 'bg-surface' : 'hover:bg-interactive-hover'
                   )}
                 >
                   {/* Header */}
@@ -491,7 +491,7 @@ export function DailySpeechModal({
 
       {/* Footer hint */}
       {(!hasApiKey || !githubToken) && (
-        <div className="px-6 py-3 border-t bg-muted/30 text-sm text-muted-foreground text-center">
+        <div className="px-6 py-3 border-t bg-surface text-sm text-muted-foreground text-center">
           {!hasApiKey && !githubToken
             ? 'Configure Claude API key and GitHub token to generate reports'
             : !hasApiKey
@@ -555,7 +555,7 @@ export function DailySpeechModal({
 
       {/* Error state */}
       {state.stage === 'error' && (
-        <div className="px-6 py-4 border-t bg-destructive/10">
+        <div className="px-6 py-4 border-t bg-destructive-subtle">
           <Flex align="center" gap="sm" className="text-destructive">
             <AlertCircle className="w-4 h-4" />
             <span className="text-sm">{state.error}</span>
@@ -599,7 +599,7 @@ export function DailySpeechModal({
         <Flex
           align="center"
           gap="md"
-          className="px-6 py-2 border-b bg-muted/30 text-xs text-muted-foreground"
+          className="px-6 py-2 border-b bg-surface text-xs text-muted-foreground"
         >
           <Flex align="center" gap="xs">
             <Calendar className="w-3 h-3" />

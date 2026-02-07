@@ -309,7 +309,7 @@ describe('Select', () => {
 
       await waitFor(() => {
         const separator = screen.getByTestId('separator')
-        expect(separator).toHaveClass('h-px', 'bg-muted')
+        expect(separator).toHaveClass('h-px', 'bg-border-muted')
       })
     })
   })

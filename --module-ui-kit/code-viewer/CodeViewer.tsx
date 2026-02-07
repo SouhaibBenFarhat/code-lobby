@@ -96,13 +96,13 @@ export function CodeViewer({
       if (!highlightSet.has(lineNumber)) return ''
       switch (highlightType) {
         case 'addition':
-          return 'bg-success/20'
+          return 'bg-success-subtle'
         case 'deletion':
-          return 'bg-destructive/20'
+          return 'bg-destructive-subtle'
         case 'modification':
-          return 'bg-warning/20'
+          return 'bg-warning-subtle'
         default:
-          return 'bg-primary/20'
+          return 'bg-info-subtle'
       }
     },
     [highlightSet, highlightType]
@@ -110,7 +110,7 @@ export function CodeViewer({
 
   if (isLoading) {
     return (
-      <div className={cn('code-viewer h-full bg-[#0d1117]', className)}>
+      <div className={cn('code-viewer h-full bg-code text-code-foreground', className)}>
         <div className="font-mono text-xs p-0">
           <table className="w-full border-collapse">
             <tbody>
@@ -157,7 +157,7 @@ export function CodeViewer({
                   >
                     {/* Line number skeleton */}
                     <td
-                      className="text-right pr-4 pl-2 select-none border-r border-border/20 sticky left-0 bg-[#0d1117]"
+                      className="text-right pr-4 pl-2 select-none border-r border-border-subtle sticky left-0 bg-code"
                       style={{ width: 50, minWidth: 50 }}
                     >
                       <Skeleton className="h-3 w-4 ml-auto bg-muted-foreground/10" />
@@ -183,7 +183,7 @@ export function CodeViewer({
     return (
       <div
         className={cn(
-          'flex items-center justify-center h-full bg-[#0d1117] text-destructive',
+          'flex items-center justify-center h-full bg-code text-destructive text-code-foreground',
           className
         )}
       >
@@ -199,7 +199,7 @@ export function CodeViewer({
     return (
       <div
         className={cn(
-          'flex items-center justify-center h-full bg-[#0d1117] text-muted-foreground',
+          'flex items-center justify-center h-full bg-code text-code-foreground',
           className
         )}
       >
@@ -212,7 +212,10 @@ export function CodeViewer({
   const lineNumberWidth = Math.max(3, String(lineCount).length) * 10 + 16 // Estimate width based on digits
 
   return (
-    <div ref={scrollRef} className={cn('code-viewer h-full bg-[#0d1117]', className)}>
+    <div
+      ref={scrollRef}
+      className={cn('code-viewer h-full bg-code text-code-foreground', className)}
+    >
       <ScrollArea className="h-full">
         <div className="font-mono text-xs">
           {/* Sticky header with filename info (optional) */}
@@ -227,9 +230,9 @@ export function CodeViewer({
                   <tr
                     key={`line-${lineNumber}`}
                     className={cn(
-                      'leading-relaxed hover:bg-white/5 transition-colors cursor-pointer',
+                      'leading-relaxed hover:bg-interactive-hover transition-colors cursor-pointer',
                       highlightClass,
-                      isSelected && 'bg-primary/30 hover:bg-primary/35'
+                      isSelected && 'bg-info-subtle hover:bg-info-subtle'
                     )}
                     onClick={() => handleLineClick(lineNumber)}
                     data-line={lineNumber}
@@ -237,7 +240,7 @@ export function CodeViewer({
                   >
                     {/* Line number */}
                     <td
-                      className="text-right pr-4 pl-2 text-muted-foreground/50 select-none border-r border-border/20 sticky left-0 bg-[#0d1117]"
+                      className="text-right pr-4 pl-2 text-foreground-subtle select-none border-r border-border-subtle sticky left-0 bg-code"
                       style={{ width: lineNumberWidth, minWidth: lineNumberWidth }}
                     >
                       {lineNumber}

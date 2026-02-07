@@ -150,6 +150,21 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   const messages = session?.messages ?? []
 
+  // Expand thinking sections by default (disable auto-collapse): add any message with thinking to expanded set
+  useEffect(() => {
+    setExpandedThinking((prev) => {
+      let changed = false
+      const next = new Set(prev)
+      for (const m of messages) {
+        if (m.thinking && !next.has(m.id)) {
+          next.add(m.id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [messages])
+
   // isStreaming: true while actively streaming OR while finalizing (status='done' but content not yet in messages)
   // This prevents the flash where StreamingBubble hides before MessageBubble appears
   const isActivelyStreaming =
@@ -181,8 +196,8 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     toolHistory: session?.toolHistory ?? []
   }
 
-  // Reduced throttle: 30ms instead of 100ms for snappier updates
-  const throttledStreaming = useThrottledValue(streaming, 30)
+  // Throttle streaming display: 80ms = responsive (text feels live) without layout thrash (plain text + containment handle jump)
+  const throttledStreaming = useThrottledValue(streaming, 80)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // REFS
@@ -190,8 +205,26 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isAutoScrollingRef = useRef(false)
+  /** User has scrolled up; stop auto-scroll until they scroll back to bottom or click "scroll to bottom". */
+  const userScrolledUpRef = useRef(false)
+  /** After we programmatically scroll, the next scroll event may be from that scroll; don't re-enable. */
+  const programmaticScrollJustFinishedRef = useRef(false)
   const lastScrollTopRef = useRef(0)
-  const virtualizerScrollToEndRef = useRef<(() => void) | null>(null)
+  const virtualizerScrollToEndRef = useRef<((opts?: { smooth?: boolean }) => void) | null>(null)
+  /** Ref to bottom anchor; we use scrollIntoView() on content update (ChatGPT-style). */
+  const scrollAnchorRef = useRef<HTMLDivElement>(null)
+
+  /** Scroll so the bottom anchor is in view. Single source of truth for "stay at bottom" to avoid jerk from mixing virtualizer scroll with anchor. */
+  const scrollAnchorIntoView = useCallback(() => {
+    if (userScrolledUpRef.current || !scrollAnchorRef.current) return
+    isAutoScrollingRef.current = true
+    scrollAnchorRef.current.scrollIntoView({ block: 'end', behavior: 'auto' })
+    const t = setTimeout(() => {
+      isAutoScrollingRef.current = false
+      programmaticScrollJustFinishedRef.current = true
+    }, 100)
+    return t
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SCROLL MANAGEMENT
@@ -206,11 +239,13 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   }, [])
 
   const scrollToBottom = useCallback((smooth = true) => {
+    if (userScrolledUpRef.current) return
+
     isAutoScrollingRef.current = true
 
     // Use virtualizer's scrollToEnd if available (more accurate for virtualized lists)
     if (virtualizerScrollToEndRef.current) {
-      virtualizerScrollToEndRef.current()
+      virtualizerScrollToEndRef.current({ smooth })
     } else {
       const container = scrollContainerRef.current
       if (container) {
@@ -221,12 +256,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
       }
     }
 
-    setTimeout(
-      () => {
-        isAutoScrollingRef.current = false
-      },
-      smooth ? 300 : 50
-    )
+    const delay = smooth ? 400 : 150
+    setTimeout(() => {
+      isAutoScrollingRef.current = false
+      programmaticScrollJustFinishedRef.current = true
+    }, delay)
   }, [])
 
   const handleScroll = useCallback(() => {
@@ -240,20 +274,41 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     const scrolledUp = currentScrollTop < lastScrollTopRef.current
     lastScrollTopRef.current = currentScrollTop
 
-    // User scrolled UP by any amount -> disable auto-scroll
+    // User scrolled UP by any amount -> disable auto-scroll (sync ref so effect sees it immediately)
     if (scrolledUp) {
+      userScrolledUpRef.current = true
       setUserScrolledUp(true)
+      programmaticScrollJustFinishedRef.current = false
+      return
     }
-    // User scrolled to the very bottom -> re-enable auto-scroll
-    else if (isAtBottom()) {
+    // User scrolled to the very bottom -> re-enable auto-scroll only if this wasn't our programmatic scroll
+    if (isAtBottom()) {
+      if (programmaticScrollJustFinishedRef.current) {
+        programmaticScrollJustFinishedRef.current = false
+        return
+      }
+      userScrolledUpRef.current = false
       setUserScrolledUp(false)
     }
   }, [isAtBottom])
 
   // Callback when virtualizer is ready - stores the scrollToEnd function
-  const handleVirtualizerReady = useCallback((scrollToEnd: () => void) => {
-    virtualizerScrollToEndRef.current = scrollToEnd
+  const handleVirtualizerReady = useCallback(
+    (scrollToEnd: (opts?: { smooth?: boolean }) => void) => {
+      virtualizerScrollToEndRef.current = scrollToEnd
+    },
+    []
+  )
+
+  // As soon as user scrolls up (wheel), stop auto-scroll before any scroll event or effect run
+  const handleScrollUpIntent = useCallback(() => {
+    userScrolledUpRef.current = true
+    setUserScrolledUp(true)
+    programmaticScrollJustFinishedRef.current = false
   }, [])
+
+  // Stable callback for VirtualizedMessageList: check before applying scroll in rAF (cancels in-flight scrolls)
+  const getShouldAutoScroll = useCallback(() => !userScrolledUpRef.current, [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SEND MESSAGE (via Claude Code CLI)
@@ -264,8 +319,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
       if (!sessionId || !hasApiKey) return
 
       setError(null)
+      userScrolledUpRef.current = false
       setUserScrolledUp(false)
-      scrollToBottom(false)
+      // Use anchor only (no virtualizer scrollToBottom) to avoid jerk from mixed scroll methods
+      scrollAnchorIntoView()
+      setTimeout(() => scrollAnchorIntoView(), 120)
 
       // Build FULL PR context - Claude gets everything internally via system prompt
       const prContext = selectedPR
@@ -356,7 +414,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
       selectedModel,
       thinkingBudget,
       sendMessageMutation,
-      scrollToBottom,
+      scrollAnchorIntoView,
       currentUser?.login
     ]
   )
@@ -372,24 +430,44 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     }
   }, [session?.error])
 
-  // Auto-scroll during streaming
+  // Auto-scroll during streaming: scroll anchor into view on each content or thinking update (ChatGPT-style).
+  // One anchor at bottom + scrollIntoView(block: 'end') keeps view at live edge. Include thinking so
+  // when the thinking section appears or grows, the chat scrolls down to show it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intent is to run when content/thinking updates (scroll to new bottom)
   useEffect(() => {
-    if (streaming.isStreaming && !userScrolledUp && throttledStreaming.content) {
-      scrollToBottom(false)
-    }
-  }, [streaming.isStreaming, userScrolledUp, scrollToBottom, throttledStreaming.content])
+    if (!streaming.isStreaming || userScrolledUpRef.current || !scrollAnchorRef.current) return
+    isAutoScrollingRef.current = true
+    scrollAnchorRef.current.scrollIntoView({ block: 'end', behavior: 'auto' })
+    const t = setTimeout(() => {
+      isAutoScrollingRef.current = false
+      programmaticScrollJustFinishedRef.current = true
+    }, 100)
+    return () => clearTimeout(t)
+  }, [streaming.isStreaming, throttledStreaming.content, throttledStreaming.thinking])
 
   // Scroll when new messages arrive
   useEffect(() => {
     if (!streaming.isStreaming && messages.length > 0) {
-      scrollToBottom()
+      userScrolledUpRef.current = false
       setUserScrolledUp(false)
+      const wasStreaming = prevStreamingRef.current
+      if (wasStreaming) {
+        // Streaming just ended: use anchor after layout (double rAF) so virtualizer has measured; avoids jerk from scrollToBottom + wrong scrollHeight.
+        const raf1 = requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollAnchorIntoView()
+          })
+        })
+        return () => cancelAnimationFrame(raf1)
+      }
+      scrollToBottom()
     }
-  }, [messages.length, streaming.isStreaming, scrollToBottom])
+  }, [messages.length, streaming.isStreaming, scrollToBottom, scrollAnchorIntoView])
 
   // Reset scroll and clear pending review when PR changes
   useEffect(() => {
     if (selectedPR) {
+      userScrolledUpRef.current = false
       setUserScrolledUp(false)
       setTimeout(() => scrollToBottom(false), 100)
     }
@@ -501,6 +579,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   }, [])
 
   const handleScrollToBottomClick = useCallback(() => {
+    userScrolledUpRef.current = false
     setUserScrolledUp(false)
     scrollToBottom(true)
   }, [scrollToBottom])
@@ -591,7 +670,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         />
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-orange-500/10 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto rounded-full bg-warning-subtle flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-orange-500" />
             </div>
             <h3 className="text-lg font-semibold">Claude Code CLI Required</h3>
@@ -599,7 +678,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
               CodeLobby uses Claude Code CLI for AI features. Install it to enable AI-powered PR
               analysis.
             </p>
-            <div className="bg-muted p-3 rounded-md font-mono text-sm">
+            <div className="bg-surface p-3 rounded-md font-mono text-sm">
               npm install -g @anthropic-ai/claude-code
             </div>
             <p className="text-xs text-muted-foreground">After installing, restart CodeLobby.</p>
@@ -634,7 +713,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         />
       )}
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden bg-chat">
         {/* No PR selected */}
         {!selectedPR && <NoPRSelectedState apiKey={hasApiKey ? 'configured' : null} />}
 
@@ -660,7 +739,10 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
                 toggleThinkingExpanded={toggleThinkingExpanded}
                 setMessageQueue={setMessageQueue}
                 scrollContainerRef={scrollContainerRef}
+                scrollAnchorRef={scrollAnchorRef}
                 onScroll={handleScroll}
+                onScrollUpIntent={handleScrollUpIntent}
+                getShouldAutoScroll={getShouldAutoScroll}
                 onVirtualizerReady={handleVirtualizerReady}
                 user={user}
                 sessionReviews={sessionReviews}
@@ -686,7 +768,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
       {/* Error */}
       {error && (
-        <div className="px-3 py-2 bg-destructive/10 border-t border-destructive/20 text-destructive text-sm">
+        <div className="px-3 py-2 bg-destructive-subtle border-t border-destructive-border text-destructive text-sm">
           {error}
         </div>
       )}

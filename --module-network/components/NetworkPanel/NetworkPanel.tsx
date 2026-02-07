@@ -53,7 +53,7 @@ export function NetworkPanel({ onClose }: NetworkPanelProps): React.JSX.Element 
       <NetworkSearchInput value={searchQuery} onChange={setSearchQuery} />
 
       {/* Content area with stats and request list */}
-      <div className="flex flex-col min-h-0 flex-1 overflow-hidden border-t border-border/50">
+      <div className="flex flex-col min-h-0 flex-1 overflow-hidden border-t border-border-muted">
         {/* Summary stats */}
         {requests.length > 0 && (
           <NetworkStats

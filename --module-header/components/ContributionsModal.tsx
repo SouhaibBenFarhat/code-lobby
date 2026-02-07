@@ -91,7 +91,7 @@ function CircularProgress({
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-muted/30"
+          className="text-foreground-ghost"
         />
         {/* Progress circle */}
         <circle
@@ -129,7 +129,7 @@ function StatCard({
   subtext?: string
 }): React.JSX.Element {
   return (
-    <div className="bg-card/50 rounded-xl p-4 border border-border/50 hover:border-border transition-colors">
+    <div className="bg-surface rounded-xl p-4 border border-border-muted hover:border-border transition-colors">
       <div className="flex items-center gap-3">
         <div className={cn('p-2 rounded-lg', color)}>
           <Icon className="w-4 h-4" />
@@ -139,7 +139,7 @@ function StatCard({
             <AnimatedNumber value={value} suffix={suffix} />
           </p>
           <p className="text-xs text-muted-foreground truncate">{label}</p>
-          {subtext && <p className="text-[10px] text-muted-foreground/70">{subtext}</p>}
+          {subtext && <p className="text-[10px] text-foreground-muted">{subtext}</p>}
         </div>
       </div>
     </div>
@@ -148,7 +148,7 @@ function StatCard({
 
 // Heatmap color based on contribution count
 function getHeatmapColor(count: number, maxCount: number): string {
-  if (count === 0) return 'bg-muted/40'
+  if (count === 0) return 'bg-surface'
   const intensity = count / Math.max(maxCount, 1)
   if (intensity > 0.75) return 'bg-green-500'
   if (intensity > 0.5) return 'bg-green-400'
@@ -260,7 +260,7 @@ function ActivityHeatmap({ data }: { data: ContributionsData }): React.JSX.Eleme
       {/* Legend */}
       <div className="flex items-center justify-end gap-0.5 pt-1 text-[7px] text-muted-foreground">
         <span>Less</span>
-        <div className="w-[6px] h-[6px] rounded-[1px] bg-muted/40" />
+        <div className="w-[6px] h-[6px] rounded-[1px] bg-surface" />
         <div className="w-[6px] h-[6px] rounded-[1px] bg-green-200/60" />
         <div className="w-[6px] h-[6px] rounded-[1px] bg-green-300/80" />
         <div className="w-[6px] h-[6px] rounded-[1px] bg-green-400" />
@@ -314,7 +314,7 @@ function ContributionBreakdown({ data }: { data: ContributionsData }): React.JSX
               </CircularProgress>
               <div>
                 <p className="text-sm font-semibold">{value.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[10px] text-foreground-muted">
                   {label} ({percent}%)
                 </p>
               </div>
@@ -341,34 +341,34 @@ function ContributionsContent({ data }: { data: ContributionsData }): React.JSX.
           icon={Zap}
           label="Total Contributions"
           value={data.totalContributions}
-          color="bg-primary/10 text-primary"
+          color="bg-info-subtle text-primary"
         />
         <StatCard
           icon={Flame}
           label="Current Streak"
           value={data.currentStreak}
           suffix=" days"
-          color="bg-orange-500/10 text-orange-500"
+          color="bg-warning-subtle text-warning"
         />
         <StatCard
           icon={Trophy}
           label="Longest Streak"
           value={data.longestStreak}
           suffix=" days"
-          color="bg-yellow-500/10 text-yellow-500"
+          color="bg-warning-subtle text-warning"
         />
         <StatCard
           icon={TrendingUp}
           label="Daily Average"
           value={data.averagePerDay}
-          color="bg-blue-500/10 text-blue-500"
+          color="bg-info-subtle text-info"
         />
       </div>
 
       {/* Activity Heatmap */}
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground">Activity (Last Year)</h3>
-        <div className="bg-card/30 rounded-xl p-2 border border-border/50 overflow-x-auto">
+        <div className="bg-surface rounded-xl p-2 border border-border-muted overflow-x-auto">
           <ActivityHeatmap data={data} />
         </div>
       </div>
@@ -378,9 +378,9 @@ function ContributionsContent({ data }: { data: ContributionsData }): React.JSX.
 
       {/* Most Active Day */}
       {data.mostActiveDay && data.mostActiveDayCount > 0 && (
-        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
+        <div className="bg-info-subtle rounded-xl p-4 border border-primary">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/20 rounded-lg">
+            <div className="p-2 bg-info-subtle rounded-lg">
               <Trophy className="w-5 h-5 text-primary" />
             </div>
             <div>
@@ -455,7 +455,7 @@ export function ContributionsModal({ user }: ContributionsModalProps): React.JSX
 
           {error && !data && (
             <div className="flex flex-col items-center justify-center h-[300px] gap-3 text-center">
-              <div className="p-3 bg-destructive/10 rounded-full">
+              <div className="p-3 bg-destructive-subtle rounded-full">
                 <Zap className="w-6 h-6 text-destructive" />
               </div>
               <p className="text-sm text-muted-foreground">Failed to load contributions</p>

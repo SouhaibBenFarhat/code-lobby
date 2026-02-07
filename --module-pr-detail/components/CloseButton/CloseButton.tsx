@@ -135,7 +135,7 @@ export function CloseButton(): React.JSX.Element | null {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-3 gap-1.5 font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50"
+              className="h-7 px-3 gap-1.5 font-medium hover:bg-destructive-subtle hover:text-destructive hover:border-destructive/50"
             >
               <X className="w-3.5 h-3.5" />
               <span className="text-xs">Close</span>
@@ -172,7 +172,7 @@ export function CloseButton(): React.JSX.Element | null {
           </div>
 
           {error && (
-            <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
+            <div className="p-2 bg-destructive-subtle border border-destructive-border rounded text-xs text-destructive">
               {error}
             </div>
           )}

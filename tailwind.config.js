@@ -15,46 +15,94 @@ module.exports = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        /* Semantic surface hierarchy
+         * All colors use oklch() with <alpha-value> for Tailwind opacity modifiers */
+        background: "oklch(var(--background) / <alpha-value>)",
+        foreground: {
+          DEFAULT: "oklch(var(--foreground) / <alpha-value>)",
+          muted: "oklch(var(--foreground-muted) / <alpha-value>)",
+          subtle: "oklch(var(--foreground-subtle) / <alpha-value>)",
+          ghost: "oklch(var(--foreground-ghost) / <alpha-value>)",
+        },
+        surface: {
+          DEFAULT: "oklch(var(--surface) / <alpha-value>)",
+          content: "oklch(var(--surface-content) / <alpha-value>)",
+          raised: "oklch(var(--surface-raised) / <alpha-value>)",
+          hover: "oklch(var(--surface-hover) / <alpha-value>)",
+          foreground: "oklch(var(--surface-foreground) / <alpha-value>)",
+        },
+        overlay: "oklch(var(--overlay) / <alpha-value>)",
+        code: {
+          DEFAULT: "oklch(var(--code-bg) / <alpha-value>)",
+          foreground: "oklch(var(--code-fg) / <alpha-value>)",
+        },
+        chat: {
+          DEFAULT: "oklch(var(--chat-bg) / <alpha-value>)",
+          bubble: "oklch(var(--chat-bubble) / <alpha-value>)",
+        },
+        /* Borders */
+        border: {
+          DEFAULT: "oklch(var(--border) / <alpha-value>)",
+          muted: "oklch(var(--border-muted) / <alpha-value>)",
+          subtle: "oklch(var(--border-subtle) / <alpha-value>)",
+        },
+        /* Interactive states */
+        interactive: {
+          hover: "oklch(var(--interactive-hover) / <alpha-value>)",
+          active: "oklch(var(--interactive-active) / <alpha-value>)",
+        },
+        /* Input / ring */
+        input: "oklch(var(--input) / <alpha-value>)",
+        ring: "oklch(var(--ring) / <alpha-value>)",
+        /* Accent / brand */
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "oklch(var(--primary) / <alpha-value>)",
+          foreground: "oklch(var(--primary-foreground) / <alpha-value>)",
         },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
+        /* System status */
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "oklch(var(--destructive) / <alpha-value>)",
+          foreground: "oklch(var(--destructive-foreground) / <alpha-value>)",
+          subtle: "oklch(var(--destructive-subtle) / <alpha-value>)",
+          border: "oklch(var(--destructive-border) / <alpha-value>)",
         },
         success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
+          DEFAULT: "oklch(var(--success) / <alpha-value>)",
+          foreground: "oklch(var(--success-foreground) / <alpha-value>)",
+          subtle: "oklch(var(--success-subtle) / <alpha-value>)",
+          border: "oklch(var(--success-border) / <alpha-value>)",
         },
         warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
+          DEFAULT: "oklch(var(--warning) / <alpha-value>)",
+          foreground: "oklch(var(--warning-foreground) / <alpha-value>)",
+          subtle: "oklch(var(--warning-subtle) / <alpha-value>)",
+          border: "oklch(var(--warning-border) / <alpha-value>)",
+        },
+        info: {
+          DEFAULT: "oklch(var(--info) / <alpha-value>)",
+          subtle: "oklch(var(--info-subtle) / <alpha-value>)",
+          border: "oklch(var(--info-border) / <alpha-value>)",
+        },
+        /* Backward-compatible aliases (map to new tokens) */
+        secondary: {
+          DEFAULT: "oklch(var(--secondary) / <alpha-value>)",
+          foreground: "oklch(var(--secondary-foreground) / <alpha-value>)",
+        },
+        muted: {
+          DEFAULT: "oklch(var(--muted) / <alpha-value>)",
+          foreground: "oklch(var(--muted-foreground) / <alpha-value>)",
+        },
+        accent: {
+          DEFAULT: "oklch(var(--accent) / <alpha-value>)",
+          foreground: "oklch(var(--accent-foreground) / <alpha-value>)",
+        },
+        popover: {
+          DEFAULT: "oklch(var(--popover) / <alpha-value>)",
+          foreground: "oklch(var(--popover-foreground) / <alpha-value>)",
+        },
+        card: {
+          DEFAULT: "oklch(var(--card) / <alpha-value>)",
+          foreground: "oklch(var(--card-foreground) / <alpha-value>)",
         },
       },
       borderRadius: {
@@ -68,7 +116,11 @@ module.exports = {
         'apple-xl': '20px',
       },
       boxShadow: {
-        /* Apple-style shadows */
+        /* Elevation-aware shadows (use CSS variables so light/dark differ) */
+        'elevation-low': 'var(--shadow-elevation-low)',
+        'elevation-medium': 'var(--shadow-elevation-medium)',
+        'elevation-high': 'var(--shadow-elevation-high)',
+        /* Apple-style shadows (static, for decorative use) */
         'apple-sm': '0 1px 2px rgba(0, 0, 0, 0.04)',
         'apple': '0 2px 8px rgba(0, 0, 0, 0.08)',
         'apple-md': '0 4px 16px rgba(0, 0, 0, 0.12)',

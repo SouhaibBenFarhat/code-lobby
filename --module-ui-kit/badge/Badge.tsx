@@ -10,7 +10,7 @@ const badgeVariants: (props?: Record<string, unknown>) => string = cva(
       variant: {
         default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
         secondary:
-          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'border-transparent bg-secondary text-secondary-foreground hover:bg-interactive-hover',
         destructive:
           'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
         success: 'border-transparent bg-success text-success-foreground',

@@ -128,9 +128,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
         <div
           className={cn(
             'flex items-center h-10 px-2 border-b border-border',
-            'bg-card/80 dark:bg-card/60 backdrop-blur-sm',
-            'shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)]',
-            'relative z-10',
+            'section-header',
             isDraggable && 'drag-handle cursor-grab active:cursor-grabbing'
           )}
           style={color ? { backgroundColor: `${color}15`, borderBottomColor: `${color}40` } : {}}
@@ -145,7 +143,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
             <div className="flex items-center gap-1.5 min-w-0">
               <FolderGit2
                 className="w-3.5 h-3.5 flex-shrink-0"
-                style={color ? { color } : { color: 'hsl(var(--primary))' }}
+                style={color ? { color } : { color: 'oklch(var(--primary))' }}
               />
               <span className="font-semibold text-sm truncate">{repo.name}</span>
               {totalPRs > 0 && (
@@ -192,7 +190,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                         className={cn(
                           'w-6 h-6 rounded-md border-2 transition-all hover:scale-110',
                           c === color ? 'ring-2 ring-offset-2 ring-primary' : 'border-transparent',
-                          !c && 'bg-muted border-dashed border-muted-foreground/30'
+                          !c && 'bg-surface border-dashed border-border-muted'
                         )}
                         style={c ? { backgroundColor: c } : {}}
                         onClick={() => {
@@ -201,7 +199,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                         }}
                         title={c || 'No color'}
                       >
-                        {!c && <X className="w-3 h-3 mx-auto text-muted-foreground/50" />}
+                        {!c && <X className="w-3 h-3 mx-auto text-foreground-subtle" />}
                       </Button>
                     ))}
                   </div>
@@ -215,7 +213,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn('h-6 w-6', showOnlyMyPRs && 'text-primary bg-primary/20')}
+                    className={cn('h-6 w-6', showOnlyMyPRs && 'text-primary bg-info-subtle')}
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
@@ -308,7 +306,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:text-destructive hover:bg-destructive/10"
+                    className="h-6 w-6 hover:text-destructive hover:bg-destructive-subtle"
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
@@ -342,7 +340,7 @@ export const RepoCard: React.MemoExoticComponent<(props: RepoCardProps) => React
             ) : (
               <div className="h-full flex items-center justify-center text-center py-4">
                 <div className="space-y-1">
-                  <GitPullRequest className="w-6 h-6 text-muted-foreground/50 mx-auto" />
+                  <GitPullRequest className="w-6 h-6 text-foreground-subtle mx-auto" />
                   <p className="text-[10px] text-muted-foreground">
                     {showOnlyMyPRs && totalPRs > 0 ? 'No PRs by you' : 'No open PRs'}
                   </p>

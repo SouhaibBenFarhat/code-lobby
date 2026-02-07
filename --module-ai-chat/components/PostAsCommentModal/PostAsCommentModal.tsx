@@ -92,7 +92,7 @@ export function PostAsCommentModal({
         <div className="space-y-3">
           {/* Success message */}
           {showSuccess && (
-            <div className="flex items-center gap-2 text-sm text-success bg-success/10 px-3 py-2 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-success bg-success-subtle px-3 py-2 rounded-md">
               <MessageSquarePlus className="w-4 h-4" />
               <span>Comment posted successfully!</span>
             </div>
@@ -100,14 +100,14 @@ export function PostAsCommentModal({
 
           {/* Error message */}
           {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive-subtle px-3 py-2 rounded-md">
               <span>{error}</span>
             </div>
           )}
 
           {/* No PR selected warning */}
           {!pr && (
-            <div className="flex items-center gap-2 text-sm text-warning bg-warning/10 px-3 py-2 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-warning bg-warning-subtle px-3 py-2 rounded-md">
               <span>No PR selected. Please select a PR to post comments.</span>
             </div>
           )}

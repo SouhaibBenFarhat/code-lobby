@@ -209,7 +209,7 @@ export function useSlotModules(slotName: SlotName): SlotEntry[] {
 function SlotSkeleton(): React.JSX.Element {
   return (
     <div
-      className="animate-pulse bg-muted/50 rounded"
+      className="animate-pulse bg-surface rounded"
       style={{ minHeight: '2rem', width: '100%' }}
     />
   )

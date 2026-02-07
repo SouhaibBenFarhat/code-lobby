@@ -44,11 +44,11 @@ export function ReviewerNode({
   const getCardClasses = () => {
     switch (reviewer.reviewState) {
       case 'approved':
-        return 'bg-success/15 border-l-success dark:bg-success/20'
+        return 'bg-success-subtle border-l-success'
       case 'changes_requested':
-        return 'bg-destructive/15 border-l-destructive dark:bg-destructive/20'
+        return 'bg-destructive-subtle border-l-destructive'
       default:
-        return 'bg-muted/40 border-l-primary/50 dark:bg-muted/50'
+        return 'bg-surface border-l-primary'
     }
   }
 
@@ -59,7 +59,7 @@ export function ReviewerNode({
         return (
           <Badge
             variant="default"
-            className="bg-success/20 text-success text-[9px] h-[18px] px-1.5"
+            className="bg-success-subtle text-success text-[9px] h-[18px] px-1.5"
           >
             Approved
           </Badge>
@@ -68,7 +68,7 @@ export function ReviewerNode({
         return (
           <Badge
             variant="default"
-            className="bg-destructive/20 text-destructive text-[9px] h-[18px] px-1.5"
+            className="bg-destructive-subtle text-destructive text-[9px] h-[18px] px-1.5"
           >
             Changes
           </Badge>
@@ -154,7 +154,7 @@ export function ReviewerNode({
                 variant="unstyled"
                 size="none"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1 hover:bg-muted/50 rounded"
+                className="p-1 hover:bg-interactive-hover rounded"
               >
                 <ChevronRight
                   className={cn(
@@ -169,7 +169,7 @@ export function ReviewerNode({
 
         {/* Review body preview */}
         {reviewer.reviewBody && (
-          <div className="mt-2 text-xs text-foreground/80 dark:text-foreground/70">
+          <div className="mt-2 text-xs text-foreground-muted">
             <MarkdownContent
               content={
                 isExpanded || !shouldTruncate
@@ -193,7 +193,7 @@ export function ReviewerNode({
 
       {/* Expanded content - inline comments */}
       {isExpanded && hasComments && (
-        <div className="border-t border-border/30 bg-background/50 p-3 space-y-4">
+        <div className="border-t border-border-subtle bg-background p-3 space-y-4">
           {reviewer.files.flatMap((file) =>
             file.comments.map((comment) => (
               <CommentNode key={comment.id} comment={comment} filePath={file.path} />

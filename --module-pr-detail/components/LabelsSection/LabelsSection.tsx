@@ -142,7 +142,7 @@ export function LabelsSection({
             className={cn(
               'ml-0.5 rounded-full p-0.5 transition-colors',
               'opacity-60 hover:opacity-100',
-              'hover:bg-black/20 dark:hover:bg-white/20'
+              'hover:bg-interactive-hover'
             )}
           >
             <X className="w-3 h-3" />
@@ -197,8 +197,8 @@ export function LabelsSection({
                           disabled={isPending}
                           className={cn(
                             'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm',
-                            'transition-colors hover:bg-muted',
-                            isSelected && 'bg-muted/50'
+                            'transition-colors hover:bg-interactive-hover',
+                            isSelected && 'bg-surface'
                           )}
                         >
                           <span

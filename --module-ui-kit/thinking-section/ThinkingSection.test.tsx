@@ -148,7 +148,7 @@ describe('ThinkingSection', () => {
   describe('styling', () => {
     it('applies primary background when expanded', () => {
       const { container } = render(<ThinkingSection thinking="test" defaultExpanded />)
-      expect(container.firstChild).toHaveClass('bg-primary/5')
+      expect(container.firstChild).toHaveClass('bg-info-subtle')
     })
 
     it('applies custom className', () => {

@@ -39,12 +39,12 @@ describe('Claude Icons', () => {
       expect(svg).toHaveAttribute('height', '48')
     })
 
-    it('should contain a path element with fill color', () => {
+    it('should contain a rect element with fill color', () => {
       render(<ClaudeIcon data-testid="claude-icon" />)
       const svg = screen.getByTestId('claude-icon')
-      const path = svg.querySelector('path')
-      expect(path).toBeInTheDocument()
-      expect(path).toHaveAttribute('fill', '#D97757')
+      const rect = svg.querySelector('rect')
+      expect(rect).toBeInTheDocument()
+      expect(rect).toHaveAttribute('fill', '#D97757')
     })
   })
 

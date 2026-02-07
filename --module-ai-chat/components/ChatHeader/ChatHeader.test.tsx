@@ -94,13 +94,13 @@ describe('ChatHeader', () => {
     it('has elevation effect classes', () => {
       const { container } = render(<ChatHeader {...defaultProps} />)
       const header = container.firstChild as HTMLElement
-      expect(header).toHaveClass('shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)]')
+      expect(header).toHaveClass('section-header')
     })
 
     it('has consistent background styling', () => {
       const { container } = render(<ChatHeader {...defaultProps} />)
       const header = container.firstChild as HTMLElement
-      expect(header).toHaveClass('bg-card/80', 'backdrop-blur-sm')
+      expect(header).toHaveClass('section-header')
     })
   })
 })

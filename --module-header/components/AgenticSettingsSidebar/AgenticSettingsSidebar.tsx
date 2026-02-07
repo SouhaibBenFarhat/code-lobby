@@ -165,7 +165,7 @@ export function AgenticSettingsSidebar(): React.JSX.Element {
           </div>
         </ScrollArea>
 
-        <div className="px-3 py-2 border-t bg-muted/30 flex items-center justify-between">
+        <div className="px-3 py-2 border-t bg-surface flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"

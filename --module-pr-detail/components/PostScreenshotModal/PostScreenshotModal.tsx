@@ -254,7 +254,7 @@ export function PostScreenshotModal({
 
         <div className="space-y-4 py-4">
           {/* Drawing toolbar */}
-          <div className="flex items-center gap-2 flex-wrap p-2 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-2 flex-wrap p-2 bg-surface rounded-lg">
             {/* Tool buttons */}
             <div className="flex items-center gap-1 border-r pr-2 mr-2">
               <Button
@@ -305,7 +305,7 @@ export function PostScreenshotModal({
                   key={width}
                   type="button"
                   className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
-                    strokeWidth === width ? 'bg-secondary' : 'hover:bg-muted'
+                    strokeWidth === width ? 'bg-secondary' : 'hover:bg-interactive-hover'
                   }`}
                   onClick={() => setStrokeWidth(width)}
                   title={`${width}px`}
@@ -343,7 +343,7 @@ export function PostScreenshotModal({
 
           {/* Screenshot with drawing canvas */}
           {screenshotDataUrl && (
-            <div className="border rounded-lg overflow-hidden bg-muted/30 relative">
+            <div className="border rounded-lg overflow-hidden bg-surface relative">
               <ReactSketchCanvas
                 ref={canvasRef}
                 width="100%"
@@ -364,7 +364,7 @@ export function PostScreenshotModal({
           )}
 
           {/* Upload section */}
-          <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-surface rounded-lg">
             <Button
               variant={uploadedImageUrl ? 'outline' : 'default'}
               onClick={handleUpload}

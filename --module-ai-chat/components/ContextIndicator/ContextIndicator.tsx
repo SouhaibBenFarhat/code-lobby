@@ -46,7 +46,7 @@ export function ContextIndicator({
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="flex items-center gap-1.5 cursor-help">
-          <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
             <div
               className={cn('h-full rounded-full transition-all duration-300', getColor())}
               style={{ width: `${percentage}%` }}

@@ -119,7 +119,7 @@ export function PostCommentForm({
             className={cn(
               'w-full flex items-center gap-2 px-3 py-2',
               'text-sm text-muted-foreground',
-              'bg-muted/50 hover:bg-muted/70',
+              'bg-surface hover:bg-interactive-hover',
               'border border-border rounded-md',
               'transition-colors cursor-text text-left'
             )}

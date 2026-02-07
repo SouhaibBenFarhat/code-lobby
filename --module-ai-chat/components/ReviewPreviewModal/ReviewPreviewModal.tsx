@@ -223,11 +223,11 @@ export function ReviewPreviewModal({
       'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg border-2 transition-all',
       verdict === v
         ? v === 'approve'
-          ? 'border-green-500 bg-green-500/10 text-green-500'
+          ? 'border-success-border bg-success-subtle text-success'
           : v === 'request_changes'
-            ? 'border-orange-500 bg-orange-500/10 text-orange-500'
-            : 'border-blue-500 bg-blue-500/10 text-blue-500'
-        : 'border-border bg-background hover:bg-muted text-muted-foreground'
+            ? 'border-warning-border bg-warning-subtle text-warning'
+            : 'border-info-border bg-info-subtle text-info'
+        : 'border-border bg-background hover:bg-interactive-hover text-muted-foreground'
     )
 
   // Convert ReviewComment[] to DiffComment[] for DiffViewer
@@ -272,7 +272,7 @@ export function ReviewPreviewModal({
         <div className="flex-1 flex overflow-hidden">
           {/* Sticky Sidebar - File Navigation */}
           {totalFiles > 0 && (
-            <div className="w-56 flex-shrink-0 border-r border-border bg-muted/30 flex flex-col">
+            <div className="w-56 flex-shrink-0 border-r border-border bg-surface flex flex-col">
               <div className="p-3 border-b border-border">
                 <div className="text-xs font-medium text-muted-foreground">
                   Files ({totalFiles})
@@ -287,8 +287,8 @@ export function ReviewPreviewModal({
                       onClick={() => scrollToFile(fileData.file)}
                       className={cn(
                         'w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors',
-                        'hover:bg-muted',
-                        activeFileInView === fileData.file && 'bg-primary/10 text-primary'
+                        'hover:bg-interactive-hover',
+                        activeFileInView === fileData.file && 'bg-info-subtle text-primary'
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export function ReviewPreviewModal({
                         <span className="flex-1 truncate font-mono">
                           {fileData.file.split('/').pop()}
                         </span>
-                        <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                        <span className="text-muted-foreground bg-surface px-1.5 py-0.5 rounded text-[10px]">
                           {fileData.comments.length}
                         </span>
                       </div>
@@ -436,7 +436,7 @@ export function ReviewPreviewModal({
 
         {/* Error Message */}
         {submitError && (
-          <div className="flex-shrink-0 mx-6 mb-2 flex items-center gap-2 text-destructive text-sm bg-destructive/10 px-3 py-2 rounded-lg">
+          <div className="flex-shrink-0 mx-6 mb-2 flex items-center gap-2 text-destructive text-sm bg-destructive-subtle px-3 py-2 rounded-lg">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{submitError}</span>
           </div>
@@ -534,7 +534,7 @@ function CommentCard({ comment, onChange, onDelete }: CommentCardProps): React.J
   const heightBucket = Math.floor(height / 30)
 
   return (
-    <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+    <div className="p-3 bg-surface rounded-lg space-y-2">
       <div className="flex items-center justify-between">
         <div className="text-xs text-muted-foreground">Line {comment.line}</div>
         <button

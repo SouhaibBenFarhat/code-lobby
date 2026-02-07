@@ -36,7 +36,7 @@ export function PRDetailSkeleton({
       style={{ maxWidth: '100%' }}
     >
       {/* Header skeleton - matches PRHeader exactly */}
-      <div className="p-4 border-b border-border flex-shrink-0 overflow-hidden bg-card/80 dark:bg-card/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+      <div className="p-4 flex-shrink-0 overflow-hidden section-header">
         <div className="flex items-start justify-between gap-3">
           {/* Left side: PR info */}
           <div className="flex-1 min-w-0 overflow-hidden">
@@ -106,7 +106,7 @@ export function PRDetailSkeleton({
             {/* PR Description Section - matches PRDescription */}
             <Col span="full">
               <div className="rounded-lg border border-border overflow-hidden">
-                <Row gutter="sm" align="center" className="p-3 bg-muted/40 dark:bg-muted/50">
+                <Row gutter="sm" align="center" className="p-3 bg-surface">
                   <Col span="auto">
                     <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   </Col>
@@ -175,14 +175,14 @@ export function PRDetailSkeleton({
                 {/* CI check groups skeleton */}
                 <Col span="full">
                   <div className="space-y-2">
-                    <div className="rounded-lg border border-success/30 bg-success/10 dark:bg-success/15 overflow-hidden">
+                    <div className="rounded-lg border border-success-border bg-success-subtle overflow-hidden">
                       <div className="flex items-center gap-2 p-2">
                         <ChevronDown className="w-4 h-4 text-success" />
                         <Skeleton className="h-4 w-4 rounded-full" />
                         <Skeleton className="h-4 w-24" />
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/40 dark:bg-muted/50 overflow-hidden">
+                    <div className="rounded-lg border border-border bg-surface overflow-hidden">
                       <div className="flex items-center gap-2 p-2">
                         <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         <Skeleton className="h-4 w-4 rounded-full" />
@@ -272,7 +272,7 @@ export function PRDetailSkeleton({
 
                 {/* Tab buttons skeleton */}
                 <Col span="full">
-                  <div className="flex gap-1 p-1 bg-muted/60 dark:bg-muted/70 rounded-lg">
+                  <div className="flex gap-1 p-1 bg-surface rounded-lg">
                     <Skeleton className="flex-1 h-7 rounded-md" />
                     <Skeleton className="flex-1 h-7 rounded-md" />
                     <Skeleton className="flex-1 h-7 rounded-md" />
@@ -284,9 +284,9 @@ export function PRDetailSkeleton({
                 <Col span="full">
                   <div className="relative ml-2 pt-4">
                     {/* Timeline line */}
-                    <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-muted rounded-full" />
+                    <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-surface rounded-full" />
                     {/* Start marker */}
-                    <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-muted border-2 border-muted-foreground/30" />
+                    <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-surface border-2 border-border-muted" />
 
                     <div className="space-y-0 pt-4">
                       {[1, 2, 3].map((i) => (
@@ -294,7 +294,7 @@ export function PRDetailSkeleton({
                           {/* Timeline dot */}
                           <Skeleton className="absolute left-[4px] top-3 w-[26px] h-[26px] rounded-full" />
                           {/* Connector line */}
-                          <div className="absolute left-[30px] top-[22px] w-[18px] h-[2px] bg-muted" />
+                          <div className="absolute left-[30px] top-[22px] w-[18px] h-[2px] bg-surface" />
 
                           {/* Comment card skeleton */}
                           <div className="rounded-lg border border-border bg-card p-3 space-y-2">
@@ -311,7 +311,7 @@ export function PRDetailSkeleton({
                     </div>
 
                     {/* End marker */}
-                    <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-muted border-2 border-muted-foreground/30" />
+                    <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-surface border-2 border-border-muted" />
                   </div>
                 </Col>
               </Row>

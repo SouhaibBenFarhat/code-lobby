@@ -128,8 +128,8 @@ function TreeItem({
         aria-expanded={isExpanded}
         tabIndex={0}
         className={cn(
-          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-muted/50 rounded transition-colors group w-full text-left',
-          isExpanded && 'bg-muted/30'
+          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-interactive-hover rounded transition-colors group w-full text-left',
+          isExpanded && 'bg-surface'
         )}
         onClick={onToggle}
         onKeyDown={(e) => {
@@ -169,7 +169,7 @@ function TreeItem({
               }}
               className={cn(
                 'p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100',
-                'text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50'
+                'text-muted-foreground hover:text-foreground hover:bg-interactive-hover disabled:opacity-50'
               )}
             >
               {isFetching ? (
@@ -195,8 +195,8 @@ function TreeItem({
                 className={cn(
                   'p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100',
                   showOnlyMyPRs
-                    ? 'bg-primary/20 text-primary opacity-100'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    ? 'bg-info-subtle text-primary opacity-100'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-interactive-hover'
                 )}
               >
                 {showOnlyMyPRs ? <User className="w-3 h-3" /> : <Users className="w-3 h-3" />}
@@ -209,7 +209,7 @@ function TreeItem({
         {hasPRs && (
           <span
             className={cn(
-              'text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded',
+              'text-[10px] text-muted-foreground bg-surface px-1.5 py-0.5 rounded',
               showOnlyMyPRs && filteredPRs.length !== prs.length && 'text-primary'
             )}
           >
@@ -222,7 +222,7 @@ function TreeItem({
 
       {/* PRs grouped by author */}
       {isExpanded && hasFilteredPRs && (
-        <div className="ml-4 border-l border-border/50">
+        <div className="ml-4 border-l border-border-muted">
           {authorGroups.map((group) => {
             // Use repo:author as the key for expanded state
             const authorKey = `${repo.full_name}:${group.login}`
@@ -282,7 +282,7 @@ function AuthorSection({
         aria-expanded={isExpanded}
         tabIndex={0}
         className={cn(
-          'flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer hover:bg-muted/50 rounded transition-colors',
+          'flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer hover:bg-interactive-hover rounded transition-colors',
           isCurrentUser && 'text-primary'
         )}
         onClick={onToggle}
@@ -306,14 +306,14 @@ function AuthorSection({
           {login}
           {isCurrentUser && <span className="text-muted-foreground ml-1">(you)</span>}
         </span>
-        <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+        <span className="text-[10px] text-muted-foreground bg-surface px-1 py-0.5 rounded">
           {prs.length} PR{prs.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {/* PRs by this author */}
       {isExpanded && (
-        <div className="ml-4 border-l border-border/30">
+        <div className="ml-8 border-l border-border-subtle">
           {sortedPRs.map((pr) => (
             <PRTreeItem
               key={pr.id}
@@ -364,15 +364,15 @@ function PRTreeItem({ pr, isSelected, onSelect }: PRTreeItemProps) {
       className={cn(
         'flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-r transition-colors w-full text-left border-l-2',
         isSelected
-          ? 'bg-primary/20 text-primary border-primary'
-          : 'hover:bg-muted/50 border-transparent'
+          ? 'bg-info-subtle text-primary border-primary'
+          : 'hover:bg-interactive-hover border-transparent'
       )}
       onClick={onSelect}
     >
       <GitPullRequest
         className={cn(
           'w-4 h-4 flex-shrink-0',
-          pr.draft ? 'text-muted-foreground' : isSelected ? 'text-primary' : 'text-blue-500'
+          pr.draft ? 'text-muted-foreground' : isSelected ? 'text-primary' : 'text-info'
         )}
       />
       <div className="flex-1 min-w-0 flex items-center">
@@ -484,11 +484,11 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+      <div className="flex items-center h-10 px-3 py-2 section-header">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-primary flex-shrink-0" />
           <span className="font-semibold text-sm">Explorer</span>
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+          <span className="text-xs text-muted-foreground bg-surface px-1.5 py-0.5 rounded">
             {sortedRepos.length} repo{sortedRepos.length !== 1 ? 's' : ''}
           </span>
         </div>

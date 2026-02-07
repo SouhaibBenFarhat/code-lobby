@@ -85,7 +85,7 @@ function CircularProgress({
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-muted/30"
+          className="text-foreground-ghost"
         />
         {/* Progress circle */}
         <circle
@@ -121,7 +121,7 @@ function StatCard({
   color: string
 }): React.JSX.Element {
   return (
-    <div className="bg-card/50 rounded-lg p-2 border border-border/50">
+    <div className="bg-surface rounded-lg p-2 border border-border-muted">
       <div className="flex items-center gap-2">
         <div className={cn('p-1.5 rounded-md', color)}>
           <Icon className="w-3 h-3" />
@@ -139,7 +139,7 @@ function StatCard({
 
 // Heatmap color based on contribution count
 function getHeatmapColor(count: number, maxCount: number): string {
-  if (count === 0) return 'bg-muted/40'
+  if (count === 0) return 'bg-surface'
   const intensity = count / Math.max(maxCount, 1)
   if (intensity > 0.75) return 'bg-green-500'
   if (intensity > 0.5) return 'bg-green-400'
@@ -235,7 +235,7 @@ function ActivityHeatmap({ data }: { data: ContributionsData }): React.JSX.Eleme
       {/* Legend */}
       <div className="flex items-center justify-end gap-0.5 pt-1 text-[7px] text-muted-foreground">
         <span>Less</span>
-        <div className="w-[6px] h-[6px] rounded-[1px] bg-muted/40" />
+        <div className="w-[6px] h-[6px] rounded-[1px] bg-surface" />
         <div className="w-[6px] h-[6px] rounded-[1px] bg-green-200/60" />
         <div className="w-[6px] h-[6px] rounded-[1px] bg-green-300/80" />
         <div className="w-[6px] h-[6px] rounded-[1px] bg-green-400" />
@@ -306,34 +306,34 @@ function ContributionsContent({ data }: { data: ContributionsData }): React.JSX.
           icon={Zap}
           label="Total"
           value={data.totalContributions}
-          color="bg-primary/10 text-primary"
+          color="bg-info-subtle text-primary"
         />
         <StatCard
           icon={Flame}
           label="Streak"
           value={data.currentStreak}
           suffix="d"
-          color="bg-orange-500/10 text-orange-500"
+          color="bg-warning-subtle text-warning"
         />
         <StatCard
           icon={Trophy}
           label="Best"
           value={data.longestStreak}
           suffix="d"
-          color="bg-yellow-500/10 text-yellow-500"
+          color="bg-warning-subtle text-warning"
         />
         <StatCard
           icon={TrendingUp}
           label="Avg/Day"
           value={data.averagePerDay}
-          color="bg-blue-500/10 text-blue-500"
+          color="bg-info-subtle text-info"
         />
       </div>
 
       {/* Activity Heatmap */}
       <div className="space-y-1">
         <h3 className="text-xs font-medium text-muted-foreground">Activity (Last Year)</h3>
-        <div className="bg-card/30 rounded-lg p-2 border border-border/50 overflow-x-auto">
+        <div className="bg-surface rounded-lg p-2 border border-border-muted overflow-x-auto">
           <ActivityHeatmap data={data} />
         </div>
       </div>
@@ -373,7 +373,7 @@ function EventItem({ event }: { event: UserEvent }): React.JSX.Element {
   })
 
   return (
-    <div className="flex items-start gap-2 py-2 px-3 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
+    <div className="flex items-start gap-2 py-2 px-3 hover:bg-interactive-hover transition-colors">
       <div className="mt-0.5">
         <EventIcon icon={event.icon} />
       </div>
@@ -385,7 +385,7 @@ function EventItem({ event }: { event: UserEvent }): React.JSX.Element {
         {event.description && (
           <p className="text-[10px] text-muted-foreground truncate mt-0.5">{event.description}</p>
         )}
-        <p className="text-[9px] text-muted-foreground/70 truncate mt-0.5">{event.repoName}</p>
+        <p className="text-[9px] text-foreground-muted truncate mt-0.5">{event.repoName}</p>
       </div>
     </div>
   )
@@ -457,7 +457,7 @@ function EventsContent({
   if (error && events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
-        <div className="p-2 bg-destructive/10 rounded-full">
+        <div className="p-2 bg-destructive-subtle rounded-full">
           <Zap className="w-4 h-4 text-destructive" />
         </div>
         <p className="text-xs text-muted-foreground">Failed to load events</p>
@@ -471,23 +471,25 @@ function EventsContent({
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
-        <div className="p-2 bg-muted rounded-full">
+        <div className="p-2 bg-surface rounded-full">
           <Calendar className="w-4 h-4 text-muted-foreground" />
         </div>
         <p className="text-xs text-muted-foreground">No recent activity</p>
-        <p className="text-[10px] text-muted-foreground/70">Your events will appear here</p>
+        <p className="text-[10px] text-foreground-muted">Your events will appear here</p>
       </div>
     )
   }
 
   return (
     <div>
-      {/* Header */}
-      <div className="px-3 py-2 bg-muted/30 border-b border-border/50">
+      {/* Header — lightweight inline, no background band */}
+      <div className="px-3 pt-2.5 pb-1.5 border-b border-border-subtle">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium">Recent Activity</span>
-            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <span className="text-[11px] font-medium text-foreground-muted uppercase tracking-wider">
+              Activity
+            </span>
+            <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded">
               {events.length}
             </span>
           </div>
@@ -506,18 +508,18 @@ function EventsContent({
       {/* Grouped events */}
       {Array.from(groupedEvents.entries()).map(([date, dateEvents]) => (
         <div key={date}>
-          {/* Date header */}
-          <div className="px-3 py-1.5 bg-muted border-b border-border/30 sticky top-0">
+          {/* Date header — subtle inline divider */}
+          <div className="px-3 py-1.5 sticky top-0 bg-background">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3 h-3 text-muted-foreground" />
               <span className="text-[10px] font-medium text-muted-foreground">
                 {formatDateLabel(date)}
               </span>
-              <span className="text-[9px] text-muted-foreground/60">({dateEvents.length})</span>
+              <span className="text-[9px] text-foreground-subtle">({dateEvents.length})</span>
             </div>
           </div>
           {/* Events for this date */}
-          <div className="divide-y divide-border/30">
+          <div className="divide-y divide-border-subtle">
             {dateEvents.map((event) => (
               <EventItem key={event.id} event={event} />
             ))}
@@ -568,25 +570,50 @@ export function UserProfilePanel({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-card/50 shrink-0">
-        <div className="flex items-center gap-2">
+      {/* Combined header — avatar + tabs + actions in one row */}
+      <div className="flex items-center justify-between px-3 h-10 shrink-0 section-header">
+        <div className="flex items-center gap-3 min-w-0">
           {user ? (
-            <>
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={user.avatar_url} alt={user.login} />
-                <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{user.name || user.login}</p>
-              </div>
-            </>
+            <Avatar className="h-6 w-6 shrink-0">
+              <AvatarImage src={user.avatar_url} alt={user.login} />
+              <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
           ) : (
-            <>
-              <User className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Profile</span>
-            </>
+            <User className="w-4 h-4 text-muted-foreground shrink-0" />
           )}
+          {/* Inline tabs */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('today')}
+              className={cn(
+                'text-xs transition-colors flex items-center gap-1',
+                activeTab === 'today'
+                  ? 'text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Today
+              {eventsData.length > 0 && (
+                <span className="text-[10px] bg-info-subtle text-primary px-1 rounded">
+                  {eventsData.length}
+                </span>
+              )}
+            </button>
+            <span className="text-foreground-ghost text-[10px]">/</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab('stats')}
+              className={cn(
+                'text-xs transition-colors',
+                activeTab === 'stats'
+                  ? 'text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Stats
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -610,42 +637,9 @@ export function UserProfilePanel({
         </div>
       </div>
 
-      {/* Content with Tabs */}
+      {/* Content */}
       {!isCollapsed && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Tab buttons */}
-          <div className="flex border-b border-border bg-card/30 px-2 py-1 gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('today')}
-              className={cn(
-                'text-xs h-7 px-3 rounded-sm transition-colors flex items-center gap-1.5',
-                activeTab === 'today'
-                  ? 'bg-muted text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              )}
-            >
-              Today
-              {eventsData.length > 0 && (
-                <span className="text-[10px] bg-primary/20 text-primary px-1 rounded">
-                  {eventsData.length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('stats')}
-              className={cn(
-                'text-xs h-7 px-3 rounded-sm transition-colors',
-                activeTab === 'stats'
-                  ? 'bg-muted text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              )}
-            >
-              Stats
-            </button>
-          </div>
-
           {/* Tab content */}
           <div className="flex-1 overflow-hidden">
             {activeTab === 'today' && (
@@ -671,7 +665,7 @@ export function UserProfilePanel({
 
                 {contributionsError && !contributionsData && (
                   <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
-                    <div className="p-2 bg-destructive/10 rounded-full">
+                    <div className="p-2 bg-destructive-subtle rounded-full">
                       <Zap className="w-4 h-4 text-destructive" />
                     </div>
                     <p className="text-xs text-muted-foreground">Failed to load</p>

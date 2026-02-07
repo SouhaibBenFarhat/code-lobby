@@ -127,7 +127,7 @@ export function CommentItem({
         return (
           <Badge
             variant="default"
-            className="bg-success/20 text-success text-[9px] h-[18px] px-1.5"
+            className="bg-success-subtle text-success text-[9px] h-[18px] px-1.5"
           >
             Approved
           </Badge>
@@ -136,7 +136,7 @@ export function CommentItem({
         return (
           <Badge
             variant="default"
-            className="bg-destructive/20 text-destructive text-[9px] h-[18px] px-1.5"
+            className="bg-destructive-subtle text-destructive text-[9px] h-[18px] px-1.5"
           >
             Changes
           </Badge>
@@ -175,10 +175,10 @@ export function CommentItem({
         comment.actor.isBot
           ? 'bg-purple-500/15 border-l-purple-500 dark:bg-purple-500/20'
           : comment.event === 'approved'
-            ? 'bg-success/15 border-l-success dark:bg-success/20'
+            ? 'bg-success-subtle border-l-success'
             : comment.event === 'changes_requested'
-              ? 'bg-destructive/15 border-l-destructive dark:bg-destructive/20'
-              : 'bg-muted/40 border-l-primary/50 dark:bg-muted/50'
+              ? 'bg-destructive-subtle border-l-destructive'
+              : 'bg-surface border-l-primary'
       )}
     >
       <Row gutter="xs" className="flex-col">
@@ -223,7 +223,7 @@ export function CommentItem({
                       variant="unstyled"
                       size="none"
                       onClick={handleCopy}
-                      className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
+                      className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-interactive-hover rounded"
                       title="Copy comment"
                     >
                       {copied ? (
@@ -242,7 +242,7 @@ export function CommentItem({
                       size="none"
                       onClick={handleDelete}
                       disabled={deleteComment.isPending}
-                      className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                      className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 hover:bg-destructive-subtle rounded"
                       title="Delete comment"
                     >
                       {deleteComment.isPending ? (
@@ -261,7 +261,7 @@ export function CommentItem({
           <Col span="full">
             <Row gutter="xs" className="flex-col">
               <Col span="full">
-                <div className="text-xs text-foreground/80 dark:text-foreground/70 overflow-hidden">
+                <div className="text-xs text-foreground-muted overflow-hidden">
                   <MarkdownContent
                     content={
                       isExpanded || !shouldTruncate
@@ -301,12 +301,12 @@ export function CommentItem({
         {/* Extracted links footer */}
         {extractedLinks.length > 0 && (
           <Col span="full">
-            <div className="mt-2 pt-2 border-t border-border/30">
+            <div className="mt-2 pt-2 border-t border-border-subtle">
               <div className="flex flex-col gap-1 items-start">
                 {extractedLinks.map((url) => (
                   <div
                     key={url}
-                    className="inline-flex items-center gap-1.5 bg-muted/50 rounded px-2 py-1 text-[10px] group/link max-w-full"
+                    className="inline-flex items-center gap-1.5 bg-surface rounded px-2 py-1 text-[10px] group/link max-w-full"
                   >
                     <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     <a
@@ -324,7 +324,7 @@ export function CommentItem({
                         variant="unstyled"
                         size="none"
                         onClick={() => onOpenInWebview(url)}
-                        className="opacity-0 group-hover/link:opacity-100 transition-opacity p-0.5 hover:bg-muted rounded flex-shrink-0"
+                        className="opacity-0 group-hover/link:opacity-100 transition-opacity p-0.5 hover:bg-interactive-hover rounded flex-shrink-0"
                         title="Open in CodeLobby"
                       >
                         <MonitorPlay className="w-3 h-3 text-muted-foreground hover:text-primary" />
@@ -335,7 +335,7 @@ export function CommentItem({
                       variant="unstyled"
                       size="none"
                       onClick={() => handleCopyLink(url, extractedLinks.indexOf(url))}
-                      className="opacity-0 group-hover/link:opacity-100 transition-opacity p-0.5 hover:bg-muted rounded flex-shrink-0"
+                      className="opacity-0 group-hover/link:opacity-100 transition-opacity p-0.5 hover:bg-interactive-hover rounded flex-shrink-0"
                       title="Copy link"
                     >
                       {copiedLinkIndex === extractedLinks.indexOf(url) ? (

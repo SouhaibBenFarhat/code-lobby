@@ -155,7 +155,7 @@ export function ChatInput({
 
   // Message Input
   return (
-    <div className="p-3 border-t border-border">
+    <div className="p-3 border-t border-border bg-background relative z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.2)]">
       <div className="space-y-2">
         <QuickActions
           prompts={prompts}
@@ -183,7 +183,7 @@ export function ChatInput({
               adjustTextareaHeight()
             }}
             onKeyDown={handleKeyDown}
-            className="w-full min-h-[72px] max-h-[200px] px-3 py-2 pr-12 text-sm rounded-[8px] border border-border bg-secondary/50 resize-none transition-colors duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] placeholder:text-muted-foreground/60 hover:border-border/80 hover:bg-secondary/70 focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_rgba(0,122,255,0.15)]"
+            className="w-full min-h-[72px] max-h-[200px] px-3 py-2 pr-12 text-sm rounded-[8px] border border-border bg-surface resize-none transition-colors duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] placeholder:text-foreground-subtle hover:border-border hover:bg-surface-hover focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_oklch(var(--primary)/0.15)]"
             style={{ height: '72px' }}
           />
           {/* FAB Send/Stop Button */}

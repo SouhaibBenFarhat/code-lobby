@@ -189,13 +189,13 @@ describe('ListMenu', () => {
       render(<ListMenuItem title="Active Item" active data-testid="item" />)
       const button = screen.getByRole('button')
       // The wrapper div has the active class
-      expect(button.parentElement).toHaveClass('bg-primary/10')
+      expect(button.parentElement).toHaveClass('bg-info-subtle')
     })
 
     it('should not apply active styles when not active', () => {
       render(<ListMenuItem title="Inactive Item" active={false} data-testid="item" />)
       const button = screen.getByRole('button')
-      expect(button.parentElement).not.toHaveClass('bg-primary/10')
+      expect(button.parentElement).not.toHaveClass('bg-info-subtle')
     })
 
     it('should call onClick when clicked', () => {

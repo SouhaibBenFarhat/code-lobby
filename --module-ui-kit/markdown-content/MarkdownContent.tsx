@@ -41,7 +41,7 @@ function CodeBlockWithCopy({ code, language }: { code: string; language: string 
         size="icon"
         className={cn(
           'absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity',
-          'bg-muted/80 hover:bg-muted border border-border/50',
+          'bg-surface hover:bg-interactive-hover border border-border-muted',
           copied && 'opacity-100'
         )}
         onClick={handleCopy}
@@ -109,7 +109,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
             // Inline code
             return (
               <code
-                className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-mono text-foreground"
+                className="px-1.5 py-0.5 rounded bg-surface text-[11px] font-mono text-foreground"
                 {...props}
               >
                 {children}
@@ -147,7 +147,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
                 <Button
                   variant="unstyled"
                   size="none"
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded border border-border cursor-pointer transition-colors my-1"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-surface hover:bg-interactive-hover rounded border border-border cursor-pointer transition-colors my-1"
                   onClick={(e) => {
                     e.stopPropagation()
                     if (src) window.open(src, '_blank')
@@ -191,7 +191,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
                 <Button
                   variant="unstyled"
                   size="none"
-                  className="hidden items-center gap-1 px-2 py-1 text-xs bg-muted/50 hover:bg-muted rounded border border-border cursor-pointer transition-colors"
+                  className="hidden items-center gap-1 px-2 py-1 text-xs bg-surface hover:bg-interactive-hover rounded border border-border cursor-pointer transition-colors"
                   onClick={(e) => {
                     e.stopPropagation()
                     if (src) window.open(src, '_blank')
@@ -246,7 +246,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
 
           // Blockquotes
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-primary/50 pl-3 my-2 text-muted-foreground italic">
+            <blockquote className="border-l-2 border-primary pl-3 my-2 text-muted-foreground italic">
               {children}
             </blockquote>
           ),
@@ -257,7 +257,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps): J
               <table className="min-w-full border-collapse text-[11px]">{children}</table>
             </div>
           ),
-          thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+          thead: ({ children }) => <thead className="bg-surface">{children}</thead>,
           th: ({ children }) => (
             <th className="border border-border px-2 py-1 text-left font-semibold">{children}</th>
           ),

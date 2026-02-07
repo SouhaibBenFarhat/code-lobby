@@ -1,6 +1,16 @@
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, Notification, session, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  Menu,
+  Notification,
+  session,
+  shell,
+  webContents
+} from 'electron'
 import { fixPath } from './fix-path'
 
 // =============================================================================
@@ -149,6 +159,78 @@ function createWindow(): void {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
+
+  // Zoom: always apply to main window so it works in every view (canvas, IDE, PR
+  // detail). When a webview has focus we also sync its zoom so preview content
+  // matches. This avoids focus-dependent failures (IDE view) and webview stealing
+  // focus (PR detail panel).
+  const mainWc = (): Electron.WebContents | null =>
+    mainWindow?.webContents && !mainWindow.webContents.isDestroyed() ? mainWindow.webContents : null
+
+  const applyZoomToFocusedIfDifferent = (level: number): void => {
+    const main = mainWc()
+    if (!main) return
+    const focused = webContents.getFocusedWebContents()
+    if (focused && !focused.isDestroyed() && focused !== main) focused.setZoomLevel(level)
+  }
+
+  const zoomIn = (): void => {
+    const main = mainWc()
+    if (!main) return
+    const next = main.getZoomLevel() + 1
+    main.setZoomLevel(next)
+    applyZoomToFocusedIfDifferent(next)
+  }
+  const zoomOut = (): void => {
+    const main = mainWc()
+    if (!main) return
+    const next = main.getZoomLevel() - 1
+    main.setZoomLevel(next)
+    applyZoomToFocusedIfDifferent(next)
+  }
+  const zoomReset = (): void => {
+    const main = mainWc()
+    if (!main) return
+    main.setZoomLevel(0)
+    applyZoomToFocusedIfDifferent(0)
+  }
+  globalShortcut.register('CommandOrControl+Plus', zoomIn)
+  globalShortcut.register('CommandOrControl+=', zoomIn) // US keyboard: + is Shift+=
+  globalShortcut.register('CommandOrControl+-', zoomOut) // Docs: "-" is valid key code (punctuation)
+  globalShortcut.register('CommandOrControl+0', zoomReset)
+
+  mainWindow.on('closed', () => {
+    mainWindow = null
+    globalShortcut.unregister('CommandOrControl+Plus')
+    globalShortcut.unregister('CommandOrControl+=')
+    globalShortcut.unregister('CommandOrControl+-')
+    globalShortcut.unregister('CommandOrControl+0')
+  })
+
+  // Application menu: View > Zoom uses same handlers as globalShortcut (main
+  // window always zooms; focused webview synced). Custom click ensures macOS
+  // menu accelerators run our logic instead of Electron’s focus-based zoom.
+  const template: Electron.MenuItemConstructorOptions[] = [
+    { role: 'appMenu' },
+    { role: 'fileMenu' },
+    { role: 'editMenu' },
+    {
+      role: 'viewMenu',
+      submenu: [
+        { role: 'reload', label: 'Reload' },
+        { role: 'forceReload', label: 'Force Reload' },
+        { type: 'separator' },
+        { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: zoomIn },
+        { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: zoomOut },
+        { label: 'Reset Zoom', accelerator: 'CommandOrControl+0', click: zoomReset },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: 'Toggle Full Screen' }
+      ]
+    },
+    { role: 'windowMenu' }
+  ]
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)

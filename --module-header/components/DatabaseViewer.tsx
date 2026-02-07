@@ -116,7 +116,9 @@ export function DatabaseViewer(): React.JSX.Element {
         </DialogHeader>
 
         {error && (
-          <Flex className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">{error}</Flex>
+          <Flex className="p-3 rounded-md bg-destructive-subtle text-destructive text-sm">
+            {error}
+          </Flex>
         )}
 
         <Flex gap="md" className="h-[65vh] overflow-hidden">
@@ -169,7 +171,7 @@ export function DatabaseViewer(): React.JSX.Element {
                     {selectedTableData.rows.map((row) => (
                       <tr
                         key={JSON.stringify(row)}
-                        className="border-b border-border/50 hover:bg-muted/50 transition-colors"
+                        className="border-b border-border-muted hover:bg-interactive-hover transition-colors"
                       >
                         {Object.entries(row).map(([key, value]) => (
                           <td

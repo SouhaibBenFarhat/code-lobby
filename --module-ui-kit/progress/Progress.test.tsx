@@ -90,13 +90,13 @@ describe('Progress', () => {
 
     it('should apply success variant', () => {
       const { container } = render(<Progress value={50} variant="success" />)
-      const innerBar = container.querySelector('.bg-green-500')
+      const innerBar = container.querySelector('.bg-success')
       expect(innerBar).toBeInTheDocument()
     })
 
     it('should apply warning variant', () => {
       const { container } = render(<Progress value={50} variant="warning" />)
-      const innerBar = container.querySelector('.bg-yellow-500')
+      const innerBar = container.querySelector('.bg-warning')
       expect(innerBar).toBeInTheDocument()
     })
 

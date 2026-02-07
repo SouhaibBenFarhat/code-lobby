@@ -35,7 +35,7 @@ export interface ThinkingSectionProps {
   currentTool?: ToolActivity | null
   /** Number of tools used (optional, shows badge) */
   toolCount?: number
-  /** Maximum height of the content area (default: 256px) */
+  /** Maximum height of the content area (default: 120px) */
   maxHeight?: number
   /** Label text (default: "Thinking") */
   label?: string
@@ -81,7 +81,7 @@ export function ThinkingSection({
   className,
   currentTool,
   toolCount,
-  maxHeight = 256,
+  maxHeight = 120,
   label = 'Thinking',
   autoScroll = false,
   showHint = false
@@ -121,8 +121,8 @@ export function ThinkingSection({
   return (
     <div
       className={cn(
-        'border-b transition-colors',
-        expanded ? 'border-primary/20 bg-primary/5' : 'border-border/50',
+        'transition-colors rounded-lg',
+        expanded ? 'bg-info-subtle' : 'bg-surface',
         className
       )}
     >
@@ -130,17 +130,17 @@ export function ThinkingSection({
       <button
         type="button"
         onClick={handleToggle}
-        className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1 w-full px-2 py-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ChevronRight className={cn('w-3 h-3 transition-transform', expanded && 'rotate-90')} />
-        <Brain className={cn('w-3.5 h-3.5', expanded && 'text-primary')} />
+        <ChevronRight className={cn('w-2.5 h-2.5 transition-transform', expanded && 'rotate-90')} />
+        <Brain className={cn('w-2.5 h-2.5', expanded && 'text-primary')} />
         <span>{label}</span>
         {isStreaming && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
         {toolCount !== undefined && toolCount > 0 && (
-          <span className="text-muted-foreground/60">• {toolCount} tools used</span>
+          <span className="text-foreground-subtle">• {toolCount} tools used</span>
         )}
         {showHint && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+          <span className="text-[9px] text-foreground-subtle ml-auto">
             Click to {expanded ? 'hide' : 'show'}
           </span>
         )}
@@ -148,27 +148,27 @@ export function ThinkingSection({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="px-3 pb-3 mx-3 mb-2 bg-primary/5 border-l-2 border-primary/40 rounded">
+        <div className="px-2 pb-2 mx-2 mb-1.5 bg-info-subtle rounded-lg border-l-2 border-border-muted">
           {/* Thinking text */}
           <div
             ref={contentRef}
-            className="overflow-y-auto text-xs text-muted-foreground/90"
+            className="overflow-y-auto text-[10px] text-foreground-muted"
             style={{ maxHeight }}
           >
-            <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed pt-2">
+            <pre className="whitespace-pre-wrap font-mono text-[9px] leading-tight pt-1.5">
               {thinking || 'Starting...'}
               {isStreaming && (
-                <span className="inline-block w-1.5 h-3 bg-primary/50 animate-pulse ml-0.5 align-middle" />
+                <span className="inline-block w-1.5 h-3 bg-primary animate-pulse ml-0.5 align-middle" />
               )}
             </pre>
           </div>
 
           {/* Current tool activity */}
           {currentTool && (
-            <div className="flex items-center gap-1.5 text-xs mt-2 px-2 py-1.5 bg-primary/10 rounded text-primary">
+            <div className="flex items-center gap-1 text-[10px] mt-1.5 px-2 py-1 bg-info-subtle rounded text-primary">
               <span className="font-medium">{currentTool.name}</span>
               {currentTool.input && (
-                <span className="text-primary/70 truncate">{currentTool.input}</span>
+                <span className="text-primary truncate">{currentTool.input}</span>
               )}
             </div>
           )}

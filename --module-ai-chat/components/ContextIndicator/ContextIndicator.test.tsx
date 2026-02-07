@@ -19,7 +19,7 @@ describe('ContextIndicator', () => {
   it('should render progress bar', () => {
     render(<ContextIndicator messages={[]} model="claude-3-sonnet-20240229" />)
 
-    const progressBar = document.querySelector('.bg-muted.rounded-full')
+    const progressBar = document.querySelector('.bg-surface.rounded-full')
     expect(progressBar).toBeInTheDocument()
   })
 
@@ -87,7 +87,7 @@ describe('ContextIndicator', () => {
     )
 
     // Component should render without error
-    const progressBar = document.querySelector('.bg-muted.rounded-full')
+    const progressBar = document.querySelector('.bg-surface.rounded-full')
     expect(progressBar).toBeInTheDocument()
   })
 
@@ -103,7 +103,7 @@ describe('ContextIndicator', () => {
       />
     )
 
-    const progressBar = document.querySelector('.bg-muted.rounded-full')
+    const progressBar = document.querySelector('.bg-surface.rounded-full')
     expect(progressBar).toBeInTheDocument()
   })
 
@@ -113,7 +113,7 @@ describe('ContextIndicator', () => {
     render(<ContextIndicator messages={messages} model="unknown-model-xyz" />)
 
     // Should render without error using default
-    const progressBar = document.querySelector('.bg-muted.rounded-full')
+    const progressBar = document.querySelector('.bg-surface.rounded-full')
     expect(progressBar).toBeInTheDocument()
   })
 

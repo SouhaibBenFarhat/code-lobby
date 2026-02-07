@@ -112,7 +112,7 @@ export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps): Reac
             <MarkdownContent content={FEATURES_BOOK_CONTENT} />
           </div>
         </ScrollArea>
-        <div className="px-6 py-3 border-t border-border flex-shrink-0 bg-muted/30">
+        <div className="px-6 py-3 border-t border-border flex-shrink-0 bg-surface">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               Version 1.0.0 • Built with ❤️ for developers

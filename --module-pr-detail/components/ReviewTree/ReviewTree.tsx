@@ -97,11 +97,11 @@ export function ReviewTree({ reviewers, className }: ReviewTreeProps): React.JSX
   const getConnectorColor = (reviewState: string | undefined) => {
     switch (reviewState) {
       case 'approved':
-        return 'bg-success/50'
+        return 'bg-success-subtle'
       case 'changes_requested':
-        return 'bg-destructive/50'
+        return 'bg-destructive-subtle'
       default:
-        return 'bg-primary/50'
+        return 'bg-info-subtle'
     }
   }
 
@@ -131,7 +131,7 @@ export function ReviewTree({ reviewers, className }: ReviewTreeProps): React.JSX
       {/* Timeline line */}
       <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
       {/* Start marker */}
-      <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+      <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-info-subtle border-2 border-primary" />
 
       <div className="space-y-0 pt-4">
         {reviewerData.map((reviewer) => (
@@ -160,7 +160,7 @@ export function ReviewTree({ reviewers, className }: ReviewTreeProps): React.JSX
       </div>
 
       {/* End marker */}
-      <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+      <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-info-subtle border-2 border-primary" />
     </div>
   )
 }

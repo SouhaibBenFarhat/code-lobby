@@ -31,7 +31,7 @@ function RequestBodySection({ body, label }: { body: string; label: string }): R
         <p className="text-[9px] font-medium text-muted-foreground">{label}:</p>
         <CopyButton text={body} label={label.toLowerCase()} />
       </div>
-      <div className="max-h-[300px] overflow-auto border border-zinc-700/50 rounded-md">
+      <div className="max-h-[300px] overflow-auto border border-border-muted rounded-md">
         <CodeHighlight
           code={formattedBody}
           language="json"
@@ -64,11 +64,11 @@ function getTimelineDotColor(status: NetworkRequest['status']): string {
 function getTimelineLineColor(status: NetworkRequest['status']): string {
   switch (status) {
     case 'pending':
-      return 'bg-blue-500/30'
+      return 'bg-info-subtle'
     case 'success':
-      return 'bg-green-500/30'
+      return 'bg-success-subtle'
     case 'error':
-      return 'bg-destructive/30'
+      return 'bg-destructive-subtle'
     default:
       return 'bg-border'
   }
@@ -197,7 +197,7 @@ export function NetworkRequestItem({
 
   return (
     <div
-      className={cn('relative flex', request.status === 'error' && 'bg-destructive/5')}
+      className={cn('relative flex', request.status === 'error' && 'bg-destructive-subtle')}
       data-testid="network-request-item"
     >
       {/* Timeline indicator */}
@@ -229,7 +229,7 @@ export function NetworkRequestItem({
           <Button
             variant="unstyled"
             size="none"
-            className="pr-3 py-1.5 hover:bg-muted/50 transition-colors flex items-center gap-1.5 w-full text-left cursor-pointer"
+            className="pr-3 py-1.5 hover:bg-interactive-hover transition-colors flex items-center gap-1.5 w-full text-left cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
             aria-expanded={isExpanded}
             data-testid="request-row-expandable"
@@ -245,7 +245,7 @@ export function NetworkRequestItem({
         {/* Expanded details */}
         {isExpanded && hasDetails && (
           <div
-            className="pr-3 pb-2 pt-1 bg-muted/30 border-t border-border/30"
+            className="pr-3 pb-2 pt-1 bg-surface border-t border-border-subtle"
             data-testid="request-details"
           >
             {request.requestBody && (

@@ -225,14 +225,14 @@ export function DiffViewer({
 
   if (!patch) {
     return (
-      <div className="p-3 text-xs text-muted-foreground italic bg-muted/30">
+      <div className="p-3 text-xs text-muted-foreground italic bg-surface">
         Binary file or diff too large to display
       </div>
     )
   }
 
   return (
-    <div className={cn('overflow-x-auto bg-[#0d1117] dark:bg-[#0d1117] rounded-b-md', className)}>
+    <div className={cn('overflow-x-auto bg-code text-code-foreground rounded-b-md', className)}>
       <table className="w-full text-[11px] font-mono border-collapse">
         <tbody>
           {lines.map((line) => {
@@ -240,11 +240,11 @@ export function DiffViewer({
 
             const bgClass =
               line.type === 'addition'
-                ? 'bg-success/15'
+                ? 'bg-success-subtle'
                 : line.type === 'deletion'
-                  ? 'bg-destructive/15'
+                  ? 'bg-destructive-subtle'
                   : line.type === 'header'
-                    ? 'bg-primary/10'
+                    ? 'bg-info-subtle'
                     : ''
 
             const textClass =
@@ -282,9 +282,9 @@ export function DiffViewer({
 
             return (
               <React.Fragment key={lineKey}>
-                <tr className={cn(bgClass, 'hover:bg-muted/20 h-5')}>
+                <tr className={cn(bgClass, 'hover:bg-interactive-hover h-5')}>
                   {/* Single line number column */}
-                  <td className="w-12 min-w-12 text-right pr-2 text-muted-foreground/50 select-none border-r border-border/30 align-top">
+                  <td className="w-12 min-w-12 text-right pr-2 text-foreground-subtle select-none border-r border-border-subtle align-top">
                     {lineNum}
                   </td>
                   {/* Prefix (+/-/space) */}
@@ -298,9 +298,9 @@ export function DiffViewer({
                     ) : tokens && tokens.length > 0 ? (
                       <HighlightedLine tokens={tokens} lineType={line.type} />
                     ) : highlightStatus === 'loading' ? (
-                      <span className="text-[#e6edf3]">{line.content || ' '}</span>
+                      <span className="text-code-foreground">{line.content || ' '}</span>
                     ) : (
-                      <span className="text-[#e6edf3]">{line.content || ' '}</span>
+                      <span className="text-code-foreground">{line.content || ' '}</span>
                     )}
                   </td>
                 </tr>
@@ -328,7 +328,7 @@ export function DiffViewer({
 /** Default comment display when no renderComment is provided */
 function DefaultCommentDisplay({ comment }: { comment: DiffComment }): React.JSX.Element {
   return (
-    <div className="mx-3 my-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 font-sans text-sm">
+    <div className="mx-3 my-2 bg-info-subtle border border-info-border rounded-lg p-3 font-sans text-sm">
       {comment.content || (
         <span className="text-muted-foreground italic">Comment on line {comment.line}</span>
       )}

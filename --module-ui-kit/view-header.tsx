@@ -98,14 +98,9 @@ export const ViewHeader: React.ForwardRefExoticComponent<
       <div
         ref={ref}
         className={cn(
-          // Base styles
-          'border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm',
+          // Base styles — uses section-header for elevation or plain surface-raised
+          elevated ? 'section-header' : 'border-b border-border bg-surface-raised',
           'flex-shrink-0 overflow-hidden',
-          // Elevation
-          elevated && [
-            'shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)]',
-            'dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)]'
-          ],
           // Positioning
           sticky && 'sticky top-0',
           // Draggable region for Electron
@@ -179,7 +174,7 @@ export const ViewHeader: React.ForwardRefExoticComponent<
 
         {/* Bottom Content (tabs, stats, etc.) */}
         {bottomContent && (
-          <div className={cn('border-t border-border/50', config.padding, 'py-2')}>
+          <div className={cn('border-t border-border-muted', config.padding, 'py-2')}>
             {bottomContent}
           </div>
         )}

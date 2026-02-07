@@ -202,12 +202,12 @@ export function CIChecksSection({
                 <>
                   {groupedChecks.running.length > 0 && (
                     <Col span="full">
-                      <div className="rounded-lg border border-warning/30 bg-warning/10 dark:bg-warning/15 overflow-hidden">
+                      <div className="rounded-lg border border-warning-border bg-warning-subtle overflow-hidden">
                         <Button
                           variant="unstyled"
                           size="none"
                           onClick={() => toggleGroup('running')}
-                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-warning hover:bg-warning/20 transition-colors"
+                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-warning hover:bg-warning-subtle transition-colors"
                         >
                           {collapsedGroups.has('running') ? (
                             <ChevronRight className="w-4 h-4" />
@@ -218,7 +218,7 @@ export function CIChecksSection({
                           <span>Running ({groupedChecks.running.length})</span>
                         </Button>
                         {!collapsedGroups.has('running') && (
-                          <div className="border-t border-warning/20 p-1 space-y-0.5">
+                          <div className="border-t border-warning-border p-1 space-y-0.5">
                             {groupedChecks.running.map((check) => (
                               <CheckItem key={check.id} check={check} owner={owner} repo={repo} />
                             ))}
@@ -230,12 +230,12 @@ export function CIChecksSection({
 
                   {groupedChecks.failed.length > 0 && (
                     <Col span="full">
-                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 dark:bg-destructive/15 overflow-hidden">
+                      <div className="rounded-lg border border-destructive-border bg-destructive-subtle overflow-hidden">
                         <Button
                           variant="unstyled"
                           size="none"
                           onClick={() => toggleGroup('failed')}
-                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
+                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-destructive hover:bg-destructive-subtle transition-colors"
                         >
                           {collapsedGroups.has('failed') ? (
                             <ChevronRight className="w-4 h-4" />
@@ -246,7 +246,7 @@ export function CIChecksSection({
                           <span>Failed ({groupedChecks.failed.length})</span>
                         </Button>
                         {!collapsedGroups.has('failed') && (
-                          <div className="border-t border-destructive/20 p-1 space-y-0.5">
+                          <div className="border-t border-destructive-border p-1 space-y-0.5">
                             {groupedChecks.failed.map((check) => (
                               <CheckItem key={check.id} check={check} owner={owner} repo={repo} />
                             ))}
@@ -258,12 +258,12 @@ export function CIChecksSection({
 
                   {groupedChecks.success.length > 0 && (
                     <Col span="full">
-                      <div className="rounded-lg border border-success/30 bg-success/10 dark:bg-success/15 overflow-hidden">
+                      <div className="rounded-lg border border-success-border bg-success-subtle overflow-hidden">
                         <Button
                           variant="unstyled"
                           size="none"
                           onClick={() => toggleGroup('success')}
-                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-success hover:bg-success/20 transition-colors"
+                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-success hover:bg-success-subtle transition-colors"
                         >
                           {collapsedGroups.has('success') ? (
                             <ChevronRight className="w-4 h-4" />
@@ -274,7 +274,7 @@ export function CIChecksSection({
                           <span>Passed ({groupedChecks.success.length})</span>
                         </Button>
                         {!collapsedGroups.has('success') && (
-                          <div className="border-t border-success/20 p-1 space-y-0.5">
+                          <div className="border-t border-success-border p-1 space-y-0.5">
                             {groupedChecks.success.map((check) => (
                               <CheckItem key={check.id} check={check} owner={owner} repo={repo} />
                             ))}
@@ -286,12 +286,12 @@ export function CIChecksSection({
 
                   {groupedChecks.other.length > 0 && (
                     <Col span="full">
-                      <div className="rounded-lg border border-border bg-muted/40 dark:bg-muted/50 overflow-hidden">
+                      <div className="rounded-lg border border-border bg-surface overflow-hidden">
                         <Button
                           variant="unstyled"
                           size="none"
                           onClick={() => toggleGroup('other')}
-                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
+                          className="w-full flex items-center gap-2 p-2 text-sm font-medium text-muted-foreground hover:bg-interactive-hover transition-colors"
                         >
                           {collapsedGroups.has('other') ? (
                             <ChevronRight className="w-4 h-4" />

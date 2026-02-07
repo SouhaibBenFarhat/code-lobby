@@ -48,14 +48,14 @@ function IDEMainContent() {
 
   if (!selectedPRId) {
     return (
-      <div className="h-full flex items-center justify-center bg-muted/10">
+      <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-muted/30 flex items-center justify-center">
-            <GitPullRequest className="w-10 h-10 text-muted-foreground/30" />
+          <div className="w-20 h-20 mx-auto rounded-2xl bg-surface flex items-center justify-center">
+            <GitPullRequest className="w-10 h-10 text-foreground-ghost" />
           </div>
           <div className="space-y-2">
             <p className="text-lg font-medium text-muted-foreground">Select a Pull Request</p>
-            <p className="text-sm text-muted-foreground/70 max-w-[300px]">
+            <p className="text-sm text-foreground-muted max-w-[300px]">
               Click on a PR in the explorer to view its details, CI status, comments, and reviews
             </p>
           </div>

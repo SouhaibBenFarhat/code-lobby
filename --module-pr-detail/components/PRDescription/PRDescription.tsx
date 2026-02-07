@@ -110,8 +110,8 @@ export function PRDescription({
         gutter="sm"
         align="center"
         className={cn(
-          'p-3 transition-colors bg-muted/40 dark:bg-muted/50',
-          !isEditing && 'hover:bg-muted/60 cursor-pointer'
+          'p-3 transition-colors bg-surface-content',
+          !isEditing && 'hover:bg-interactive-hover cursor-pointer'
         )}
         onClick={() => !isEditing && setIsOpen(!isOpen)}
       >
@@ -254,7 +254,7 @@ export function PRDescription({
           ) : body ? (
             <Row gutter="sm" className="flex-col">
               <Col span="full">
-                <div className="text-sm text-foreground/80 dark:text-foreground/70">
+                <div className="text-sm text-foreground-muted">
                   <MarkdownContent
                     content={isFullyExpanded || !shouldTruncate ? body : getPreviewContent(body)}
                   />

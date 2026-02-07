@@ -6,7 +6,7 @@ type ToggleSize = 'default' | 'sm' | 'xs'
 /** Get toggle container classes based on size */
 function getToggleClasses(size: ToggleSize, checked: boolean, className?: string): string {
   const baseClasses =
-    'relative inline-flex items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 cursor-pointer'
+    'relative inline-flex items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 cursor-pointer'
 
   const sizeClasses: Record<ToggleSize, string> = {
     default: 'h-6 w-11',
@@ -14,7 +14,12 @@ function getToggleClasses(size: ToggleSize, checked: boolean, className?: string
     xs: 'h-4 w-7'
   }
 
-  return cn(baseClasses, sizeClasses[size], checked ? 'bg-primary' : 'bg-muted', className)
+  return cn(
+    baseClasses,
+    sizeClasses[size],
+    checked ? 'bg-primary' : 'bg-interactive-active',
+    className
+  )
 }
 
 /** Get thumb classes based on size and checked state */

@@ -157,81 +157,84 @@ export interface HljsToken {
   fontStyle?: number // 1=italic, 2=bold
 }
 
-// GitHub Dark theme colors (matches github-dark)
-const GITHUB_DARK_COLORS: Record<string, string> = {
+// Theme-aware syntax colors using CSS variables.
+// Each value is a var(--syntax-*) reference defined in globals.css,
+// so the browser resolves the correct color for light / dark mode
+// without needing to re-tokenize.
+const SYNTAX_COLORS: Record<string, string> = {
   // Keywords, control flow
-  keyword: '#ff7b72',
-  built_in: '#ff7b72',
+  keyword: 'var(--syntax-keyword)',
+  built_in: 'var(--syntax-keyword)',
 
   // Types
-  type: '#79c0ff',
-  class: '#79c0ff',
-  'title.class': '#79c0ff',
+  type: 'var(--syntax-type)',
+  class: 'var(--syntax-type)',
+  'title.class': 'var(--syntax-type)',
 
   // Functions
-  function: '#d2a8ff',
-  'title.function': '#d2a8ff',
+  function: 'var(--syntax-function)',
+  'title.function': 'var(--syntax-function)',
 
   // Strings
-  string: '#a5d6ff',
-  'template-tag': '#a5d6ff',
-  'template-variable': '#a5d6ff',
+  string: 'var(--syntax-string)',
+  'template-tag': 'var(--syntax-string)',
+  'template-variable': 'var(--syntax-string)',
 
   // Numbers
-  number: '#79c0ff',
-  literal: '#79c0ff',
+  number: 'var(--syntax-number)',
+  literal: 'var(--syntax-number)',
 
   // Comments
-  comment: '#8b949e',
+  comment: 'var(--syntax-comment)',
 
   // Variables, params
-  variable: '#ffa657',
-  params: '#ffa657',
-  attr: '#79c0ff',
+  variable: 'var(--syntax-variable)',
+  params: 'var(--syntax-variable)',
+  attr: 'var(--syntax-attribute)',
 
   // Operators, punctuation
-  operator: '#ff7b72',
-  punctuation: '#c9d1d9',
+  operator: 'var(--syntax-operator)',
+  punctuation: 'var(--syntax-punctuation)',
 
   // Tags (HTML/XML)
-  tag: '#7ee787',
-  name: '#7ee787',
+  tag: 'var(--syntax-tag)',
+  name: 'var(--syntax-tag)',
 
   // Attributes
-  attribute: '#79c0ff',
+  attribute: 'var(--syntax-attribute)',
 
   // Meta
-  meta: '#8b949e',
-  'meta keyword': '#ff7b72',
+  meta: 'var(--syntax-meta)',
+  'meta keyword': 'var(--syntax-keyword)',
 
   // Regex
-  regexp: '#a5d6ff',
+  regexp: 'var(--syntax-regexp)',
 
   // Default
-  default: '#c9d1d9'
+  default: 'var(--syntax-default)'
 }
 
 /** Get color for a highlight.js class */
 function getColorForClass(className: string): string {
   // Try exact match
-  if (className in GITHUB_DARK_COLORS) {
-    return GITHUB_DARK_COLORS[className]
+  if (className in SYNTAX_COLORS) {
+    return SYNTAX_COLORS[className]
   }
 
   // Try partial match (e.g., "hljs-keyword" -> "keyword")
   const simplified = className.replace('hljs-', '')
-  if (simplified in GITHUB_DARK_COLORS) {
-    return GITHUB_DARK_COLORS[simplified]
+  if (simplified in SYNTAX_COLORS) {
+    return SYNTAX_COLORS[simplified]
   }
 
   // Check for compound classes like "title.function"
-  for (const key of Object.keys(GITHUB_DARK_COLORS)) {
+  for (const key of Object.keys(SYNTAX_COLORS)) {
     if (simplified.includes(key) || key.includes(simplified)) {
-      return GITHUB_DARK_COLORS[key]
+      return SYNTAX_COLORS[key]
     }
   }
 
-  return GITHUB_DARK_COLORS.default
+  return SYNTAX_COLORS.default
 }
 
 /**
@@ -240,7 +243,7 @@ function getColorForClass(className: string): string {
  */
 export function tokenizeLine(line: string, language: string): HljsToken[] {
   if (!line.trim()) {
-    return [{ content: line || ' ', color: GITHUB_DARK_COLORS.default }]
+    return [{ content: line || ' ', color: SYNTAX_COLORS.default }]
   }
 
   try {
@@ -253,7 +256,7 @@ export function tokenizeLine(line: string, language: string): HljsToken[] {
     return parseHljsHtml(result.value)
   } catch {
     // Fallback for unsupported languages - return plain text
-    return [{ content: line, color: GITHUB_DARK_COLORS.default }]
+    return [{ content: line, color: SYNTAX_COLORS.default }]
   }
 }
 
@@ -276,7 +279,7 @@ function parseHljsHtml(html: string): HljsToken[] {
       const classEnd = html.indexOf('"', classStart)
       if (classEnd === -1) {
         // Malformed, treat rest as plain text
-        tokens.push({ content: decodeHtml(html.slice(pos)), color: GITHUB_DARK_COLORS.default })
+        tokens.push({ content: decodeHtml(html.slice(pos)), color: SYNTAX_COLORS.default })
         break
       }
 
@@ -306,7 +309,7 @@ function parseHljsHtml(html: string): HljsToken[] {
       // Apply color from outer span to inner tokens that have default color
       const color = getColorForClass(className)
       for (const token of innerTokens) {
-        if (token.color === GITHUB_DARK_COLORS.default) {
+        if (token.color === SYNTAX_COLORS.default) {
           token.color = color
         }
         tokens.push(token)
@@ -329,15 +332,13 @@ function parseHljsHtml(html: string): HljsToken[] {
       }
       const content = decodeHtml(html.slice(pos, textEnd))
       if (content) {
-        tokens.push({ content, color: GITHUB_DARK_COLORS.default })
+        tokens.push({ content, color: SYNTAX_COLORS.default })
       }
       pos = textEnd
     }
   }
 
-  return tokens.length > 0
-    ? tokens
-    : [{ content: decodeHtml(html), color: GITHUB_DARK_COLORS.default }]
+  return tokens.length > 0 ? tokens : [{ content: decodeHtml(html), color: SYNTAX_COLORS.default }]
 }
 
 /** Decode HTML entities */

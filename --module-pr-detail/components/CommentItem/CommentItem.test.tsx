@@ -160,7 +160,7 @@ describe('CommentItem', () => {
       const { container } = renderCommentItem(approvedComment)
 
       const card = container.firstChild
-      expect(card).toHaveClass('bg-success/15')
+      expect(card).toHaveClass('bg-success-subtle')
     })
 
     it('should apply destructive styling for changes_requested comments', () => {
@@ -172,7 +172,7 @@ describe('CommentItem', () => {
       const { container } = renderCommentItem(changesComment)
 
       const card = container.firstChild
-      expect(card).toHaveClass('bg-destructive/15')
+      expect(card).toHaveClass('bg-destructive-subtle')
     })
 
     it('should apply purple styling for bot comments', () => {

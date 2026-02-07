@@ -99,7 +99,7 @@ export function RepoSelector(): React.JSX.Element {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-0" align="end">
-        <div className="flex items-center justify-between h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+        <div className="flex items-center justify-between h-10 px-3 py-2 section-header">
           <div className="flex items-center gap-2">
             <FolderGit2 className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="font-semibold text-sm">Repositories</span>
@@ -113,7 +113,7 @@ export function RepoSelector(): React.JSX.Element {
             </Button>
           </div>
         </div>
-        <div className="p-3 border-b border-border/50">
+        <div className="p-3 border-b border-border-muted">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
@@ -153,13 +153,15 @@ export function RepoSelector(): React.JSX.Element {
                       onClick={() => toggleRepo(repo.full_name)}
                       className={cn(
                         'w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors',
-                        isSelected ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'
+                        isSelected
+                          ? 'bg-info-subtle hover:bg-interactive-hover'
+                          : 'hover:bg-interactive-hover'
                       )}
                     >
                       <div
                         className={cn(
                           'w-4 h-4 rounded border flex items-center justify-center flex-shrink-0',
-                          isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                          isSelected ? 'bg-primary border-primary' : 'border-border-muted'
                         )}
                       >
                         {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
@@ -186,7 +188,7 @@ export function RepoSelector(): React.JSX.Element {
           </div>
         </ScrollArea>
 
-        <div className="p-2 border-t border-border bg-muted/30">
+        <div className="p-2 border-t border-border bg-surface">
           <p className="text-xs text-muted-foreground text-center">
             {selectedCount === 0
               ? 'No repos selected - all hidden'

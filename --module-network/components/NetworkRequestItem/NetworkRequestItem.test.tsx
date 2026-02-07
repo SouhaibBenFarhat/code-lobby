@@ -161,7 +161,7 @@ describe('NetworkRequestItem', () => {
     it('should apply error background to the row', () => {
       const request = createMockRequest({ status: 'error' })
       render(<NetworkRequestItem request={request} />)
-      expect(screen.getByTestId('network-request-item')).toHaveClass('bg-destructive/5')
+      expect(screen.getByTestId('network-request-item')).toHaveClass('bg-destructive-subtle')
     })
 
     it('should not show error badge if no error', () => {

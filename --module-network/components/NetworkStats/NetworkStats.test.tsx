@@ -73,7 +73,7 @@ describe('NetworkStats', () => {
     it('should have blue text color', () => {
       render(<NetworkStats {...defaultProps} pendingCount={1} />)
 
-      expect(screen.getByTestId('pending-count')).toHaveClass('text-blue-500')
+      expect(screen.getByTestId('pending-count')).toHaveClass('text-info')
     })
   })
 
@@ -121,7 +121,7 @@ describe('NetworkStats', () => {
       render(<NetworkStats {...defaultProps} />)
 
       const container = screen.getByTestId('network-stats')
-      expect(container).toHaveClass('px-3', 'py-1', 'border-b', 'bg-muted/10')
+      expect(container).toHaveClass('px-3', 'py-1', 'border-b', 'bg-background')
     })
 
     it('should have flex layout', () => {

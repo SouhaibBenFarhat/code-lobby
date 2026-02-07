@@ -427,14 +427,14 @@ export function App(): React.JSX.Element {
             </>
           )}
 
-          <main className="flex-1 overflow-auto bg-muted/20">
+          <main className="flex-1 overflow-auto bg-background">
             <Slot name="main" wrapInContainer={false} />
           </main>
 
           {viewMode === 'canvas' && prDetailOpen && (
             <aside
               ref={prPanelRef}
-              className="border-l border-border overflow-hidden flex bg-background relative flex-shrink-0"
+              className="overflow-hidden flex bg-surface relative flex-shrink-0 border-l border-border shadow-[-2px_0_8px_rgba(0,0,0,0.06)] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.2)]"
               style={{ width: prDetailWidth, minWidth: prDetailWidth, maxWidth: prDetailWidth }}
             >
               <ResizeHandle
@@ -448,7 +448,7 @@ export function App(): React.JSX.Element {
                   <Slot name="pr-detail-panel" wrapInContainer={false} />
                 ) : (
                   <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between p-3 border-b border-border bg-card/50">
+                    <div className="flex items-center justify-between p-3 border-b border-border bg-surface-raised">
                       <h3 className="font-semibold text-sm">PR Details</h3>
                       <Button
                         variant="ghost"
@@ -461,8 +461,8 @@ export function App(): React.JSX.Element {
                     </div>
                     <div className="flex-1 flex items-center justify-center p-6">
                       <div className="text-center space-y-4">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
-                          <MousePointerClick className="w-8 h-8 text-muted-foreground/50" />
+                        <div className="w-16 h-16 mx-auto rounded-full bg-surface flex items-center justify-center">
+                          <MousePointerClick className="w-8 h-8 text-foreground-subtle" />
                         </div>
                         <p className="text-sm font-medium text-muted-foreground">No PR selected</p>
                       </div>

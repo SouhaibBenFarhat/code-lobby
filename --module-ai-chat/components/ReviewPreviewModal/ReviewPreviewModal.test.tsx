@@ -180,7 +180,7 @@ describe('ReviewPreviewModal', () => {
       const approveButtons = screen.getAllByRole('button', { name: /approve/i })
       // The first one should be the verdict button (in the selection area)
       const approveButton = approveButtons[0]
-      expect(approveButton).toHaveClass('border-green-500')
+      expect(approveButton).toHaveClass('border-success-border')
     })
 
     it('should change verdict when clicking a different option', async () => {
@@ -193,7 +193,7 @@ describe('ReviewPreviewModal', () => {
 
       await user.click(requestChangesButton)
 
-      expect(requestChangesButton).toHaveClass('border-orange-500')
+      expect(requestChangesButton).toHaveClass('border-warning-border')
     })
 
     it('should display request_changes verdict correctly', () => {
@@ -205,7 +205,7 @@ describe('ReviewPreviewModal', () => {
       )
       const requestChangesButtons = screen.getAllByRole('button', { name: /request changes/i })
       const requestChangesButton = requestChangesButtons[0]
-      expect(requestChangesButton).toHaveClass('border-orange-500')
+      expect(requestChangesButton).toHaveClass('border-warning-border')
     })
 
     it('should display comment verdict correctly', () => {
@@ -215,7 +215,8 @@ describe('ReviewPreviewModal', () => {
       // Find the Comment verdict button - it has an icon followed by "Comment" text
       const allButtons = screen.getAllByRole('button')
       const commentButton = allButtons.find(
-        (btn) => btn.textContent?.includes('Comment') && btn.classList.contains('border-blue-500')
+        (btn) =>
+          btn.textContent?.includes('Comment') && btn.classList.contains('border-info-border')
       )
       expect(commentButton).toBeTruthy()
     })

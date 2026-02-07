@@ -82,7 +82,7 @@ function MessageBubbleInner({
         )}
       >
         {message.role === 'assistant' && (
-          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-info-subtle flex items-center justify-center flex-shrink-0">
             <ClaudeIcon className="w-3.5 h-3.5 text-primary" />
           </div>
         )}
@@ -92,7 +92,7 @@ function MessageBubbleInner({
             'max-w-[85%] rounded-lg relative',
             message.role === 'user'
               ? 'bg-primary text-primary-foreground px-3 py-2 selection:bg-white/30 selection:text-white'
-              : 'bg-muted'
+              : 'bg-chat-bubble border border-border shadow-elevation-low'
           )}
         >
           {message.role === 'assistant' ? (
@@ -168,7 +168,7 @@ function MessageBubbleInner({
         {message.role === 'user' && (
           <Avatar className="w-7 h-7 flex-shrink-0">
             {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.login} /> : null}
-            <AvatarFallback className="bg-muted">
+            <AvatarFallback className="bg-surface">
               <User className="w-3.5 h-3.5" />
             </AvatarFallback>
           </Avatar>

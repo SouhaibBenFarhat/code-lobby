@@ -69,7 +69,7 @@ describe('Button', () => {
     it('should apply ghost variant styles', () => {
       render(<Button variant="ghost">Ghost</Button>)
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('hover:bg-accent/80')
+      expect(button).toHaveClass('hover:bg-interactive-hover')
     })
 
     it('should apply link variant styles', () => {

@@ -168,7 +168,7 @@ export function Header({
   }
 
   return (
-    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-4 pr-4 drag-region header-bar shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-20">
+    <header className="h-14 flex items-center gap-4 pr-4 drag-region header-bar shadow-elevation-medium relative z-20">
       <div className="flex items-center h-full">
         {!isFullscreen && <div className="w-[72px] h-full flex-shrink-0" />}
         {isFullscreen && <div className="w-3 h-full flex-shrink-0" />}
@@ -186,7 +186,7 @@ export function Header({
 
       <Separator orientation="vertical" className="h-6" />
 
-      <div className="flex items-center gap-1 no-drag bg-muted/50 rounded-lg p-0.5">
+      <div className="flex items-center gap-1 no-drag bg-surface rounded-lg p-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -240,8 +240,8 @@ export function Header({
               <div
                 className={cn(
                   'flex items-center gap-2 no-drag cursor-default px-2 py-1 rounded-md transition-colors',
-                  isRateLimited && 'bg-destructive/10 border border-destructive/30',
-                  isNearLimit && !isRateLimited && 'bg-warning/10 border border-warning/30'
+                  isRateLimited && 'bg-destructive-subtle border border-destructive-border',
+                  isNearLimit && !isRateLimited && 'bg-warning-subtle border border-warning-border'
                 )}
               >
                 {isRateLimited ? (
@@ -255,17 +255,17 @@ export function Header({
                   />
                 )}
                 <div className="flex items-center gap-1.5">
-                  <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="w-20 h-1.5 bg-surface rounded-full overflow-hidden">
                     <div
                       className={cn(
                         'h-full rounded-full transition-all duration-300',
                         isRateLimited
                           ? 'bg-destructive'
                           : rateLimitData.percentage > 80
-                            ? 'bg-red-500'
+                            ? 'bg-destructive'
                             : rateLimitData.percentage > 50
-                              ? 'bg-yellow-500'
-                              : 'bg-green-500'
+                              ? 'bg-warning'
+                              : 'bg-success'
                       )}
                       style={{ width: `${Math.min(rateLimitData.percentage, 100)}%` }}
                     />
@@ -380,7 +380,7 @@ export function Header({
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-8 w-8', networkPanelOpen && 'bg-muted')}
+              className={cn('h-8 w-8', networkPanelOpen && 'bg-interactive-active')}
               onClick={() => toggleNetworkPanel.mutate()}
             >
               <Network className="w-4 h-4" />
@@ -394,7 +394,7 @@ export function Header({
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-8 w-8', agenticSettingsOpen && 'bg-muted')}
+              className={cn('h-8 w-8', agenticSettingsOpen && 'bg-interactive-active')}
               onClick={() => setAgenticSettingsOpen.mutate(true)}
             >
               <Settings className="w-4 h-4" />
@@ -453,7 +453,7 @@ export function Header({
                 onClick={toggleUserProfile}
                 className={cn(
                   'flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity rounded-md px-2 py-1',
-                  userProfileOpen && 'bg-muted'
+                  userProfileOpen && 'bg-interactive-active'
                 )}
               >
                 <Avatar className="h-6 w-6 ring-2 ring-transparent hover:ring-primary/50 transition-all">

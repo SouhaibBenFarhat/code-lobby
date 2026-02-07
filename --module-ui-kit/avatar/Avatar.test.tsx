@@ -125,7 +125,7 @@ describe('Avatar', () => {
       )
       await waitFor(() => {
         const fallback = screen.getByTestId('fallback')
-        expect(fallback).toHaveClass('flex', 'items-center', 'justify-center', 'bg-muted')
+        expect(fallback).toHaveClass('flex', 'items-center', 'justify-center', 'bg-surface')
       })
     })
 

@@ -540,7 +540,7 @@ export function WebviewPanel({
   return (
     <div className="flex flex-col h-full w-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-2 py-1.5 bg-muted/50 border-b">
+      <div className="flex items-center gap-1 px-2 py-1.5 bg-surface border-b">
         {/* Navigation buttons */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -721,7 +721,7 @@ export function WebviewPanel({
                     <span
                       className={cn(
                         'absolute inset-0 rounded-md animate-ping',
-                        errorCount > 0 ? 'bg-destructive/40' : 'bg-warning/40'
+                        errorCount > 0 ? 'bg-destructive-subtle' : 'bg-warning-subtle'
                       )}
                     />
                   )}
@@ -739,7 +739,7 @@ export function WebviewPanel({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-96 p-0" align="end">
-            <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/50">
+            <div className="flex items-center justify-between px-3 py-2 border-b bg-surface">
               <span className="text-sm font-medium">Console</span>
               <div className="flex items-center gap-2">
                 {errorCount > 0 && (
@@ -777,11 +777,11 @@ export function WebviewPanel({
                       key={msg.id}
                       className={cn(
                         'text-xs font-mono px-2 py-1 rounded',
-                        msg.level === 'error' && 'bg-destructive/10 text-destructive',
-                        msg.level === 'warning' && 'bg-warning/10 text-warning',
-                        msg.level === 'log' && 'bg-muted/50',
-                        msg.level === 'info' && 'bg-blue-500/10 text-blue-500',
-                        msg.level === 'debug' && 'bg-muted/30 text-muted-foreground'
+                        msg.level === 'error' && 'bg-destructive-subtle text-destructive',
+                        msg.level === 'warning' && 'bg-warning-subtle text-warning',
+                        msg.level === 'log' && 'bg-surface',
+                        msg.level === 'info' && 'bg-info-subtle text-info',
+                        msg.level === 'debug' && 'bg-surface text-muted-foreground'
                       )}
                     >
                       <div className="flex items-start gap-2">
@@ -838,7 +838,7 @@ export function WebviewPanel({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
-            <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/50">
+            <div className="flex items-center justify-between px-3 py-2 border-b bg-surface">
               <span className="text-sm font-medium">LocalStorage</span>
               <div className="flex items-center gap-1">
                 <Button
@@ -875,7 +875,7 @@ export function WebviewPanel({
                   {storageEntries.map((entry) => (
                     <div
                       key={entry.key}
-                      className="group flex items-start gap-2 px-2 py-1.5 rounded bg-muted/50 hover:bg-muted"
+                      className="group flex items-start gap-2 px-2 py-1.5 rounded bg-surface hover:bg-interactive-hover"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium text-foreground truncate">
@@ -916,7 +916,7 @@ export function WebviewPanel({
       {/* Webview Content */}
       <section
         ref={containerRef}
-        className={cn('flex-1 relative overflow-auto', selectedPreset && 'bg-muted/30')}
+        className={cn('flex-1 relative overflow-auto', selectedPreset && 'bg-surface')}
         aria-label="Web content"
         onMouseDown={isSelecting ? handleMouseDown : undefined}
         onMouseMove={isSelecting ? handleMouseMove : undefined}
@@ -930,7 +930,7 @@ export function WebviewPanel({
         }
       >
         {isLoading && (
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary/20 overflow-hidden z-10">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-info-subtle overflow-hidden z-10">
             <div className="h-full w-1/3 bg-primary animate-[loading_1s_ease-in-out_infinite]" />
           </div>
         )}
@@ -952,7 +952,7 @@ export function WebviewPanel({
         >
           {/* Resolution indicator */}
           {selectedPreset && (
-            <div className="sticky top-0 left-0 right-0 bg-muted/80 backdrop-blur-sm border-b px-2 py-1 text-xs text-muted-foreground text-center z-10">
+            <div className="sticky top-0 left-0 right-0 bg-surface backdrop-blur-sm border-b px-2 py-1 text-xs text-muted-foreground text-center z-10">
               {selectedPreset.name} • {selectedPreset.width}px
             </div>
           )}
@@ -974,7 +974,7 @@ export function WebviewPanel({
           >
             {/* Instructions */}
             {!selection && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/90 px-4 py-2 rounded-lg shadow-lg text-sm">
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background px-4 py-2 rounded-lg shadow-lg text-sm">
                 Drag to select region • Press Esc to cancel
               </div>
             )}
@@ -982,11 +982,11 @@ export function WebviewPanel({
             {/* Selection box */}
             {selectionStyle && (
               <div
-                className="absolute border-2 border-primary bg-primary/10"
+                className="absolute border-2 border-primary bg-info-subtle"
                 style={selectionStyle}
               >
                 {/* Dimension label */}
-                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-background/90 px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-background px-2 py-0.5 rounded text-xs whitespace-nowrap">
                   {Math.round(selectionStyle.width)} × {Math.round(selectionStyle.height)}
                 </div>
               </div>

@@ -63,7 +63,7 @@ const TimelineConnector: React.ForwardRefExoticComponent<
     return (
       <div
         ref={ref}
-        className={cn('absolute left-[7px] top-4 bottom-0 w-px bg-border/50', className)}
+        className={cn('absolute left-[7px] top-4 bottom-0 w-px bg-border-subtle', className)}
         {...props}
       />
     )
@@ -85,11 +85,11 @@ interface TimelineDotProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const dotVariants: Record<TimelineDotVariant, string> = {
   default: 'bg-muted-foreground',
-  error: 'bg-red-500',
-  warning: 'bg-yellow-500',
-  success: 'bg-green-500',
-  info: 'bg-blue-500',
-  debug: 'bg-gray-500'
+  error: 'bg-destructive',
+  warning: 'bg-warning',
+  success: 'bg-success',
+  info: 'bg-info',
+  debug: 'bg-foreground-ghost'
 }
 
 const TimelineDot: React.ForwardRefExoticComponent<

@@ -591,8 +591,8 @@ describe('DiffViewer', () => {
         <DiffViewer patch={patch} fileName="test.ts" comments={comments} />
       )
 
-      // Default comment should have blue styling
-      const commentElement = container.querySelector('.bg-blue-500\\/10')
+      // Default comment should have info-subtle styling
+      const commentElement = container.querySelector('.bg-info-subtle')
       expect(commentElement).toBeInTheDocument()
       expect(container.textContent).toContain('Default display comment')
     })

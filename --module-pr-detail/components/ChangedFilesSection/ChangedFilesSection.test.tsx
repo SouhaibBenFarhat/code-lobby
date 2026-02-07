@@ -364,7 +364,7 @@ describe('ChangedFilesSection', () => {
       const { container } = renderWithQueryClient(<ChangedFilesSection {...defaultProps} />)
 
       // Should have a file tree container with border and bg
-      const treeContainer = container.querySelector('.rounded-lg.border.bg-card\\/50')
+      const treeContainer = container.querySelector('.rounded-lg.border.bg-surface')
       expect(treeContainer).toBeInTheDocument()
     })
   })

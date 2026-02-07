@@ -132,7 +132,7 @@ describe('ToolActivityIndicator', () => {
         <ToolActivityIndicator activity={null} lastResult={null} toolHistory={history} />
       )
       // Error entries have red styling - check for the XCircle icon or red border class
-      const errorIndicator = container.querySelector('.text-red-500')
+      const errorIndicator = container.querySelector('.text-destructive')
       expect(errorIndicator).toBeInTheDocument()
     })
 

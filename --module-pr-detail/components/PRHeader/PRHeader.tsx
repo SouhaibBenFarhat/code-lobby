@@ -215,7 +215,7 @@ function PRBranchInfo({ pr }: { pr: PullRequest }) {
           <p className="text-muted-foreground mt-1">{copied ? 'Copied!' : 'Click to copy'}</p>
         </TooltipContent>
       </Tooltip>
-      <span className="flex-shrink-0 text-muted-foreground/60">→</span>
+      <span className="flex-shrink-0 text-foreground-subtle">→</span>
       <span className="font-mono flex-shrink-0">{pr.base.ref}</span>
     </div>
   )
@@ -236,7 +236,7 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
   if (!pr) return null
 
   return (
-    <div className="p-4 border-b border-border flex-shrink-0 overflow-hidden bg-card/80 dark:bg-card/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+    <div className="p-4 flex-shrink-0 overflow-hidden content-header">
       {/* Title and top-right actions in same row */}
       <Row gutter="sm" align="start" justify="between" wrap>
         {/* Title section with edit button adjacent */}
@@ -438,10 +438,10 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
                             className={cn(
                               'w-2 h-2 rounded-full',
                               state === 'approved'
-                                ? 'bg-emerald-500'
+                                ? 'bg-success'
                                 : state === 'changes_requested'
-                                  ? 'bg-red-500'
-                                  : 'bg-gray-400'
+                                  ? 'bg-destructive'
+                                  : 'bg-foreground-ghost'
                             )}
                           />
                           {author.login}

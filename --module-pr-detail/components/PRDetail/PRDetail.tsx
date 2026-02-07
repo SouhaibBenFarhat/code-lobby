@@ -376,7 +376,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
 
                 {/* Tab filter - All, People, Bots, Reviews */}
                 <Col span="full">
-                  <div className="flex gap-1 p-1 bg-muted/60 dark:bg-muted/70 rounded-lg">
+                  <div className="flex gap-1 p-1 bg-surface rounded-lg">
                     <Button
                       variant="unstyled"
                       size="none"
@@ -505,7 +505,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                         {/* Timeline line */}
                         <div className="absolute left-[15px] top-6 bottom-6 w-[3px] bg-gradient-to-b from-primary/50 via-primary/30 to-primary/50 rounded-full" />
                         {/* Start marker */}
-                        <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+                        <div className="absolute left-[11px] top-0 w-[11px] h-[11px] rounded-full bg-info-subtle border-2 border-primary" />
 
                         <div className="space-y-0 pt-4">
                           {comments.map((comment, index) => (
@@ -542,12 +542,12 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                                 className={cn(
                                   'absolute left-[30px] top-[22px] w-[18px] h-[2px]',
                                   comment.event === 'approved'
-                                    ? 'bg-success/50'
+                                    ? 'bg-success-subtle'
                                     : comment.event === 'changes_requested'
-                                      ? 'bg-destructive/50'
+                                      ? 'bg-destructive-subtle'
                                       : comment.actor.isBot
                                         ? 'bg-purple-500/50'
-                                        : 'bg-primary/50'
+                                        : 'bg-info-subtle'
                                 )}
                               />
 
@@ -562,7 +562,7 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                         </div>
 
                         {/* End marker */}
-                        <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-primary/30 border-2 border-primary" />
+                        <div className="absolute left-[11px] bottom-0 w-[11px] h-[11px] rounded-full bg-info-subtle border-2 border-primary" />
                       </div>
                     ) : (
                       <div className="text-center py-6 text-sm text-muted-foreground">

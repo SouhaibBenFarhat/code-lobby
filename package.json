@@ -27,6 +27,7 @@
     "lint:fix": "biome check --write --unsafe .",
     "format": "biome format --write .",
     "prepare": "husky",
+    "generate:theme": "node scripts/generate-theme.mjs",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "sqlite_web \"$HOME/Library/Application Support/codelobby/codelobby.db\"",

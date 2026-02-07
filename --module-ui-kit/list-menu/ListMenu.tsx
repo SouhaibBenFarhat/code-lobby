@@ -91,7 +91,7 @@ const ListMenuGroup: React.ForwardRefExoticComponent<
     return (
       <div ref={ref} className={cn('', className)} {...props}>
         {label && (
-          <div className="px-3 py-1.5 text-[10px] text-muted-foreground font-medium bg-muted/30">
+          <div className="px-3 py-1.5 text-[10px] text-muted-foreground font-medium bg-surface">
             {label}
           </div>
         )}
@@ -144,14 +144,14 @@ const ListMenuItem: React.ForwardRefExoticComponent<
     ref
   ) => {
     return (
-      <div className={cn('group flex items-start gap-2 w-full', active && 'bg-primary/10')}>
+      <div className={cn('group flex items-start gap-2 w-full', active && 'bg-info-subtle')}>
         <button
           ref={ref}
           type="button"
           className={cn(
             'flex-1 flex items-start gap-2 px-3 py-2 text-left min-w-0',
-            'hover:bg-muted/50 transition-colors',
-            'focus-visible:outline-none focus-visible:bg-muted/50',
+            'hover:bg-interactive-hover transition-colors',
+            'focus-visible:outline-none focus-visible:bg-interactive-hover',
             className
           )}
           {...props}
@@ -175,7 +175,7 @@ const ListMenuItem: React.ForwardRefExoticComponent<
             title={actionTitle}
             className={cn(
               'opacity-0 group-hover:opacity-100 p-1 mr-2 mt-2',
-              'hover:bg-destructive/10 rounded transition-opacity',
+              'hover:bg-destructive-subtle rounded transition-opacity',
               'focus-visible:opacity-100 focus-visible:outline-none'
             )}
             onClick={(e) => {

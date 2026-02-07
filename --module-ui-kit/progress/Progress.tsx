@@ -20,8 +20,8 @@ const sizeClasses = {
 
 const variantClasses = {
   default: 'bg-primary',
-  success: 'bg-green-500',
-  warning: 'bg-yellow-500',
+  success: 'bg-success',
+  warning: 'bg-warning',
   destructive: 'bg-destructive'
 }
 
@@ -45,7 +45,7 @@ const Progress: ForwardRefComponent<HTMLDivElement, ProgressProps> = React.forwa
         aria-valuemax={100}
         aria-valuenow={indeterminate ? undefined : clampedValue}
         className={cn(
-          'relative w-full overflow-hidden rounded-full bg-secondary/50',
+          'relative w-full overflow-hidden rounded-full bg-surface',
           sizeClasses[size],
           className
         )}

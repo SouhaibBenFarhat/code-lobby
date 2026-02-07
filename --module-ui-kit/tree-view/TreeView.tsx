@@ -44,32 +44,32 @@ export type TreeNodeVariant = 'default' | 'success' | 'warning' | 'error' | 'inf
 const variantStyles: Record<TreeNodeVariant, { border: string; bg: string; accent: string }> = {
   default: {
     border: 'border-border',
-    bg: 'bg-muted/40 dark:bg-muted/50',
+    bg: 'bg-surface',
     accent: 'text-primary'
   },
   success: {
-    border: 'border-success/30',
-    bg: 'bg-success/10 dark:bg-success/15',
+    border: 'border-success-border',
+    bg: 'bg-success-subtle',
     accent: 'text-success'
   },
   warning: {
-    border: 'border-warning/30',
-    bg: 'bg-warning/10 dark:bg-warning/15',
+    border: 'border-warning-border',
+    bg: 'bg-warning-subtle',
     accent: 'text-warning'
   },
   error: {
-    border: 'border-destructive/30',
-    bg: 'bg-destructive/10 dark:bg-destructive/15',
+    border: 'border-destructive-border',
+    bg: 'bg-destructive-subtle',
     accent: 'text-destructive'
   },
   info: {
-    border: 'border-blue-500/30',
-    bg: 'bg-blue-500/10 dark:bg-blue-500/15',
-    accent: 'text-blue-500'
+    border: 'border-info-border',
+    bg: 'bg-info-subtle',
+    accent: 'text-info'
   },
   muted: {
-    border: 'border-border/50',
-    bg: 'bg-muted/20 dark:bg-muted/30',
+    border: 'border-border-muted',
+    bg: 'bg-background',
     accent: 'text-muted-foreground'
   }
 }
@@ -205,7 +205,7 @@ export const TreeNodeHeader: React.ForwardRefExoticComponent<
         onKeyDown={handleKeyDown}
         className={cn(
           'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-          'hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           styles.bg,
           className
         )}

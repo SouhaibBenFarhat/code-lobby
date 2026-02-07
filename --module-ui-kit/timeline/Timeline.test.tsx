@@ -80,7 +80,7 @@ describe('Timeline', () => {
     it('should apply vertical line styles', () => {
       render(<TimelineConnector data-testid="connector" />)
       const connector = screen.getByTestId('connector')
-      expect(connector).toHaveClass('absolute', 'w-px', 'bg-border/50')
+      expect(connector).toHaveClass('absolute', 'w-px', 'bg-border-subtle')
     })
 
     it('should forward ref', () => {
@@ -105,31 +105,31 @@ describe('Timeline', () => {
     it('should apply error variant styles', () => {
       render(<TimelineDot variant="error" data-testid="dot" />)
       const dot = screen.getByTestId('dot')
-      expect(dot).toHaveClass('bg-red-500')
+      expect(dot).toHaveClass('bg-destructive')
     })
 
     it('should apply warning variant styles', () => {
       render(<TimelineDot variant="warning" data-testid="dot" />)
       const dot = screen.getByTestId('dot')
-      expect(dot).toHaveClass('bg-yellow-500')
+      expect(dot).toHaveClass('bg-warning')
     })
 
     it('should apply success variant styles', () => {
       render(<TimelineDot variant="success" data-testid="dot" />)
       const dot = screen.getByTestId('dot')
-      expect(dot).toHaveClass('bg-green-500')
+      expect(dot).toHaveClass('bg-success')
     })
 
     it('should apply info variant styles', () => {
       render(<TimelineDot variant="info" data-testid="dot" />)
       const dot = screen.getByTestId('dot')
-      expect(dot).toHaveClass('bg-blue-500')
+      expect(dot).toHaveClass('bg-info')
     })
 
     it('should apply debug variant styles', () => {
       render(<TimelineDot variant="debug" data-testid="dot" />)
       const dot = screen.getByTestId('dot')
-      expect(dot).toHaveClass('bg-gray-500')
+      expect(dot).toHaveClass('bg-foreground-ghost')
     })
 
     it('should render icon when provided', () => {

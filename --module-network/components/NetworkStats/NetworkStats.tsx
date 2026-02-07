@@ -29,7 +29,7 @@ export function NetworkStats({
 }: NetworkStatsProps): React.JSX.Element {
   return (
     <div
-      className="px-3 py-1 border-b border-border/50 bg-muted/10 flex-shrink-0"
+      className="px-3 py-1 border-b border-border-muted bg-background flex-shrink-0"
       data-testid="network-stats"
     >
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -38,7 +38,7 @@ export function NetworkStats({
           request{total !== 1 ? 's' : ''}
         </span>
         {pendingCount > 0 && (
-          <span className="flex items-center gap-0.5 text-blue-500" data-testid="pending-count">
+          <span className="flex items-center gap-0.5 text-info" data-testid="pending-count">
             <Loader2 className="w-2.5 h-2.5 animate-spin" />
             {pendingCount}
           </span>

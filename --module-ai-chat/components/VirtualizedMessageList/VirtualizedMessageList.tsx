@@ -6,7 +6,7 @@
 import type { ClaudeReviewData } from '@data'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
-import React, { useLayoutEffect, useMemo } from 'react'
+import React, { useCallback, useLayoutEffect, useMemo } from 'react'
 import type { ChatMessage, GitHubUser, QueuedMessage, StreamingState } from '../../types'
 import { MessageBubble } from '../MessageBubble'
 import { QueuedMessageBubble } from '../QueuedMessageBubble'
@@ -21,8 +21,14 @@ export interface VirtualizedMessageListProps {
   toggleThinkingExpanded: (id: string) => void
   setMessageQueue: React.Dispatch<React.SetStateAction<QueuedMessage[]>>
   scrollContainerRef: React.RefObject<HTMLDivElement>
+  /** Ref for the bottom anchor element; parent uses scrollIntoView() to keep view at live edge (ChatGPT-style). */
+  scrollAnchorRef?: React.RefObject<HTMLDivElement>
   onScroll: () => void
-  onVirtualizerReady: (scrollToEnd: () => void) => void
+  /** Called as soon as user scrolls up (wheel) so parent can stop auto-scroll before scroll event. */
+  onScrollUpIntent?: () => void
+  /** Called right before applying programmatic scroll (in rAF). Return false to skip. Cancels in-flight scrolls. */
+  getShouldAutoScroll?: () => boolean
+  onVirtualizerReady: (scrollToEnd: (opts?: { smooth?: boolean }) => void) => void
   user?: GitHubUser | null
   // Review support - for messages that generated code reviews
   sessionReviews?: Record<string, ClaudeReviewData>
@@ -38,12 +44,23 @@ export function VirtualizedMessageList({
   toggleThinkingExpanded,
   setMessageQueue,
   scrollContainerRef,
+  scrollAnchorRef,
   onScroll,
+  onScrollUpIntent,
+  getShouldAutoScroll,
   onVirtualizerReady,
   user,
   sessionReviews,
   onOpenReview
 }: VirtualizedMessageListProps): React.JSX.Element {
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      if (e.deltaY < 0) {
+        onScrollUpIntent?.()
+      }
+    },
+    [onScrollUpIntent]
+  )
   // Only virtualize static messages - streaming content is rendered separately
   const allItems = useMemo(() => {
     const items: Array<{
@@ -68,34 +85,45 @@ export function VirtualizedMessageList({
   const virtualizer = useVirtualizer({
     count: allItems.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 100, // Slightly larger estimate for safety
+    // Use ~400px so when stream ends we swap StreamingBubble (removed) for this row (added).
+    // Same ballpark height = scrollHeight barely changes = no jerk. 100px caused shrink-then-grow and double jerk.
+    estimateSize: () => 400,
     overscan: 2 // Render 2 extra items above/below viewport (tight for performance)
   })
 
   const virtualItems = virtualizer.getVirtualItems()
 
-  // Expose scrollToEnd function to parent via callback
-  // This uses virtualizer's scrollToIndex which is more reliable
+  // Expose scrollToEnd function to parent via callback.
+  // The actual scroll is applied in rAF; we check getShouldAutoScroll() there so in-flight
+  // scrolls can be cancelled when the user has scrolled up (avoids fight/jump).
   useLayoutEffect(() => {
-    const scrollToEnd = () => {
+    const scrollToEnd = (opts?: { smooth?: boolean }) => {
       if (allItems.length > 0) {
-        // Use virtualizer's scrollToIndex for accurate positioning
         virtualizer.scrollToIndex(allItems.length - 1, { align: 'end' })
-
-        // Also scroll to absolute bottom to include streaming content
+        const smooth = opts?.smooth ?? false
         requestAnimationFrame(() => {
+          if (getShouldAutoScroll?.() === false) return
           const container = scrollContainerRef.current
           if (container) {
-            container.scrollTop = container.scrollHeight
+            if (smooth) {
+              container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+            } else {
+              container.scrollTop = container.scrollHeight
+            }
           }
         })
       }
     }
     onVirtualizerReady(scrollToEnd)
-  }, [allItems.length, virtualizer, onVirtualizerReady, scrollContainerRef])
+  }, [allItems.length, virtualizer, onVirtualizerReady, scrollContainerRef, getShouldAutoScroll])
 
   return (
-    <div ref={scrollContainerRef} className="h-full overflow-auto p-3" onScroll={onScroll}>
+    <div
+      ref={scrollContainerRef}
+      className="h-full overflow-auto p-3"
+      onScroll={onScroll}
+      onWheel={handleWheel}
+    >
       {/* Virtualized messages */}
       <div
         style={{
@@ -149,16 +177,16 @@ export function VirtualizedMessageList({
         })}
       </div>
 
-      {/* Streaming content - rendered OUTSIDE virtualizer for smooth updates */}
+      {/* Streaming content - rendered OUTSIDE virtualizer. Containment isolates layout so height changes don't thrash the whole list. */}
       {streaming.isStreaming && (
-        <div className="pb-3">
+        <div className="pb-3" style={{ contain: 'layout' }}>
           <StreamingBubble streaming={throttledStreaming} />
         </div>
       )}
 
       {/* Queue header - rendered outside virtualizer when streaming */}
       {streaming.isStreaming && messageQueue.length > 0 && (
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-2 pb-3 border-t border-dashed border-border/50">
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-2 pb-3 border-t border-dashed border-border-muted">
           <Loader2 className="w-3 h-3 animate-spin" />
           <span>
             {messageQueue.length} message{messageQueue.length > 1 ? 's' : ''} queued
@@ -166,8 +194,8 @@ export function VirtualizedMessageList({
         </div>
       )}
 
-      {/* Scroll anchor at absolute bottom */}
-      <div data-scroll-anchor className="h-px" />
+      {/* Scroll anchor at absolute bottom - parent uses scrollIntoView(anchor) to keep view at live edge */}
+      <div ref={scrollAnchorRef} data-scroll-anchor className="h-px" />
     </div>
   )
 }

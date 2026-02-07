@@ -38,7 +38,7 @@ export function TokenInput(): React.JSX.Element {
       <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
 
-      <Card className="w-full max-w-md relative animate-slideUp border-border/50 bg-card/80 backdrop-blur-sm">
+      <Card className="w-full max-w-md relative animate-slideUp border-border bg-surface backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto">
             <CodeLobbyLogo size={72} />
@@ -64,7 +64,7 @@ export function TokenInput(): React.JSX.Element {
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                className="font-mono text-sm bg-background/50"
+                className="font-mono text-sm bg-background"
                 disabled={signIn.isPending}
               />
               {signIn.isError && (
@@ -121,7 +121,7 @@ export function TokenInput(): React.JSX.Element {
             </Button>
 
             {showInstructions && (
-              <div className="text-xs text-muted-foreground space-y-3 bg-muted/30 rounded-lg p-3 animate-slideUp">
+              <div className="text-xs text-muted-foreground space-y-3 bg-surface rounded-lg p-3 animate-slideUp">
                 <p className="font-medium text-foreground">Step-by-step guide:</p>
                 <ol className="space-y-2 list-decimal list-inside">
                   <li>
@@ -144,19 +144,21 @@ export function TokenInput(): React.JSX.Element {
                     Select these scopes:
                     <ul className="mt-1.5 ml-4 space-y-1">
                       <li>
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">repo</code>
+                        <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">repo</code>
                         <span className="text-muted-foreground ml-1.5">
                           — access to repositories
                         </span>
                       </li>
                       <li>
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">read:org</code>
+                        <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">
+                          read:org
+                        </code>
                         <span className="text-muted-foreground ml-1.5">
                           — access to organization repos
                         </span>
                       </li>
                       <li>
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                        <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">
                           read:user
                         </code>
                         <span className="text-muted-foreground ml-1.5">
@@ -170,7 +172,7 @@ export function TokenInput(): React.JSX.Element {
                   </li>
                   <li>
                     Copy the token (starts with{' '}
-                    <code className="bg-muted px-1 py-0.5 rounded text-[10px]">ghp_</code>) and
+                    <code className="bg-surface px-1 py-0.5 rounded text-[10px]">ghp_</code>) and
                     paste it above
                   </li>
                 </ol>

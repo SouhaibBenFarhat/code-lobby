@@ -20,7 +20,7 @@ export function ClaudeCodeBanner({ onOpenExternal }: ClaudeCodeBannerProps): Rea
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-4">
         <Terminal className="w-8 h-8 text-muted-foreground" />
       </div>
 
@@ -31,7 +31,7 @@ export function ClaudeCodeBanner({ onOpenExternal }: ClaudeCodeBannerProps): Rea
         including file access, code search, and web browsing.
       </p>
 
-      <div className="bg-muted rounded-lg p-3 mb-4 font-mono text-sm">
+      <div className="bg-surface rounded-lg p-3 mb-4 font-mono text-sm">
         <code>npm install -g @anthropic-ai/claude-code</code>
         <Button variant="ghost" size="sm" className="ml-2" onClick={handleCopyCommand}>
           Copy

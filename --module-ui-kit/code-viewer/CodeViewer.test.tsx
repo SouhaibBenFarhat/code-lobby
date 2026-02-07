@@ -33,7 +33,7 @@ hello();`
 
     it('should have dark background', () => {
       const { container } = render(<CodeViewer {...defaultProps} />)
-      expect(container.querySelector('.code-viewer')).toHaveClass('bg-[#0d1117]')
+      expect(container.querySelector('.code-viewer')).toHaveClass('bg-code')
     })
   })
 
@@ -80,7 +80,7 @@ hello();`
     it('should highlight selected line', () => {
       render(<CodeViewer {...defaultProps} selectedLine={2} />)
       const line = screen.getByText('2').closest('tr')
-      expect(line).toHaveClass('bg-primary/30')
+      expect(line).toHaveClass('bg-info-subtle')
     })
   })
 
@@ -89,26 +89,26 @@ hello();`
       render(<CodeViewer {...defaultProps} highlightLines={[1, 3]} />)
       const line1 = screen.getByText('1').closest('tr')
       const line3 = screen.getByText('3').closest('tr')
-      expect(line1).toHaveClass('bg-primary/20')
-      expect(line3).toHaveClass('bg-primary/20')
+      expect(line1).toHaveClass('bg-info-subtle')
+      expect(line3).toHaveClass('bg-info-subtle')
     })
 
     it('should apply addition highlight type', () => {
       render(<CodeViewer {...defaultProps} highlightLines={[1]} highlightType="addition" />)
       const line = screen.getByText('1').closest('tr')
-      expect(line).toHaveClass('bg-success/20')
+      expect(line).toHaveClass('bg-success-subtle')
     })
 
     it('should apply deletion highlight type', () => {
       render(<CodeViewer {...defaultProps} highlightLines={[1]} highlightType="deletion" />)
       const line = screen.getByText('1').closest('tr')
-      expect(line).toHaveClass('bg-destructive/20')
+      expect(line).toHaveClass('bg-destructive-subtle')
     })
 
     it('should apply modification highlight type', () => {
       render(<CodeViewer {...defaultProps} highlightLines={[1]} highlightType="modification" />)
       const line = screen.getByText('1').closest('tr')
-      expect(line).toHaveClass('bg-warning/20')
+      expect(line).toHaveClass('bg-warning-subtle')
     })
   })
 

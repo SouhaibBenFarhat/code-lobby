@@ -44,7 +44,7 @@ export function ChatHeader({
   onClose
 }: ChatHeaderProps): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between h-10 px-3 py-2 border-b border-border bg-card/80 dark:bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+    <div className="flex items-center justify-between h-10 px-3 py-2 section-header">
       <div className="flex items-center gap-2 min-w-0">
         <ClaudeIcon className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="font-semibold text-sm">AI Chat</span>
@@ -102,7 +102,7 @@ export function ChatHeader({
                             <span>Loading...</span>
                           </>
                         ) : (
-                          <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                          <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">
                             {selectedModel}
                           </code>
                         )}
@@ -116,7 +116,7 @@ export function ChatHeader({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
+                      className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive-subtle px-2"
                       onClick={onRemoveApiKey}
                     >
                       Remove

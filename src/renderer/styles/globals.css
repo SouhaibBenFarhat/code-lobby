@@ -4,95 +4,218 @@
 
 @layer base {
   :root {
-    /* Apple-inspired Light Mode */
-    /* Clean whites and subtle grays like macOS */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11%;
-    
-    /* Apple Blue - their signature accent color */
-    --primary: 211 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    
-    /* Subtle gray backgrounds */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 11%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 94%;
-    --accent-foreground: 0 0% 11%;
-    
-    /* System colors */
-    --destructive: 0 100% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 11%;
-    
-    /* Borders - very subtle in Apple design */
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 211 100% 50%;
-    
-    /* Apple uses larger radii - 10-12px for cards */
+    /* ═══════════════════════════════════════════════════════════════════════
+     * LIGHT MODE — OKLCH tonal palette
+     * Generated from theme.config.mjs · Run `pnpm generate:theme`
+     * ═══════════════════════════════════════════════════════════════════════ */
+    /* GENERATED:LIGHT:START */
+    --background: 1.000 0.0000 0.0;
+
+    --surface-content: 0.978 0.0040 264.0;
+
+    --surface: 0.958 0.0060 264.0;
+    --surface-raised: 0.944 0.0070 264.0;
+    --header: 0.850 0.0150 264.0;
+    --surface-hover: 0.930 0.0070 264.0;
+    --overlay: 1.000 0.0000 0.0;
+
+    --foreground: 0.175 0.0100 264.0;
+    --foreground-muted: 0.470 0.0080 264.0;
+    --foreground-subtle: 0.620 0.0060 264.0;
+    --foreground-ghost: 0.750 0.0050 264.0;
+
+    --border: 0.860 0.0100 264.0;
+    --border-muted: 0.900 0.0080 264.0;
+    --border-subtle: 0.935 0.0060 264.0;
+
+    --interactive-hover: 0.920 0.0070 264.0;
+    --interactive-active: 0.890 0.0090 264.0;
+
+    --primary: 0.590 0.1900 250.0;
+    --primary-foreground: 1.000 0.0000 0.0;
+
+    --destructive: 0.550 0.2000 27.0;
+    --destructive-foreground: 1.000 0.0000 0.0;
+    --destructive-subtle: 0.960 0.0200 27.0;
+    --destructive-border: 0.895 0.0350 27.0;
+
+    --success: 0.620 0.1700 155.0;
+    --success-foreground: 1.000 0.0000 0.0;
+    --success-subtle: 0.960 0.0200 155.0;
+    --success-border: 0.880 0.0350 155.0;
+
+    --warning: 0.800 0.1600 80.0;
+    --warning-foreground: 0.175 0.0100 264.0;
+    --warning-subtle: 0.960 0.0250 80.0;
+    --warning-border: 0.880 0.0450 80.0;
+
+    --info: 0.625 0.1500 250.0;
+    --info-subtle: 0.960 0.0200 250.0;
+    --info-border: 0.895 0.0350 250.0;
+
+    --input: 0.910 0.0070 264.0;
+
+    --ring: 0.590 0.1900 250.0;
+
+    --chat-bg: 0.930 0.0060 264.0;
+    --chat-bubble: 1.000 0.0000 0.0;
+
+    --code-bg: 0.958 0.0080 264.0;
+    --code-fg: 0.270 0.0100 264.0;
+    /* GENERATED:LIGHT:END */
+
+    /* Backward-compatible aliases — so bg-card, bg-muted, etc. still work */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--overlay);
+    --popover-foreground: var(--foreground);
+    --secondary: var(--surface);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface);
+    --muted-foreground: var(--foreground-muted);
+    --accent: var(--surface-hover);
+    --accent-foreground: var(--foreground);
+    --surface-foreground: var(--foreground);
+
+    /* Syntax highlighting — GitHub Light palette */
+    --syntax-keyword: #d73a49;
+    --syntax-type: #005cc5;
+    --syntax-function: #6f42c1;
+    --syntax-string: #032f62;
+    --syntax-number: #005cc5;
+    --syntax-comment: #6a737d;
+    --syntax-variable: #e36209;
+    --syntax-operator: #d73a49;
+    --syntax-punctuation: #24292e;
+    --syntax-tag: #22863a;
+    --syntax-attribute: #005cc5;
+    --syntax-meta: #6a737d;
+    --syntax-regexp: #032f62;
+    --syntax-default: #24292e;
+
+    /* Diff line tints — light mode */
+    --diff-addition-bg: #dafbe1;
+    --diff-deletion-bg: #ffebe9;
+    --diff-addition-gutter: #aff5b4;
+    --diff-deletion-gutter: #ffc1ba;
+
+    /* Geometry */
     --radius: 0.75rem;
-    
-    /* Apple-style shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
+
+    /* Shadows — elevation levels (stronger for visible section separation) */
+    --shadow-elevation-low: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-elevation-medium: 0 3px 10px -2px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-elevation-high: 0 8px 24px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+    /* Legacy aliases */
+    --shadow-sm: var(--shadow-elevation-low);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
+    --shadow-lg: var(--shadow-elevation-high);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.20);
   }
 
   .dark {
-    /* Dark Mode with elevation hierarchy */
-    /* Base level - main content area (PR detail) */
-    --background: 220 10% 8%;
-    --foreground: 0 0% 98%;
-    
-    /* Elevated surfaces - cards sit slightly above background */
-    --card: 220 10% 12%;
-    --card-foreground: 0 0% 98%;
-    --popover: 220 10% 14%;
-    --popover-foreground: 0 0% 98%;
-    
-    /* Apple Blue stays vibrant in dark mode */
-    --primary: 211 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    
-    /* Elevated surfaces for panels/sidebars */
-    --secondary: 220 10% 14%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 220 8% 18%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 220 10% 16%;
-    --accent-foreground: 0 0% 98%;
-    
-    /* Panel elevation - for sidebars and floating panels */
-    --panel: 220 10% 11%;
-    --panel-elevated: 220 10% 13%;
-    
-    /* System colors - slightly adjusted for dark */
-    --destructive: 0 100% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 11%;
-    
-    /* Borders - more visible for structure */
-    --border: 220 8% 22%;
-    --input: 220 8% 20%;
-    --ring: 211 100% 50%;
-    
-    /* Dark mode shadows - for elevation effect */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    /* ═══════════════════════════════════════════════════════════════════════
+     * DARK MODE — OKLCH tonal palette
+     * Generated from theme.config.mjs · Run `pnpm generate:theme`
+     * ═══════════════════════════════════════════════════════════════════════ */
+    /* GENERATED:DARK:START */
+    --background: 0.145 0.0120 264.0;
+
+    --surface-content: 0.160 0.0120 264.0;
+
+    --surface: 0.185 0.0110 264.0;
+    --surface-raised: 0.202 0.0100 264.0;
+    --header: 0.310 0.0140 264.0;
+    --surface-hover: 0.222 0.0100 264.0;
+    --overlay: 0.275 0.0100 264.0;
+
+    --foreground: 0.960 0.0000 0.0;
+    --foreground-muted: 0.625 0.0060 264.0;
+    --foreground-subtle: 0.490 0.0060 264.0;
+    --foreground-ghost: 0.365 0.0050 264.0;
+
+    --border: 0.290 0.0080 264.0;
+    --border-muted: 0.250 0.0080 264.0;
+    --border-subtle: 0.210 0.0070 264.0;
+
+    --interactive-hover: 0.240 0.0100 264.0;
+    --interactive-active: 0.275 0.0100 264.0;
+
+    --primary: 0.590 0.1900 250.0;
+    --primary-foreground: 1.000 0.0000 0.0;
+
+    --destructive: 0.635 0.1950 27.0;
+    --destructive-foreground: 1.000 0.0000 0.0;
+    --destructive-subtle: 0.215 0.0300 27.0;
+    --destructive-border: 0.305 0.0350 27.0;
+
+    --success: 0.620 0.1550 155.0;
+    --success-foreground: 1.000 0.0000 0.0;
+    --success-subtle: 0.215 0.0250 155.0;
+    --success-border: 0.290 0.0280 155.0;
+
+    --warning: 0.800 0.1450 80.0;
+    --warning-foreground: 0.175 0.0100 264.0;
+    --warning-subtle: 0.215 0.0250 80.0;
+    --warning-border: 0.290 0.0280 80.0;
+
+    --info: 0.625 0.1400 250.0;
+    --info-subtle: 0.220 0.0250 250.0;
+    --info-border: 0.305 0.0280 250.0;
+
+    --input: 0.262 0.0080 264.0;
+
+    --ring: 0.590 0.1900 250.0;
+
+    --chat-bg: 0.110 0.0100 264.0;
+    --chat-bubble: 0.200 0.0100 264.0;
+
+    --code-bg: 0.145 0.0120 264.0;
+    --code-fg: 0.890 0.0050 264.0;
+    /* GENERATED:DARK:END */
+
+    /* Syntax highlighting — GitHub Dark palette */
+    --syntax-keyword: #ff7b72;
+    --syntax-type: #79c0ff;
+    --syntax-function: #d2a8ff;
+    --syntax-string: #a5d6ff;
+    --syntax-number: #79c0ff;
+    --syntax-comment: #8b949e;
+    --syntax-variable: #ffa657;
+    --syntax-operator: #ff7b72;
+    --syntax-punctuation: #c9d1d9;
+    --syntax-tag: #7ee787;
+    --syntax-attribute: #79c0ff;
+    --syntax-meta: #8b949e;
+    --syntax-regexp: #a5d6ff;
+    --syntax-default: #c9d1d9;
+
+    /* Diff line tints — dark mode */
+    --diff-addition-bg: rgba(46, 160, 67, 0.15);
+    --diff-deletion-bg: rgba(248, 81, 73, 0.15);
+    --diff-addition-gutter: rgba(46, 160, 67, 0.4);
+    --diff-deletion-gutter: rgba(248, 81, 73, 0.4);
+
+    /* Backward-compatible aliases */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--overlay);
+    --popover-foreground: var(--foreground);
+    --secondary: var(--surface-raised);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-raised);
+    --muted-foreground: var(--foreground-muted);
+    --accent: var(--surface-hover);
+    --accent-foreground: var(--foreground);
+    --surface-foreground: var(--foreground);
+
+    /* Shadows */
+    --shadow-elevation-low: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-elevation-medium: 0 2px 8px -2px rgba(0, 0, 0, 0.4);
+    --shadow-elevation-high: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-sm: var(--shadow-elevation-low);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-lg: var(--shadow-elevation-high);
     --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7);
   }
 }
@@ -117,9 +240,9 @@
     letter-spacing: -0.02em;
   }
   
-  /* Subtle selection color like macOS */
+  /* Selection uses primary tint */
   ::selection {
-    background: hsl(211 100% 50% / 0.3);
+    background: oklch(var(--primary) / 0.3);
   }
 }
 
@@ -141,134 +264,92 @@
   @apply bg-muted-foreground/40;
 }
 
-/* Apple-style card and surface styling */
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STRUCTURAL THEME CLASSES — All use semantic CSS variables so they
+ * automatically adapt to light/dark via the elevation hierarchy.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Cards - clean with subtle shadows */
-:root [data-slot="card"],
-:root .card {
-  box-shadow: var(--shadow-sm);
-  border: 1px solid hsl(var(--border));
+/* Cards — surface level */
+[data-slot="card"],
+.card {
+  box-shadow: var(--shadow-elevation-low);
+  border: 1px solid oklch(var(--border));
   border-radius: var(--radius);
 }
 
-:root [data-slot="card"]:hover,
-:root .card:hover {
-  box-shadow: var(--shadow-md);
+[data-slot="card"]:hover,
+.card:hover {
+  box-shadow: var(--shadow-elevation-medium);
 }
 
-.dark [data-slot="card"],
-.dark .card {
-  box-shadow: var(--shadow-sm);
-  border: 1px solid hsl(var(--border));
+/* App header — highest chrome level with frosted glass */
+.header-bar {
+  background: oklch(var(--header) / 0.95);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-bottom: 1px solid oklch(var(--border));
+  box-shadow: var(--shadow-elevation-medium);
 }
 
-.dark [data-slot="card"]:hover,
-.dark .card:hover {
-  box-shadow: var(--shadow-md);
+/* Chrome-zone section headers (Explorer, AI Chat) — subtle elevation */
+.section-header {
+  background: oklch(var(--surface-raised));
+  border-bottom: 1px solid oklch(var(--border-muted));
+  position: relative;
+  z-index: 10;
 }
 
-/* Apple-style header/toolbar - frosted glass effect */
-:root .header-bar {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid hsl(0 0% 0% / 0.1);
+/* Content-zone headers (PR detail, etc.) — lighter than chrome headers */
+.content-header {
+  background: oklch(var(--surface-content));
+  border-bottom: 1px solid oklch(var(--border-muted));
+  position: relative;
+  z-index: 10;
 }
 
-.dark .header-bar {
-  background: hsl(220 10% 10% / 0.9);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid hsl(220 8% 20%);
-}
-
-/* Apple-style sidebar styling - elevated above main content */
+/* Sidebar — matches profile section background */
 .apple-sidebar {
-  background: rgba(246, 246, 246, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: oklch(var(--background));
 }
 
-.dark .apple-sidebar {
-  background: hsl(220 10% 11%);
-  border-right: 1px solid hsl(220 8% 18%);
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Apple-style panel styling - elevated for AI chat and sidebars */
+/* Panel — surface level (right side) */
 .apple-panel {
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-left: 1px solid hsl(0 0% 0% / 0.08);
+  background: oklch(var(--surface));
 }
 
-.dark .apple-panel {
-  background: hsl(220 10% 11%);
-  border-left: 1px solid hsl(220 8% 18%);
-  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Elevated panel - for floating elements like AI chat */
+/* Elevated / floating panel — surface-raised */
 .elevated-panel {
-  background: hsl(0 0% 100%);
+  background: oklch(var(--surface-raised));
+  border: 1px solid oklch(var(--border));
+  box-shadow: var(--shadow-elevation-high);
 }
 
-.dark .elevated-panel {
-  background: hsl(220 10% 13%);
-  border: 1px solid hsl(220 8% 20%);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-}
-
-/* Apple-style list items / PR cards */
-:root .pr-card-item {
-  background: hsl(0 0% 100%);
-  border: 1px solid hsl(0 0% 0% / 0.06);
+/* PR / list card items */
+.pr-card-item {
+  background: oklch(var(--surface-raised));
+  border: 1px solid oklch(var(--border));
   border-radius: 10px;
+  box-shadow: var(--shadow-elevation-medium);
   transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-:root .pr-card-item:hover {
-  background: hsl(0 0% 98%);
-  border-color: hsl(0 0% 0% / 0.1);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+.pr-card-item:hover {
+  background: oklch(var(--surface-hover));
+  border-color: oklch(var(--border));
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevation-high);
 }
 
-:root .pr-card-item.selected {
-  background: hsl(211 100% 97%);
-  border-color: hsl(211 100% 50%);
-  box-shadow: 0 0 0 3px hsl(211 100% 50% / 0.15);
+.pr-card-item.selected {
+  background: oklch(var(--primary) / 0.12);
+  border-color: oklch(var(--primary));
+  box-shadow: 0 0 0 3px oklch(var(--primary) / 0.15);
 }
 
-:root .pr-card-item.selected:hover {
-  background: hsl(211 100% 95%);
-  border-color: hsl(211 100% 45%);
-  box-shadow: 0 0 0 3px hsl(211 100% 50% / 0.2);
-}
-
-.dark .pr-card-item {
-  background: hsl(0 0% 12%);
-  border: 1px solid hsl(0 0% 100% / 0.08);
-}
-
-.dark .pr-card-item:hover {
-  background: hsl(0 0% 16%);
-  border-color: hsl(0 0% 100% / 0.12);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.dark .pr-card-item.selected {
-  background: hsl(211 60% 15%);
-  border-color: hsl(211 100% 50%);
-  box-shadow: 0 0 0 3px hsl(211 100% 50% / 0.25);
-}
-
-.dark .pr-card-item.selected:hover {
-  background: hsl(211 60% 18%);
-  border-color: hsl(211 100% 55%);
-  box-shadow: 0 0 0 3px hsl(211 100% 50% / 0.3);
+.pr-card-item.selected:hover {
+  background: oklch(var(--primary) / 0.18);
+  border-color: oklch(var(--primary));
+  box-shadow: 0 0 0 3px oklch(var(--primary) / 0.2);
 }
 
 /* Drag region for titlebar */
@@ -385,10 +466,10 @@ button, a, input, select, textarea {
   transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-/* Focus rings - Apple style (subtle blue glow) */
+/* Focus rings - primary tint */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px hsl(211 100% 50% / 0.4);
+  box-shadow: 0 0 0 3px oklch(var(--primary) / 0.4);
 }
 
 /* PR Detail panel overflow fix */
@@ -643,8 +724,8 @@ button, a, input, select, textarea {
 
 /* Toolbar styling */
 .markdown-editor-wrapper .w-md-editor-toolbar {
-  background: hsl(var(--muted) / 0.3) !important;
-  border-bottom: 1px solid hsl(var(--border)) !important;
+  background: oklch(var(--muted) / 0.3) !important;
+  border-bottom: 1px solid oklch(var(--border)) !important;
   padding: 4px 8px !important;
   min-height: auto !important;
   height: auto !important;
@@ -658,8 +739,8 @@ button, a, input, select, textarea {
 }
 
 .markdown-editor-wrapper .w-md-editor-toolbar li > button.custom-toolbar-button.active {
-  background: hsl(var(--primary) / 0.1) !important;
-  color: hsl(var(--primary)) !important;
+  background: oklch(var(--primary) / 0.1) !important;
+  color: oklch(var(--primary)) !important;
 }
 
 /* Preview mode toolbar */
@@ -682,19 +763,19 @@ button, a, input, select, textarea {
   width: 26px !important;
   padding: 4px !important;
   border-radius: 5px !important;
-  color: hsl(var(--muted-foreground)) !important;
+  color: oklch(var(--muted-foreground)) !important;
   transition: all 0.15s ease !important;
 }
 
 .markdown-editor-wrapper .w-md-editor-toolbar li > button:hover {
-  background: hsl(var(--accent)) !important;
-  color: hsl(var(--foreground)) !important;
+  background: oklch(var(--accent)) !important;
+  color: oklch(var(--foreground)) !important;
 }
 
 .markdown-editor-wrapper .w-md-editor-toolbar li > button:active,
 .markdown-editor-wrapper .w-md-editor-toolbar li.active > button {
-  background: hsl(var(--primary) / 0.1) !important;
-  color: hsl(var(--primary)) !important;
+  background: oklch(var(--primary) / 0.1) !important;
+  color: oklch(var(--primary)) !important;
 }
 
 .markdown-editor-wrapper .w-md-editor-toolbar li > button svg {
@@ -704,7 +785,7 @@ button, a, input, select, textarea {
 
 /* Toolbar divider */
 .markdown-editor-wrapper .w-md-editor-toolbar-divider {
-  background: hsl(var(--border)) !important;
+  background: oklch(var(--border)) !important;
   height: 16px !important;
   margin: 0 4px !important;
 }
@@ -729,24 +810,24 @@ button, a, input, select, textarea {
 
 /* Textarea placeholder */
 .markdown-editor-wrapper .w-md-editor-text-input::placeholder {
-  color: hsl(var(--muted-foreground)) !important;
+  color: oklch(var(--muted-foreground)) !important;
   opacity: 1 !important;
 }
 
 /* Dark mode specific overrides */
 .dark .markdown-editor-wrapper .w-md-editor {
-  --color-border-default: hsl(var(--border)) !important;
-  --color-fg-default: hsl(var(--foreground)) !important;
+  --color-border-default: oklch(var(--border)) !important;
+  --color-fg-default: oklch(var(--foreground)) !important;
   --color-canvas-default: transparent !important;
-  --color-canvas-subtle: hsl(var(--muted)) !important;
+  --color-canvas-subtle: oklch(var(--muted)) !important;
 }
 
 /* Light mode specific overrides */
 :root .markdown-editor-wrapper .w-md-editor {
-  --color-border-default: hsl(var(--border)) !important;
-  --color-fg-default: hsl(var(--foreground)) !important;
+  --color-border-default: oklch(var(--border)) !important;
+  --color-fg-default: oklch(var(--foreground)) !important;
   --color-canvas-default: transparent !important;
-  --color-canvas-subtle: hsl(var(--muted)) !important;
+  --color-canvas-subtle: oklch(var(--muted)) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -776,7 +857,7 @@ button, a, input, select, textarea {
   display: inline-block;
   width: 2px;
   height: 1em;
-  background: hsl(var(--primary) / 0.6);
+  background: oklch(var(--primary) / 0.6);
   margin-left: 1px;
   animation: cursorBlink 1s ease-in-out infinite;
   vertical-align: text-bottom;

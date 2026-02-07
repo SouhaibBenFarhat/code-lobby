@@ -23,7 +23,7 @@ export function ChatSettings({
   onRemoveApiKey
 }: ChatSettingsProps): React.JSX.Element {
   return (
-    <div className="px-3 py-2 border-b border-border bg-muted/40 space-y-2">
+    <div className="px-3 py-2 border-b border-border bg-surface space-y-2">
       {/* Model Selector */}
       <div className="flex items-center gap-3">
         <span className="text-xs text-muted-foreground w-16 shrink-0">Model</span>
@@ -51,7 +51,7 @@ export function ChatSettings({
                 <span>Loading...</span>
               </>
             ) : (
-              <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">{selectedModel}</code>
+              <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">{selectedModel}</code>
             )}
           </div>
         )}
@@ -63,7 +63,7 @@ export function ChatSettings({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
+          className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive-subtle px-2"
           onClick={onRemoveApiKey}
         >
           Remove

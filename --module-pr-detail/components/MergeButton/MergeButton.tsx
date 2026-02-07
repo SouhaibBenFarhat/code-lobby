@@ -253,7 +253,7 @@ export function MergeButton(): React.JSX.Element | null {
           </fieldset>
 
           {mergeError && (
-            <div className="flex items-start gap-2 p-2 bg-destructive/10 rounded text-xs text-destructive">
+            <div className="flex items-start gap-2 p-2 bg-destructive-subtle rounded text-xs text-destructive">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>{mergeError}</span>
             </div>

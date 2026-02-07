@@ -214,7 +214,7 @@ describe('Header', () => {
       )
 
       // Find the view switcher and check the active button
-      const viewSwitcher = container.querySelector('.bg-muted\\/50')
+      const viewSwitcher = container.querySelector('.bg-surface')
       expect(viewSwitcher).toBeInTheDocument()
     })
 

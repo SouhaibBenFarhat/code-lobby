@@ -129,7 +129,7 @@ const DraggableCard = memo(function DraggableCard({
         bottomLeft: 'resize-handle resize-handle-sw',
         bottomRight: 'resize-handle resize-handle-se'
       }}
-      className={!isLayoutLocked ? 'hover:shadow-xl hover:z-10' : ''}
+      className={!isLayoutLocked ? 'hover:shadow-elevation-high hover:z-10' : ''}
       style={{ willChange: 'transform' }}
     >
       <RepoCard
@@ -418,7 +418,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-destructive-subtle flex items-center justify-center">
             <AlertCircle className="w-6 h-6 text-destructive" />
           </div>
           <div className="space-y-2">
@@ -441,7 +441,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-info-subtle flex items-center justify-center">
             <FolderGit2 className="w-8 h-8 text-primary" />
           </div>
           <div className="space-y-2">
@@ -459,7 +459,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-surface flex items-center justify-center">
             <FolderGit2 className="w-8 h-8 text-muted-foreground" />
           </div>
           <div className="space-y-2">
@@ -475,7 +475,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
 
   return (
     <div className="h-full w-full relative">
-      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
+      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 bg-surface/90 backdrop-blur-sm rounded-lg p-1.5 border border-border-muted shadow-elevation-low">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -535,7 +535,7 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
         </Tooltip>
       </div>
 
-      <div ref={containerRef} className="h-full w-full overflow-auto bg-muted/50 dark:bg-black/30">
+      <div ref={containerRef} className="h-full w-full overflow-auto bg-background">
         <div
           className="relative"
           style={{
@@ -546,11 +546,11 @@ export function PRGrid({ currentUser }: PRGridProps): React.JSX.Element {
           }}
         >
           <div
-            className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
+            className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-15"
             style={{
               backgroundImage: `
-                linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-                linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
+                linear-gradient(to right, oklch(var(--border-subtle)) 1px, transparent 1px),
+                linear-gradient(to bottom, oklch(var(--border-subtle)) 1px, transparent 1px)
               `,
               backgroundSize: '50px 50px'
             }}

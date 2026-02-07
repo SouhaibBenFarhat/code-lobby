@@ -137,7 +137,7 @@ export function AICostIndicator(): React.JSX.Element | null {
               <div className="flex justify-between items-center">
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Input</span>
-                  <span className="text-[10px] text-muted-foreground/70">(what you send)</span>
+                  <span className="text-[10px] text-foreground-muted">(what you send)</span>
                 </div>
                 <div className="text-right">
                   <span className="font-mono text-xs">{formatTokens(usage.inputTokens)}</span>
@@ -151,7 +151,7 @@ export function AICostIndicator(): React.JSX.Element | null {
               <div className="flex justify-between items-center">
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Output</span>
-                  <span className="text-[10px] text-muted-foreground/70">(Claude's response)</span>
+                  <span className="text-[10px] text-foreground-muted">(Claude's response)</span>
                 </div>
                 <div className="text-right">
                   <span className="font-mono text-xs">{formatTokens(usage.outputTokens)}</span>

@@ -86,9 +86,9 @@ export function FileTreeNode({
             variant="unstyled"
             size="none"
             onClick={() => toggleFile(node.path)}
-            className="flex-1 flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors text-left"
+            className="flex-1 flex items-center gap-1 py-1 text-xs hover:bg-interactive-hover transition-colors text-left"
           >
-            <span className="text-muted-foreground/50 font-mono text-[10px] whitespace-pre select-none">
+            <span className="text-foreground-subtle font-mono text-[10px] whitespace-pre select-none">
               {prefix}
               {connector}
             </span>
@@ -100,7 +100,7 @@ export function FileTreeNode({
               ))}
             {!file.patch && <span className="w-3" />}
             {getFileIcon(file.changeType)}
-            <span className="flex-1 truncate font-mono text-foreground/90">{node.name}</span>
+            <span className="flex-1 truncate font-mono text-foreground">{node.name}</span>
             <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-70 group-hover:opacity-100">
               {file.additions > 0 && <span className="text-success">+{file.additions}</span>}
               {file.deletions > 0 && <span className="text-destructive">−{file.deletions}</span>}
@@ -151,9 +151,9 @@ export function FileTreeNode({
         variant="unstyled"
         size="none"
         onClick={() => toggleDir(node.path)}
-        className="w-full flex items-center gap-1 py-1 text-xs hover:bg-muted/30 transition-colors text-left"
+        className="w-full flex items-center gap-1 py-1 text-xs hover:bg-interactive-hover transition-colors text-left"
       >
-        <span className="text-muted-foreground/50 font-mono text-[10px] whitespace-pre select-none">
+        <span className="text-foreground-subtle font-mono text-[10px] whitespace-pre select-none">
           {prefix}
           {connector}
         </span>

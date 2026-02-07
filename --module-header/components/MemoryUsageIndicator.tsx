@@ -25,8 +25,8 @@ export function MemoryUsageIndicator(): React.JSX.Element | null {
           <div
             className={cn(
               'flex items-center gap-2 no-drag cursor-default px-2 py-1 rounded-md transition-colors',
-              isHigh && 'bg-destructive/10 border border-destructive/30',
-              isMedium && !isHigh && 'bg-warning/10 border border-warning/30'
+              isHigh && 'bg-destructive-subtle border border-destructive-border',
+              isMedium && !isHigh && 'bg-warning-subtle border border-warning-border'
             )}
           >
             <HardDrive
@@ -36,11 +36,11 @@ export function MemoryUsageIndicator(): React.JSX.Element | null {
               )}
             />
             <div className="flex items-center gap-1.5">
-              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
                 <div
                   className={cn(
                     'h-full rounded-full transition-all duration-300',
-                    isHigh ? 'bg-destructive' : isMedium ? 'bg-yellow-500' : 'bg-green-500'
+                    isHigh ? 'bg-destructive' : isMedium ? 'bg-warning' : 'bg-success'
                   )}
                   style={{ width: `${Math.min(heapPercentage, 100)}%` }}
                 />

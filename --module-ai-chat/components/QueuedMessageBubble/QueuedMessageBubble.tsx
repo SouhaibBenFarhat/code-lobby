@@ -33,13 +33,13 @@ function QueuedMessageBubbleInner({
         >
           <X className="w-3 h-3" />
         </Button>
-        <span className="absolute -bottom-1 -left-1 text-[9px] bg-muted text-muted-foreground px-1 rounded">
+        <span className="absolute -bottom-1 -left-1 text-[9px] bg-surface text-muted-foreground px-1 rounded">
           #{index + 1}
         </span>
       </div>
       <Avatar className="w-7 h-7 flex-shrink-0 opacity-50">
         {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.login} /> : null}
-        <AvatarFallback className="bg-muted/50">
+        <AvatarFallback className="bg-surface">
           <User className="w-3.5 h-3.5" />
         </AvatarFallback>
       </Avatar>

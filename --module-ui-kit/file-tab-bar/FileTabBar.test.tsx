@@ -171,7 +171,7 @@ describe('FileTabBar', () => {
     })
 
     it('should show correct icon for Markdown files', () => {
-      testIconColor('README.md', 'text-gray-400')
+      testIconColor('README.md', 'text-foreground-ghost')
     })
 
     it('should show correct icon for HTML files', () => {

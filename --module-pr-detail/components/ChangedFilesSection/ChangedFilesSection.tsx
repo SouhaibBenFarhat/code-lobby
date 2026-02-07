@@ -238,25 +238,25 @@ export function ChangedFilesSection({
           {files.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               {fileStats.added > 0 && (
-                <Badge variant="secondary" className="bg-success/15 text-success gap-1">
+                <Badge variant="secondary" className="bg-success-subtle text-success gap-1">
                   <FilePlus className="w-3 h-3" />
                   {fileStats.added} added
                 </Badge>
               )}
               {fileStats.modified > 0 && (
-                <Badge variant="secondary" className="bg-primary/15 text-primary gap-1">
+                <Badge variant="secondary" className="bg-info-subtle text-primary gap-1">
                   <FileDiff className="w-3 h-3" />
                   {fileStats.modified} modified
                 </Badge>
               )}
               {fileStats.deleted > 0 && (
-                <Badge variant="secondary" className="bg-destructive/15 text-destructive gap-1">
+                <Badge variant="secondary" className="bg-destructive-subtle text-destructive gap-1">
                   <FileMinus className="w-3 h-3" />
                   {fileStats.deleted} deleted
                 </Badge>
               )}
               {fileStats.renamed > 0 && (
-                <Badge variant="secondary" className="bg-warning/15 text-warning gap-1">
+                <Badge variant="secondary" className="bg-warning-subtle text-warning gap-1">
                   <FileEdit className="w-3 h-3" />
                   {fileStats.renamed} renamed
                 </Badge>
@@ -278,7 +278,7 @@ export function ChangedFilesSection({
               {searchQuery ? 'No files match your search' : 'No changed files'}
             </div>
           ) : (
-            <div className="rounded-lg border bg-card/50 p-3 max-h-[400px] overflow-y-auto">
+            <div className="rounded-lg border border-border-muted bg-surface p-3 max-h-[400px] overflow-y-auto">
               <div className="flex flex-col gap-0.5">
                 {rootChildren.map((child, idx) => (
                   <FileTreeNode

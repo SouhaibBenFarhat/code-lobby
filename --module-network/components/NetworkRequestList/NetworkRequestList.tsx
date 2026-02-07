@@ -27,7 +27,7 @@ function EmptyState(): React.JSX.Element {
       className="flex flex-col items-center justify-center h-[200px] text-center px-4"
       data-testid="empty-state"
     >
-      <Globe className="w-8 h-8 text-muted-foreground/30 mb-2" />
+      <Globe className="w-8 h-8 text-foreground-ghost mb-2" />
       <p className="text-xs text-muted-foreground">No requests yet</p>
     </div>
   )
@@ -42,9 +42,9 @@ function NoMatchState(): React.JSX.Element {
       className="flex flex-col items-center justify-center h-[200px] text-center px-4"
       data-testid="no-match-state"
     >
-      <Search className="w-8 h-8 text-muted-foreground/30 mb-2" />
+      <Search className="w-8 h-8 text-foreground-ghost mb-2" />
       <p className="text-xs text-muted-foreground">No matching requests</p>
-      <p className="text-[10px] text-muted-foreground/60 mt-1">Try a different search term</p>
+      <p className="text-[10px] text-foreground-subtle mt-1">Try a different search term</p>
     </div>
   )
 }

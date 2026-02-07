@@ -202,7 +202,7 @@ export function FindPreviewButton(): React.JSX.Element | null {
               <Eye className="w-4 h-4 text-emerald-500" />
               <span className="font-medium text-sm">Preview Environment</span>
             </div>
-            <div className="flex items-start gap-2 p-2 bg-muted rounded-md">
+            <div className="flex items-start gap-2 p-2 bg-surface rounded-md">
               <button
                 type="button"
                 onClick={() => openUrl(previewUrl)}

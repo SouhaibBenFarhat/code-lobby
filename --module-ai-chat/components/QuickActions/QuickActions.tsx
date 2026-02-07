@@ -102,8 +102,8 @@ export function QuickActions({
           disabled={disabled}
           className={cn(
             'inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-            'bg-transparent hover:bg-muted/60 border border-dashed border-border/50 hover:border-border',
-            'text-muted-foreground/60 hover:text-muted-foreground',
+            'bg-transparent hover:bg-interactive-hover border border-dashed border-border-muted hover:border-border',
+            'text-foreground-subtle hover:text-muted-foreground',
             'transition-all duration-150',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
@@ -122,7 +122,7 @@ export function QuickActions({
               disabled={disabled}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap',
-                'bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50',
+                'bg-info-subtle hover:bg-interactive-hover border border-primary hover:border-primary',
                 'text-primary hover:text-primary',
                 'transition-all duration-150 pr-12',
                 disabled && 'opacity-50 cursor-not-allowed'
@@ -140,7 +140,7 @@ export function QuickActions({
                   e.stopPropagation()
                   setEditingPrompt(prompt)
                 }}
-                className="w-4 h-4 flex items-center justify-center rounded-full text-primary/40 hover:text-primary/80 hover:bg-primary/10 transition-colors"
+                className="w-4 h-4 flex items-center justify-center rounded-full text-foreground-subtle hover:text-primary hover:bg-info-subtle transition-colors"
                 title="Edit prompt"
               >
                 <Pencil className="w-2.5 h-2.5" />
@@ -153,7 +153,7 @@ export function QuickActions({
                   e.stopPropagation()
                   onDeleteCustomPrompt(prompt.id)
                 }}
-                className="w-4 h-4 flex items-center justify-center rounded-full text-primary/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                className="w-4 h-4 flex items-center justify-center rounded-full text-foreground-subtle hover:text-destructive hover:bg-destructive-subtle transition-colors"
                 title="Delete prompt"
               >
                 <X className="w-2.5 h-2.5" />
@@ -172,7 +172,7 @@ export function QuickActions({
             disabled={disabled}
             className={cn(
               'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0',
-              'bg-muted/60 hover:bg-muted border border-border/50 hover:border-border',
+              'bg-surface hover:bg-interactive-hover border border-border-muted hover:border-border',
               'text-muted-foreground hover:text-foreground',
               'transition-all duration-150',
               disabled && 'opacity-50 cursor-not-allowed'

@@ -155,7 +155,7 @@ export function FloatingWindow({
           className={cn(
             'floating-window-minimized',
             'flex flex-col rounded-lg overflow-hidden shadow-xl',
-            'bg-card/95 backdrop-blur-xl border border-border/50',
+            'bg-overlay backdrop-blur-xl border border-border',
             isFocused ? 'ring-1 ring-primary/30' : 'opacity-90',
             className
           )}
@@ -218,7 +218,7 @@ export function FloatingWindow({
         className={cn(
           'floating-window',
           'flex flex-col h-full rounded-lg overflow-hidden shadow-2xl',
-          'bg-card/95 backdrop-blur-xl border border-border/50',
+          'bg-overlay backdrop-blur-xl border border-border',
           isFocused ? 'ring-1 ring-primary/30' : 'opacity-95',
           className
         )}

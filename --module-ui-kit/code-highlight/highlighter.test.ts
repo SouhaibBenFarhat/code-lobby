@@ -204,7 +204,7 @@ describe('highlighter', () => {
       const tokens = tokenizeLine('const x = "hello"', 'typescript')
       tokens.forEach((token) => {
         expect(token.color).toBeDefined()
-        expect(token.color).toMatch(/^#[0-9a-fA-F]{6}$/)
+        expect(token.color).toMatch(/^var\(--syntax-/)
       })
     })
   })

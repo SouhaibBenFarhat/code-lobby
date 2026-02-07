@@ -146,11 +146,11 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
           <div className="flex flex-col gap-1">
             <div className="flex items-start gap-2">
               <MessageSquare className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-              <div className="text-foreground/90 flex-1 min-w-0 text-xs">
+              <div className="text-foreground flex-1 min-w-0 text-xs">
                 <MarkdownContent content={comment.body} />
               </div>
             </div>
-            <div className="flex justify-end border-t border-border/30 pt-1 mt-1">
+            <div className="flex justify-end border-t border-border-subtle pt-1 mt-1">
               {resolveButton}
             </div>
           </div>
@@ -161,19 +161,19 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
 
   // Custom render for inline comment styling
   const renderComment = (diffComment: DiffComment) => (
-    <div className="mx-2 my-1 px-3 py-2 rounded-md border border-border/50 bg-muted/30">
+    <div className="mx-2 my-1 px-3 py-2 rounded-md border border-border-muted bg-surface">
       {diffComment.content}
     </div>
   )
 
   return (
-    <div className="rounded-md border border-border/60 overflow-hidden text-xs">
+    <div className="rounded-md border border-border-muted overflow-hidden text-xs">
       {/* File header */}
       <FileHeader
         filePath={filePath}
         showChevron={false}
         interactive={false}
-        className="py-1.5 border-b border-border/40"
+        className="py-1.5 border-b border-border-muted"
         info={infoContent}
       />
 
@@ -190,15 +190,15 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
         />
       ) : (
         /* Fallback if no diff */
-        <div className="px-3 py-2 bg-muted/30">
+        <div className="px-3 py-2 bg-surface">
           <div className="flex flex-col gap-1">
             <div className="flex items-start gap-2">
               <MessageSquare className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-              <div className="text-foreground/90 flex-1 min-w-0 text-xs">
+              <div className="text-foreground flex-1 min-w-0 text-xs">
                 <MarkdownContent content={comment.body} />
               </div>
             </div>
-            <div className="flex justify-end border-t border-border/30 pt-1 mt-1">
+            <div className="flex justify-end border-t border-border-subtle pt-1 mt-1">
               {resolveButton}
             </div>
           </div>

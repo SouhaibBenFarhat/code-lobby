@@ -85,7 +85,7 @@ export function FileHeader({
         onClick={onToggle}
         aria-label={filePath}
         className={cn(
-          'w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left',
+          'w-full flex items-center gap-2 px-3 py-2 bg-surface hover:bg-interactive-hover transition-colors text-left',
           className
         )}
         {...props}
@@ -97,7 +97,7 @@ export function FileHeader({
 
   return (
     <div
-      className={cn('flex items-center gap-2 px-3 py-2 bg-muted/50', className)}
+      className={cn('flex items-center gap-2 px-3 py-2 bg-surface', className)}
       {...(props as React.HTMLAttributes<HTMLDivElement>)}
     >
       {content}

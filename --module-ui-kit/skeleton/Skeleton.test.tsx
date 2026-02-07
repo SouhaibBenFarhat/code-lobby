@@ -10,7 +10,7 @@ describe('Skeleton', () => {
     expect(skeleton).toBeInTheDocument()
     expect(skeleton).toHaveClass('animate-pulse')
     expect(skeleton).toHaveClass('rounded-md')
-    expect(skeleton).toHaveClass('bg-muted')
+    expect(skeleton).toHaveClass('bg-surface')
   })
 
   it('accepts custom className', () => {

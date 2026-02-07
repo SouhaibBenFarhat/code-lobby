@@ -100,7 +100,7 @@ describe('NetworkPanelHeader', () => {
       render(<NetworkPanelHeader {...defaultProps} />)
 
       const header = screen.getByTestId('network-panel-header')
-      expect(header).toHaveClass('border-b', 'border-border', 'bg-card/80', 'backdrop-blur-sm')
+      expect(header).toHaveClass('section-header')
     })
 
     it('should have flex layout', () => {

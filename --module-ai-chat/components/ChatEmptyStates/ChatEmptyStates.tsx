@@ -21,24 +21,24 @@ export function ChatLoadingSkeleton(): React.JSX.Element {
   ]
 
   return (
-    <div className="absolute inset-0 z-10 bg-background p-3 space-y-3 overflow-hidden">
+    <div className="absolute inset-0 z-10 bg-chat p-3 space-y-3 overflow-hidden">
       {skeletons.map((skeleton) => (
         <div
           key={skeleton.id}
           className={cn('flex gap-2', skeleton.isUser ? 'justify-end' : 'justify-start')}
         >
           {!skeleton.isUser && (
-            <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
+            <div className="w-7 h-7 rounded-full bg-surface animate-pulse flex-shrink-0" />
           )}
           <div
             className={cn(
               'rounded-lg animate-pulse',
-              skeleton.isUser ? 'bg-primary/20' : 'bg-muted'
+              skeleton.isUser ? 'bg-info-subtle' : 'bg-surface'
             )}
             style={{ width: `${skeleton.width}%`, height: `${skeleton.height}px` }}
           />
           {skeleton.isUser && (
-            <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
+            <div className="w-7 h-7 rounded-full bg-surface animate-pulse flex-shrink-0" />
           )}
         </div>
       ))}
@@ -68,7 +68,7 @@ export function PREmptyState({
   return (
     <div className="h-full flex items-center justify-center min-h-[200px]">
       <div className="text-center space-y-4 px-6 max-w-md">
-        <GitPullRequest className="w-12 h-12 mx-auto text-blue-500/40" />
+        <GitPullRequest className="w-12 h-12 mx-auto text-foreground-ghost" />
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">
             #{selectedPR.number} {selectedPR.title.slice(0, 50)}
@@ -105,7 +105,7 @@ export function NoPRSelectedState({ apiKey }: NoPRSelectedStateProps): React.JSX
   return (
     <div className="h-full flex items-center justify-center min-h-[200px]">
       <div className="text-center space-y-4 px-6 max-w-md">
-        <GitPullRequest className="w-12 h-12 mx-auto text-muted-foreground/30" />
+        <GitPullRequest className="w-12 h-12 mx-auto text-foreground-ghost" />
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">No PR Selected</p>
           <p className="text-sm text-muted-foreground">
@@ -135,7 +135,7 @@ export function PRContextBanner({
   repoFullName
 }: PRContextBannerProps): React.JSX.Element {
   return (
-    <div className="px-3 py-2 border-b border-border bg-primary/5">
+    <div className="px-3 py-2 border-b border-border bg-info-subtle">
       <div className="flex items-center gap-2">
         <GitPullRequest className="w-4 h-4 text-primary flex-shrink-0" />
         <div className="flex-1 min-w-0">
@@ -161,7 +161,7 @@ export function ContextSyncBanner({ isVisible }: ContextSyncBannerProps): React.
   if (!isVisible) return null
 
   return (
-    <div className="px-3 py-2 bg-warning/10 border-t border-warning/20">
+    <div className="px-3 py-2 bg-warning-subtle border-t border-warning-border">
       <div className="flex items-center gap-2 text-xs text-warning">
         <Loader2 className="w-3.5 h-3.5 flex-shrink-0 animate-spin" />
         <span className="truncate">Syncing PR context...</span>
@@ -178,7 +178,7 @@ export function ErrorBanner({ error }: ErrorBannerProps): React.JSX.Element | nu
   if (!error) return null
 
   return (
-    <div className="px-3 py-2 bg-destructive/10 border-t border-destructive/20">
+    <div className="px-3 py-2 bg-destructive-subtle border-t border-destructive-border">
       <div className="flex items-center gap-2 text-xs text-destructive">
         <span className="w-3.5 h-3.5 flex-shrink-0">⚠️</span>
         <span className="truncate">{error}</span>

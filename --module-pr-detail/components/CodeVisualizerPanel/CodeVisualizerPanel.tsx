@@ -137,7 +137,7 @@ function getTabFileIcon(fileName: string): React.JSX.Element {
       return <FileJson className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
     case 'md':
     case 'mdx':
-      return <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+      return <FileText className="w-3.5 h-3.5 text-foreground-ghost flex-shrink-0" />
     case 'css':
     case 'scss':
     case 'less':
@@ -192,8 +192,8 @@ function FileTreeItem({
         variant="unstyled"
         size="none"
         onClick={() => onSelectFile(node.path)}
-        className={`w-full flex items-center gap-2 py-1.5 px-2 text-xs hover:bg-muted/50 transition-colors text-left ${
-          isSelected ? 'bg-primary/20 text-primary' : ''
+        className={`w-full flex items-center gap-2 py-1.5 px-2 text-xs hover:bg-interactive-hover transition-colors text-left ${
+          isSelected ? 'bg-info-subtle text-primary' : ''
         }`}
         style={{ paddingLeft }}
       >
@@ -217,7 +217,7 @@ function FileTreeItem({
         variant="unstyled"
         size="none"
         onClick={() => onToggleDir(node.path)}
-        className="w-full flex items-center gap-2 py-1.5 px-2 text-xs hover:bg-muted/50 transition-colors text-left"
+        className="w-full flex items-center gap-2 py-1.5 px-2 text-xs hover:bg-interactive-hover transition-colors text-left"
         style={{ paddingLeft }}
       >
         {isExpanded ? (
@@ -272,7 +272,7 @@ function FileContentViewer({
   // For deleted files, we can't fetch from head ref - show message
   if (file?.changeType === 'DELETED') {
     return (
-      <div className="flex items-center justify-center h-full bg-[#0d1117] text-muted-foreground">
+      <div className="flex items-center justify-center h-full bg-code text-code-foreground">
         <div className="flex flex-col items-center gap-2 text-center px-4">
           <FileMinus className="w-8 h-8 text-destructive/50" />
           <span className="text-sm">This file was deleted in this PR</span>
@@ -425,9 +425,9 @@ export function CodeVisualizerPanel({
     >
       <div className="flex h-full">
         {/* Sidebar - File Tree */}
-        <div className="w-64 flex-shrink-0 border-r border-border/30 flex flex-col bg-muted/20">
+        <div className="w-64 flex-shrink-0 border-r border-border-subtle flex flex-col bg-background">
           {/* File count */}
-          <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border/30">
+          <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border-subtle">
             {files.length} file{files.length !== 1 ? 's' : ''} changed
           </div>
 
@@ -458,7 +458,7 @@ export function CodeVisualizerPanel({
               onValueChange={handleTabSelect}
               className="flex flex-col h-full"
             >
-              <div className="border-b border-border/30 bg-muted/30 overflow-hidden">
+              <div className="border-b border-border-subtle bg-surface overflow-hidden">
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="w-max">
                     <TabsList className="h-9 w-max rounded-none bg-transparent p-0 justify-start inline-flex">
@@ -468,10 +468,10 @@ export function CodeVisualizerPanel({
                           value={tab.id}
                           className={cn(
                             'relative h-9 w-[160px] rounded-none border-b-2 border-b-transparent px-3 pb-2 pt-2 font-normal text-muted-foreground shadow-none transition-none gap-2 group flex-shrink-0',
-                            'data-[state=active]:border-b-primary data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-background/50',
-                            'hover:bg-muted/50',
+                            'data-[state=active]:border-b-primary data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-background',
+                            'hover:bg-interactive-hover',
                             // Right border for visual separation (except last tab)
-                            index < openTabs.length - 1 && 'border-r border-r-border/50'
+                            index < openTabs.length - 1 && 'border-r border-r-border-muted'
                           )}
                         >
                           {getTabFileIcon(tab.fileName)}
@@ -480,7 +480,7 @@ export function CodeVisualizerPanel({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="w-4 h-4 p-0 rounded-sm opacity-0 group-hover:opacity-100 group-data-[state=active]:opacity-70 hover:opacity-100 hover:bg-muted-foreground/20 transition-opacity flex-shrink-0"
+                            className="w-4 h-4 p-0 rounded-sm opacity-0 group-hover:opacity-100 group-data-[state=active]:opacity-70 hover:opacity-100 hover:bg-interactive-hover transition-opacity flex-shrink-0"
                             onClick={(e) => {
                               e.stopPropagation()
                               closeTab(tab.id)
@@ -509,7 +509,7 @@ export function CodeVisualizerPanel({
               </div>
             </Tabs>
           ) : (
-            <div className="flex items-center justify-center h-full bg-[#0d1117] text-muted-foreground">
+            <div className="flex items-center justify-center h-full bg-code text-code-foreground">
               <div className="flex flex-col items-center gap-3 text-center">
                 <Code2 className="w-12 h-12 opacity-30" />
                 <span className="text-sm">Select a file to view</span>

@@ -82,7 +82,7 @@ export function ReopenButton(): React.JSX.Element | null {
           size="sm"
           className={cn(
             'h-7 px-3 gap-1.5 font-medium',
-            canReopen && 'hover:bg-primary/10 hover:text-primary hover:border-primary/50',
+            canReopen && 'hover:bg-interactive-hover hover:text-primary hover:border-primary',
             showSuccess && 'bg-green-600 hover:bg-green-600 text-white'
           )}
           onClick={handleReopen}

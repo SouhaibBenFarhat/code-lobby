@@ -38,7 +38,7 @@ export class MessageErrorBoundary extends React.Component<
   render(): React.ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
+        <div className="p-3 rounded-lg bg-destructive-subtle border border-destructive-border text-sm">
           <div className="flex items-center gap-2 text-destructive font-medium mb-1">
             <AlertCircle className="w-4 h-4" />
             Failed to render message
@@ -51,7 +51,7 @@ export class MessageErrorBoundary extends React.Component<
               <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                 Show raw content
               </summary>
-              <pre className="mt-1 p-2 bg-muted/50 rounded text-xs overflow-auto max-h-40 whitespace-pre-wrap">
+              <pre className="mt-1 p-2 bg-surface rounded text-xs overflow-auto max-h-40 whitespace-pre-wrap">
                 {this.props.content}
               </pre>
             </details>

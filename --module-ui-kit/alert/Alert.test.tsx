@@ -36,7 +36,7 @@ describe('Alert', () => {
     it('should apply destructive variant styles', () => {
       render(<Alert variant="destructive">Error alert</Alert>)
       const alert = screen.getByRole('alert')
-      expect(alert).toHaveClass('border-destructive/50', 'text-destructive')
+      expect(alert).toHaveClass('border-destructive-border', 'text-destructive')
     })
   })
 

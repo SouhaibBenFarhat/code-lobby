@@ -31,8 +31,8 @@ export function ApiKeyInput({ onOpenExternal }: ApiKeyInputProps): React.JSX.Ele
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="max-w-md w-full space-y-6 text-center">
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center">
-            <Key className="w-8 h-8 text-orange-500" />
+          <div className="w-16 h-16 rounded-full bg-warning-subtle flex items-center justify-center">
+            <Key className="w-8 h-8 text-warning" />
           </div>
         </div>
 

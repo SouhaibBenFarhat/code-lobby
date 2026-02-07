@@ -23,7 +23,7 @@ const Alert: React.ForwardRefExoticComponent<AlertProps & React.RefAttributes<HT
           '[&>svg+div]:translate-y-[-3px] [&>svg~*]:pl-7',
           variant === 'default' && 'bg-background text-foreground',
           variant === 'destructive' &&
-            'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive',
+            'border-destructive-border text-destructive dark:border-destructive [&>svg]:text-destructive',
           className
         )}
         {...props}

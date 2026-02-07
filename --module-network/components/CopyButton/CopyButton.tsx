@@ -43,7 +43,7 @@ export function CopyButton({ text, label }: CopyButtonProps): React.JSX.Element 
           onClick={handleCopy}
           aria-label={copied ? 'Copied!' : `Copy ${label}`}
         >
-          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+          {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="left">{copied ? 'Copied!' : `Copy ${label}`}</TooltipContent>

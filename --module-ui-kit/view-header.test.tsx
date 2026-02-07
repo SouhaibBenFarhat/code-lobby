@@ -61,16 +61,16 @@ describe('ViewHeader', () => {
   })
 
   describe('elevation', () => {
-    it('should have shadow by default', () => {
+    it('should have section-header class by default', () => {
       const { container } = render(<ViewHeader title="Elevated" />)
       const header = container.firstChild as HTMLElement
-      expect(header.className).toContain('shadow-')
+      expect(header.className).toContain('section-header')
     })
 
-    it('should not have shadow when elevated=false', () => {
+    it('should not have section-header when elevated=false', () => {
       const { container } = render(<ViewHeader title="Not Elevated" elevated={false} />)
       const header = container.firstChild as HTMLElement
-      expect(header.className).not.toContain('shadow-[')
+      expect(header.className).not.toContain('section-header')
     })
   })
 

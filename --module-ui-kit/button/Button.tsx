@@ -6,7 +6,7 @@ import { cn } from '../utils'
 /** Button variant function with explicit typing for isolatedDeclarations */
 const buttonVariants: (props?: Record<string, unknown>) => string = cva(
   // Apple-style base: smooth transitions, subtle active state, refined focus ring
-  'inline-flex items-center justify-center whitespace-nowrap rounded-[8px] text-sm font-medium transition-all duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-[8px] text-sm font-medium transition-all duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]',
   {
     variants: {
       variant: {
@@ -15,11 +15,12 @@ const buttonVariants: (props?: Record<string, unknown>) => string = cva(
         // Destructive - Red, used sparingly
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
         // Outline - Secondary actions, subtle border
-        outline: 'border border-border bg-background/80 hover:bg-accent hover:border-border/80',
+        outline:
+          'border border-border bg-background hover:bg-interactive-hover hover:border-border',
         // Secondary - Subtle gray background
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/70',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-interactive-hover',
         // Ghost - Minimal, just hover state (like Apple's toolbar buttons)
-        ghost: 'hover:bg-accent/80 rounded-[6px]',
+        ghost: 'hover:bg-interactive-hover rounded-[6px]',
         // Link - Text only with underline
         link: 'text-primary underline-offset-4 hover:underline active:scale-100',
         // Unstyled - No visual styling, just semantic button with focus ring
