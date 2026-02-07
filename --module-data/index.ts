@@ -135,6 +135,8 @@ export {
   // AI
   type FindPreviewUrlParams,
   type MemoryUsage,
+  // Theme
+  type ThemeVariant,
   type UserEvent,
   type UserProfilePanel,
   // Agentic Settings

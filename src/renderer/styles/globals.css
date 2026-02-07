@@ -231,6 +231,193 @@
 }
 
 @layer base {
+  /* ═══════════════════════════════════════════════════════════════════════
+   * WINDOWS THEME — Light
+   * Fluent-inspired: flat, sharp corners, Segoe UI, minimal shadows
+   * Activated by adding class="windows" to <html>
+   * ═══════════════════════════════════════════════════════════════════════ */
+  .windows {
+    /* Geometry — sharper, flatter */
+    --radius-xs: 2px;
+    --radius-sm: 3px;
+    --radius: 4px;
+    --radius-lg: 4px;
+    --radius-xl: 6px;
+
+    /* Motion — snappier */
+    --ease: cubic-bezier(0.33, 0, 0.67, 1);
+    --duration-fast: 100ms;
+    --duration: 167ms;
+    --duration-slow: 250ms;
+
+    /* Colors — Fluent cool gray, Windows blue accent */
+    --background: 0.960 0.003 250.0;
+    --surface-content: 0.975 0.002 250.0;
+    --surface: 1.000 0.000 0.0;
+    --surface-raised: 1.000 0.000 0.0;
+    --header: 0.940 0.004 250.0;
+    --surface-hover: 0.945 0.004 250.0;
+    --overlay: 1.000 0.000 0.0;
+
+    --foreground: 0.140 0.005 250.0;
+    --foreground-muted: 0.400 0.005 250.0;
+    --foreground-subtle: 0.550 0.004 250.0;
+    --foreground-ghost: 0.700 0.003 250.0;
+
+    --border: 0.870 0.006 250.0;
+    --border-muted: 0.910 0.004 250.0;
+    --border-subtle: 0.940 0.003 250.0;
+
+    --interactive-hover: 0.930 0.005 250.0;
+    --interactive-active: 0.900 0.006 250.0;
+
+    --primary: 0.545 0.220 250.0;
+    --primary-foreground: 1.000 0.000 0.0;
+
+    --ring: 0.545 0.220 250.0;
+    --input: 0.920 0.004 250.0;
+
+    --chat-bg: 0.950 0.003 250.0;
+    --chat-bubble: 1.000 0.000 0.0;
+    --code-bg: 0.960 0.004 250.0;
+    --code-fg: 0.250 0.005 250.0;
+
+    /* Shadows — flat, border-driven (Fluent-style) */
+    --shadow-elevation-low: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-elevation-medium: 0 2px 4px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.06);
+    --shadow-elevation-high: 0 4px 12px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.06);
+    --shadow-sm: var(--shadow-elevation-low);
+    --shadow-md: var(--shadow-elevation-medium);
+    --shadow-lg: var(--shadow-elevation-high);
+    --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.14);
+
+    /* Backward-compatible aliases */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--overlay);
+    --popover-foreground: var(--foreground);
+    --secondary: var(--surface-raised);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface);
+    --muted-foreground: var(--foreground-muted);
+    --accent: var(--surface-hover);
+    --accent-foreground: var(--foreground);
+    --surface-foreground: var(--foreground);
+
+    /* Syntax highlighting — VS Code Light */
+    --syntax-keyword: #0000ff;
+    --syntax-type: #267f99;
+    --syntax-function: #795e26;
+    --syntax-string: #a31515;
+    --syntax-number: #098658;
+    --syntax-comment: #008000;
+    --syntax-variable: #001080;
+    --syntax-operator: #0000ff;
+    --syntax-punctuation: #000000;
+    --syntax-tag: #800000;
+    --syntax-attribute: #ff0000;
+    --syntax-meta: #008000;
+    --syntax-regexp: #811f3f;
+    --syntax-default: #000000;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+   * WINDOWS THEME — Dark
+   * .windows.dark — Fluent dark with cool charcoal tones
+   * ═══════════════════════════════════════════════════════════════════════ */
+  .windows.dark {
+    /* Colors — Fluent charcoal, mica-inspired */
+    --background: 0.160 0.006 250.0;
+    --surface-content: 0.175 0.005 250.0;
+    --surface: 0.195 0.005 250.0;
+    --surface-raised: 0.215 0.005 250.0;
+    --header: 0.180 0.005 250.0;
+    --surface-hover: 0.230 0.006 250.0;
+    --overlay: 0.210 0.005 250.0;
+
+    --foreground: 0.950 0.000 0.0;
+    --foreground-muted: 0.600 0.004 250.0;
+    --foreground-subtle: 0.470 0.004 250.0;
+    --foreground-ghost: 0.350 0.003 250.0;
+
+    --border: 0.280 0.005 250.0;
+    --border-muted: 0.245 0.004 250.0;
+    --border-subtle: 0.215 0.004 250.0;
+
+    --interactive-hover: 0.250 0.006 250.0;
+    --interactive-active: 0.285 0.006 250.0;
+
+    --primary: 0.680 0.180 250.0;
+    --primary-foreground: 0.140 0.005 250.0;
+
+    --ring: 0.680 0.180 250.0;
+    --input: 0.230 0.005 250.0;
+
+    --chat-bg: 0.140 0.005 250.0;
+    --chat-bubble: 0.210 0.005 250.0;
+    --code-bg: 0.165 0.006 250.0;
+    --code-fg: 0.880 0.003 250.0;
+
+    --destructive: 0.635 0.195 27.0;
+    --destructive-foreground: 1.000 0.000 0.0;
+    --destructive-subtle: 0.215 0.030 27.0;
+    --destructive-border: 0.305 0.035 27.0;
+
+    --success: 0.620 0.155 155.0;
+    --success-foreground: 1.000 0.000 0.0;
+    --success-subtle: 0.215 0.025 155.0;
+    --success-border: 0.290 0.028 155.0;
+
+    --warning: 0.800 0.145 80.0;
+    --warning-foreground: 0.175 0.010 264.0;
+    --warning-subtle: 0.215 0.025 80.0;
+    --warning-border: 0.290 0.028 80.0;
+
+    --info: 0.625 0.140 250.0;
+    --info-subtle: 0.220 0.025 250.0;
+    --info-border: 0.305 0.028 250.0;
+
+    /* Shadows — subtle, dark Fluent style */
+    --shadow-elevation-low: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-elevation-medium: 0 2px 6px rgba(0, 0, 0, 0.40), 0 0 1px rgba(0, 0, 0, 0.20);
+    --shadow-elevation-high: 0 6px 16px rgba(0, 0, 0, 0.50), 0 0 1px rgba(0, 0, 0, 0.20);
+    --shadow-sm: var(--shadow-elevation-low);
+    --shadow-md: var(--shadow-elevation-medium);
+    --shadow-lg: var(--shadow-elevation-high);
+    --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.60);
+
+    /* Backward-compatible aliases */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--overlay);
+    --popover-foreground: var(--foreground);
+    --secondary: var(--surface-raised);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-raised);
+    --muted-foreground: var(--foreground-muted);
+    --accent: var(--surface-hover);
+    --accent-foreground: var(--foreground);
+    --surface-foreground: var(--foreground);
+
+    /* Syntax highlighting — VS Code Dark */
+    --syntax-keyword: #569cd6;
+    --syntax-type: #4ec9b0;
+    --syntax-function: #dcdcaa;
+    --syntax-string: #ce9178;
+    --syntax-number: #b5cea8;
+    --syntax-comment: #6a9955;
+    --syntax-variable: #9cdcfe;
+    --syntax-operator: #d4d4d4;
+    --syntax-punctuation: #d4d4d4;
+    --syntax-tag: #569cd6;
+    --syntax-attribute: #9cdcfe;
+    --syntax-meta: #6a9955;
+    --syntax-regexp: #d16969;
+    --syntax-default: #d4d4d4;
+  }
+}
+
+@layer base {
   * {
     @apply border-border;
   }
@@ -242,6 +429,11 @@
     text-rendering: optimizeLegibility;
     /* Apple uses slightly tighter letter-spacing */
     letter-spacing: -0.01em;
+  }
+  /* Windows font override */
+  .windows, .windows * {
+    font-family: 'Segoe UI', 'Segoe UI Variable', system-ui, -apple-system, sans-serif;
+    letter-spacing: 0em;
   }
   
   /* Apple-style heading hierarchy */

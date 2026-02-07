@@ -273,11 +273,11 @@ describe('Header', () => {
         )
       })
 
-      // Find theme toggle button by looking for Sun or Moon icon
+      // Find theme selector button by looking for Palette icon
       const themeButton =
+        document.querySelector('button svg.lucide-palette')?.closest('button') ||
         document.querySelector('button svg.lucide-sun')?.closest('button') ||
-        document.querySelector('button svg.lucide-moon')?.closest('button') ||
-        document.querySelector('button[title*="theme"]')
+        document.querySelector('button svg.lucide-moon')?.closest('button')
 
       expect(themeButton).toBeInTheDocument()
     })

@@ -28,15 +28,28 @@ export function useToggleFullscreen(): UseMutationResult<boolean, Error, void> {
 }
 
 /**
- * Set theme (dark/light mode)
+ * Set theme variant.
+ * Applies CSS classes to <html>:
+ *   - 'light'         → no classes
+ *   - 'dark'          → .dark
+ *   - 'windows-light' → .windows
+ *   - 'windows-dark'  → .windows .dark
  */
-export function useSetTheme(): UseMutationResult<'dark' | 'light', Error, 'dark' | 'light'> {
+import type { ThemeVariant } from '../queries/system'
+
+function applyThemeClasses(theme: ThemeVariant): void {
+  const el = document.documentElement
+  el.classList.toggle('dark', theme === 'dark' || theme === 'windows-dark')
+  el.classList.toggle('windows', theme === 'windows-light' || theme === 'windows-dark')
+}
+
+export function useSetTheme(): UseMutationResult<ThemeVariant, Error, ThemeVariant> {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: async (theme: 'dark' | 'light') => {
+    mutationFn: async (theme: ThemeVariant) => {
       localStorage.setItem('codelobby-theme', theme)
-      document.documentElement.classList.toggle('dark', theme === 'dark')
+      applyThemeClasses(theme)
       return theme
     },
     onSuccess: (theme) => {

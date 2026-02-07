@@ -69,6 +69,7 @@ export {
 export {
   type ClaudeApiKeyStatus,
   type ClaudeCodeStatus,
+  type ThemeVariant,
   useClaudeApiKeyStatus,
   useClaudeCodeStatus,
   useIsFullscreen,

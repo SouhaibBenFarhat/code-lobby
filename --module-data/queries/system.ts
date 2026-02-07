@@ -37,14 +37,28 @@ export function useIsFullscreen(): UseQueryResult<boolean, Error> {
 }
 
 /**
- * Query for theme (dark/light mode)
+ * Theme variants:
+ * - 'light'          — Apple light
+ * - 'dark'           — Apple dark
+ * - 'windows-light'  — Fluent light
+ * - 'windows-dark'   — Fluent dark
  */
-export function useTheme(): UseQueryResult<'dark' | 'light', Error> {
+export type ThemeVariant = 'light' | 'dark' | 'windows-light' | 'windows-dark'
+
+const VALID_THEMES: ThemeVariant[] = ['light', 'dark', 'windows-light', 'windows-dark']
+
+/**
+ * Query for theme
+ */
+export function useTheme(): UseQueryResult<ThemeVariant, Error> {
   return useQuery({
     queryKey: keys.system.theme,
-    queryFn: () => {
+    queryFn: (): ThemeVariant => {
       const saved = localStorage.getItem('codelobby-theme')
-      return saved === 'light' ? 'light' : 'dark' // Default to dark
+      if (saved && VALID_THEMES.includes(saved as ThemeVariant)) {
+        return saved as ThemeVariant
+      }
+      return 'dark' // Default to dark
     },
     staleTime: Infinity
   })
