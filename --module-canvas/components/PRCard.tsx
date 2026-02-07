@@ -54,25 +54,25 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
   const checks = pr.checks
 
   const getCheckStatusIcon = () => {
-    if (!checks) return <Circle className="w-3.5 h-3.5 text-muted-foreground" />
+    if (!checks) return <Circle className="w-2.5 h-2.5 text-muted-foreground" />
 
     const hasRunning = checks.check_runs.some(
       (cr) => cr.status === 'in_progress' || cr.status === 'queued'
     )
     if (hasRunning) {
-      return <Loader2 className="w-3.5 h-3.5 text-warning animate-spin" />
+      return <Loader2 className="w-2.5 h-2.5 text-warning animate-spin" />
     }
 
     switch (checks.state) {
       case 'success':
-        return <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+        return <CheckCircle2 className="w-2.5 h-2.5 text-success" />
       case 'failure':
       case 'error':
-        return <XCircle className="w-3.5 h-3.5 text-destructive" />
+        return <XCircle className="w-2.5 h-2.5 text-destructive" />
       case 'pending':
-        return <Circle className="w-3.5 h-3.5 text-warning" />
+        return <Circle className="w-2.5 h-2.5 text-warning" />
       default:
-        return <Circle className="w-3.5 h-3.5 text-muted-foreground" />
+        return <Circle className="w-2.5 h-2.5 text-muted-foreground" />
     }
   }
 
@@ -100,132 +100,126 @@ export function PRCard({ pr }: PRCardProps): React.JSX.Element {
       variant="unstyled"
       size="none"
       className={cn(
-        'group p-3 rounded-lg border transition-all cursor-pointer pr-card-item text-left w-full overflow-hidden',
+        'group p-2 rounded-lg border transition-all cursor-pointer pr-card-item text-left w-full overflow-hidden',
         pr.draft && 'opacity-70',
         isSelected && 'selected'
       )}
       onClick={handleSelect}
     >
-      <div className="space-y-2 overflow-hidden">
-        <div className="flex items-start gap-2 overflow-hidden">
+      <div className="space-y-1 overflow-hidden">
+        {/* Title row */}
+        <div className="flex items-start gap-1.5 overflow-hidden">
           <GitPullRequest
             className={cn(
-              'w-4 h-4 mt-0.5 flex-shrink-0',
+              'w-3.5 h-3.5 mt-0.5 flex-shrink-0',
               pr.draft ? 'text-muted-foreground' : 'text-primary'
             )}
           />
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <p
-              className="text-sm font-medium leading-tight truncate group-hover:text-primary transition-colors"
-              title={pr.title}
-            >
-              {pr.title}
-            </p>
-          </div>
-          <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+          <p
+            className="flex-1 min-w-0 text-sm font-medium leading-tight truncate group-hover:text-primary transition-colors"
+            title={pr.title}
+          >
+            {pr.title}
+          </p>
+          <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
         </div>
 
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
-          <GitBranch className="w-3 h-3" />
-          <span className="truncate">{truncate(pr.head.ref, 20)}</span>
-          <span>→</span>
-          <span className="truncate">{truncate(pr.base.ref, 15)}</span>
+        {/* Metadata row — single line */}
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground overflow-hidden">
+          <span className="font-mono">#{pr.number}</span>
+          <span className="text-border">·</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 min-w-0">
+                <Avatar className="h-3.5 w-3.5 flex-shrink-0">
+                  <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
+                  <AvatarFallback className="text-[7px]">
+                    {pr.user.login.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate max-w-[50px]">{pr.user.login}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Author: {pr.user.login}</TooltipContent>
+          </Tooltip>
+          <span className="text-border">·</span>
+          <GitBranch className="w-2.5 h-2.5 flex-shrink-0" />
+          <span className="truncate font-mono">{truncate(pr.head.ref, 16)}</span>
+          {pr.draft && (
+            <>
+              <span className="text-border">·</span>
+              <Badge variant="secondary" className="h-4 text-[9px] px-1 py-0 leading-none">
+                Draft
+              </Badge>
+            </>
+          )}
         </div>
 
+        {/* Labels — only if present */}
         {pr.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-0.5">
             {pr.labels.slice(0, 3).map((label) => (
               <span
                 key={label.name}
-                className="px-1.5 py-0.5 text-[10px] rounded-full font-medium"
+                className="px-1 py-0 text-[9px] rounded-full font-medium leading-relaxed"
                 style={{
                   backgroundColor: `#${label.color}20`,
                   color: `#${label.color}`,
                   border: `1px solid #${label.color}40`
                 }}
               >
-                {truncate(label.name, 15)}
+                {truncate(label.name, 12)}
               </span>
             ))}
             {pr.labels.length > 3 && (
-              <span className="px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                +{pr.labels.length - 3}
-              </span>
+              <span className="px-1 text-[9px] text-muted-foreground">+{pr.labels.length - 3}</span>
             )}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-mono">#{pr.number}</span>
+        {/* Stats row */}
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-0.5">{getCheckStatusIcon()}</div>
+            </TooltipTrigger>
+            <TooltipContent>{getCheckStatusText()}</TooltipContent>
+          </Tooltip>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-0.5">
+                <FileEdit className="w-2.5 h-2.5" />
+                <span className="text-success">+{pr.additions}</span>
+                <span className="text-destructive">-{pr.deletions}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{pr.changed_files} files changed</TooltipContent>
+          </Tooltip>
+
+          {totalComments > 0 && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1">
-                  <Avatar className="h-4 w-4">
-                    <AvatarImage src={pr.user.avatar_url} alt={pr.user.login} />
-                    <AvatarFallback className="text-[8px]">
-                      {pr.user.login.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground truncate max-w-[60px]">
-                    {pr.user.login}
-                  </span>
+                <div className="flex items-center gap-0.5">
+                  <MessageSquare className="w-2.5 h-2.5" />
+                  <span>{totalComments}</span>
                 </div>
               </TooltipTrigger>
-              <TooltipContent>Author: {pr.user.login}</TooltipContent>
+              <TooltipContent>
+                {totalComments} comment{totalComments !== 1 ? 's' : ''}
+              </TooltipContent>
             </Tooltip>
+          )}
 
-            {pr.draft && (
-              <Badge variant="secondary" className="h-5 text-[10px] px-1.5">
-                Draft
-              </Badge>
-            )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1">{getCheckStatusIcon()}</div>
-              </TooltipTrigger>
-              <TooltipContent>{getCheckStatusText()}</TooltipContent>
-            </Tooltip>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 text-xs">
-                  <FileEdit className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-success">+{pr.additions}</span>
-                  <span className="text-destructive">-{pr.deletions}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>{pr.changed_files} files changed</TooltipContent>
-            </Tooltip>
-
-            {totalComments > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <MessageSquare className="w-3 h-3" />
-                    <span>{totalComments}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {totalComments} comment{totalComments !== 1 ? 's' : ''}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  <span>{formatRelativeTime(pr.created_at)}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Updated {formatRelativeTime(pr.updated_at)}</TooltipContent>
-            </Tooltip>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-0.5">
+                <Clock className="w-2.5 h-2.5" />
+                <span>{formatRelativeTime(pr.created_at)}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Updated {formatRelativeTime(pr.updated_at)}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </Button>
