@@ -73,7 +73,7 @@ describe('NetworkStats', () => {
     it('should have blue text color', () => {
       render(<NetworkStats {...defaultProps} pendingCount={1} />)
 
-      expect(screen.getByTestId('pending-count')).toHaveClass('text-info')
+      expect(screen.getByTestId('pending-count')).toHaveClass('text-blue-400/70')
     })
   })
 
@@ -94,7 +94,7 @@ describe('NetworkStats', () => {
     it('should have destructive text color', () => {
       render(<NetworkStats {...defaultProps} errorCount={1} />)
 
-      expect(screen.getByTestId('error-count')).toHaveClass('text-destructive')
+      expect(screen.getByTestId('error-count')).toHaveClass('text-red-400/80')
     })
   })
 

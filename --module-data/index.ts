@@ -130,10 +130,14 @@ export {
   type AuthData,
   // Claude Code CLI
   type ClaudeCodeStatus,
+  // GitHub Status
+  type ComponentStatus,
   // Contributions & Events
   type ContributionsData,
   // AI
   type FindPreviewUrlParams,
+  type GitHubStatusComponent,
+  type GitHubStatusSummary,
   type MemoryUsage,
   // Theme
   type ThemeVariant,
@@ -165,6 +169,7 @@ export {
   // File Content (Code Visualizer)
   useFileContent,
   useFindPreviewUrl,
+  useGitHubStatus,
   useGitHubToken,
   useIDESettings,
   useIsAuthenticated,

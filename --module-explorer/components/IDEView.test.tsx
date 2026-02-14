@@ -292,8 +292,9 @@ describe('IDEView', () => {
       expect(screen.getByText('PR One')).toBeInTheDocument()
       expect(screen.getByText('PR Two')).toBeInTheDocument()
 
-      // Should show "2 PRs" count
-      expect(screen.getByText('2 PRs')).toBeInTheDocument()
+      // Should show PR count badges (repo-level and author-level)
+      const countBadges = screen.getAllByText('2')
+      expect(countBadges.length).toBeGreaterThanOrEqual(1)
     })
 
     it('should show current user first in author list', () => {

@@ -92,15 +92,15 @@ export function formatJsonBody(body: string): string {
 export function getMethodColor(method?: string): string {
   switch (method?.toUpperCase()) {
     case 'GET':
-      return 'bg-green-500/20 text-green-600 border-green-500/30'
+      return 'bg-green-500/10 text-green-500/70 border-green-500/15'
     case 'POST':
-      return 'bg-blue-500/20 text-blue-600 border-blue-500/30'
+      return 'bg-blue-500/10 text-blue-500/70 border-blue-500/15'
     case 'PUT':
-      return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
+      return 'bg-yellow-500/10 text-yellow-500/60 border-yellow-500/15'
     case 'DELETE':
-      return 'bg-red-500/20 text-red-600 border-red-500/30'
+      return 'bg-red-500/10 text-red-500/70 border-red-500/15'
     case 'PATCH':
-      return 'bg-purple-500/20 text-purple-600 border-purple-500/30'
+      return 'bg-purple-500/10 text-purple-500/70 border-purple-500/15'
     default:
       return 'bg-muted text-muted-foreground'
   }

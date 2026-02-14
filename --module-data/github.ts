@@ -223,7 +223,10 @@ function transformPR(pr: any): PullRequest {
   // Extract status checks from the last commit
   const lastCommit = pr.commits?.nodes?.[0]?.commit
   const statusRollup = lastCommit?.statusCheckRollup
-  const checkRuns =
+  // Map check runs and deduplicate by name, keeping only the most recent run.
+  // When a check is re-run, GitHub's statusCheckRollup returns both old and new
+  // runs in no guaranteed order. We use startedAt to pick the latest.
+  const allCheckRuns =
     statusRollup?.contexts?.nodes?.map((ctx: any) => {
       if (ctx.name) {
         // CheckRun
@@ -232,19 +235,39 @@ function transformPR(pr: any): PullRequest {
           name: ctx.name,
           status: ctx.status?.toLowerCase() || 'pending',
           conclusion: ctx.conclusion?.toLowerCase() || null,
-          html_url: ctx.detailsUrl || ''
+          html_url: ctx.detailsUrl || '',
+          startedAt: ctx.startedAt || null
         }
       } else {
-        // StatusContext
+        // StatusContext (no startedAt available)
         return {
           id: ctx.context,
           name: ctx.context,
           status: ctx.state?.toLowerCase() || 'pending',
           conclusion: ctx.state?.toLowerCase() || null,
-          html_url: ctx.targetUrl || ''
+          html_url: ctx.targetUrl || '',
+          startedAt: null
         }
       }
     }) || []
+
+  // Deduplicate by name: keep the most recently started run for each check name.
+  // This correctly handles re-runs regardless of array order.
+  const checkRunMap = new Map<string, (typeof allCheckRuns)[number]>()
+  for (const run of allCheckRuns) {
+    const existing = checkRunMap.get(run.name)
+    if (!existing) {
+      checkRunMap.set(run.name, run)
+    } else {
+      // Compare startedAt timestamps — more recent wins
+      const existingTime = existing.startedAt ? new Date(existing.startedAt).getTime() : 0
+      const newTime = run.startedAt ? new Date(run.startedAt).getTime() : 0
+      if (newTime > existingTime) {
+        checkRunMap.set(run.name, run)
+      }
+    }
+  }
+  const checkRuns = Array.from(checkRunMap.values()).map(({ startedAt, ...rest }) => rest)
 
   const stateMap: Record<string, 'pending' | 'success' | 'failure' | 'error'> = {
     EXPECTED: 'pending',
@@ -353,6 +376,7 @@ export async function fetchPRsForRepos(
                           name
                           status
                           conclusion
+                          startedAt
                           detailsUrl
                         }
                         ... on StatusContext {
@@ -471,6 +495,7 @@ export async function fetchSinglePR(
                         name
                         status
                         conclusion
+                        startedAt
                         detailsUrl
                       }
                       ... on StatusContext {

@@ -1,46 +1,74 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background - Parcellab navy -->
-  <rect width="512" height="512" fill="#141B4D"/>
-  
+  <defs>
+    <!-- Bumpy/convex gradient - subtle 3D depth effect -->
+    <radialGradient id="bump" cx="50%" cy="30%" r="80%" fx="50%" fy="25%">
+      <stop offset="0%" stop-color="#1E2766"/>
+      <stop offset="60%" stop-color="#141B4D"/>
+      <stop offset="100%" stop-color="#0D1233"/>
+    </radialGradient>
+
+    <!-- Top highlight for gloss/convex feel -->
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="0.10"/>
+      <stop offset="45%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle inner shadow at bottom for depth -->
+    <linearGradient id="bottomShadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="80%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+
   <!-- 
-    v4: Clean code brackets only
-    Like Parcellab - simple, bold, iconic
+    v6: Full square — macOS applies its own squircle mask automatically.
+    No clip path needed. Compact hexagon with bumpy depth effect.
   -->
-  
-  <!-- Solid hexagon -->
+
+  <!-- Background fills entire square (no transparency at corners) -->
+  <rect width="512" height="512" fill="url(#bump)"/>
+
+  <!-- Compact hexagon — pulled in for better visual weight in the dock -->
   <path
-    d="M256 56
-       L440 152
-       L440 360
-       L256 456
-       L72 360
-       L72 152
+    d="M256 80
+       L420 170
+       L420 342
+       L256 432
+       L92 342
+       L92 170
        Z"
     fill="white"
+    fill-opacity="0.95"
   />
-  
+
   <!-- Code brackets < > cut out as negative space -->
   <!-- Left bracket < -->
   <path
-    d="M220 152
-       L120 256
-       L220 360
-       L220 300
-       L168 256
-       L220 212
+    d="M224 170
+       L132 256
+       L224 342
+       L224 286
+       L176 256
+       L224 226
        Z"
     fill="#141B4D"
   />
-  
+
   <!-- Right bracket > -->
   <path
-    d="M292 152
-       L392 256
-       L292 360
-       L292 300
-       L344 256
-       L292 212
+    d="M288 170
+       L380 256
+       L288 342
+       L288 286
+       L336 256
+       L288 226
        Z"
     fill="#141B4D"
   />
+
+  <!-- Top gloss overlay for bumpy convex effect -->
+  <rect width="512" height="512" fill="url(#gloss)"/>
+
+  <!-- Bottom shadow for grounding -->
+  <rect width="512" height="512" fill="url(#bottomShadow)"/>
 </svg>

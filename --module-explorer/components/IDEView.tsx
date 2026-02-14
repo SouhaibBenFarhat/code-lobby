@@ -267,12 +267,19 @@ function AuthorSection({
 }: AuthorSectionProps) {
   const { login, avatarUrl, prs } = authorGroup
 
-  // Sort PRs by created_at (newest first)
-  const sortedPRs = useMemo(() => {
-    return [...prs].sort(
+  // Sort PRs by created_at (newest first), then split into active vs draft
+  const { activePRs, draftPRs } = useMemo(() => {
+    const sorted = [...prs].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
+    return {
+      activePRs: sorted.filter((pr) => !pr.draft),
+      draftPRs: sorted.filter((pr) => pr.draft)
+    }
   }, [prs])
+
+  const draftCount = draftPRs.length
+  const activeCount = activePRs.length
 
   return (
     <div className="select-none">
@@ -306,15 +313,48 @@ function AuthorSection({
           {login}
           {isCurrentUser && <span className="text-muted-foreground ml-1">(you)</span>}
         </span>
-        <span className="text-[10px] text-muted-foreground bg-surface px-1 py-0.5 rounded">
-          {prs.length} PR{prs.length !== 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-1">
+          {activeCount > 0 && (
+            <span className="text-[10px] text-muted-foreground bg-surface px-1 py-0.5 rounded">
+              {activeCount}
+            </span>
+          )}
+          {draftCount > 0 && (
+            <span className="text-[10px] text-muted-foreground bg-surface px-1 py-0.5 rounded opacity-60">
+              {draftCount} draft{draftCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* PRs by this author */}
+      {/* PRs by this author, grouped by state */}
       {isExpanded && (
         <div className="ml-8 border-l border-border-subtle">
-          {sortedPRs.map((pr) => (
+          {/* Active PRs */}
+          {activePRs.map((pr) => (
+            <PRTreeItem
+              key={pr.id}
+              pr={pr}
+              isSelected={
+                selectedPRId?.repoFullName === pr.base.repo.full_name &&
+                selectedPRId?.prNumber === pr.number
+              }
+              onSelect={() => onSelectPR(pr)}
+            />
+          ))}
+
+          {/* Separator between active and draft PRs */}
+          {activeCount > 0 && draftCount > 0 && (
+            <div className="flex items-center gap-2 px-2 py-1">
+              <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                Drafts
+              </span>
+              <div className="flex-1 h-px bg-border-muted" />
+            </div>
+          )}
+
+          {/* Draft PRs */}
+          {draftPRs.map((pr) => (
             <PRTreeItem
               key={pr.id}
               pr={pr}

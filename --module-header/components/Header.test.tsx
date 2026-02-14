@@ -98,6 +98,7 @@ vi.mock('@data', () => ({
   useMemoryUsage: vi.fn(() =>
     mockQueryResult({ heapUsedMB: 50, heapTotalMB: 100, rssMB: 150, heapPercentage: 50 })
   ),
+  useGitHubStatus: vi.fn(() => mockQueryResult(null)),
   // Mutation hooks
   useSetSelectedRepos: vi.fn(() => mockMutationResult()),
   useSetUserProfilePanel: vi.fn(() => mockMutationResult()),
@@ -156,7 +157,7 @@ describe('Header', () => {
         />
       )
 
-      expect(screen.getByText('Live')).toBeInTheDocument()
+      expect(screen.getByText('Real-time PR monitoring')).toBeInTheDocument()
     })
 
     it('should display user avatar when user is logged in', async () => {

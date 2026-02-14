@@ -84,7 +84,8 @@ export function useNetworkTracking(): void {
         }
 
         // Update with success/error based on HTTP status
-        const isSuccess = response.ok
+        // 304 Not Modified is a success (ETag cache hit, no rate limit cost)
+        const isSuccess = response.ok || response.status === 304
         updateRequest.mutate({
           id: requestId,
           status: isSuccess ? 'success' : 'error',

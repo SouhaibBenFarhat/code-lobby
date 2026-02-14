@@ -58,6 +58,7 @@ export const keys = {
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
   rateLimit: ['github', 'rate-limit'] as const,
+  githubStatus: ['github', 'status'] as const,
   contributions: ['github', 'contributions'] as const,
   userEvents: ['github', 'user-events'] as const,
 

@@ -24,40 +24,29 @@ export function MemoryUsageIndicator(): React.JSX.Element | null {
         <TooltipTrigger asChild>
           <div
             className={cn(
-              'flex items-center gap-2 no-drag cursor-default px-2 py-1 rounded-md transition-colors',
+              'flex items-center gap-1.5 no-drag cursor-default px-1.5 py-0.5 rounded-md transition-colors',
               isHigh && 'bg-destructive-subtle border border-destructive-border',
               isMedium && !isHigh && 'bg-warning-subtle border border-warning-border'
             )}
           >
             <HardDrive
               className={cn(
-                'w-3.5 h-3.5',
+                'w-3 h-3',
                 isHigh ? 'text-destructive' : isMedium ? 'text-warning' : 'text-muted-foreground'
               )}
             />
-            <div className="flex items-center gap-1.5">
-              <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all duration-300',
-                    isHigh ? 'bg-destructive' : isMedium ? 'bg-warning' : 'bg-success'
-                  )}
-                  style={{ width: `${Math.min(heapPercentage, 100)}%` }}
-                />
-              </div>
-              <span
-                className={cn(
-                  'text-[10px] w-12',
-                  isHigh
-                    ? 'text-destructive font-medium'
-                    : isMedium
-                      ? 'text-warning'
-                      : 'text-muted-foreground'
-                )}
-              >
-                {rssMB} MB
-              </span>
-            </div>
+            <span
+              className={cn(
+                'text-[10px]',
+                isHigh
+                  ? 'text-destructive font-medium'
+                  : isMedium
+                    ? 'text-warning'
+                    : 'text-muted-foreground'
+              )}
+            >
+              {rssMB} MB
+            </span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">

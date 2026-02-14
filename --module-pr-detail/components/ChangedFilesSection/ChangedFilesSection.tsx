@@ -15,7 +15,7 @@ import {
   useSuggestReviewers,
   useTriggerReviewerSuggestion
 } from '@data'
-import { Badge, Button, Input, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
+import { Badge, Button, cn, Input, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import {
   AlertCircle,
   ChevronDown,
@@ -124,12 +124,48 @@ export function ChangedFilesSection({
   const [isExpanded, setIsExpanded] = useState(true)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
+
+  const toggleFilter = useCallback((filterType: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(filterType)) {
+        next.delete(filterType)
+      } else {
+        next.add(filterType)
+      }
+      return next
+    })
+  }, [])
 
   const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) return files
-    const query = searchQuery.toLowerCase()
-    return files.filter((f) => f.path.toLowerCase().includes(query))
-  }, [files, searchQuery])
+    let result = files
+
+    // Apply change type filters
+    if (activeFilters.size > 0) {
+      result = result.filter((f) => {
+        switch (f.changeType) {
+          case 'ADDED':
+            return activeFilters.has('added')
+          case 'DELETED':
+            return activeFilters.has('deleted')
+          case 'RENAMED':
+          case 'COPIED':
+            return activeFilters.has('renamed')
+          default:
+            return activeFilters.has('modified')
+        }
+      })
+    }
+
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter((f) => f.path.toLowerCase().includes(query))
+    }
+
+    return result
+  }, [files, searchQuery, activeFilters])
 
   const fileTree = useMemo(() => buildFileTreeFromFiles(filteredFiles), [filteredFiles])
   const rootChildren = useMemo(() => getSortedChildren(fileTree), [fileTree])
@@ -386,30 +422,109 @@ export function ChangedFilesSection({
           </div>
 
           {files.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {fileStats.added > 0 && (
-                <Badge variant="secondary" className="bg-success-subtle text-success gap-1">
-                  <FilePlus className="w-3 h-3" />
-                  {fileStats.added} added
-                </Badge>
+                <button
+                  type="button"
+                  onClick={() => toggleFilter('added')}
+                  className="focus:outline-none"
+                >
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'gap-1 cursor-pointer transition-all',
+                      activeFilters.has('added')
+                        ? 'bg-success-subtle text-success ring-1 ring-success/40'
+                        : activeFilters.size > 0
+                          ? 'bg-surface text-muted-foreground opacity-50 hover:opacity-75'
+                          : 'bg-success-subtle text-success hover:ring-1 hover:ring-success/30'
+                    )}
+                  >
+                    <FilePlus className="w-3 h-3" />
+                    {fileStats.added} added
+                  </Badge>
+                </button>
               )}
               {fileStats.modified > 0 && (
-                <Badge variant="secondary" className="bg-info-subtle text-primary gap-1">
-                  <FileDiff className="w-3 h-3" />
-                  {fileStats.modified} modified
-                </Badge>
+                <button
+                  type="button"
+                  onClick={() => toggleFilter('modified')}
+                  className="focus:outline-none"
+                >
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'gap-1 cursor-pointer transition-all',
+                      activeFilters.has('modified')
+                        ? 'bg-info-subtle text-primary ring-1 ring-primary/40'
+                        : activeFilters.size > 0
+                          ? 'bg-surface text-muted-foreground opacity-50 hover:opacity-75'
+                          : 'bg-info-subtle text-primary hover:ring-1 hover:ring-primary/30'
+                    )}
+                  >
+                    <FileDiff className="w-3 h-3" />
+                    {fileStats.modified} modified
+                  </Badge>
+                </button>
               )}
               {fileStats.deleted > 0 && (
-                <Badge variant="secondary" className="bg-destructive-subtle text-destructive gap-1">
-                  <FileMinus className="w-3 h-3" />
-                  {fileStats.deleted} deleted
-                </Badge>
+                <button
+                  type="button"
+                  onClick={() => toggleFilter('deleted')}
+                  className="focus:outline-none"
+                >
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'gap-1 cursor-pointer transition-all',
+                      activeFilters.has('deleted')
+                        ? 'bg-destructive-subtle text-destructive ring-1 ring-destructive/40'
+                        : activeFilters.size > 0
+                          ? 'bg-surface text-muted-foreground opacity-50 hover:opacity-75'
+                          : 'bg-destructive-subtle text-destructive hover:ring-1 hover:ring-destructive/30'
+                    )}
+                  >
+                    <FileMinus className="w-3 h-3" />
+                    {fileStats.deleted} deleted
+                  </Badge>
+                </button>
               )}
               {fileStats.renamed > 0 && (
-                <Badge variant="secondary" className="bg-warning-subtle text-warning gap-1">
-                  <FileEdit className="w-3 h-3" />
-                  {fileStats.renamed} renamed
-                </Badge>
+                <button
+                  type="button"
+                  onClick={() => toggleFilter('renamed')}
+                  className="focus:outline-none"
+                >
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'gap-1 cursor-pointer transition-all',
+                      activeFilters.has('renamed')
+                        ? 'bg-warning-subtle text-warning ring-1 ring-warning/40'
+                        : activeFilters.size > 0
+                          ? 'bg-surface text-muted-foreground opacity-50 hover:opacity-75'
+                          : 'bg-warning-subtle text-warning hover:ring-1 hover:ring-warning/30'
+                    )}
+                  >
+                    <FileEdit className="w-3 h-3" />
+                    {fileStats.renamed} renamed
+                  </Badge>
+                </button>
+              )}
+              {activeFilters.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilters(new Set())}
+                  className="focus:outline-none ml-0.5"
+                >
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear
+                  </Badge>
+                </button>
               )}
             </div>
           )}
@@ -438,7 +553,11 @@ export function ChangedFilesSection({
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="text-center py-4 text-sm text-muted-foreground">
-              {searchQuery ? 'No files match your search' : 'No changed files'}
+              {searchQuery
+                ? 'No files match your search'
+                : activeFilters.size > 0
+                  ? 'No files match the selected filters'
+                  : 'No changed files'}
             </div>
           ) : (
             <div className="rounded-lg border border-border-muted bg-surface p-3 max-h-[400px] overflow-y-auto">

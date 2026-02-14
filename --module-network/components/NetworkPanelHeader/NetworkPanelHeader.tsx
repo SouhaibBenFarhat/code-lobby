@@ -31,7 +31,7 @@ export function NetworkPanelHeader({
       data-testid="network-panel-header"
     >
       <div className="flex items-center gap-2 min-w-0">
-        <Globe className="w-4 h-4 text-primary flex-shrink-0" data-testid="network-icon" />
+        <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" data-testid="network-icon" />
         <span className="font-semibold text-sm">Network</span>
         {totalCost > 0 && (
           <span

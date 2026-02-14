@@ -48,11 +48,11 @@ function RequestBodySection({ body, label }: { body: string; label: string }): R
 function getTimelineDotColor(status: NetworkRequest['status']): string {
   switch (status) {
     case 'pending':
-      return 'bg-blue-500'
+      return 'bg-blue-400/70'
     case 'success':
-      return 'bg-green-500'
+      return 'bg-green-400/70'
     case 'error':
-      return 'bg-destructive'
+      return 'bg-red-400/70'
     default:
       return 'bg-muted-foreground'
   }
@@ -127,8 +127,8 @@ export function NetworkRequestItem({
         <span
           className={cn(
             'text-[9px] font-mono flex-shrink-0',
-            request.statusCode >= 200 && request.statusCode < 300 && 'text-green-600',
-            request.statusCode >= 400 && 'text-destructive'
+            request.statusCode >= 200 && request.statusCode < 300 && 'text-green-500/70',
+            request.statusCode >= 400 && 'text-red-400/80'
           )}
           data-testid="status-code"
         >
@@ -141,8 +141,8 @@ export function NetworkRequestItem({
         <span
           className={cn(
             'text-[9px] text-muted-foreground tabular-nums flex-shrink-0',
-            request.durationMs > 2000 && 'text-yellow-500',
-            request.durationMs > 5000 && 'text-destructive'
+            request.durationMs > 2000 && 'text-yellow-500/70',
+            request.durationMs > 5000 && 'text-red-400/80'
           )}
           data-testid="request-duration"
         >
@@ -210,7 +210,7 @@ export function NetworkRequestItem({
         {/* Dot */}
         <div
           className={cn(
-            'w-2 h-2 rounded-full flex-shrink-0 ring-2 ring-background',
+            'w-1.5 h-1.5 rounded-full flex-shrink-0',
             getTimelineDotColor(request.status),
             request.status === 'pending' && 'animate-pulse'
           )}

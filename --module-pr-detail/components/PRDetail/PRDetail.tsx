@@ -23,7 +23,15 @@ import {
   ScrollArea,
   Separator
 } from '@ui-kit'
-import { Bot, CheckCircle2, FileSearch, MessageSquare, Users, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  FileSearch,
+  MessageSquare,
+  Users,
+  XCircle
+} from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
 
 import { useSelectedPR } from '../../hooks'
@@ -314,6 +322,29 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
       <ScrollArea className={cn('flex-1', activeWebviewTab && 'hidden')}>
         <div className="p-4 w-full max-w-full overflow-x-hidden pr-detail-content">
           <Row gutter="xl" className="flex-col">
+            {/* Merge conflict indicator */}
+            {pr.mergeable === 'CONFLICTING' && (
+              <Col span="full">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-destructive/30 bg-destructive-subtle text-sm">
+                  <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
+                  <span className="text-destructive font-medium">
+                    This branch has conflicts that must be resolved
+                  </span>
+                  <span className="text-destructive/70">
+                    — merge{' '}
+                    <code className="text-xs bg-destructive/10 px-1 py-0.5 rounded font-mono">
+                      {pr.base.ref}
+                    </code>{' '}
+                    into{' '}
+                    <code className="text-xs bg-destructive/10 px-1 py-0.5 rounded font-mono">
+                      {pr.head.ref}
+                    </code>{' '}
+                    to fix
+                  </span>
+                </div>
+              </Col>
+            )}
+
             {/* PR Description Section */}
             <Col span="full">
               <PRDescription

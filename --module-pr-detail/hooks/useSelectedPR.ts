@@ -26,6 +26,12 @@ export function useSelectedPR(): UseSelectedPRResult {
   const { data: pr, isLoading, isFetching } = useSelectedPRFromData()
   const queryClient = useQueryClient()
 
+  // Show progress bar for all refetches (navigation, focus, manual refresh)
+  // EXCEPT the UNKNOWN merge status polling every 3s — that's the only case we suppress.
+  const isUnknownPolling =
+    (pr?.mergeable === 'UNKNOWN' || pr?.mergeStateStatus === 'UNKNOWN') && !isLoading
+  const isRefreshing = isFetching && !isLoading && !isUnknownPolling
+
   // Refresh ALL PR-related queries at once using the shared prefix
   // This invalidates: detail, files, and any future PR queries
   const refresh = useCallback(() => {
@@ -40,7 +46,7 @@ export function useSelectedPR(): UseSelectedPRResult {
     pr: pr ?? null,
     refresh,
     isLoading,
-    isRefreshing: isFetching && !isLoading, // Fetching but not initial load
+    isRefreshing,
     selectedPRId: selectedPRId ?? null
   }
 }

@@ -40,14 +40,14 @@ describe('NetworkRequestItem', () => {
       const request = createMockRequest({ httpMethod: 'GET' })
       render(<NetworkRequestItem request={request} />)
       const badge = screen.getByTestId('http-method-badge')
-      expect(badge).toHaveClass('text-green-600')
+      expect(badge).toHaveClass('text-green-500/70')
     })
 
     it('should apply correct color for DELETE method', () => {
       const request = createMockRequest({ httpMethod: 'DELETE' })
       render(<NetworkRequestItem request={request} />)
       const badge = screen.getByTestId('http-method-badge')
-      expect(badge).toHaveClass('text-red-600')
+      expect(badge).toHaveClass('text-red-500/70')
     })
 
     it('should not render badge if httpMethod is undefined', () => {
@@ -88,13 +88,13 @@ describe('NetworkRequestItem', () => {
     it('should apply green color for 2xx status codes', () => {
       const request = createMockRequest({ statusCode: 201 })
       render(<NetworkRequestItem request={request} />)
-      expect(screen.getByTestId('status-code')).toHaveClass('text-green-600')
+      expect(screen.getByTestId('status-code')).toHaveClass('text-green-500/70')
     })
 
     it('should apply red color for 4xx status codes', () => {
       const request = createMockRequest({ statusCode: 404 })
       render(<NetworkRequestItem request={request} />)
-      expect(screen.getByTestId('status-code')).toHaveClass('text-destructive')
+      expect(screen.getByTestId('status-code')).toHaveClass('text-red-400/80')
     })
 
     it('should not render if statusCode is undefined', () => {
@@ -120,13 +120,13 @@ describe('NetworkRequestItem', () => {
     it('should apply yellow color for requests > 2000ms', () => {
       const request = createMockRequest({ durationMs: 2500 })
       render(<NetworkRequestItem request={request} />)
-      expect(screen.getByTestId('request-duration')).toHaveClass('text-yellow-500')
+      expect(screen.getByTestId('request-duration')).toHaveClass('text-yellow-500/70')
     })
 
     it('should apply red color for requests > 5000ms', () => {
       const request = createMockRequest({ durationMs: 6000 })
       render(<NetworkRequestItem request={request} />)
-      expect(screen.getByTestId('request-duration')).toHaveClass('text-destructive')
+      expect(screen.getByTestId('request-duration')).toHaveClass('text-red-400/80')
     })
   })
 
@@ -284,7 +284,7 @@ describe('NetworkRequestItem', () => {
       render(<NetworkRequestItem request={request} />)
 
       const dot = screen.getByTestId('timeline-dot')
-      expect(dot).toHaveClass('bg-green-500')
+      expect(dot).toHaveClass('bg-green-400/70')
     })
 
     it('should apply blue color and animation for pending status', () => {
@@ -292,7 +292,7 @@ describe('NetworkRequestItem', () => {
       render(<NetworkRequestItem request={request} />)
 
       const dot = screen.getByTestId('timeline-dot')
-      expect(dot).toHaveClass('bg-blue-500')
+      expect(dot).toHaveClass('bg-blue-400/70')
       expect(dot).toHaveClass('animate-pulse')
     })
 
@@ -301,7 +301,7 @@ describe('NetworkRequestItem', () => {
       render(<NetworkRequestItem request={request} />)
 
       const dot = screen.getByTestId('timeline-dot')
-      expect(dot).toHaveClass('bg-destructive')
+      expect(dot).toHaveClass('bg-red-400/70')
     })
 
     it('should hide bottom connector line when isLast is true', () => {

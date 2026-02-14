@@ -38,13 +38,13 @@ export function NetworkStats({
           request{total !== 1 ? 's' : ''}
         </span>
         {pendingCount > 0 && (
-          <span className="flex items-center gap-0.5 text-info" data-testid="pending-count">
+          <span className="flex items-center gap-0.5 text-blue-400/70" data-testid="pending-count">
             <Loader2 className="w-2.5 h-2.5 animate-spin" />
             {pendingCount}
           </span>
         )}
         {errorCount > 0 && (
-          <span className="text-destructive" data-testid="error-count">
+          <span className="text-red-400/80" data-testid="error-count">
             {errorCount} failed
           </span>
         )}

@@ -13,7 +13,7 @@ export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const sizeClasses = {
-  sm: 'h-1',
+  sm: 'h-px',
   md: 'h-2',
   lg: 'h-3'
 }

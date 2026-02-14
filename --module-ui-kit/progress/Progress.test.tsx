@@ -65,7 +65,7 @@ describe('Progress', () => {
     it('should apply sm size class', () => {
       render(<Progress size="sm" />)
       const progressbar = screen.getByRole('progressbar')
-      expect(progressbar).toHaveClass('h-1')
+      expect(progressbar).toHaveClass('h-px')
     })
 
     it('should apply md size class by default', () => {

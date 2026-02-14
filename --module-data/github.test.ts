@@ -730,6 +730,427 @@ describe('GitHub API', () => {
     })
   })
 
+  describe('CI Checks deduplication', () => {
+    // Helper to build a minimal PR GraphQL response with check runs
+    function makePRResponse(checkRunContexts: unknown[]) {
+      return mockResponse({
+        data: {
+          repo0: {
+            pullRequests: {
+              nodes: [
+                {
+                  id: 'PR_1',
+                  number: 1,
+                  title: 'Test PR',
+                  body: '',
+                  url: 'https://github.com/org/repo/pull/1',
+                  state: 'OPEN',
+                  createdAt: '2024-01-01T00:00:00Z',
+                  updatedAt: '2024-01-02T00:00:00Z',
+                  isDraft: false,
+                  mergedAt: null,
+                  author: { login: 'author', avatarUrl: '' },
+                  headRefName: 'feature',
+                  headRefOid: 'abc123',
+                  baseRefName: 'main',
+                  baseRepository: {
+                    name: 'repo',
+                    nameWithOwner: 'org/repo',
+                    owner: { login: 'org', avatarUrl: '' }
+                  },
+                  labels: { nodes: [] },
+                  comments: { totalCount: 0 },
+                  reviewThreads: { totalCount: 0 },
+                  additions: 10,
+                  deletions: 5,
+                  changedFiles: 1,
+                  mergeable: 'MERGEABLE',
+                  mergeStateStatus: 'CLEAN',
+                  reviewDecision: null,
+                  commits: {
+                    nodes: [
+                      {
+                        commit: {
+                          statusCheckRollup: {
+                            state: 'SUCCESS',
+                            contexts: {
+                              nodes: checkRunContexts
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      })
+    }
+
+    it('keeps all checks when names are unique', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'Lint',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Tests',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Build',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(3)
+      expect(checks.map((c) => c.name).sort()).toEqual(['Build', 'Lint', 'Tests'])
+    })
+
+    it('deduplicates by name, keeping the most recently started run', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'PR Title Lint',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'PR Title Lint',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T11:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(1)
+      expect(checks[0].name).toBe('PR Title Lint')
+      expect(checks[0].conclusion).toBe('success')
+    })
+
+    it('keeps running re-run over older completed failure (re-run started later)', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'CI',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'CI',
+            status: 'IN_PROGRESS',
+            conclusion: null,
+            startedAt: '2024-01-01T12:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(1)
+      expect(checks[0].name).toBe('CI')
+      expect(checks[0].status).toBe('in_progress')
+      expect(checks[0].conclusion).toBeNull()
+    })
+
+    it('handles re-run appearing before old run in array (order independence)', async () => {
+      // The newer in_progress run appears FIRST in the array,
+      // but the old completed failure appears SECOND.
+      // Should still keep the newer one based on startedAt.
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'CI',
+            status: 'IN_PROGRESS',
+            conclusion: null,
+            startedAt: '2024-01-01T12:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'CI',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(1)
+      expect(checks[0].status).toBe('in_progress')
+      expect(checks[0].conclusion).toBeNull()
+    })
+
+    it('handles three runs of the same check, keeps the latest', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'Tests',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T08:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Tests',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Tests',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T12:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(1)
+      expect(checks[0].conclusion).toBe('success')
+    })
+
+    it('deduplicates only same-name checks, keeps different names separate', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'Lint',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Lint',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T11:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Tests',
+            status: 'IN_PROGRESS',
+            conclusion: null,
+            startedAt: '2024-01-01T10:30:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Build',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(3)
+
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const lint = checks.find((c) => c.name === 'Lint')!
+      expect(lint.conclusion).toBe('success') // Deduplicated: newer success wins
+
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const tests = checks.find((c) => c.name === 'Tests')!
+      expect(tests.status).toBe('in_progress') // Only one, kept as-is
+
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const build = checks.find((c) => c.name === 'Build')!
+      expect(build.conclusion).toBe('success') // Only one, kept as-is
+    })
+
+    it('handles StatusContext entries (no startedAt)', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            context: 'ci/circleci',
+            state: 'SUCCESS',
+            targetUrl: 'https://circleci.com/build/123'
+          },
+          {
+            name: 'GitHub Actions',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!.check_runs
+
+      expect(checks).toHaveLength(2)
+
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const circleci = checks.find((c) => c.name === 'ci/circleci')!
+      expect(circleci.conclusion).toBe('success')
+
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const gha = checks.find((c) => c.name === 'GitHub Actions')!
+      expect(gha.conclusion).toBe('success')
+    })
+
+    it('does not leak startedAt into the output check_runs', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'CI',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: 'https://example.com'
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const check = result[0].checks!.check_runs[0]
+
+      // startedAt should be stripped from the output
+      expect(check).toEqual({
+        id: 'CI',
+        name: 'CI',
+        status: 'completed',
+        conclusion: 'success',
+        html_url: 'https://example.com'
+      })
+      expect('startedAt' in check).toBe(false)
+    })
+
+    it('updates total_count to reflect deduplicated count', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePRResponse([
+          {
+            name: 'CI',
+            status: 'COMPLETED',
+            conclusion: 'FAILURE',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'CI',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T11:00:00Z',
+            detailsUrl: ''
+          },
+          {
+            name: 'Lint',
+            status: 'COMPLETED',
+            conclusion: 'SUCCESS',
+            startedAt: '2024-01-01T10:00:00Z',
+            detailsUrl: ''
+          }
+        ])
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — value verified by expect
+      const checks = result[0].checks!
+
+      // 3 raw entries → 2 after deduplication
+      expect(checks.total_count).toBe(2)
+      expect(checks.check_runs).toHaveLength(2)
+    })
+
+    it('handles no checks (no statusCheckRollup)', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          data: {
+            repo0: {
+              pullRequests: {
+                nodes: [
+                  {
+                    id: 'PR_1',
+                    number: 1,
+                    title: 'Test PR',
+                    body: '',
+                    url: '',
+                    state: 'OPEN',
+                    createdAt: '2024-01-01T00:00:00Z',
+                    updatedAt: '2024-01-01T00:00:00Z',
+                    isDraft: false,
+                    mergedAt: null,
+                    author: { login: 'author', avatarUrl: '' },
+                    headRefName: 'feature',
+                    headRefOid: 'abc',
+                    baseRefName: 'main',
+                    baseRepository: {
+                      name: 'repo',
+                      nameWithOwner: 'org/repo',
+                      owner: { login: 'org', avatarUrl: '' }
+                    },
+                    labels: { nodes: [] },
+                    comments: { totalCount: 0 },
+                    reviewThreads: { totalCount: 0 },
+                    additions: 0,
+                    deletions: 0,
+                    changedFiles: 0,
+                    mergeable: 'MERGEABLE',
+                    mergeStateStatus: 'CLEAN',
+                    reviewDecision: null,
+                    commits: { nodes: [] }
+                  }
+                ]
+              }
+            }
+          }
+        })
+      )
+
+      const result = await fetchPRsForRepos('token', ['org/repo'])
+
+      expect(result[0].checks).toBeUndefined()
+    })
+  })
+
   describe('fetchPRFiles', () => {
     it('fetches changed files for a PR', async () => {
       // REST API returns an array directly, not wrapped in data

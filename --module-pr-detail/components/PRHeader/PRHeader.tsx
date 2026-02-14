@@ -16,6 +16,7 @@ import {
   formatRelativeTime,
   Input,
   MatchedAvatars,
+  Progress,
   Row,
   Tooltip,
   TooltipContent,
@@ -236,309 +237,323 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
   if (!pr) return null
 
   return (
-    <div className="p-4 flex-shrink-0 overflow-hidden section-header">
-      {/* Title and top-right actions in same row */}
-      <Row gutter="sm" align="start" justify="between" wrap>
-        {/* Title section with edit button adjacent */}
-        <Col className="flex-1 min-w-0 min-w-[200px]">
-          <PRTitleSection pr={pr} />
-        </Col>
+    <div className="relative flex-shrink-0 overflow-hidden section-header">
+      <div className="p-4">
+        {/* Title and top-right actions in same row */}
+        <Row gutter="sm" align="start" justify="between" wrap>
+          {/* Title section with edit button adjacent */}
+          <Col className="flex-1 min-w-0 min-w-[200px]">
+            <PRTitleSection pr={pr} />
+          </Col>
 
-        {/* Top-right actions: Refresh, Open in browser, Close */}
-        <Col span="auto" className="flex-shrink-0">
-          <Row gutter="xs" align="center">
-            <Col span="auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={refresh}
-                    disabled={isRefreshing}
-                  >
-                    {isRefreshing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Refresh PR details</TooltipContent>
-              </Tooltip>
-            </Col>
-            <Col span="auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyPRUrl}>
-                    {copiedUrl ? (
-                      <Check className="w-4 h-4 text-success" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{copiedUrl ? 'Copied!' : 'Copy PR URL'}</TooltipContent>
-              </Tooltip>
-            </Col>
-            <Col span="auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => window.open(pr.html_url, '_blank')}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Open in GitHub</TooltipContent>
-              </Tooltip>
-            </Col>
-            <Col span="auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Close</TooltipContent>
-              </Tooltip>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+          {/* Top-right actions: Refresh, Open in browser, Close */}
+          <Col span="auto" className="flex-shrink-0">
+            <Row gutter="xs" align="center">
+              <Col span="auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={refresh}
+                      disabled={isRefreshing}
+                    >
+                      {isRefreshing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh PR details</TooltipContent>
+                </Tooltip>
+              </Col>
+              <Col span="auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyPRUrl}>
+                      {copiedUrl ? (
+                        <Check className="w-4 h-4 text-success" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{copiedUrl ? 'Copied!' : 'Copy PR URL'}</TooltipContent>
+                </Tooltip>
+              </Col>
+              <Col span="auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => window.open(pr.html_url, '_blank')}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open in GitHub</TooltipContent>
+                </Tooltip>
+              </Col>
+              <Col span="auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Close</TooltipContent>
+                </Tooltip>
+              </Col>
+            </Row>
+          </Col>
+        </Row>
 
-      {/* Branch info and metadata in same row */}
-      <Row gutter="sm" align="center" justify="between" wrap className="pt-2 text-xs">
-        {/* Branch info on left */}
-        <Col className="flex-1 min-w-0 min-w-[180px] flex items-center">
-          <PRBranchInfo pr={pr} />
-        </Col>
+        {/* Branch info and metadata in same row */}
+        <Row gutter="sm" align="center" justify="between" wrap className="pt-2 text-xs">
+          {/* Branch info on left */}
+          <Col className="flex-1 min-w-0 min-w-[180px] flex items-center">
+            <PRBranchInfo pr={pr} />
+          </Col>
 
-        {/* Metadata stats on right */}
-        <Col span="auto" className="flex-shrink-0 flex items-center">
-          <Row gutter="sm" align="center" wrap>
-            <Col span="auto">
-              <Row gutter="xs" align="center">
-                <Col span="auto">
-                  <Clock className="w-3 h-3 text-muted-foreground" />
-                </Col>
-                <Col span="auto">
-                  <span className="text-muted-foreground">{formatRelativeTime(pr.created_at)}</span>
-                </Col>
-              </Row>
-            </Col>
-            <Col span="auto">
-              <Row gutter="xs" align="center">
-                <Col span="auto">
-                  <FileEdit className="w-3 h-3 text-muted-foreground" />
-                </Col>
-                <Col span="auto">
-                  <span className="text-success">+{pr.additions}</span>
-                </Col>
-                <Col span="auto">
-                  <span className="text-destructive">-{pr.deletions}</span>
-                </Col>
-              </Row>
-            </Col>
-            <Col span="auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Row gutter="xs" align="center">
-                      <Col span="auto">
-                        <MessageSquare className="w-3 h-3 text-muted-foreground" />
-                      </Col>
-                      <Col span="auto">
-                        <span className="text-muted-foreground">
-                          {pr.comments + pr.review_comments}
-                        </span>
-                      </Col>
-                    </Row>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>Comments</TooltipContent>
-              </Tooltip>
-            </Col>
-            <Col span="auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Row gutter="xs" align="center">
-                      <Col span="auto">
-                        <FileSearch className="w-3 h-3 text-muted-foreground" />
-                      </Col>
-                      {(() => {
-                        const uniqueReviewers = Array.from(
+          {/* Metadata stats on right */}
+          <Col span="auto" className="flex-shrink-0 flex items-center">
+            <Row gutter="sm" align="center" wrap>
+              <Col span="auto">
+                <Row gutter="xs" align="center">
+                  <Col span="auto">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                  </Col>
+                  <Col span="auto">
+                    <span className="text-muted-foreground">
+                      {formatRelativeTime(pr.created_at)}
+                    </span>
+                  </Col>
+                </Row>
+              </Col>
+              <Col span="auto">
+                <Row gutter="xs" align="center">
+                  <Col span="auto">
+                    <FileEdit className="w-3 h-3 text-muted-foreground" />
+                  </Col>
+                  <Col span="auto">
+                    <span className="text-success">+{pr.additions}</span>
+                  </Col>
+                  <Col span="auto">
+                    <span className="text-destructive">-{pr.deletions}</span>
+                  </Col>
+                </Row>
+              </Col>
+              <Col span="auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Row gutter="xs" align="center">
+                        <Col span="auto">
+                          <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                        </Col>
+                        <Col span="auto">
+                          <span className="text-muted-foreground">
+                            {pr.comments + pr.review_comments}
+                          </span>
+                        </Col>
+                      </Row>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Comments</TooltipContent>
+                </Tooltip>
+              </Col>
+              <Col span="auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Row gutter="xs" align="center">
+                        <Col span="auto">
+                          <FileSearch className="w-3 h-3 text-muted-foreground" />
+                        </Col>
+                        {(() => {
+                          const uniqueReviewers = Array.from(
+                            new Map(
+                              (pr.reviews || []).map((r) => [
+                                r.author.login,
+                                { author: r.author, state: r.state }
+                              ])
+                            ).values()
+                          )
+                          return (
+                            <>
+                              <Col span="auto">
+                                <span className="text-muted-foreground">
+                                  {uniqueReviewers.length}
+                                </span>
+                              </Col>
+                              {uniqueReviewers.length > 0 && (
+                                <Col span="auto">
+                                  <div className="flex items-center -space-x-1.5 ml-1">
+                                    {uniqueReviewers.slice(0, 3).map(({ author, state }) => (
+                                      <Avatar
+                                        key={author.login}
+                                        className={cn(
+                                          'w-4 h-4 ring-2',
+                                          state === 'approved'
+                                            ? 'ring-emerald-500'
+                                            : state === 'changes_requested'
+                                              ? 'ring-red-500'
+                                              : 'ring-gray-400'
+                                        )}
+                                      >
+                                        <AvatarImage src={author.avatar_url} alt={author.login} />
+                                        <AvatarFallback className="text-[6px]">
+                                          {author.login.slice(0, 2).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    ))}
+                                    {uniqueReviewers.length > 3 && (
+                                      <span className="text-[10px] text-muted-foreground ml-1">
+                                        +{uniqueReviewers.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Col>
+                              )}
+                            </>
+                          )
+                        })()}
+                      </Row>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {pr.reviews && pr.reviews.length > 0 ? (
+                      <div>
+                        <p className="font-medium mb-1">Reviewers</p>
+                        {Array.from(
                           new Map(
-                            (pr.reviews || []).map((r) => [
+                            pr.reviews.map((r) => [
                               r.author.login,
                               { author: r.author, state: r.state }
                             ])
                           ).values()
-                        )
-                        return (
-                          <>
-                            <Col span="auto">
-                              <span className="text-muted-foreground">
-                                {uniqueReviewers.length}
-                              </span>
-                            </Col>
-                            {uniqueReviewers.length > 0 && (
-                              <Col span="auto">
-                                <div className="flex items-center -space-x-1.5 ml-1">
-                                  {uniqueReviewers.slice(0, 3).map(({ author, state }) => (
-                                    <Avatar
-                                      key={author.login}
-                                      className={cn(
-                                        'w-4 h-4 ring-2',
-                                        state === 'approved'
-                                          ? 'ring-emerald-500'
-                                          : state === 'changes_requested'
-                                            ? 'ring-red-500'
-                                            : 'ring-gray-400'
-                                      )}
-                                    >
-                                      <AvatarImage src={author.avatar_url} alt={author.login} />
-                                      <AvatarFallback className="text-[6px]">
-                                        {author.login.slice(0, 2).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  ))}
-                                  {uniqueReviewers.length > 3 && (
-                                    <span className="text-[10px] text-muted-foreground ml-1">
-                                      +{uniqueReviewers.length - 3}
-                                    </span>
-                                  )}
-                                </div>
-                              </Col>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </Row>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {pr.reviews && pr.reviews.length > 0 ? (
-                    <div>
-                      <p className="font-medium mb-1">Reviewers</p>
-                      {Array.from(
-                        new Map(
-                          pr.reviews.map((r) => [
-                            r.author.login,
-                            { author: r.author, state: r.state }
-                          ])
-                        ).values()
-                      ).map(({ author, state }) => (
-                        <p key={author.login} className="text-xs flex items-center gap-1">
-                          <span
-                            className={cn(
-                              'w-2 h-2 rounded-full',
-                              state === 'approved'
-                                ? 'bg-success'
-                                : state === 'changes_requested'
-                                  ? 'bg-destructive'
-                                  : 'bg-foreground-ghost'
-                            )}
-                          />
-                          {author.login}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    'No reviews yet'
+                        ).map(({ author, state }) => (
+                          <p key={author.login} className="text-xs flex items-center gap-1">
+                            <span
+                              className={cn(
+                                'w-2 h-2 rounded-full',
+                                state === 'approved'
+                                  ? 'bg-success'
+                                  : state === 'changes_requested'
+                                    ? 'bg-destructive'
+                                    : 'bg-foreground-ghost'
+                              )}
+                            />
+                            {author.login}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      'No reviews yet'
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </Col>
+            </Row>
+          </Col>
+        </Row>
+
+        {/* Author, assignees, labels and PR action buttons in same row */}
+        <Row gutter="sm" align="center" justify="between" wrap className="pt-2 text-xs">
+          {/* Author, assignees, and labels on left */}
+          <Col className="flex-1 min-w-0 min-w-[150px] flex items-center">
+            <Row gutter="sm" align="center" wrap>
+              <Col span="auto">
+                <MatchedAvatars
+                  author={{ login: pr.user.login, avatar_url: pr.user.avatar_url }}
+                  assignees={pr.assignees}
+                  size="md"
+                  showNames
+                />
+              </Col>
+              <Col span="auto">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {pr.labels?.slice(0, 3).map((label) => (
+                    <span
+                      key={label.name}
+                      className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                      style={{
+                        backgroundColor: `#${label.color}20`,
+                        color: `#${label.color}`,
+                        border: `1px solid #${label.color}40`
+                      }}
+                    >
+                      {label.name}
+                    </span>
+                  ))}
+                  {pr.labels && pr.labels.length > 3 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-[10px] text-muted-foreground cursor-default">
+                          +{pr.labels.length - 3}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-medium mb-1">All Labels</p>
+                        {pr.labels.map((l) => (
+                          <p key={l.name} className="text-xs" style={{ color: `#${l.color}` }}>
+                            {l.name}
+                          </p>
+                        ))}
+                      </TooltipContent>
+                    </Tooltip>
                   )}
-                </TooltipContent>
-              </Tooltip>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+                  <LabelsButton />
+                </div>
+              </Col>
+            </Row>
+          </Col>
 
-      {/* Author, assignees, labels and PR action buttons in same row */}
-      <Row gutter="sm" align="center" justify="between" wrap className="pt-2 text-xs">
-        {/* Author, assignees, and labels on left */}
-        <Col className="flex-1 min-w-0 min-w-[150px] flex items-center">
-          <Row gutter="sm" align="center" wrap>
-            <Col span="auto">
-              <MatchedAvatars
-                author={{ login: pr.user.login, avatar_url: pr.user.avatar_url }}
-                assignees={pr.assignees}
-                size="md"
-                showNames
-              />
-            </Col>
-            <Col span="auto">
-              <div className="flex items-center gap-1 flex-wrap">
-                {pr.labels?.slice(0, 3).map((label) => (
-                  <span
-                    key={label.name}
-                    className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
-                    style={{
-                      backgroundColor: `#${label.color}20`,
-                      color: `#${label.color}`,
-                      border: `1px solid #${label.color}40`
-                    }}
-                  >
-                    {label.name}
-                  </span>
-                ))}
-                {pr.labels && pr.labels.length > 3 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-[10px] text-muted-foreground cursor-default">
-                        +{pr.labels.length - 3}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-medium mb-1">All Labels</p>
-                      {pr.labels.map((l) => (
-                        <p key={l.name} className="text-xs" style={{ color: `#${l.color}` }}>
-                          {l.name}
-                        </p>
-                      ))}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                <LabelsButton />
-              </div>
-            </Col>
-          </Row>
-        </Col>
+          {/* PR Action buttons on right - most important on extreme right */}
+          <Col span="auto" className="flex-shrink-0 flex items-center">
+            <Row gutter="xs" align="center" wrap>
+              <Col span="auto">
+                <ReopenButton />
+              </Col>
+              <Col span="auto">
+                <FindPreviewButton />
+              </Col>
+              <Col span="auto">
+                <CloseButton />
+              </Col>
+              <Col span="auto">
+                <ConvertToDraftButton />
+              </Col>
+              <Col span="auto">
+                <ReadyForReviewButton />
+              </Col>
+              <Col span="auto">
+                <UpdateBranchButton />
+              </Col>
+              <Col span="auto">
+                <MergeButton />
+              </Col>
+              <Col span="auto">
+                <ApproveButton />
+              </Col>
+            </Row>
+          </Col>
+        </Row>
+      </div>
 
-        {/* PR Action buttons on right - most important on extreme right */}
-        <Col span="auto" className="flex-shrink-0 flex items-center">
-          <Row gutter="xs" align="center" wrap>
-            <Col span="auto">
-              <ReopenButton />
-            </Col>
-            <Col span="auto">
-              <FindPreviewButton />
-            </Col>
-            <Col span="auto">
-              <CloseButton />
-            </Col>
-            <Col span="auto">
-              <ConvertToDraftButton />
-            </Col>
-            <Col span="auto">
-              <ReadyForReviewButton />
-            </Col>
-            <Col span="auto">
-              <UpdateBranchButton />
-            </Col>
-            <Col span="auto">
-              <MergeButton />
-            </Col>
-            <Col span="auto">
-              <ApproveButton />
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+      {/* Indeterminate progress bar at the bottom of the header during refresh */}
+      <div
+        className={cn(
+          'absolute bottom-0 left-0 right-0 transition-opacity duration-300',
+          isRefreshing ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        )}
+      >
+        <Progress indeterminate size="sm" />
+      </div>
     </div>
   )
 }

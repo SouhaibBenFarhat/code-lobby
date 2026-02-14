@@ -128,11 +128,15 @@ export function useSelectedPR(): UseQueryResult<PullRequest | null> {
     // Always refetch on mount (staleTime: 0 makes data always stale)
     staleTime: 0,
     // Poll every 3 seconds while GitHub is computing merge status (returns UNKNOWN)
-    // Stop polling once we get an actual status
+    // Stop polling once we get an actual status, or after 30 seconds max
     refetchInterval: (query) => {
       const pr = query.state.data
       if (pr?.mergeable === 'UNKNOWN' || pr?.mergeStateStatus === 'UNKNOWN') {
-        return 3000 // Poll every 3 seconds
+        const dataUpdatedAt = query.state.dataUpdatedAt
+        const elapsed = dataUpdatedAt ? Date.now() - dataUpdatedAt : 0
+        if (elapsed < 30_000) {
+          return 3000 // Poll every 3 seconds
+        }
       }
       return false // Stop polling
     }

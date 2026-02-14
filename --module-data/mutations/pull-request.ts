@@ -553,9 +553,7 @@ export function useResolveReviewThread(): UseMutationResult<
       })
     }
   })
-}
-
-/**
+} /**
  * Unresolve a review thread
  */
 export function useUnresolveReviewThread(): UseMutationResult<

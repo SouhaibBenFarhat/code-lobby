@@ -57,6 +57,7 @@ import { ClaudeCodeStatus } from './ClaudeCodeStatus'
 import { ContributionsModal } from './ContributionsModal'
 import { DatabaseViewer } from './DatabaseViewer'
 import { EventStream } from './EventStream'
+import { GitHubStatusIndicator } from './GitHubStatusIndicator'
 import { LogsViewer } from './LogsViewer'
 import { MemoryUsageIndicator } from './MemoryUsageIndicator'
 import { RepoSelector } from './RepoSelector'
@@ -174,7 +175,7 @@ export function Header({
   }
 
   return (
-    <header className="h-14 flex items-center gap-4 pr-4 drag-region header-bar shadow-elevation-medium relative z-20">
+    <header className="h-14 flex items-center gap-2 pr-4 drag-region header-bar shadow-elevation-medium relative z-20">
       <div className="flex items-center h-full">
         {!isFullscreen && <div className="w-[72px] h-full flex-shrink-0" />}
         {isFullscreen && <div className="w-3 h-full flex-shrink-0" />}
@@ -231,11 +232,8 @@ export function Header({
         </Tooltip>
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
-
-      <div className="flex items-center gap-2 text-xs text-muted-foreground no-drag">
-        <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-        <span>Live</span>
+      <div className="no-drag">
+        <ClaudeCodeStatus />
       </div>
 
       {rateLimitData && (
@@ -245,53 +243,35 @@ export function Header({
             <TooltipTrigger asChild>
               <div
                 className={cn(
-                  'flex items-center gap-2 no-drag cursor-default px-2 py-1 rounded-md transition-colors',
+                  'flex items-center gap-1.5 no-drag cursor-default px-1.5 py-0.5 rounded-md transition-colors',
                   isRateLimited && 'bg-destructive-subtle border border-destructive-border',
                   isNearLimit && !isRateLimited && 'bg-warning-subtle border border-warning-border'
                 )}
               >
                 {isRateLimited ? (
-                  <AlertTriangle className="w-3.5 h-3.5 text-destructive animate-pulse" />
+                  <AlertTriangle className="w-3 h-3 text-destructive animate-pulse" />
                 ) : (
                   <Gauge
                     className={cn(
-                      'w-3.5 h-3.5',
+                      'w-3 h-3',
                       isNearLimit ? 'text-warning' : 'text-muted-foreground'
                     )}
                   />
                 )}
-                <div className="flex items-center gap-1.5">
-                  <div className="w-20 h-1.5 bg-surface rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full rounded-full transition-all duration-300',
-                        isRateLimited
-                          ? 'bg-destructive'
-                          : rateLimitData.percentage > 80
-                            ? 'bg-destructive'
-                            : rateLimitData.percentage > 50
-                              ? 'bg-warning'
-                              : 'bg-success'
-                      )}
-                      style={{ width: `${Math.min(rateLimitData.percentage, 100)}%` }}
-                    />
+                {isRateLimited ? (
+                  <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
+                    <Clock className="w-2.5 h-2.5" />
+                    <span>{formatTimeUntilReset(rateLimitData.resetAt)}</span>
                   </div>
-                  {isRateLimited ? (
-                    <div className="flex items-center gap-1 text-[10px] text-destructive font-medium">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatTimeUntilReset(rateLimitData.resetAt)}</span>
-                    </div>
-                  ) : isNearLimit ? (
-                    <div className="flex items-center gap-1 text-[10px] text-warning">
-                      <span>{rateLimitData.remaining}</span>
-                      <span className="text-muted-foreground">left</span>
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground w-8">
-                      {rateLimitData.percentage}%
-                    </span>
-                  )}
-                </div>
+                ) : isNearLimit ? (
+                  <span className="text-[10px] text-warning font-medium">
+                    {rateLimitData.remaining} left
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">
+                    {rateLimitData.percentage}%
+                  </span>
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
@@ -331,17 +311,13 @@ export function Header({
 
       <MemoryUsageIndicator />
 
-      <Separator orientation="vertical" className="h-6" />
-
-      <div className="no-drag">
-        <ClaudeCodeStatus />
-      </div>
+      <GitHubStatusIndicator />
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-2 no-drag">
+      <div className="flex items-center gap-1 no-drag">
         {isFetching && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="w-3 h-3 animate-spin text-primary" />
             <span>Refreshing...</span>
           </div>
@@ -351,8 +327,8 @@ export function Header({
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-8 w-8">
-              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-7 w-7">
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Clear cache & refresh</TooltipContent>
@@ -362,8 +338,8 @@ export function Header({
           <Tooltip>
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Palette className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Palette className="w-3.5 h-3.5" />
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
@@ -430,10 +406,10 @@ export function Header({
             <Button
               variant={isAIPanelOpen ? 'secondary' : 'ghost'}
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7"
               onClick={onToggleAIPanel}
             >
-              <ClaudeIcon className="w-4 h-4" />
+              <ClaudeIcon className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>
@@ -444,10 +420,10 @@ export function Header({
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-8 w-8', networkPanelOpen && 'bg-interactive-active')}
+              className={cn('h-7 w-7', networkPanelOpen && 'bg-interactive-active')}
               onClick={() => toggleNetworkPanel.mutate()}
             >
-              <Network className="w-4 h-4" />
+              <Network className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Network Panel</TooltipContent>
@@ -458,10 +434,10 @@ export function Header({
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-8 w-8', agenticSettingsOpen && 'bg-interactive-active')}
+              className={cn('h-7 w-7', agenticSettingsOpen && 'bg-interactive-active')}
               onClick={() => setAgenticSettingsOpen.mutate(true)}
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Agentic Settings</TooltipContent>
@@ -471,8 +447,8 @@ export function Header({
           <Tooltip>
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Activity className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Activity className="w-3.5 h-3.5" />
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
@@ -516,15 +492,15 @@ export function Header({
                 type="button"
                 onClick={toggleUserProfile}
                 className={cn(
-                  'flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity rounded-md px-2 py-1',
+                  'flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity rounded-md px-1.5 py-0.5',
                   userProfileOpen && 'bg-interactive-active'
                 )}
               >
-                <Avatar className="h-6 w-6 ring-2 ring-transparent hover:ring-primary/50 transition-all">
+                <Avatar className="h-5 w-5 ring-2 ring-transparent hover:ring-primary/50 transition-all">
                   <AvatarImage src={user.avatar_url} alt={user.login} />
                   <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium">{user.login}</span>
+                <span className="text-xs font-medium">{user.login}</span>
               </button>
             </TooltipTrigger>
             <TooltipContent>{userProfileOpen ? 'Hide Profile' : 'Show Profile'}</TooltipContent>
@@ -539,9 +515,9 @@ export function Header({
               variant="ghost"
               size="icon"
               onClick={onLogout}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Sign out</TooltipContent>
