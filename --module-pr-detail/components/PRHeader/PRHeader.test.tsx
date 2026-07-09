@@ -294,7 +294,11 @@ describe('PRHeader', () => {
           { login: 'assignee1', avatar_url: 'https://example.com/avatar1.png' },
           { login: 'assignee2', avatar_url: 'https://example.com/avatar2.png' },
           { login: 'assignee3', avatar_url: 'https://example.com/avatar3.png' }
-        ]
+        ],
+        // Zero additions/deletions so the "+N" diff stat can't collide with the
+        // assignee-overflow "+2" (createMockPullRequest randomizes additions 0-499).
+        additions: 0,
+        deletions: 0
       })
       render(<PRHeader onClose={mockOnClose} />, { initialSelectedPR: pr, initialUser: mockUser })
 
