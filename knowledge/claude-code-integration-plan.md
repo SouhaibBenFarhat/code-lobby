@@ -428,8 +428,8 @@ Use `--continue` flag for multi-turn conversations within same session.
 
 ```
 ~/.codelobby/repos/
-├── parcellab-api/           # Cached clone
-├── parcellab-frontend/      # Cached clone
+├── example-api/             # Cached clone
+├── example-frontend/        # Cached clone
 └── ...
 ```
 

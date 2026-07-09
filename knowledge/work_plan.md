@@ -684,14 +684,14 @@ Each PR/branch gets its own working directory, terminal session, and AI conversa
 **Directory Structure:**
 ```
 ~/.codelobby/workspaces/
-├── parcellab-api/                    # Repo
+├── example-api/                      # Repo
 │   ├── main/                         # Branch worktree
 │   │   └── [full repo checkout]
 │   ├── feature-auth/                 # Another branch
 │   │   └── [full repo checkout]
 │   └── fix-bug-123/
 │       └── [full repo checkout]
-├── parcellab-frontend/
+├── example-frontend/
 │   ├── main/
 │   └── redesign-v2/
 ```
