@@ -6,10 +6,16 @@ import { AddCustomPromptModal } from './AddCustomPromptModal'
 describe('AddCustomPromptModal', () => {
   const mockOnClose = vi.fn()
   const mockOnSave = vi.fn()
+  // Radix Dialog locks the body with `pointer-events: none` while open, and userEvent
+  // v14 refuses to click elements without pointer events — a race with the dialog's
+  // mount/animation that surfaced as CI-only flakiness. `pointerEventsCheck: 0` disables
+  // that check so button clicks are deterministic across environments.
+  let user: ReturnType<typeof userEvent.setup>
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockOnSave.mockResolvedValue(undefined)
+    user = userEvent.setup({ pointerEventsCheck: 0 })
   })
 
   const renderModal = (isOpen = true) => {
@@ -54,7 +60,7 @@ describe('AddCustomPromptModal', () => {
     it('updates character counter when typing label', async () => {
       renderModal()
       const labelInput = screen.getByPlaceholderText(/Check types/)
-      await userEvent.type(labelInput, 'Test')
+      await user.type(labelInput, 'Test')
       expect(screen.getByText('4/30 characters')).toBeInTheDocument()
     })
 
@@ -62,25 +68,26 @@ describe('AddCustomPromptModal', () => {
       renderModal()
       const labelInput = screen.getByPlaceholderText(/Check types/)
       const longText = 'a'.repeat(35)
-      await userEvent.type(labelInput, longText)
+      await user.type(labelInput, longText)
       expect((labelInput as HTMLInputElement).value.length).toBeLessThanOrEqual(30)
     })
   })
 
   describe('form submission', () => {
-    // Note: This test is flaky when run in the full test suite due to race conditions
-    // with userEvent.type and Radix UI dialogs. It passes consistently when run in isolation.
-    it.skip('calls onSave with trimmed values when form is valid', async () => {
-      const user = userEvent.setup()
+    it('calls onSave with trimmed values when form is valid', async () => {
       renderModal()
 
       const labelInput = screen.getByPlaceholderText(/Check types/)
       const promptTextarea = screen.getByPlaceholderText(/Write your prompt here/)
 
-      await user.type(labelInput, '  My Label  ')
-      await user.type(promptTextarea, '  My Prompt  ')
+      // Set values atomically (fireEvent.change) instead of typing char-by-char: the
+      // modal's delayed autofocus (setTimeout(…, 100)) can steal focus mid-type under
+      // load and misroute the tail of the prompt into the label field.
+      fireEvent.change(labelInput, { target: { value: '  My Label  ' } })
+      fireEvent.change(promptTextarea, { target: { value: '  My Prompt  ' } })
 
       const saveButton = screen.getByRole('button', { name: /save prompt/i })
+      await waitFor(() => expect(saveButton).toBeEnabled())
       await user.click(saveButton)
 
       await waitFor(
@@ -97,11 +104,12 @@ describe('AddCustomPromptModal', () => {
       const labelInput = screen.getByPlaceholderText(/Check types/)
       const promptTextarea = screen.getByPlaceholderText(/Write your prompt here/)
 
-      await userEvent.type(labelInput, 'Label')
-      await userEvent.type(promptTextarea, 'Prompt')
+      fireEvent.change(labelInput, { target: { value: 'Label' } })
+      fireEvent.change(promptTextarea, { target: { value: 'Prompt' } })
 
       const saveButton = screen.getByRole('button', { name: /save prompt/i })
-      await userEvent.click(saveButton)
+      await waitFor(() => expect(saveButton).toBeEnabled())
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled()
@@ -115,11 +123,12 @@ describe('AddCustomPromptModal', () => {
       const labelInput = screen.getByPlaceholderText(/Check types/)
       const promptTextarea = screen.getByPlaceholderText(/Write your prompt here/)
 
-      await userEvent.type(labelInput, 'Label')
-      await userEvent.type(promptTextarea, 'Prompt')
+      fireEvent.change(labelInput, { target: { value: 'Label' } })
+      fireEvent.change(promptTextarea, { target: { value: 'Prompt' } })
 
       const saveButton = screen.getByRole('button', { name: /save prompt/i })
-      await userEvent.click(saveButton)
+      await waitFor(() => expect(saveButton).toBeEnabled())
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(screen.getByText('Failed to save prompt')).toBeInTheDocument()
@@ -133,13 +142,16 @@ describe('AddCustomPromptModal', () => {
       const labelInput = screen.getByPlaceholderText(/Check types/)
       const promptTextarea = screen.getByPlaceholderText(/Write your prompt here/)
 
-      await userEvent.type(labelInput, 'Label')
-      await userEvent.type(promptTextarea, 'Prompt')
+      fireEvent.change(labelInput, { target: { value: 'Label' } })
+      fireEvent.change(promptTextarea, { target: { value: 'Prompt' } })
 
       const saveButton = screen.getByRole('button', { name: /save prompt/i })
-      await userEvent.click(saveButton)
+      await waitFor(() => expect(saveButton).toBeEnabled())
+      await user.click(saveButton)
 
-      expect(screen.getByText('Saving...')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('Saving...')).toBeInTheDocument()
+      })
     })
   })
 
@@ -150,8 +162,8 @@ describe('AddCustomPromptModal', () => {
       const labelInput = screen.getByPlaceholderText(/Check types/)
       const promptTextarea = screen.getByPlaceholderText(/Write your prompt here/)
 
-      await userEvent.type(labelInput, 'Label')
-      await userEvent.type(promptTextarea, 'Prompt')
+      fireEvent.change(labelInput, { target: { value: 'Label' } })
+      fireEvent.change(promptTextarea, { target: { value: 'Prompt' } })
 
       fireEvent.keyDown(promptTextarea, { key: 'Enter', metaKey: true })
 
@@ -166,9 +178,11 @@ describe('AddCustomPromptModal', () => {
       renderModal()
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i })
-      await userEvent.click(cancelButton)
+      await user.click(cancelButton)
 
-      expect(mockOnClose).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled()
+      })
     })
   })
 })
