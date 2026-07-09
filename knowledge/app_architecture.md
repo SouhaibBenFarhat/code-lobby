@@ -31,7 +31,7 @@ CodeLobby is an **Electron desktop application** built with:
 | Build Tool | electron-vite |
 | Styling | Tailwind CSS 3 + shadcn/ui |
 | GitHub API | GraphQL (direct fetch) |
-| AI Integration | Claude Code CLI (claude-agent-sdk) |
+| AI Integration | Claude Code CLI (spawned subprocess) |
 | Persistence | **SQLite (Drizzle ORM)** + localStorage + electron-store |
 
 ### Architectural Philosophy
@@ -86,7 +86,7 @@ Electron runs two separate processes:
                         │ ipcRenderer.invoke
 ┌───────────────────────┴─────────────────────────────────────┐
 │                    Main Process                              │
-│      Electron + Claude API + electron-store (AI only)        │
+│       Claude Code CLI subprocess (stream-json over IPC)      │
 │              (src/main/)                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -380,7 +380,6 @@ export const keys = {
   githubToken: ['settings', 'github-token'],
 
   // AI (PERSISTED to localStorage)
-  claudeApiKey: ['ai', 'claude-api-key'],
   chatHistory: ['ai', 'chat-history'],
 
   // Local UI state (PERSISTED)
@@ -448,7 +447,7 @@ For structured data that requires relational storage, CodeLobby uses SQLite via 
 │  │  • conversations - Chat sessions (PR & general)         ││
 │  │  • messages - Individual chat messages                  ││
 │  │  • custom_prompts - User-created quick prompts          ││
-│  │  • ai_usage - Token usage & cost tracking               ││
+│  │  • ai_usage - Token usage tracking                      ││
 │  └─────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -653,4 +652,4 @@ pnpm run test         # Run tests
 
 ---
 
-*Last updated: January 29, 2026*
+*Last updated: July 9, 2026*

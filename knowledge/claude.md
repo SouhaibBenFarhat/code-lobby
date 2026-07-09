@@ -11,7 +11,7 @@ CodeLobby is an **Electron desktop application** using **TanStack Query as the s
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    External APIs                          │
-│        GitHub API (GraphQL/REST)  │  Claude API (REST)    │
+│        GitHub API (GraphQL/REST)  │  Claude Code CLI      │
 └─────────────────────────┬─────────┴───────────────────────┘
                           │ fetch() (direct from renderer)
 ┌─────────────────────────┴─────────────────────────────────┐
@@ -563,7 +563,7 @@ try {
 
 **Required logging for:**
 - All GitHub GraphQL queries
-- All Claude API calls (requests and responses)
+- All Claude Code CLI sessions (prompts and responses)
 - All IPC handler invocations
 - Cache hits/misses
 - Rate limit status changes
@@ -1522,10 +1522,9 @@ Each component is in its own folder with source and test file co-located:
 │   └── review.ts                          # Review-related types
 └── utils/
     ├── index.ts
-    ├── claude-request.ts                  # Build Claude API requests
-    ├── claude-streaming.ts                # Parse SSE streaming chunks
-    ├── review-parser.ts                   # Parse AI-generated review JSON
     └── tokens.ts                          # Token estimation
+    # (review parsing now lives in the main process `claude-cli.ts`
+    #  and renderer `--module-data/claude-code/parser.ts`)
 ```
 
 ### Component Responsibilities
@@ -1534,8 +1533,8 @@ Each component is in its own folder with source and test file co-located:
 |-----------|-------|---------|
 | `AIChat.tsx` | ~600 | Main orchestrator - state, IPC calls, delegates to children |
 | `ChatHeader.tsx` | ~214 | Title, conversation navigator popover, action buttons |
-| `ChatInput.tsx` | ~198 | API key input, message textarea, quick actions, context indicator |
-| `ChatSettings.tsx` | ~140 | Model selector dropdown, thinking toggle, API key removal |
+| `ChatInput.tsx` | ~198 | Message textarea, quick actions, context indicator |
+| `ChatSettings.tsx` | ~140 | Model selector dropdown, thinking toggle |
 | `ChatEmptyStates.tsx` | ~196 | 6 components: LoadingSkeleton, PREmptyState, DefaultEmptyState, PRContextBanner, ContextSyncBanner, ErrorBanner |
 | `VirtualizedMessageList.tsx` | ~200 | TanStack Virtual for message rendering |
 | `QuickActions.tsx` | ~250 | Pre-prompt buttons with horizontal scroll + fade |
@@ -1634,9 +1633,9 @@ index.tsx (Wrapper)
     ▼
 AIChat.tsx (Orchestrator)
     │
-    │ - TanStack Query for data (useClaudeApiKey, usePRChatMessages, etc.)
+    │ - TanStack Query for data (useSelectedModel, usePRChatMessages, etc.)
     │ - TanStack Mutations (useSaveMessage, useClearChat, etc.)
-    │ - XHR streaming for Claude API (bypasses React batching)
+    │ - Claude Code CLI streaming via IPC events (claude:chunk/done/error)
     │ - Local state (streaming content, input, expanded thinking)
     │ - Passes data + callbacks as props
     │
