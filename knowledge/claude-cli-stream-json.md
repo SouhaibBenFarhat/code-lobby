@@ -1,19 +1,16 @@
 # Claude CLI `stream-json` Format Guide
 
-> **Purpose:** Documents the exact output format of `claude --output-format stream-json` and how CodeLobby's parser normalizes it to match the SDK relay's IPC events.
+> **Purpose:** Documents the exact output format of `claude --output-format stream-json` and how CodeLobby's parser (`claude-cli.ts`) normalizes it into the IPC event shape the renderer expects.
 
 ---
 
 ## Why This Matters
 
-CodeLobby has two AI backends that must produce **identical IPC events** for the renderer:
+CodeLobby's **sole** AI backend is the Claude Code CLI (`claude-cli.ts`), spawned as a subprocess with `claude -p --output-format stream-json`. The CLI emits **complete messages** with all content blocks bundled in one array, so `claude-cli.ts` normalizes that output into the granular IPC event shape the renderer expects — splitting each bundled message into separate `claude:chunk` events (plus `claude:done` / `claude:error` / `claude:review`).
 
-| Backend | How it works |
-|---------|-------------|
-| **SDK Relay** (`claude-code-relay.ts`) | Uses `@anthropic-ai/claude-agent-sdk`. Gets granular streaming events (`content_block_start`, `content_block_delta`, `content_block_stop`). Each content block type is naturally a separate event. |
-| **CLI Backend** (`claude-cli.ts`) | Spawns `claude -p --output-format stream-json`. Gets **complete messages** with all content blocks bundled in one array. Must split them into separate events. |
+The renderer (`--module-data/claude-code/hooks.ts`) processes those `claude:chunk` IPC events without needing to know how they were produced.
 
-The renderer (`--module-data/claude-code/hooks.ts`) doesn't know which backend is active — it processes `claude:chunk` IPC events identically regardless of source.
+> _History:_ an earlier Agent-SDK relay (`claude-code-relay.ts`, using `@anthropic-ai/claude-agent-sdk`) once produced these events instead. It has been **removed** — the CLI subprocess is now the only backend.
 
 ---
 
@@ -103,7 +100,7 @@ Located in `src/main/claude-cli.ts`. Returns an **array** of `ParsedEvent` objec
 
 ### Why an Array?
 
-A single `assistant` JSON line can contain multiple content block types. The SDK relay sends each as a separate IPC event. The parser must do the same:
+A single `assistant` JSON line can contain multiple content block types, but the renderer expects each as a separate IPC event. The parser splits them:
 
 ```
 CLI Output (1 line):
@@ -123,7 +120,7 @@ Parser Output (3 events):
 
 ### Field Name Convention
 
-| Wire (CLI/SDK) | In-Memory (React) | Where Converted |
+| Wire (CLI) | In-Memory (React) | Where Converted |
 |----------------|-------------------|-----------------|
 | `tool_name` (snake_case) | `toolName` (camelCase) | `extractToolInfo()` in `parser.ts` |
 | `message.content` (can be array) | `message.content` (always string) | `parseStreamJsonLine()` in `claude-cli.ts` |
@@ -194,7 +191,6 @@ Tests are in `src/main/claude-cli.test.ts` (41 tests). Key categories:
 | `src/main/claude-cli.ts` | CLI backend — spawning, stream parsing, IPC events |
 | `src/main/claude-cli.test.ts` | Parser tests |
 | `src/main/claude-cli-path.ts` | CLI binary path resolution + caching |
-| `src/main/claude-code-relay.ts` | SDK backend (comparison reference) |
 | `--module-data/claude-code/hooks.ts` | Renderer-side event processing |
 | `--module-data/claude-code/parser.ts` | Type guards + field extraction |
 | `--module-data/claude-code/types.ts` | StreamEvent type definitions |
