@@ -1,5 +1,5 @@
 /**
- * ChatHeader - Header for the AI Chat panel.
+ * ChatHeader - Header for the AI Chat panel (CLI-only mode).
  * Uses ViewHeader-style elevation for visual consistency across the app.
  * Settings are shown in a popover.
  */
@@ -23,23 +23,21 @@ import { Loader2, Settings, Trash2, X } from 'lucide-react'
 import type { ClaudeModel } from '../../types'
 
 export interface ChatHeaderProps {
-  apiKey: string | null
   selectedModel: string
   models: ClaudeModel[]
   isLoadingModels: boolean
+  isConfigured: boolean
   onModelChange: (modelId: string) => void
-  onRemoveApiKey: () => void
   onClearHistory: () => void
   onClose: () => void
 }
 
 export function ChatHeader({
-  apiKey,
   selectedModel,
   models,
   isLoadingModels,
+  isConfigured,
   onModelChange,
-  onRemoveApiKey,
   onClearHistory,
   onClose
 }: ChatHeaderProps): React.JSX.Element {
@@ -48,16 +46,16 @@ export function ChatHeader({
       <div className="flex items-center gap-2 min-w-0">
         <ClaudeIcon className="w-4 h-4 text-primary flex-shrink-0" />
         <span className="font-semibold text-sm">AI Chat</span>
-        {apiKey && selectedModel && (
-          <span className="text-xs text-muted-foreground truncate max-w-[100px]">
-            •{' '}
+        {isConfigured && selectedModel && (
+          <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+            • CLI{' '}
             {models.find((m) => m.id === selectedModel)?.display_name ||
               selectedModel.split('-').slice(0, 2).join(' ')}
           </span>
         )}
       </div>
       <div className="flex items-center gap-1">
-        {apiKey && (
+        {isConfigured && (
           <>
             <Popover>
               <Tooltip>
@@ -70,7 +68,7 @@ export function ChatHeader({
                 </TooltipTrigger>
                 <TooltipContent>Settings</TooltipContent>
               </Tooltip>
-              <PopoverContent align="end" className="w-64 p-3">
+              <PopoverContent align="end" className="w-72 p-3">
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm">Settings</h4>
 
@@ -110,17 +108,11 @@ export function ChatHeader({
                     )}
                   </div>
 
-                  {/* API Key Management */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <span className="text-xs text-muted-foreground">API Key</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive-subtle px-2"
-                      onClick={onRemoveApiKey}
-                    >
-                      Remove
-                    </Button>
+                  {/* CLI mode info */}
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground">
+                      Using Claude Code CLI with your Pro/Max subscription. No API key needed.
+                    </p>
                   </div>
                 </div>
               </PopoverContent>

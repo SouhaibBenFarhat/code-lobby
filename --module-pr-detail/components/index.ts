@@ -39,6 +39,7 @@ export {
   type ReadyForReviewButtonProps
 } from './ReadyForReviewButton'
 export { ReopenButton, type ReopenButtonProps } from './ReopenButton'
+export { ReviewsBySubmission, type ReviewsBySubmissionProps } from './ReviewsBySubmission'
 export {
   CommentNode,
   type CommentNodeProps,

@@ -45,28 +45,25 @@ import { LogCategory, mainLogger as logger } from '@logger/main'
 import { closeDatabase, initDatabase, registerPersistenceIpcHandlers } from '@persistence/main'
 import { getAllModelPricing } from './ai-pricing'
 import {
-  analyzeCIFailure,
-  analyzeCIFailureStreaming,
-  analyzePRStatus,
-  analyzePRStatusStreaming,
-  ClaudeMessage,
-  extractJiraTicket,
-  extractPreviewUrl,
-  fetchModels as fetchClaudeModels,
-  getDefaultModel,
-  sendMessage as sendClaudeMessage,
-  sendMessageStreaming as sendClaudeMessageStreaming
-} from './claude-api'
+  cliOneShot,
+  sendCliMessageStreaming,
+  startClaudeCliSession,
+  stopAllCliSessions,
+  stopClaudeCliSession
+} from './claude-cli'
+import { setCachedClaudePath } from './claude-cli-path'
+import { fetchCliUsageStats } from './claude-cli-usage'
 import {
-  startClaudeSession,
-  stopAllSessions as stopAllClaudeSessions,
-  stopClaudeSession
-} from './claude-code-relay'
-import { startDailySpeechGeneration, stopDailySpeechGeneration } from './daily-speech-relay'
-import { GENERAL_CHAT_SYSTEM_PROMPT } from './prompts'
-import { startReviewerSuggestion } from './reviewer-suggest-relay'
+  buildCIFailureAnalysisPrompt,
+  buildJiraTicketPrompt,
+  buildPRAnalysisPrompt,
+  buildPreviewURLPrompt,
+  CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
+  GENERAL_CHAT_SYSTEM_PROMPT
+} from './prompts'
 import {
   addChatMessage,
+  addCliMessageCount,
   addCustomQuickPrompt,
   addMessageToPRChat,
   ChatMessage,
@@ -77,7 +74,6 @@ import {
   getActivePRChatId,
   getAIUsage,
   getChatHistory,
-  getClaudeApiKey,
   getCustomQuickPrompts,
   getEnableThinking,
   getPRAnalysis,
@@ -86,7 +82,6 @@ import {
   getPRChatMessages,
   getSelectedModel,
   resetAIUsage,
-  setClaudeApiKey,
   setEnableThinking,
   setPRAnalysis,
   setPRAnalysisPanelOpen,
@@ -379,86 +374,38 @@ function setupIPCHandlers(): void {
     return getAllModelPricing()
   })
 
+  // CLI Usage Stats (reads ~/.claude/stats-cache.json)
+  ipcMain.handle('get-cli-subscription-usage', async () => {
+    return fetchCliUsageStats()
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AI MODE (API key vs CLI subscription)
+  // ═══════════════════════════════════════════════════════════════════════════
+
   // ═══════════════════════════════════════════════════════════════════════════
   // CLAUDE AI CHAT
   // ═══════════════════════════════════════════════════════════════════════════
-
-  ipcMain.handle('get-claude-api-key', async () => {
-    logger.debug(LogCategory.AUTH, 'Getting Claude API key')
-    const key = getClaudeApiKey()
-    logger.info(LogCategory.AUTH, 'Claude API key retrieved', { hasKey: !!key })
-    return key
-  })
-
-  ipcMain.handle('set-claude-api-key', async (_, key: string | null) => {
-    logger.info(LogCategory.AUTH, 'Setting Claude API key', {
-      action: key ? 'set' : 'clear',
-      keyLength: key?.length || 0,
-      keyPrefix: key ? `${key.substring(0, 10)}...` : null
-    })
-
-    if (key) {
-      // Simple format validation - actual validation happens on first message
-      if (!key.startsWith('sk-ant-')) {
-        logger.warn(LogCategory.AUTH, 'Invalid Claude API key format', {
-          keyPrefix: key.substring(0, 10),
-          expectedPrefix: 'sk-ant-'
-        })
-        return { success: false, error: 'Invalid API key format. Key should start with sk-ant-' }
-      }
-
-      try {
-        setClaudeApiKey(key)
-        logger.info(LogCategory.AUTH, 'Claude API key saved successfully', {
-          keyLength: key.length
-        })
-        return { success: true }
-      } catch (error) {
-        logger.error(LogCategory.AUTH, 'Failed to save Claude API key', {
-          error: error instanceof Error ? error.message : String(error)
-        })
-        return { success: false, error: 'Failed to save API key' }
-      }
-    } else {
-      try {
-        setClaudeApiKey(null)
-        logger.info(LogCategory.AUTH, 'Claude API key cleared')
-        return { success: true }
-      } catch (error) {
-        logger.error(LogCategory.AUTH, 'Failed to clear Claude API key', {
-          error: error instanceof Error ? error.message : String(error)
-        })
-        return { success: false, error: 'Failed to clear API key' }
-      }
-    }
-  })
 
   ipcMain.handle('get-chat-history', async () => {
     return getChatHistory()
   })
 
-  // Model selection
+  // Model selection — CLI handles model resolution, return static list
   ipcMain.handle('fetch-claude-models', async () => {
-    const apiKey = getClaudeApiKey()
-    if (!apiKey) {
-      return { success: false, error: 'No Claude API key configured' }
-    }
-
-    logger.info(LogCategory.API, 'Fetching Claude models')
-    try {
-      const models = await fetchClaudeModels(apiKey)
-      return { success: true, models }
-    } catch (error) {
-      logger.error(LogCategory.API, 'Failed to fetch Claude models', {
-        error: (error as Error).message
-      })
-      return { success: false, error: (error as Error).message }
+    return {
+      success: true,
+      models: [
+        { id: 'sonnet', display_name: 'Claude Sonnet', created_at: '', type: 'model' },
+        { id: 'opus', display_name: 'Claude Opus', created_at: '', type: 'model' },
+        { id: 'haiku', display_name: 'Claude Haiku', created_at: '', type: 'model' }
+      ]
     }
   })
 
   ipcMain.handle('get-selected-model', async () => {
     const model = getSelectedModel()
-    return model || getDefaultModel()
+    return model || 'sonnet'
   })
 
   ipcMain.handle('set-selected-model', async (_, model: string) => {
@@ -468,7 +415,7 @@ function setupIPCHandlers(): void {
   })
 
   ipcMain.handle('get-default-model', async () => {
-    return getDefaultModel()
+    return 'sonnet'
   })
 
   // Extended thinking toggle
@@ -483,19 +430,9 @@ function setupIPCHandlers(): void {
   })
 
   ipcMain.handle('send-chat-message', async (_, userMessage: string) => {
-    const apiKey = getClaudeApiKey()
-    if (!apiKey) {
-      return { success: false, error: 'No Claude API key configured' }
-    }
+    const selectedModel = getSelectedModel() || 'sonnet'
+    logger.info(LogCategory.API, '[CLI] Sending chat message', { model: selectedModel })
 
-    const selectedModel = getSelectedModel() || getDefaultModel()
-    const enableThinking = getEnableThinking()
-    logger.info(LogCategory.API, 'Sending chat message to Claude', {
-      model: selectedModel,
-      thinking: enableThinking
-    })
-
-    // Create user message
     const userMsg: ChatMessage = {
       id: `msg_${Date.now()}_user`,
       role: 'user',
@@ -504,40 +441,28 @@ function setupIPCHandlers(): void {
     }
     addChatMessage(userMsg)
 
-    // Get history and convert to Claude format
+    // Build history as a single prompt
     const history = getChatHistory()
-    const claudeMessages: ClaudeMessage[] = history.map((m) => ({
-      role: m.role,
-      content: m.content
-    }))
+    const historyText = history
+      .map((m) => `${m.role === 'user' ? 'Human' : 'Assistant'}: ${m.content}`)
+      .join('\n\n')
 
     try {
-      const response = await sendClaudeMessage(
-        apiKey,
-        claudeMessages,
-        selectedModel,
-        undefined,
-        enableThinking
-      )
+      const response = await cliOneShot(historyText, GENERAL_CHAT_SYSTEM_PROMPT, selectedModel)
 
-      // Create assistant message (include thinking if present)
       const assistantMsg: ChatMessage = {
-        id: response.id || `msg_${Date.now()}_assistant`,
+        id: `msg_${Date.now()}_assistant`,
         role: 'assistant',
-        content: response.content,
-        thinking: response.thinking,
+        content: response,
         timestamp: new Date().toISOString()
       }
       addChatMessage(assistantMsg)
 
-      logger.info(LogCategory.API, 'Chat message sent successfully', {
-        model: response.model,
-        hasThinking: !!response.thinking,
-        usage: response.usage
-      })
+      addCliMessageCount()
+      logger.info(LogCategory.API, '[CLI] Chat message sent successfully')
       return { success: true, message: assistantMsg }
     } catch (error) {
-      logger.error(LogCategory.API, 'Failed to send chat message', {
+      logger.error(LogCategory.API, '[CLI] Failed to send chat message', {
         error: (error as Error).message
       })
       return { success: false, error: (error as Error).message }
@@ -554,13 +479,7 @@ function setupIPCHandlers(): void {
   ipcMain.handle(
     'send-chat-message-streaming',
     async (event, userMessage: string, systemContext?: string) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, error: 'No Claude API key configured' }
-      }
-
-      const selectedModel = getSelectedModel() || getDefaultModel()
-      const enableThinking = getEnableThinking()
+      const selectedModel = getSelectedModel() || 'sonnet'
 
       // Check if there's an active PR chat
       const activePRChatId = getActivePRChatId()
@@ -568,7 +487,6 @@ function setupIPCHandlers(): void {
 
       logger.info(LogCategory.API, 'Sending streaming chat message to Claude', {
         model: selectedModel,
-        thinking: enableThinking,
         hasSystemContext: !!systemContext,
         isInPRChat,
         activePRChatId
@@ -594,21 +512,13 @@ function setupIPCHandlers(): void {
       let effectiveSystemPrompt: string
 
       if (isInPRChat && activePRChatId) {
-        // Use PR chat history
         history = getPRChatMessages(activePRChatId)
-        // Get system context from the PR chat itself
         const prChat = getPRChat(activePRChatId)
         effectiveSystemPrompt = prChat?.systemContext || systemContext || GENERAL_CHAT_SYSTEM_PROMPT
       } else {
-        // Use general chat history
         history = getChatHistory()
         effectiveSystemPrompt = systemContext || GENERAL_CHAT_SYSTEM_PROMPT
       }
-
-      const claudeMessages: ClaudeMessage[] = history.map((m) => ({
-        role: m.role,
-        content: m.content
-      }))
 
       // Generate a unique stream ID for this conversation
       const streamId = `stream_${Date.now()}`
@@ -616,59 +526,65 @@ function setupIPCHandlers(): void {
       // Get the sender's webContents to send stream updates
       const webContents = event.sender
 
-      // Chunk handler for both regular and tool-enabled streaming
-      const handleChunk = (chunk: {
-        type: string
-        content?: string
-        thinking?: string
-        error?: string
-        toolName?: string
-        fullResponse?: {
-          id: string
-          content: string
-          thinking?: string
-          model: string
-          stop_reason: string | null
-          usage?: { input_tokens: number; output_tokens: number }
-        }
-      }) => {
-        // Send chunk to renderer
-        webContents.send('chat-stream-chunk', { streamId, ...chunk })
+      // Use CLI streaming
+      const historyText = history
+        .map((m) => `${m.role === 'user' ? 'Human' : 'Assistant'}: ${m.content}`)
+        .join('\n\n')
 
-        // If done, save the assistant message to the correct chat
-        if (chunk.type === 'done' && chunk.fullResponse) {
-          const assistantMsg: ChatMessage = {
-            id: chunk.fullResponse.id || `msg_${Date.now()}_assistant`,
-            role: 'assistant',
-            content: chunk.fullResponse.content,
-            thinking: chunk.fullResponse.thinking,
-            timestamp: new Date().toISOString()
+      let fullContent = ''
+
+      sendCliMessageStreaming(
+        historyText,
+        (chunk) => {
+          if (chunk.type === 'text' && chunk.content) {
+            fullContent += chunk.content
+            webContents.send('chat-stream-chunk', {
+              streamId,
+              type: 'text',
+              content: chunk.content
+            })
+          } else if (chunk.type === 'thinking' && chunk.thinking) {
+            webContents.send('chat-stream-chunk', {
+              streamId,
+              type: 'thinking',
+              thinking: chunk.thinking
+            })
+          } else if (chunk.type === 'done') {
+            const assistantMsg: ChatMessage = {
+              id: `msg_${Date.now()}_assistant`,
+              role: 'assistant',
+              content: fullContent,
+              timestamp: new Date().toISOString()
+            }
+
+            if (isInPRChat && activePRChatId) {
+              addMessageToPRChat(activePRChatId, assistantMsg)
+            } else {
+              addChatMessage(assistantMsg)
+            }
+
+            webContents.send('chat-stream-chunk', {
+              streamId,
+              type: 'done',
+              fullResponse: {
+                id: assistantMsg.id,
+                content: fullContent,
+                model: selectedModel,
+                stop_reason: 'end_turn',
+                usage: undefined
+              }
+            })
+
+            addCliMessageCount()
+            logger.info(LogCategory.API, '[CLI] Streaming chat message complete', {
+              savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
+            })
+          } else if (chunk.type === 'error') {
+            webContents.send('chat-stream-chunk', { streamId, type: 'error', error: chunk.error })
           }
-
-          // Save to the correct chat (PR-specific or general)
-          if (isInPRChat && activePRChatId) {
-            addMessageToPRChat(activePRChatId, assistantMsg)
-          } else {
-            addChatMessage(assistantMsg)
-          }
-
-          logger.info(LogCategory.API, 'Streaming chat message complete', {
-            model: chunk.fullResponse.model,
-            hasThinking: !!chunk.fullResponse.thinking,
-            usage: chunk.fullResponse.usage,
-            savedTo: isInPRChat ? `PR Chat: ${activePRChatId}` : 'General Chat'
-          })
-        }
-      }
-
-      // Start streaming (web fetch is handled natively by Claude Code CLI)
-      sendClaudeMessageStreaming(
-        apiKey,
-        claudeMessages,
-        handleChunk,
+        },
         selectedModel,
-        effectiveSystemPrompt,
-        enableThinking
+        effectiveSystemPrompt
       )
 
       return { success: true, streamId }
@@ -690,20 +606,30 @@ function setupIPCHandlers(): void {
         comments: Array<{ author: string; body: string }>
       }
     ) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, message: 'No Claude API key configured' }
-      }
-
       logger.info(LogCategory.API, 'Extracting preview URL from PR', {
         title: context.title,
         commentsCount: context.comments.length
       })
 
-      const result = await extractPreviewUrl(apiKey, context)
+      let result: { success: boolean; url?: string; message?: string }
+
+      try {
+        const prompt = buildPreviewURLPrompt(context)
+        const responseText = await cliOneShot(prompt)
+
+        if (responseText.includes('NO_PREVIEW_URL_FOUND') || !responseText) {
+          result = { success: false, message: 'No preview URL found in this PR' }
+        } else {
+          const urlMatch = responseText.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)
+          result = urlMatch
+            ? { success: true, url: urlMatch[0] }
+            : { success: false, message: 'Could not extract a valid URL from the response' }
+        }
+      } catch (error) {
+        result = { success: false, message: `Error: ${(error as Error).message}` }
+      }
 
       if (result.success && result.url) {
-        // Open the URL in the default browser
         await shell.openExternal(result.url)
         logger.info(LogCategory.APP, 'Opened preview URL in browser', { url: result.url })
       }
@@ -724,28 +650,57 @@ function setupIPCHandlers(): void {
         comments: Array<{ author: string; body: string }>
       }
     ) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, message: 'Claude API key not configured' }
-      }
-
       logger.info(LogCategory.APP, 'Extracting Jira ticket from PR', {
         title: context.title,
         branchName: context.branchName
       })
 
-      const result = await extractJiraTicket(apiKey, context)
+      let result: { success: boolean; ticketKey?: string; ticketUrl?: string; message?: string }
+
+      try {
+        const prompt = buildJiraTicketPrompt(context)
+        const responseText = await cliOneShot(prompt)
+
+        if (responseText.includes('NO_JIRA_TICKET_FOUND') || !responseText) {
+          result = { success: false, message: 'No Jira ticket found in this PR' }
+        } else if (responseText.startsWith('JIRA_URL:')) {
+          const url = responseText.replace('JIRA_URL:', '').trim()
+          const urlMatch = url.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)
+          result = urlMatch
+            ? { success: true, ticketUrl: urlMatch[0] }
+            : { success: false, message: 'Could not extract a valid Jira ticket' }
+        } else if (responseText.startsWith('JIRA_KEY:')) {
+          const key = responseText.replace('JIRA_KEY:', '').trim()
+          const keyMatch = key.match(/^[A-Z][A-Z0-9]*-\d+$/)
+          result = keyMatch
+            ? { success: true, ticketKey: keyMatch[0] }
+            : { success: false, message: 'Could not extract a valid Jira ticket' }
+        } else {
+          // Fallback: try to extract Jira key or URL from response
+          const jiraKeyMatch = responseText.match(/[A-Z][A-Z0-9]*-\d+/)
+          const jiraUrlMatch = responseText.match(/https?:\/\/[^\s]*\/browse\/[A-Z][A-Z0-9]*-\d+/)
+          if (jiraUrlMatch) {
+            result = { success: true, ticketUrl: jiraUrlMatch[0] }
+          } else if (jiraKeyMatch) {
+            result = { success: true, ticketKey: jiraKeyMatch[0] }
+          } else {
+            result = {
+              success: false,
+              message: 'Could not extract a valid Jira ticket from the response'
+            }
+          }
+        }
+      } catch (error) {
+        result = { success: false, message: `Error: ${(error as Error).message}` }
+      }
 
       if (result.success) {
-        // Construct the URL if only a key was found
         let url = result.ticketUrl
         if (!url && result.ticketKey) {
-          // Default to Atlassian cloud - user can configure their domain later
           url = `https://jira.atlassian.com/browse/${result.ticketKey}`
         }
 
         if (url) {
-          // Open the URL in the default browser
           await shell.openExternal(url)
           logger.info(LogCategory.APP, 'Opened Jira ticket in browser', {
             ticketKey: result.ticketKey,
@@ -782,18 +737,28 @@ function setupIPCHandlers(): void {
         }>
       }
     ) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, error: 'Claude API key not configured' }
-      }
-
       logger.info(LogCategory.APP, 'Analyzing CI failure', {
         checkName: params.checkName
       })
 
       try {
-        const result = await analyzeCIFailure(apiKey, params)
-        return result
+        const prompt = buildCIFailureAnalysisPrompt(params)
+        const responseText = await cliOneShot(prompt, CI_FAILURE_ANALYSIS_SYSTEM_PROMPT)
+
+        if (!responseText) {
+          return { success: false, error: 'Empty response from Claude CLI' }
+        }
+
+        const summaryMatch = responseText.match(/\*\*Summary:\*\*\s*(.+?)(?=\n\*\*|$)/s)
+        const rootCauseMatch = responseText.match(/\*\*Root Cause:\*\*\s*(.+?)(?=\n\*\*|$)/s)
+        const fixMatch = responseText.match(/\*\*Fix:\*\*\s*(.+?)$/s)
+
+        return {
+          success: true,
+          summary: summaryMatch ? summaryMatch[1].trim() : responseText.split('\n')[0],
+          failureReason: rootCauseMatch ? rootCauseMatch[1].trim() : undefined,
+          suggestedFix: fixMatch ? fixMatch[1].trim() : undefined
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         logger.error(LogCategory.APP, 'Failed to analyze CI failure', { error: errorMessage })
@@ -826,11 +791,6 @@ function setupIPCHandlers(): void {
         }>
       }
     ) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, error: 'Claude API key not configured' }
-      }
-
       const streamId = `ci-analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`
       const webContents = event.sender
 
@@ -840,10 +800,35 @@ function setupIPCHandlers(): void {
       })
 
       try {
-        analyzeCIFailureStreaming(apiKey, params, (chunk) => {
-          webContents.send('ci-analysis-stream-chunk', { streamId, ...chunk })
-        })
-
+        const prompt = buildCIFailureAnalysisPrompt(params)
+        sendCliMessageStreaming(
+          prompt,
+          (chunk) => {
+            if (chunk.type === 'text') {
+              webContents.send('ci-analysis-stream-chunk', {
+                streamId,
+                type: 'text',
+                content: chunk.content
+              })
+            } else if (chunk.type === 'thinking') {
+              webContents.send('ci-analysis-stream-chunk', {
+                streamId,
+                type: 'thinking',
+                thinking: chunk.thinking
+              })
+            } else if (chunk.type === 'done') {
+              webContents.send('ci-analysis-stream-chunk', { streamId, type: 'done' })
+            } else if (chunk.type === 'error') {
+              webContents.send('ci-analysis-stream-chunk', {
+                streamId,
+                type: 'error',
+                error: chunk.error
+              })
+            }
+          },
+          undefined,
+          CI_FAILURE_ANALYSIS_SYSTEM_PROMPT
+        )
         return { success: true, streamId }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -891,20 +876,25 @@ function setupIPCHandlers(): void {
         }>
       }
     ) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, message: 'No Claude API key configured' }
-      }
-
       logger.info(LogCategory.API, 'Analyzing PR status', {
         prId: context.prId,
         title: context.title
       })
 
-      const result = await analyzePRStatus(apiKey, context)
+      let result: { success: boolean; analysis?: string; message?: string }
+
+      try {
+        const prompt = buildPRAnalysisPrompt(context)
+        const responseText = await cliOneShot(prompt)
+
+        result = responseText
+          ? { success: true, analysis: responseText }
+          : { success: false, message: 'Failed to generate analysis' }
+      } catch (error) {
+        result = { success: false, message: `Error: ${(error as Error).message}` }
+      }
 
       if (result.success && result.analysis) {
-        // Persist the analysis
         setPRAnalysis(context.prId, result.analysis)
         logger.info(LogCategory.APP, 'PR analysis saved', { prId: context.prId })
       }
@@ -949,33 +939,44 @@ function setupIPCHandlers(): void {
         }>
       }
     ) => {
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, error: 'No Claude API key configured' }
-      }
+      const streamId = `pr_analysis_${Date.now()}`
+      const webContents = event.sender
 
       logger.info(LogCategory.API, 'Starting streaming PR status analysis', {
         prId: context.prId,
         title: context.title
       })
 
-      // Generate a unique stream ID
-      const streamId = `pr_analysis_${Date.now()}`
+      const prompt = buildPRAnalysisPrompt(context)
+      let fullContent = ''
 
-      // Get the sender's webContents to send stream updates
-      const webContents = event.sender
-
-      // Start streaming analysis
-      analyzePRStatusStreaming(apiKey, context, (chunk) => {
-        // Send chunk to renderer
-        webContents.send('pr-analysis-stream-chunk', { streamId, ...chunk })
-
-        // If done, save the analysis
-        if (chunk.type === 'done' && chunk.fullResponse) {
-          setPRAnalysis(context.prId, chunk.fullResponse.analysis)
-          logger.info(LogCategory.APP, 'Streaming PR analysis saved', {
-            prId: context.prId,
-            hasThinking: !!chunk.fullResponse.thinking
+      sendCliMessageStreaming(prompt, (chunk) => {
+        if (chunk.type === 'text' && chunk.content) {
+          fullContent += chunk.content
+          webContents.send('pr-analysis-stream-chunk', {
+            streamId,
+            type: 'text',
+            content: chunk.content
+          })
+        } else if (chunk.type === 'thinking' && chunk.thinking) {
+          webContents.send('pr-analysis-stream-chunk', {
+            streamId,
+            type: 'thinking',
+            thinking: chunk.thinking
+          })
+        } else if (chunk.type === 'done') {
+          setPRAnalysis(context.prId, fullContent)
+          webContents.send('pr-analysis-stream-chunk', {
+            streamId,
+            type: 'done',
+            fullResponse: { analysis: fullContent }
+          })
+          logger.info(LogCategory.APP, 'Streaming PR analysis saved', { prId: context.prId })
+        } else if (chunk.type === 'error') {
+          webContents.send('pr-analysis-stream-chunk', {
+            streamId,
+            type: 'error',
+            error: chunk.error
           })
         }
       })
@@ -1035,11 +1036,6 @@ function setupIPCHandlers(): void {
         return { success: false, error: 'Main window not available' }
       }
 
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, error: 'No Claude API key configured' }
-      }
-
       logger.info(LogCategory.API, 'Starting streaming daily speech generation', {
         sessionId: options.sessionId,
         username: options.username,
@@ -1047,16 +1043,58 @@ function setupIPCHandlers(): void {
         eventCount: options.events.length
       })
 
-      // Start the generation (async, streams results via IPC)
-      startDailySpeechGeneration(mainWindow, options)
+      const { buildDailySpeechPrompt } = await import('./prompts')
+      const prompt = buildDailySpeechPrompt({
+        username: options.username,
+        date: options.date,
+        events: options.events
+      })
+
+      let fullContent = ''
+      let fullThinking = ''
+
+      sendCliMessageStreaming(prompt, (chunk) => {
+        if (chunk.type === 'text' && chunk.content) {
+          fullContent += chunk.content
+          mainWindow?.webContents.send('daily-speech:chunk', {
+            sessionId: options.sessionId,
+            event: { type: 'text', content: chunk.content }
+          })
+        } else if (chunk.type === 'thinking' && chunk.thinking) {
+          fullThinking += chunk.thinking
+          mainWindow?.webContents.send('daily-speech:chunk', {
+            sessionId: options.sessionId,
+            event: { type: 'thinking', thinking: chunk.thinking }
+          })
+        } else if (chunk.type === 'done') {
+          mainWindow?.webContents.send('daily-speech:done', {
+            sessionId: options.sessionId,
+            success: true,
+            content: fullContent,
+            thinking: fullThinking || null,
+            metadata: {
+              eventCount: options.events.length,
+              analyzedRepos: [],
+              analyzedPRs: [],
+              toolsUsed: [],
+              generationDurationMs: 0
+            }
+          })
+        } else if (chunk.type === 'error') {
+          mainWindow?.webContents.send('daily-speech:error', {
+            sessionId: options.sessionId,
+            error: chunk.error
+          })
+        }
+      })
 
       return { success: true, sessionId: options.sessionId }
     }
   )
 
-  // Stop daily speech generation
-  ipcMain.handle('stop-daily-speech', (_, sessionId: string) => {
-    return stopDailySpeechGeneration(sessionId)
+  // Stop daily speech generation (no-op — CLI streaming is fire-and-forget)
+  ipcMain.handle('stop-daily-speech', () => {
+    return false
   })
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1081,19 +1119,49 @@ function setupIPCHandlers(): void {
         return { success: false, error: 'Main window not available' }
       }
 
-      const apiKey = getClaudeApiKey()
-      if (!apiKey) {
-        return { success: false, error: 'No Claude API key configured' }
-      }
-
       logger.info(LogCategory.API, 'Starting reviewer suggestion', {
         repo: options.repoFullName,
         prNumber: options.prNumber,
         fileCount: options.changedFiles.length
       })
 
-      // Start the analysis (async, sends results via IPC)
-      startReviewerSuggestion(mainWindow, options)
+      const prompt = `Analyze git blame data for the following PR and suggest optimal reviewers.
+
+Repository: ${options.repoFullName}
+PR #${options.prNumber}
+Branch: ${options.branch} → ${options.baseBranch}
+PR Author (exclude from suggestions): ${options.prAuthor}
+
+Changed files:
+${options.changedFiles.map((f) => `- ${f}`).join('\n')}
+
+For each changed file, consider who has recently modified it and who has the most expertise.
+Return your response as a JSON array with this format:
+[{"login": "username", "score": 0.95, "reason": "Modified 5 of the changed files recently"}]
+
+Return ONLY the JSON array, no other text.`
+
+      try {
+        const responseText = await cliOneShot(prompt, undefined, 'haiku')
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+        if (jsonMatch) {
+          const suggestions = JSON.parse(jsonMatch[0])
+          mainWindow.webContents.send('reviewer-suggest:result', {
+            success: true,
+            suggestions
+          })
+        } else {
+          mainWindow.webContents.send('reviewer-suggest:result', {
+            success: false,
+            error: 'Could not parse reviewer suggestions'
+          })
+        }
+      } catch (error) {
+        mainWindow.webContents.send('reviewer-suggest:result', {
+          success: false,
+          error: (error as Error).message
+        })
+      }
 
       return { success: true }
     }
@@ -1258,6 +1326,7 @@ function setupIPCHandlers(): void {
       })
       const version = stdout.trim()
       logger.info(LogCategory.APP, 'Claude Code CLI detected', { version, stderr: stderr?.trim() })
+      setCachedClaudePath('claude') // Available via enhanced PATH
       return { installed: true, version }
     } catch (err) {
       logger.warn(LogCategory.APP, 'Enhanced PATH failed', { error: (err as Error).message })
@@ -1277,6 +1346,7 @@ function setupIPCHandlers(): void {
             path: claudePath,
             version
           })
+          setCachedClaudePath(claudePath) // Cache the resolved path
           return { installed: true, version, path: claudePath }
         } catch (pathErr) {
           logger.warn(LogCategory.APP, `Path ${claudePath} failed`, {
@@ -1320,13 +1390,13 @@ function setupIPCHandlers(): void {
       if (!mainWindow) {
         throw new Error('Main window not available')
       }
-      await startClaudeSession(mainWindow, options)
+      await startClaudeCliSession(mainWindow, options)
     }
   )
 
   // Stop Claude Code session
   ipcMain.handle('claude:stop', (_, sessionId: string) => {
-    return stopClaudeSession(sessionId)
+    return stopClaudeCliSession(sessionId)
   })
 }
 
@@ -1370,7 +1440,7 @@ app.on('window-all-closed', () => {
 // Save logs and cleanup before quitting
 app.on('before-quit', () => {
   logger.info(LogCategory.APP, 'App shutting down')
-  stopAllClaudeSessions()
+  stopAllCliSessions()
   closeDatabase()
   logger.forceSave()
 })

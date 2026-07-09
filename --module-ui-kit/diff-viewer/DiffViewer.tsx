@@ -232,7 +232,12 @@ export function DiffViewer({
   }
 
   return (
-    <div className={cn('overflow-x-auto bg-code text-code-foreground rounded-b-md', className)}>
+    <div
+      className={cn(
+        'overflow-x-auto bg-background dark:bg-code text-code-foreground rounded-b-md',
+        className
+      )}
+    >
       <table className="w-full text-[11px] font-mono border-collapse">
         <tbody>
           {lines.map((line) => {
@@ -240,9 +245,10 @@ export function DiffViewer({
 
             const bgClass =
               line.type === 'addition'
-                ? 'bg-success-subtle'
+                ? // Use themed diff tint tokens (defined in globals.css for light + dark)
+                  'bg-[color:var(--diff-addition-bg)]'
                 : line.type === 'deletion'
-                  ? 'bg-destructive-subtle'
+                  ? 'bg-[color:var(--diff-deletion-bg)]'
                   : line.type === 'header'
                     ? 'bg-info-subtle'
                     : ''

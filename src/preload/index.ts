@@ -663,6 +663,7 @@ const electronAPI: ElectronAPI = {
   getAIUsage: () => ipcRenderer.invoke('get-ai-usage'),
   resetAIUsage: () => ipcRenderer.invoke('reset-ai-usage'),
   getAIPricing: () => ipcRenderer.invoke('get-ai-pricing'),
+  getCliSubscriptionUsage: () => ipcRenderer.invoke('get-cli-subscription-usage'),
 
   // Memory usage
   getMemoryUsage: () => ipcRenderer.invoke('get-memory-usage'),

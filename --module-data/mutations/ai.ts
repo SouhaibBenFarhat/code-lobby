@@ -4,10 +4,7 @@
  * Pattern:
  * 1. Component does streaming fetch directly via XHR (for real-time updates)
  * 2. useSaveMessage() - saves message to cache after streaming completes
- * 3. Settings mutations for API key, model, etc.
- *
- * Note: Claude API constants and request building are in:
- * packages/ai-chat-module/src/utils/claude-request.ts
+ * 3. Settings mutations for model, etc.
  */
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'

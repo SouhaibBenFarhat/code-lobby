@@ -53,7 +53,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { AboutDialog } from './AboutDialog'
 import { AgenticSettingsSidebar } from './AgenticSettingsSidebar'
 import { AICostIndicator } from './AICostIndicator'
-import { ClaudeCodeStatus } from './ClaudeCodeStatus'
 import { ContributionsModal } from './ContributionsModal'
 import { DatabaseViewer } from './DatabaseViewer'
 import { EventStream } from './EventStream'
@@ -230,10 +229,6 @@ export function Header({
           </TooltipTrigger>
           <TooltipContent>IDE View</TooltipContent>
         </Tooltip>
-      </div>
-
-      <div className="no-drag">
-        <ClaudeCodeStatus />
       </div>
 
       {rateLimitData && (

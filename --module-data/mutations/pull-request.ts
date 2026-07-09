@@ -194,6 +194,40 @@ export function useDeletePRComment(): UseMutationResult<
 }
 
 /**
+ * Reply to an inline PR review comment (thread reply).
+ *
+ * Uses GitHub REST API under the hood (requires numeric comment id, resolved from node id).
+ * Invalidates all PR-related queries on success.
+ */
+export function useReplyToReviewComment(): UseMutationResult<
+  MutationResult,
+  Error,
+  { repoFullName: string; prNumber: number; threadId: string; body: string }
+> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      threadId,
+      body
+    }: {
+      repoFullName: string
+      prNumber: number
+      threadId: string
+      body: string
+    }) => {
+      const token = getToken(qc)
+      return github.replyToReviewThread(token, threadId, body)
+    },
+    onSuccess: (_, { repoFullName, prNumber }) => {
+      qc.invalidateQueries({
+        queryKey: keys.pr(repoFullName, prNumber)
+      })
+    }
+  })
+}
+
+/**
  * Merge a PR
  */
 export function useMergePR(): UseMutationResult<

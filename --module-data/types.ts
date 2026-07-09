@@ -55,6 +55,8 @@ export interface ReviewComment {
     avatar_url: string
     isBot?: boolean
   }
+  /** GraphQL node id of the review submission this comment belongs to (if available) */
+  reviewId?: string | null
   path: string
   line: number | null
   diffHunk?: string
@@ -243,6 +245,36 @@ export interface AIUsage {
   inputCostUsd: number
   outputCostUsd: number
   costUsd: number
+  /** Number of messages sent in CLI subscription mode */
+  cliMessageCount?: number
+  /** ISO timestamp of when tracking session started */
+  sessionStartedAt?: string
+}
+
+/** CLI usage stats from ~/.claude/stats-cache.json */
+export interface CliUsageStats {
+  /** Today's activity */
+  today: {
+    messages: number
+    sessions: number
+    toolCalls: number
+  }
+  /** Token usage by model (all time) */
+  modelUsage: Record<
+    string,
+    {
+      inputTokens: number
+      outputTokens: number
+      cacheReadInputTokens: number
+      cacheCreationInputTokens: number
+    }
+  >
+  /** Total sessions all time */
+  totalSessions: number
+  /** Total messages all time */
+  totalMessages: number
+  /** Timestamp when this data was read */
+  fetchedAt: string
 }
 
 /**

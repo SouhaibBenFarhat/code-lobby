@@ -56,15 +56,10 @@ export function ChatLoadingSkeleton(): React.JSX.Element {
 
 export interface PREmptyStateProps {
   selectedPR: SelectedPR
-  apiKey: string | null
   onStartPRChat?: (pr: SelectedPR) => void
 }
 
-export function PREmptyState({
-  selectedPR,
-  apiKey,
-  onStartPRChat
-}: PREmptyStateProps): React.JSX.Element {
+export function PREmptyState({ selectedPR, onStartPRChat }: PREmptyStateProps): React.JSX.Element {
   return (
     <div className="h-full flex items-center justify-center min-h-[200px]">
       <div className="text-center space-y-4 px-6 max-w-md">
@@ -77,16 +72,11 @@ export function PREmptyState({
           <p className="text-xs text-muted-foreground">{selectedPR.base.repo.full_name}</p>
         </div>
         <p className="text-sm text-muted-foreground">No conversation yet for this PR</p>
-        {onStartPRChat && apiKey && (
+        {onStartPRChat && (
           <Button size="sm" onClick={() => onStartPRChat(selectedPR)} className="mt-2">
             <MessageSquare className="w-4 h-4 mr-2" />
             Start chatting about this PR
           </Button>
-        )}
-        {!apiKey && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Enter your API key below to start chatting
-          </p>
         )}
       </div>
     </div>
@@ -97,11 +87,9 @@ export function PREmptyState({
 // No PR Selected State
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface NoPRSelectedStateProps {
-  apiKey: string | null
-}
+export type NoPRSelectedStateProps = Record<string, never>
 
-export function NoPRSelectedState({ apiKey }: NoPRSelectedStateProps): React.JSX.Element {
+export function NoPRSelectedState(): React.JSX.Element {
   return (
     <div className="h-full flex items-center justify-center min-h-[200px]">
       <div className="text-center space-y-4 px-6 max-w-md">
@@ -109,9 +97,7 @@ export function NoPRSelectedState({ apiKey }: NoPRSelectedStateProps): React.JSX
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">No PR Selected</p>
           <p className="text-sm text-muted-foreground">
-            {apiKey
-              ? 'Select a pull request from the list to start chatting with AI about it'
-              : 'Enter your API key below, then select a PR to start chatting'}
+            Select a pull request from the list to start chatting with AI about it
           </p>
         </div>
       </div>

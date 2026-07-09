@@ -46,8 +46,8 @@ import { PRDescription } from '../PRDescription'
 import { PRDetailSkeleton } from '../PRDetailSkeleton'
 import { PRHeader } from '../PRHeader'
 import { PRTabBar } from '../PRTabBar'
-import { ReviewTree } from '../ReviewTree'
-import type { CommentData, ReviewerFeedback } from '../types'
+import { ReviewsBySubmission } from '../ReviewsBySubmission'
+import type { CommentData } from '../types'
 import { WebviewPanel } from '../WebviewPanel'
 
 export interface PRDetailProps {
@@ -199,91 +199,6 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
       ).values()
     )
   }, [allComments])
-
-  // Group code review comments by reviewer
-  const reviewsByReviewer = useMemo<ReviewerFeedback[]>(() => {
-    if (!pr) return []
-    const reviewerMap = new Map<string, ReviewerFeedback>()
-
-    // First, get review states from reviews array
-    for (const review of pr.reviews || []) {
-      const login = review.author.login
-      if (!reviewerMap.has(login)) {
-        reviewerMap.set(login, {
-          login,
-          avatar_url: review.author.avatar_url,
-          isBot: review.author.isBot || false,
-          reviewState: null,
-          reviewBody: null,
-          reviewDate: null,
-          inlineComments: []
-        })
-      }
-      const group = reviewerMap.get(login)
-      if (!group) continue
-      // Use the latest review state
-      if (review.state === 'approved' || review.state === 'changes_requested') {
-        group.reviewState = review.state as 'approved' | 'changes_requested'
-        group.reviewBody = review.body
-        group.reviewDate = review.created_at
-      } else if (!group.reviewState && review.state === 'commented') {
-        group.reviewState = 'commented'
-        group.reviewBody = review.body
-        group.reviewDate = review.created_at
-      }
-    }
-
-    // Then, add inline comments from review threads
-    for (const thread of pr.reviewThreads || []) {
-      for (const comment of thread.comments) {
-        const login = comment.author.login
-        if (!reviewerMap.has(login)) {
-          reviewerMap.set(login, {
-            login,
-            avatar_url: comment.author.avatar_url,
-            isBot: comment.author.isBot || false,
-            reviewState: null,
-            reviewBody: null,
-            reviewDate: null,
-            inlineComments: []
-          })
-        }
-        const group = reviewerMap.get(login)
-        if (!group) continue
-        group.inlineComments.push({
-          id: comment.id,
-          threadId: thread.id,
-          body: comment.body,
-          created_at: comment.created_at,
-          path: thread.path,
-          line: thread.line,
-          diffHunk: comment.diffHunk,
-          isResolved: thread.isResolved
-        })
-      }
-    }
-
-    // Sort inline comments by date for each reviewer (newest first)
-    for (const group of reviewerMap.values()) {
-      group.inlineComments.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    }
-
-    // Convert to array and sort by review date (newest first)
-    return Array.from(reviewerMap.values()).sort((a, b) => {
-      // Get the latest activity date for each reviewer (review date or latest inline comment)
-      const aLatest = Math.max(
-        a.reviewDate ? new Date(a.reviewDate).getTime() : 0,
-        a.inlineComments[0] ? new Date(a.inlineComments[0].created_at).getTime() : 0
-      )
-      const bLatest = Math.max(
-        b.reviewDate ? new Date(b.reviewDate).getTime() : 0,
-        b.inlineComments[0] ? new Date(b.inlineComments[0].created_at).getTime() : 0
-      )
-      return bLatest - aLatest // Newest first
-    })
-  }, [pr])
 
   // Don't render if no PR is selected (check identifier, not full data)
   if (!selectedPRId) return null
@@ -642,7 +557,10 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                 {/* Reviews content (Reviews tab) - Tree-based display */}
                 {commentTab === 'reviews' && (
                   <Col span="full">
-                    <ReviewTree reviewers={reviewsByReviewer} />
+                    <ReviewsBySubmission
+                      reviews={pr.reviews || []}
+                      reviewThreads={pr.reviewThreads || []}
+                    />
                   </Col>
                 )}
               </Row>

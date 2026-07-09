@@ -37,6 +37,7 @@ export {
   useMergePR,
   useRemoveLabel,
   useReopenPR,
+  useReplyToReviewComment,
   useResolveReviewThread,
   useSelectPR,
   useSubmitPRReview,

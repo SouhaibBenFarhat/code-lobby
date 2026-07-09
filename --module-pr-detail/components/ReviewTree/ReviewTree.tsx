@@ -51,13 +51,32 @@ function transformToReviewerData(feedback: ReviewerFeedback): ReviewerData {
 
   // Sort comments within each file by line number
   for (const file of fileMap.values()) {
-    file.comments.sort((a, b) => (a.line || 0) - (b.line || 0))
+    file.comments.sort((a, b) => {
+      const byLine = (a.line || 0) - (b.line || 0)
+      if (byLine !== 0) return byLine
+
+      // Tie-breakers for stability (GitHub API order may change when resolving threads)
+      const byCreatedAt = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      if (byCreatedAt !== 0) return byCreatedAt
+
+      return a.id.localeCompare(b.id)
+    })
   }
 
-  // Convert to array and sort files by unresolved count (most unresolved first)
-  const files = Array.from(fileMap.values()).sort(
-    (a, b) => b.unresolvedCount - a.unresolvedCount || a.path.localeCompare(b.path)
-  )
+  // Convert to array and sort files stably.
+  //
+  // Note: We intentionally do NOT sort by unresolved/resolved counts here.
+  // Resolving a thread changes those counts and would otherwise reorder the list,
+  // which feels jarring in the review UI.
+  const files = Array.from(fileMap.values()).sort((a, b) => {
+    const byPath = a.path.localeCompare(b.path)
+    if (byPath !== 0) return byPath
+
+    // Tie-breaker: earliest line number in the file (stable across resolve toggles)
+    const aFirstLine = a.comments[0]?.line ?? 0
+    const bFirstLine = b.comments[0]?.line ?? 0
+    return aFirstLine - bFirstLine
+  })
 
   const totalComments = feedback.inlineComments.length
   const totalUnresolved = feedback.inlineComments.filter((c) => !c.isResolved).length

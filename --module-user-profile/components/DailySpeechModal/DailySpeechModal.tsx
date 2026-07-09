@@ -8,7 +8,7 @@
  * - MarkdownEditor for editing before saving
  */
 
-import { useClaudeApiKeyStatus, useCurrentUser, useGitHubToken } from '@data'
+import { useClaudeCodeStatus, useCurrentUser, useGitHubToken } from '@data'
 import {
   type DailyReport,
   useDeleteDailyReport,
@@ -130,10 +130,10 @@ export function DailySpeechModal({
   onClose,
   events
 }: DailySpeechModalProps): React.JSX.Element {
-  const { data: apiKeyStatus } = useClaudeApiKeyStatus()
+  const { data: claudeCodeStatus } = useClaudeCodeStatus()
   const { data: user } = useCurrentUser()
   const { data: githubToken } = useGitHubToken()
-  const hasApiKey = apiKeyStatus?.hasKey ?? false
+  const isCliReady = claudeCodeStatus?.installed ?? false
   const { data: reports = [] } = useRecentDailyReports(30)
   const upsertReport = useUpsertDailyReport()
   const deleteReport = useDeleteDailyReport()
@@ -185,7 +185,7 @@ export function DailySpeechModal({
 
   // Generate daily speech
   const handleGenerate = useCallback(async () => {
-    if (!user || !hasApiKey || !githubToken) return
+    if (!user || !isCliReady || !githubToken) return
 
     const sessionId = `daily-${Date.now()}`
     sessionIdRef.current = sessionId
@@ -301,7 +301,7 @@ export function DailySpeechModal({
         error: error instanceof Error ? error.message : 'An error occurred'
       }))
     }
-  }, [user, hasApiKey, githubToken, events])
+  }, [user, isCliReady, githubToken, events])
 
   // Stop generation
   const handleStop = useCallback(() => {
@@ -378,7 +378,7 @@ export function DailySpeechModal({
       <Flex align="center" justify="end" className="px-6 py-4 shrink-0">
         <Button
           onClick={handleGenerate}
-          disabled={!hasApiKey || !githubToken || events.length === 0}
+          disabled={!isCliReady || !githubToken || events.length === 0}
         >
           <Plus className="w-4 h-4 mr-2" />
           Generate
@@ -490,12 +490,12 @@ export function DailySpeechModal({
       </ScrollArea>
 
       {/* Footer hint */}
-      {(!hasApiKey || !githubToken) && (
+      {(!isCliReady || !githubToken) && (
         <div className="px-6 py-3 border-t bg-surface text-sm text-muted-foreground text-center">
-          {!hasApiKey && !githubToken
-            ? 'Configure Claude API key and GitHub token to generate reports'
-            : !hasApiKey
-              ? 'Configure your Claude API key to generate reports'
+          {!isCliReady && !githubToken
+            ? 'Install Claude Code CLI and configure GitHub token to generate reports'
+            : !isCliReady
+              ? 'Install Claude Code CLI to generate reports'
               : 'GitHub token required to generate reports'}
         </div>
       )}

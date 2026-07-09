@@ -157,6 +157,8 @@ export interface AIUsage {
   totalInputTokens: number
   totalOutputTokens: number
   totalCostUsd: number
+  /** Number of messages sent in CLI subscription mode */
+  cliMessageCount: number
   sessionStartedAt: string // ISO timestamp when tracking started
   lastUpdatedAt: string // ISO timestamp of last usage
 }
@@ -242,6 +244,7 @@ const store = new Store<StoreSchema>({
       totalInputTokens: 0,
       totalOutputTokens: 0,
       totalCostUsd: 0,
+      cliMessageCount: 0,
       sessionStartedAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString()
     }
@@ -827,6 +830,7 @@ export function addAIUsage(inputTokens: number, outputTokens: number, costUsd: n
     totalInputTokens: current.totalInputTokens + inputTokens,
     totalOutputTokens: current.totalOutputTokens + outputTokens,
     totalCostUsd: current.totalCostUsd + costUsd,
+    cliMessageCount: current.cliMessageCount ?? 0,
     sessionStartedAt: current.sessionStartedAt,
     lastUpdatedAt: new Date().toISOString()
   }
@@ -837,11 +841,22 @@ export function addAIUsage(inputTokens: number, outputTokens: number, costUsd: n
   })
 }
 
+export function addCliMessageCount(): void {
+  const current = getAIUsage()
+  const updated: AIUsage = {
+    ...current,
+    cliMessageCount: (current.cliMessageCount ?? 0) + 1,
+    lastUpdatedAt: new Date().toISOString()
+  }
+  storeSet('aiUsage.cliMessageCount', () => store.set('aiUsage', updated))
+}
+
 export function resetAIUsage(): void {
   const fresh: AIUsage = {
     totalInputTokens: 0,
     totalOutputTokens: 0,
     totalCostUsd: 0,
+    cliMessageCount: 0,
     sessionStartedAt: new Date().toISOString(),
     lastUpdatedAt: new Date().toISOString()
   }

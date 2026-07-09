@@ -20,9 +20,6 @@ export {
 
 // API Endpoints
 export {
-  CLAUDE_API,
-  CLAUDE_MESSAGES,
-  CLAUDE_MODELS,
   GITHUB_API,
   GITHUB_GRAPHQL
 } from './endpoints'
@@ -70,6 +67,7 @@ export {
   // Webview Tabs
   useRemoveWebviewTab,
   useReopenPR,
+  useReplyToReviewComment,
   useResetAIUsage,
   // Review Threads
   useResolveReviewThread,
@@ -135,7 +133,6 @@ export {
   // Contributions & Events
   type ContributionsData,
   // AI
-  type FindPreviewUrlParams,
   type GitHubStatusComponent,
   type GitHubStatusSummary,
   type MemoryUsage,
@@ -155,7 +152,7 @@ export {
   useClaudeApiKeyStatus,
   // Claude Code CLI
   useClaudeCodeStatus,
-  useClaudeModels,
+  useCliUsageStats,
   // Code Visualizer
   useCodeVisualizer,
   // Contributions
@@ -168,7 +165,6 @@ export {
   useEnableThinking,
   // File Content (Code Visualizer)
   useFileContent,
-  useFindPreviewUrl,
   useGitHubStatus,
   useGitHubToken,
   useIDESettings,
@@ -220,6 +216,7 @@ export type {
   ChatMessage,
   CheckStatus,
   ClaudeModel,
+  CliUsageStats,
   CodeVisualizerState,
   CustomPrompt,
   DailySpeech,

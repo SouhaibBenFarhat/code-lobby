@@ -5,11 +5,6 @@ import { ChatInput } from './ChatInput'
 
 describe('ChatInput', () => {
   const defaultProps = {
-    apiKey: 'sk-ant-test',
-    apiKeyInput: '',
-    isSettingKey: false,
-    onApiKeyInputChange: vi.fn(),
-    onSetApiKey: vi.fn(),
     input: '',
     isSending: false,
     isContextValid: true,
@@ -42,60 +37,8 @@ describe('ChatInput', () => {
     vi.clearAllMocks()
   })
 
-  describe('API key input mode', () => {
-    it('shows API key input when no apiKey', () => {
-      render(<ChatInput {...defaultProps} apiKey={null} />)
-
-      expect(screen.getByPlaceholderText(/Enter Claude API key/)).toBeInTheDocument()
-      expect(screen.getByText(/console.anthropic.com/)).toBeInTheDocument()
-    })
-
-    it('calls onApiKeyInputChange when typing API key', async () => {
-      render(<ChatInput {...defaultProps} apiKey={null} />)
-
-      const input = screen.getByPlaceholderText(/Enter Claude API key/)
-      await userEvent.type(input, 'sk-ant-test123')
-
-      expect(defaultProps.onApiKeyInputChange).toHaveBeenCalled()
-    })
-
-    it('calls onSetApiKey when Enter pressed in API key input', async () => {
-      render(<ChatInput {...defaultProps} apiKey={null} apiKeyInput="sk-ant-test123" />)
-
-      const input = screen.getByPlaceholderText(/Enter Claude API key/)
-      fireEvent.keyDown(input, { key: 'Enter' })
-
-      expect(defaultProps.onSetApiKey).toHaveBeenCalled()
-    })
-
-    it('calls onSetApiKey when key button clicked', async () => {
-      render(<ChatInput {...defaultProps} apiKey={null} apiKeyInput="sk-ant-test123" />)
-
-      const buttons = screen.getAllByRole('button')
-      await userEvent.click(buttons[0])
-
-      expect(defaultProps.onSetApiKey).toHaveBeenCalled()
-    })
-
-    it('disables button when API key input is empty', () => {
-      render(<ChatInput {...defaultProps} apiKey={null} apiKeyInput="" />)
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[0]).toBeDisabled()
-    })
-
-    it('disables button when setting key', () => {
-      render(
-        <ChatInput {...defaultProps} apiKey={null} apiKeyInput="sk-ant-test" isSettingKey={true} />
-      )
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[0]).toBeDisabled()
-    })
-  })
-
-  describe('message input mode', () => {
-    it('shows textarea when API key exists', () => {
+  describe('message input', () => {
+    it('shows textarea', () => {
       render(<ChatInput {...defaultProps} />)
 
       expect(screen.getByPlaceholderText(/Type a message/)).toBeInTheDocument()

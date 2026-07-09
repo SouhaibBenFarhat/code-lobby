@@ -1,8 +1,8 @@
 /**
- * ChatSettings - Compact settings panel with model selector and API key management
+ * ChatSettings - Compact settings panel with model selector (CLI-only mode)
  */
 
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ui-kit'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ui-kit'
 import { Loader2 } from 'lucide-react'
 import React from 'react'
 import type { ClaudeModel } from '../../types'
@@ -12,15 +12,13 @@ export interface ChatSettingsProps {
   selectedModel: string
   isLoadingModels: boolean
   onModelChange: (modelId: string) => void
-  onRemoveApiKey: () => void
 }
 
 export function ChatSettings({
   models,
   selectedModel,
   isLoadingModels,
-  onModelChange,
-  onRemoveApiKey
+  onModelChange
 }: ChatSettingsProps): React.JSX.Element {
   return (
     <div className="px-3 py-2 border-b border-border bg-surface space-y-2">
@@ -57,17 +55,10 @@ export function ChatSettings({
         )}
       </div>
 
-      {/* API Key Management */}
+      {/* CLI Status */}
       <div className="flex items-center gap-3">
-        <span className="text-xs text-muted-foreground w-16 shrink-0">API Key</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive-subtle px-2"
-          onClick={onRemoveApiKey}
-        >
-          Remove
-        </Button>
+        <span className="text-xs text-muted-foreground w-16 shrink-0">CLI</span>
+        <span className="text-xs text-muted-foreground">Uses your Claude Pro/Max subscription</span>
       </div>
     </div>
   )

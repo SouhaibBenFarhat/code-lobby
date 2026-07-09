@@ -473,6 +473,7 @@ export async function fetchSinglePR(
                   body
                   createdAt
                   author { __typename login avatarUrl }
+                  pullRequestReview { id }
                   diffHunk
                 }
               }
@@ -588,6 +589,7 @@ export async function fetchSinglePR(
           avatar_url: c.author?.avatarUrl || '',
           isBot: isBot(c.author)
         },
+        reviewId: c.pullRequestReview?.id ?? null,
         diffHunk: c.diffHunk
       }))
     })),
@@ -816,6 +818,28 @@ export async function deletePRComment(
     }
   `
   await graphql(token, mutation, { id: commentNodeId })
+  return { success: true }
+}
+
+/**
+ * Reply to a PR review thread (inline review conversation).
+ *
+ * Uses GitHub GraphQL, which accepts the thread node id directly.
+ */
+export async function replyToReviewThread(
+  token: string,
+  threadId: string,
+  body: string
+): Promise<MutationResult> {
+  const mutation = `
+    mutation($threadId: ID!, $body: String!) {
+      addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+        comment { id }
+      }
+    }
+  `
+
+  await graphql(token, mutation, { threadId, body })
   return { success: true }
 }
 

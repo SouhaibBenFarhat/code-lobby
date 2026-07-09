@@ -1,11 +1,10 @@
 /**
  * FindPreviewButton - AI-powered button to find preview/staging environment URLs
  *
- * Uses Claude (Haiku) to analyze PR description and comments to find deploy preview URLs.
- * Results are cached forever per PR ID since preview URLs don't change.
+ * Uses Claude Code CLI to analyze PR description and comments to find deploy preview URLs.
  */
 
-import { useClaudeApiKey, useFindPreviewUrl } from '@data'
+import { useClaudeCodeStatus } from '@data'
 import {
   Button,
   Popover,
@@ -16,60 +15,71 @@ import {
   TooltipTrigger
 } from '@ui-kit'
 import { Check, Copy, ExternalLink, Eye, Loader2, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { useSelectedPR } from '../../hooks'
 
+// Validate URL - reject template URLs like ${PR_NUMBER}
+function isValidUrl(url: string | null): url is string {
+  if (!url) return false
+  try {
+    new URL(url)
+    return !url.includes('${') && !url.includes('{')
+  } catch {
+    return false
+  }
+}
+
 export function FindPreviewButton(): React.JSX.Element | null {
   const { pr } = useSelectedPR()
-  const { data: apiKey } = useClaudeApiKey()
+  const { data: cliStatus } = useClaudeCodeStatus()
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [hasTriggeredSearch, setHasTriggeredSearch] = useState(false)
 
-  // Build params for the hook - collect ALL text content from PR
-  const params = pr
-    ? {
-        prId: `${pr.base.repo.full_name}#${pr.number}`,
-        description: pr.body,
+  const [result, setResult] = useState<{
+    url: string | null
+    found: boolean
+    error?: string
+  } | null>(null)
+  const [isFetching, setIsFetching] = useState(false)
+
+  const isCliInstalled = cliStatus?.installed ?? false
+
+  // Search via IPC handler (routes through main process CLI)
+  const search = useCallback(async () => {
+    if (!pr) return
+    setIsFetching(true)
+    try {
+      const res = await window.electron.extractPreviewUrl({
+        title: pr.title,
+        body: pr.body,
         comments: [
-          // PR conversation comments
-          ...(pr.commentsList || []).map((c) => ({
-            body: c.body,
-            author: { login: c.author.login }
-          })),
-          // Review comments (often contain deploy bot messages)
+          ...(pr.commentsList || []).map((c) => ({ author: c.author.login, body: c.body })),
           ...(pr.reviews || [])
             .filter((r) => r.body)
-            .map((r) => ({
-              body: r.body || '',
-              author: { login: r.author.login }
-            })),
-          // Review thread comments (inline comments)
+            .map((r) => ({ author: r.author.login, body: r.body || '' })),
           ...(pr.reviewThreads || []).flatMap((t) =>
-            t.comments.map((c) => ({
-              body: c.body,
-              author: { login: c.author.login }
-            }))
+            t.comments.map((c) => ({ author: c.author.login, body: c.body }))
           )
         ]
-      }
-    : null
-
-  const { data, isFetching, search } = useFindPreviewUrl(params)
+      })
+      setResult({
+        url: res.url ?? null,
+        found: res.success && !!res.url,
+        error: res.message
+      })
+    } catch (err) {
+      setResult({ url: null, found: false, error: (err as Error).message })
+    } finally {
+      setIsFetching(false)
+    }
+  }, [pr])
 
   if (!pr) return null
 
-  // Validate URL - reject template URLs like ${PR_NUMBER}
-  const isValidUrl = (url: string | null): url is string => {
-    if (!url) return false
-    try {
-      new URL(url)
-      return !url.includes('${') && !url.includes('{')
-    } catch {
-      return false
-    }
-  }
+  const isAIReady = isCliInstalled
+  const data = result
 
   const previewUrl = data?.found && isValidUrl(data.url) ? data.url : null
   const hasError = !!data?.error || (data?.found && !isValidUrl(data?.url))
@@ -91,8 +101,8 @@ export function FindPreviewButton(): React.JSX.Element | null {
       window.open(url, '_blank')
     }
   }
-  // Only consider "searched" if user actually triggered it AND we have an API key
-  const hasSearched = hasTriggeredSearch && !!apiKey && data !== undefined && !hasError
+
+  const hasSearched = hasTriggeredSearch && isAIReady && data !== undefined && !hasError
 
   const handleCopy = async () => {
     if (previewUrl) {
@@ -103,9 +113,10 @@ export function FindPreviewButton(): React.JSX.Element | null {
   }
 
   const handleClick = () => {
-    if (!apiKey) {
-      // No API key - show error
-      alert('Please set your Claude API key in the AI Chat settings first.')
+    if (!isAIReady) {
+      alert(
+        'Claude Code CLI is not installed. Install it with: npm install -g @anthropic-ai/claude-code'
+      )
       return
     }
 
@@ -169,7 +180,7 @@ export function FindPreviewButton(): React.JSX.Element | null {
   }
 
   const getTooltipContent = () => {
-    if (!apiKey) return 'Set Claude API key first'
+    if (!isAIReady) return 'Claude Code CLI not installed'
     if (hasError) return `Error: ${data?.error} - Click to retry`
     if (previewUrl) return 'Click to see preview URL'
     if (hasSearched && !data?.found) return 'No URL found - click to retry'

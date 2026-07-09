@@ -1,10 +1,13 @@
 /**
- * AICostIndicator - Displays AI usage cost and tokens in the header
+ * AICostIndicator - CLI status + usage stats indicator
+ *
+ * Shows CLI installed status + today's activity from stats-cache.json
  */
 
-import { useAIUsage, useResetAIUsage } from '@data'
+import { useClaudeCodeStatus, useCliUsageStats } from '@data'
 import {
   Button,
+  cn,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -13,58 +16,61 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@ui-kit'
-import { Coins, RotateCcw, Sparkles } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Loader2, MessageSquare, RefreshCw, Terminal, Wrench } from 'lucide-react'
 
-// USD to EUR conversion rate
-const USD_TO_EUR_RATE = 0.92
-
-function formatCost(costUsd: number, currency: 'USD' | 'EUR' = 'EUR'): string {
-  const value = currency === 'EUR' ? costUsd * USD_TO_EUR_RATE : costUsd
-  const symbol = currency === 'EUR' ? '€' : '$'
-
-  if (value < 0.01) {
-    return `${symbol}${value.toFixed(4)}`
-  }
-  if (value < 1) {
-    return `${symbol}${value.toFixed(3)}`
-  }
-  return `${symbol}${value.toFixed(2)}`
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return String(n)
 }
 
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(1)}M`
-  }
-  if (tokens >= 1_000) {
-    return `${(tokens / 1_000).toFixed(1)}K`
-  }
-  return tokens.toString()
+/** Shorten model ID to a human-friendly label */
+function shortModelName(modelId: string): string {
+  if (modelId.includes('opus-4-6')) return 'Opus 4.6'
+  if (modelId.includes('opus-4-5')) return 'Opus 4.5'
+  if (modelId.includes('sonnet-4-5')) return 'Sonnet 4.5'
+  if (modelId.includes('sonnet-4-')) return 'Sonnet 4'
+  if (modelId.includes('haiku-4-5')) return 'Haiku 4.5'
+  if (modelId.includes('haiku')) return 'Haiku'
+  // Fallback: extract model name from ID
+  const parts = modelId.replace('claude-', '').split('-')
+  return parts.slice(0, 2).join(' ')
 }
+
+// ===========================================================================
+// Stat Row
+// ===========================================================================
+
+function StatRow({
+  icon,
+  label,
+  value
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <span className="text-xs font-mono font-medium">{value}</span>
+    </div>
+  )
+}
+
+// ===========================================================================
+// Main Component
+// ===========================================================================
 
 export function AICostIndicator(): React.JSX.Element | null {
-  const { data: usage } = useAIUsage()
-  const resetUsage = useResetAIUsage()
-  const [isRippling, setIsRippling] = useState(false)
-  const prevCostRef = useRef<number>(0)
+  const { data: cliStatus, isLoading: isCheckingCli } = useClaudeCodeStatus()
+  const isCliInstalled = cliStatus?.installed ?? false
+  const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useCliUsageStats(true)
 
-  // Trigger ripple effect when cost changes
-  useEffect(() => {
-    if (usage && usage.costUsd > prevCostRef.current) {
-      setIsRippling(true)
-      const timer = setTimeout(() => setIsRippling(false), 600)
-      return () => clearTimeout(timer)
-    }
-    prevCostRef.current = usage?.costUsd ?? 0
-  }, [usage?.costUsd, usage])
-
-  // Don't show if no usage yet
-  if (!usage || (usage.inputTokens === 0 && usage.outputTokens === 0)) {
-    return null
-  }
-
-  const totalTokens = usage.inputTokens + usage.outputTokens
-  const costEur = formatCost(usage.costUsd, 'EUR')
+  const todayMessages = stats?.today?.messages ?? 0
 
   return (
     <>
@@ -78,97 +84,179 @@ export function AICostIndicator(): React.JSX.Element | null {
                 size="sm"
                 className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground no-drag relative overflow-hidden"
               >
-                {/* Ripple effect */}
-                {isRippling && (
-                  <span className="absolute inset-0 animate-ping bg-purple-500/20 rounded-md" />
+                {/* CLI status icon */}
+                <div className="relative">
+                  <Terminal
+                    className={cn(
+                      'w-3.5 h-3.5 transition-all',
+                      isCheckingCli && 'animate-pulse text-muted-foreground',
+                      isCliInstalled && 'text-green-500 drop-shadow-[0_0_3px_rgba(34,197,94,0.4)]',
+                      !isCliInstalled && !isCheckingCli && 'text-muted-foreground'
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-background',
+                      isCliInstalled ? 'bg-green-500' : 'bg-foreground-ghost'
+                    )}
+                  />
+                </div>
+
+                {/* Today's message count */}
+                {isLoadingStats && !stats ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : stats ? (
+                  <span className="font-mono font-medium">{todayMessages}</span>
+                ) : (
+                  <span className="font-medium">CLI</span>
                 )}
-                <Sparkles
-                  className={`w-3.5 h-3.5 text-purple-500 transition-transform ${isRippling ? 'scale-125' : ''}`}
-                />
-                <span
-                  className={`font-medium transition-all ${isRippling ? 'text-purple-500 scale-105' : ''}`}
-                >
-                  {costEur}
-                </span>
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent>AI Usage & Cost</TooltipContent>
+          <TooltipContent>
+            {isCliInstalled
+              ? `Claude Code CLI${cliStatus?.version ? ` ${cliStatus.version}` : ''} — ${todayMessages} messages today`
+              : 'Claude Code CLI not installed'}
+          </TooltipContent>
         </Tooltip>
 
-        <PopoverContent className="w-64 p-3" align="end" sideOffset={8}>
+        <PopoverContent className="w-72 p-3" align="end" sideOffset={8}>
           <div className="space-y-3">
+            {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-purple-500" />
-                <span className="font-semibold text-sm">AI Usage</span>
+                <Terminal
+                  className={cn(
+                    'w-4 h-4',
+                    isCliInstalled ? 'text-green-500' : 'text-muted-foreground'
+                  )}
+                />
+                <div>
+                  <span className="font-semibold text-sm">Claude Code CLI</span>
+                  {isCliInstalled && cliStatus?.version && (
+                    <span className="text-[10px] text-muted-foreground ml-1.5">
+                      {cliStatus.version}
+                    </span>
+                  )}
+                </div>
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => resetUsage.mutate()}
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Reset tracking</TooltipContent>
-              </Tooltip>
+              {stats && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => refetchStats()}
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh stats</TooltipContent>
+                </Tooltip>
+              )}
             </div>
 
-            <Separator />
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Cost</span>
-                <div className="text-right">
-                  <span className="font-medium">{costEur}</span>
-                  <span className="text-muted-foreground text-xs ml-1">
-                    ({formatCost(usage.costUsd, 'USD')})
-                  </span>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Input breakdown */}
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Input</span>
-                  <span className="text-[10px] text-foreground-muted">(what you send)</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-mono text-xs">{formatTokens(usage.inputTokens)}</span>
-                  <span className="text-muted-foreground text-xs ml-1">
-                    → {formatCost(usage.inputCostUsd, 'EUR')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Output breakdown */}
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Output</span>
-                  <span className="text-[10px] text-foreground-muted">(Claude's response)</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-mono text-xs">{formatTokens(usage.outputTokens)}</span>
-                  <span className="text-muted-foreground text-xs ml-1">
-                    → {formatCost(usage.outputCostUsd, 'EUR')}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex justify-between pt-1 border-t border-border">
-                <span className="text-muted-foreground">Total Tokens</span>
-                <span className="font-mono text-xs font-medium">{formatTokens(totalTokens)}</span>
-              </div>
+            {/* CLI Status */}
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={cn(
+                  'w-2 h-2 rounded-full',
+                  isCliInstalled ? 'bg-green-500' : 'bg-foreground-ghost'
+                )}
+              />
+              <span className={isCliInstalled ? 'text-foreground' : 'text-muted-foreground'}>
+                {isCheckingCli
+                  ? 'Checking...'
+                  : isCliInstalled
+                    ? 'Installed & Active'
+                    : 'Not Installed'}
+              </span>
             </div>
+
+            {!isCliInstalled && !isCheckingCli && (
+              <p className="text-[10px] text-muted-foreground">
+                Install:{' '}
+                <code className="bg-muted px-1 rounded">
+                  npm install -g @anthropic-ai/claude-code
+                </code>
+              </p>
+            )}
+
+            {isCliInstalled && (
+              <>
+                <Separator />
+
+                {/* Today's Activity */}
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
+                  <span className="text-xs font-medium">Today&apos;s Activity</span>
+                </div>
+
+                {isLoadingStats && !stats ? (
+                  <div className="flex items-center justify-center py-3 gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Loading stats...
+                  </div>
+                ) : stats ? (
+                  <div className="space-y-1.5">
+                    <StatRow
+                      icon={<MessageSquare className="w-3 h-3 text-muted-foreground" />}
+                      label="Messages"
+                      value={formatNumber(stats.today.messages)}
+                    />
+                    <StatRow
+                      icon={<Terminal className="w-3 h-3 text-muted-foreground" />}
+                      label="Sessions"
+                      value={formatNumber(stats.today.sessions)}
+                    />
+                    <StatRow
+                      icon={<Wrench className="w-3 h-3 text-muted-foreground" />}
+                      label="Tool Calls"
+                      value={formatNumber(stats.today.toolCalls)}
+                    />
+
+                    {/* Model breakdown */}
+                    {Object.keys(stats.modelUsage).length > 0 && (
+                      <>
+                        <Separator className="my-1.5" />
+                        <span className="text-[10px] text-muted-foreground">
+                          All-time tokens by model
+                        </span>
+                        {Object.entries(stats.modelUsage)
+                          .sort(
+                            ([, a], [, b]) =>
+                              b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens)
+                          )
+                          .slice(0, 4)
+                          .map(([model, usage]) => (
+                            <div
+                              key={model}
+                              className="flex items-center justify-between text-[10px]"
+                            >
+                              <span className="text-muted-foreground truncate max-w-[120px]">
+                                {shortModelName(model)}
+                              </span>
+                              <span className="font-mono text-foreground">
+                                {formatNumber(usage.inputTokens + usage.outputTokens)} tok
+                              </span>
+                            </div>
+                          ))}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    No usage data available yet.
+                  </p>
+                )}
+              </>
+            )}
 
             <p className="text-[10px] text-muted-foreground text-center pt-1">
-              Tracking resets on app restart
+              {isCliInstalled
+                ? `${formatNumber(stats?.totalMessages ?? 0)} total messages · ${formatNumber(stats?.totalSessions ?? 0)} sessions`
+                : 'CLI mode requires Claude Code installed'}
             </p>
           </div>
         </PopoverContent>

@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatSettings } from './ChatSettings'
 
@@ -19,8 +18,7 @@ describe('ChatSettings', () => {
     ],
     selectedModel: 'claude-3-5-sonnet-20241022',
     isLoadingModels: false,
-    onModelChange: vi.fn(),
-    onRemoveApiKey: vi.fn()
+    onModelChange: vi.fn()
   }
 
   beforeEach(() => {
@@ -52,29 +50,6 @@ describe('ChatSettings', () => {
       const triggers = screen.getAllByRole('combobox')
       expect(triggers.length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('Claude 3.5 Sonnet')).toBeInTheDocument()
-    })
-  })
-
-  describe('API key management', () => {
-    it('shows API Key label', () => {
-      render(<ChatSettings {...defaultProps} />)
-
-      expect(screen.getByText('API Key')).toBeInTheDocument()
-    })
-
-    it('shows remove button', () => {
-      render(<ChatSettings {...defaultProps} />)
-
-      expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
-    })
-
-    it('calls onRemoveApiKey when remove button clicked', async () => {
-      render(<ChatSettings {...defaultProps} />)
-
-      const removeButton = screen.getByRole('button', { name: /remove/i })
-      await userEvent.click(removeButton)
-
-      expect(defaultProps.onRemoveApiKey).toHaveBeenCalled()
     })
   })
 })

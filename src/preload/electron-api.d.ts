@@ -654,6 +654,21 @@ export interface ElectronAPI {
     lastUpdatedAt: string
   }>
   resetAIUsage: () => Promise<{ success: boolean; error?: string }>
+  getCliSubscriptionUsage: () => Promise<{
+    today: { messages: number; sessions: number; toolCalls: number }
+    modelUsage: Record<
+      string,
+      {
+        inputTokens: number
+        outputTokens: number
+        cacheReadInputTokens: number
+        cacheCreationInputTokens: number
+      }
+    >
+    totalSessions: number
+    totalMessages: number
+    fetchedAt: string
+  } | null>
   getAIPricing: () => Promise<
     Array<{
       modelPrefix: string

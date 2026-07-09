@@ -12,7 +12,6 @@ import {
   type ClaudeMessage,
   type ClaudeReviewData,
   useAddCustomPrompt,
-  useClaudeApiKeyStatus,
   useClaudeCodeStatus,
   useClaudeReviewListener,
   useClaudeSession,
@@ -23,7 +22,6 @@ import {
   usePRFiles,
   useSendMessage,
   useSessionReviews,
-  useSetClaudeApiKey,
   useStopClaude,
   useSubmitPRReviewWithComments,
   useUpdateCustomPrompt
@@ -50,20 +48,22 @@ export type { AIChatPanelProps } from '../../types'
 // Available Claude models for selection
 // Ordered by: newest/most capable first
 const CLAUDE_MODELS = [
-  // Claude 4.5 family (Latest - Nov 2025)
-  { id: 'claude-opus-4-5-20251101', display_name: 'Claude Opus 4.5 (Premium)' },
-  { id: 'claude-haiku-4-5-20251001', display_name: 'Claude Haiku 4.5 (Fast)' },
+  // Claude 4.6 family (Latest - Feb 2026)
+  { id: 'claude-opus-4-6', display_name: 'Claude Opus 4.6 (Premium)' },
+  // Claude 4.5 family (Nov 2025)
+  { id: 'claude-opus-4-5-20251101', display_name: 'Claude Opus 4.5' },
   { id: 'claude-sonnet-4-5-20250929', display_name: 'Claude Sonnet 4.5 (Balanced)' },
+  { id: 'claude-haiku-4-5-20251001', display_name: 'Claude Haiku 4.5 (Fast)' },
   // Claude Code CLI aliases (auto-resolve to latest)
   { id: 'opus', display_name: 'Opus (Latest)' },
   { id: 'sonnet', display_name: 'Sonnet (Latest)' },
   { id: 'haiku', display_name: 'Haiku (Latest)' },
   { id: 'opusplan', display_name: 'Opus Plan (Opus plans, Sonnet executes)' },
-  // Claude 4 family (Active - May/Aug 2025)
+  // Claude 4 family (May/Aug 2025)
   { id: 'claude-opus-4-1-20250805', display_name: 'Claude Opus 4.1' },
   { id: 'claude-opus-4-20250514', display_name: 'Claude Opus 4' },
   { id: 'claude-sonnet-4-20250514', display_name: 'Claude Sonnet 4' },
-  // Legacy (older versions)
+  // Legacy
   { id: 'claude-3-7-sonnet-20250219', display_name: 'Claude 3.7 Sonnet (Deprecated)' },
   { id: 'claude-3-5-haiku-20241022', display_name: 'Claude 3.5 Haiku (Deprecated)' },
   { id: 'claude-3-haiku-20240307', display_name: 'Claude 3 Haiku' }
@@ -92,10 +92,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // ═══════════════════════════════════════════════════════════════════════════
 
   const { data: claudeCodeStatus, isLoading: isLoadingClaudeCode } = useClaudeCodeStatus()
-  const { data: apiKeyStatus, isLoading: isLoadingApiKey } = useClaudeApiKeyStatus()
   const { data: currentUser } = useCurrentUser()
   const isClaudeCodeInstalled = claudeCodeStatus?.installed ?? false
-  const hasApiKey = apiKeyStatus?.hasKey ?? false
+
+  // CLI-only: ready when Claude Code CLI is installed
+  const isAIReady = isClaudeCodeInstalled
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TANSTACK QUERIES & MUTATIONS (Claude Code)
@@ -106,7 +107,6 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   const sendMessageMutation = useSendMessage()
   const stopClaudeMutation = useStopClaude()
   const clearSessionMutation = useClearSession()
-  const setApiKeyMutation = useSetClaudeApiKey()
 
   // ═══════════════════════════════════════════════════════════════════════════
   // OTHER QUERIES & MUTATIONS
@@ -123,8 +123,6 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // LOCAL STATE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [isSettingKey, setIsSettingKey] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState('')
 
@@ -316,7 +314,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
   const sendMessageWithClaudeCode = useCallback(
     (messageText: string, displayLabel?: string) => {
-      if (!sessionId || !hasApiKey) return
+      if (!sessionId || !isAIReady) return
 
       setError(null)
       userScrolledUpRef.current = false
@@ -409,7 +407,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     },
     [
       sessionId,
-      hasApiKey,
+      isAIReady,
       selectedPR,
       selectedModel,
       thinkingBudget,
@@ -498,32 +496,6 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // ═══════════════════════════════════════════════════════════════════════════
   // HANDLERS
   // ═══════════════════════════════════════════════════════════════════════════
-
-  const handleSetApiKey = useCallback(async () => {
-    if (!apiKeyInput.trim()) return
-    setIsSettingKey(true)
-    setError(null)
-    try {
-      // Validate by testing against Claude API
-      const response = await fetch('https://api.anthropic.com/v1/models?limit=1', {
-        headers: {
-          'x-api-key': apiKeyInput.trim(),
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        }
-      })
-      if (response.ok) {
-        setApiKeyMutation.mutate(apiKeyInput.trim())
-        setApiKeyInput('')
-      } else {
-        setError('Invalid API key')
-      }
-    } catch {
-      setError('Failed to validate API key')
-    } finally {
-      setIsSettingKey(false)
-    }
-  }, [apiKeyInput, setApiKeyMutation])
 
   /**
    * Generate unique queued message ID
@@ -642,10 +614,9 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   // ═══════════════════════════════════════════════════════════════════════════
 
   const showScrollButton = userScrolledUp
-  const isLoading = isLoadingClaudeCode || isLoadingApiKey
 
-  // Show loading while checking status
-  if (isLoading) {
+  // Show loading while checking CLI status
+  if (isLoadingClaudeCode) {
     return (
       <div className="h-full flex flex-col items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -659,12 +630,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
     return (
       <div className="h-full flex flex-col">
         <ChatHeader
-          apiKey={null}
           selectedModel=""
           models={[]}
           isLoadingModels={false}
+          isConfigured={false}
           onModelChange={() => {}}
-          onRemoveApiKey={() => {}}
           onClearHistory={() => {}}
           onClose={onClose}
         />
@@ -675,13 +645,15 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             </div>
             <h3 className="text-lg font-semibold">Claude Code CLI Required</h3>
             <p className="text-sm text-muted-foreground">
-              CodeLobby uses Claude Code CLI for AI features. Install it to enable AI-powered PR
-              analysis.
+              Install Claude Code CLI to use AI features with your Pro/Max subscription.
             </p>
             <div className="bg-surface p-3 rounded-md font-mono text-sm">
               npm install -g @anthropic-ai/claude-code
             </div>
-            <p className="text-xs text-muted-foreground">After installing, restart CodeLobby.</p>
+            <p className="text-xs text-muted-foreground">
+              After installing, run <code className="bg-muted px-1 rounded">claude login</code> to
+              authenticate, then restart CodeLobby.
+            </p>
           </div>
         </div>
       </div>
@@ -691,15 +663,11 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
   return (
     <div className="h-full flex flex-col">
       <ChatHeader
-        apiKey={hasApiKey ? 'configured' : null}
         selectedModel={selectedModel}
         models={CLAUDE_MODELS}
         isLoadingModels={false}
+        isConfigured={isClaudeCodeInstalled}
         onModelChange={setSelectedModel}
-        onRemoveApiKey={() => {
-          // Clear the API key
-          setApiKeyMutation.mutate('')
-        }}
         onClearHistory={handleClearHistory}
         onClose={onClose}
       />
@@ -715,7 +683,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
 
       <div className="flex-1 relative overflow-hidden bg-chat">
         {/* No PR selected */}
-        {!selectedPR && <NoPRSelectedState apiKey={hasApiKey ? 'configured' : null} />}
+        {!selectedPR && <NoPRSelectedState />}
 
         {/* Chat area - shows when PR is selected */}
         {selectedPR && (
@@ -774,13 +742,8 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
       )}
 
       {/* Input area */}
-      {hasApiKey && sessionId ? (
+      {isAIReady && sessionId && (
         <ChatInput
-          apiKey="configured"
-          apiKeyInput={apiKeyInput}
-          isSettingKey={isSettingKey}
-          onApiKeyInputChange={setApiKeyInput}
-          onSetApiKey={handleSetApiKey}
           input={input}
           isSending={isSending}
           isContextValid={true}
@@ -814,24 +777,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             deleteCustomPrompt.mutate(id)
           }}
         />
-      ) : !hasApiKey ? (
-        <div className="p-4 border-t">
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSetApiKey()}
-              placeholder="Enter Claude API key..."
-              className="flex-1 px-3 py-2 text-sm border rounded-md bg-background"
-              disabled={isSettingKey}
-            />
-            <Button onClick={handleSetApiKey} disabled={isSettingKey || !apiKeyInput.trim()}>
-              {isSettingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      )}
 
       {/* Review Preview Modal */}
       {selectedPR && (

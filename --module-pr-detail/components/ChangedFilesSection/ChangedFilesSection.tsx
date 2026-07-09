@@ -7,7 +7,6 @@ import {
   type PRFile,
   type ReviewerSuggestionResult,
   setPendingReviewerRequest,
-  useClaudeApiKeyStatus,
   useClaudeCodeStatus,
   useGitHubToken,
   useOpenCodeVisualizer,
@@ -105,7 +104,6 @@ export function ChangedFilesSection({
   const { data: reviewerResult } = useSuggestReviewers(repoFullName, prNumber)
   const triggerSuggestion = useTriggerReviewerSuggestion()
   const { data: claudeStatus } = useClaudeCodeStatus()
-  const { data: apiKeyStatus } = useClaudeApiKeyStatus()
   const { data: githubToken } = useGitHubToken()
 
   const [showReviewerPanel, setShowReviewerPanel] = useState(false)
@@ -223,15 +221,11 @@ export function ChangedFilesSection({
     }
   }, [repoFullName, prNumber, headRef, files, openCodeVisualizer])
 
-  // Reviewer suggestion handler
-  const canSuggestReviewers = claudeStatus?.installed && apiKeyStatus?.hasKey
+  // Reviewer suggestion handler — CLI-only guard
+  const canSuggestReviewers = claudeStatus?.installed
   const isSuggesting = isAnalyzing || triggerSuggestion.isPending
 
-  const reviewerDisabledReason = !claudeStatus?.installed
-    ? 'Claude Code CLI required'
-    : !apiKeyStatus?.hasKey
-      ? 'Claude API key required'
-      : undefined
+  const reviewerDisabledReason = !claudeStatus?.installed ? 'Claude Code CLI required' : undefined
 
   const handleSuggestReviewers = useCallback(() => {
     if (!canSuggestReviewers || !prAuthor || !branch || !baseBranch || !githubToken) return

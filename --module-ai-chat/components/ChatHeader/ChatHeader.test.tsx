@@ -5,7 +5,6 @@ import { ChatHeader } from './ChatHeader'
 
 describe('ChatHeader', () => {
   const defaultProps = {
-    apiKey: 'sk-ant-test',
     selectedModel: 'claude-3-5-sonnet-20241022',
     models: [
       {
@@ -20,8 +19,8 @@ describe('ChatHeader', () => {
       }
     ],
     isLoadingModels: false,
+    isConfigured: true,
     onModelChange: vi.fn(),
-    onRemoveApiKey: vi.fn(),
     onClearHistory: vi.fn(),
     onClose: vi.fn()
   }
@@ -36,13 +35,13 @@ describe('ChatHeader', () => {
       expect(screen.getByText('AI Chat')).toBeInTheDocument()
     })
 
-    it('shows model name when API key exists', () => {
+    it('shows model name when configured', () => {
       render(<ChatHeader {...defaultProps} />)
       expect(screen.getByText(/Claude 3.5 Sonnet/)).toBeInTheDocument()
     })
 
-    it('does not show model name when no API key', () => {
-      render(<ChatHeader {...defaultProps} apiKey={null} />)
+    it('does not show model name when not configured', () => {
+      render(<ChatHeader {...defaultProps} isConfigured={false} />)
       expect(screen.queryByText(/Claude 3.5 Sonnet/)).not.toBeInTheDocument()
     })
   })
@@ -82,8 +81,8 @@ describe('ChatHeader', () => {
       expect(defaultProps.onClearHistory).toHaveBeenCalled()
     })
 
-    it('hides settings and clear buttons when no API key', () => {
-      render(<ChatHeader {...defaultProps} apiKey={null} />)
+    it('hides settings and clear buttons when not configured', () => {
+      render(<ChatHeader {...defaultProps} isConfigured={false} />)
       // Only close button should be present
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBe(1)

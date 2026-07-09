@@ -54,7 +54,7 @@ describe('ChatEmptyStates', () => {
     })
 
     it('renders PR information', () => {
-      render(<PREmptyState selectedPR={mockPR} apiKey="sk-ant-test" />)
+      render(<PREmptyState selectedPR={mockPR} />)
 
       expect(screen.getByText('#42 Test PR Title')).toBeInTheDocument()
       expect(screen.getByText('owner/repo')).toBeInTheDocument()
@@ -66,38 +66,28 @@ describe('ChatEmptyStates', () => {
         ...mockPR,
         title: 'This is a very long PR title that should be truncated after 50 characters'
       }
-      render(<PREmptyState selectedPR={longTitlePR} apiKey="sk-ant-test" />)
+      render(<PREmptyState selectedPR={longTitlePR} />)
 
       // The title is truncated with slice(0, 50) + '...'
       const truncatedTitle = 'This is a very long PR title that should be trunca'
       expect(screen.getByText(`#42 ${truncatedTitle}...`)).toBeInTheDocument()
     })
 
-    it('shows start chat button when apiKey and onStartPRChat are provided', () => {
-      render(
-        <PREmptyState selectedPR={mockPR} apiKey="sk-ant-test" onStartPRChat={mockOnStartPRChat} />
-      )
+    it('shows start chat button when onStartPRChat is provided', () => {
+      render(<PREmptyState selectedPR={mockPR} onStartPRChat={mockOnStartPRChat} />)
 
       expect(screen.getByRole('button', { name: /start chatting/i })).toBeInTheDocument()
     })
 
     it('calls onStartPRChat when button is clicked', async () => {
-      render(
-        <PREmptyState selectedPR={mockPR} apiKey="sk-ant-test" onStartPRChat={mockOnStartPRChat} />
-      )
+      render(<PREmptyState selectedPR={mockPR} onStartPRChat={mockOnStartPRChat} />)
 
       await userEvent.click(screen.getByRole('button', { name: /start chatting/i }))
       expect(mockOnStartPRChat).toHaveBeenCalledWith(mockPR)
     })
 
-    it('shows API key message when no API key', () => {
-      render(<PREmptyState selectedPR={mockPR} apiKey={null} />)
-
-      expect(screen.getByText(/enter your api key/i)).toBeInTheDocument()
-    })
-
-    it('hides start button when no API key', () => {
-      render(<PREmptyState selectedPR={mockPR} apiKey={null} onStartPRChat={mockOnStartPRChat} />)
+    it('hides start button when no onStartPRChat', () => {
+      render(<PREmptyState selectedPR={mockPR} />)
 
       expect(screen.queryByRole('button', { name: /start chatting/i })).not.toBeInTheDocument()
     })
@@ -105,20 +95,15 @@ describe('ChatEmptyStates', () => {
 
   describe('NoPRSelectedState', () => {
     it('shows No PR Selected title', () => {
-      render(<NoPRSelectedState apiKey="sk-ant-test" />)
+      render(<NoPRSelectedState />)
       expect(screen.getByText('No PR Selected')).toBeInTheDocument()
     })
 
-    it('shows select PR message when API key exists', () => {
-      render(<NoPRSelectedState apiKey="sk-ant-test" />)
+    it('shows select PR message', () => {
+      render(<NoPRSelectedState />)
       expect(
         screen.getByText(/select a pull request from the list to start chatting/i)
       ).toBeInTheDocument()
-    })
-
-    it('shows API key message when no API key', () => {
-      render(<NoPRSelectedState apiKey={null} />)
-      expect(screen.getByText(/enter your api key/i)).toBeInTheDocument()
     })
   })
 

@@ -9,7 +9,12 @@
  * - Code context after the commented line
  */
 
-import { useResolveReviewThread, useSelectedPRId, useUnresolveReviewThread } from '@data'
+import {
+  useReplyToReviewComment,
+  useResolveReviewThread,
+  useSelectedPRId,
+  useUnresolveReviewThread
+} from '@data'
 import {
   Button,
   type DiffComment,
@@ -17,12 +22,13 @@ import {
   FileHeader,
   formatRelativeTime,
   MarkdownContent,
+  MarkdownEditor,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from '@ui-kit'
-import { CheckCheck, Circle, Loader2, MessageSquare } from 'lucide-react'
-import { useMemo } from 'react'
+import { CheckCheck, Circle, Loader2, MessageSquare, Send, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { InlineComment } from './types'
 
 export interface CommentNodeProps {
@@ -68,6 +74,12 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
   const unresolveThread = useUnresolveReviewThread()
   const isToggling = resolveThread.isPending || unresolveThread.isPending
 
+  // Mutation for replying to the inline review comment
+  const replyMutation = useReplyToReviewComment()
+  const [replyBody, setReplyBody] = useState('')
+  const [replySuccess, setReplySuccess] = useState(false)
+  const replyEditorId = `review-reply-${comment.id}`
+
   const handleToggleResolved = () => {
     if (!selectedPRId || isToggling) return
 
@@ -83,6 +95,54 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
       resolveThread.mutate(params)
     }
   }
+
+  const isSubmittingReply = replyMutation.isPending
+  const replyError = replyMutation.error?.message ?? null
+  const canSubmitReply = replyBody.trim().length > 0 && !isSubmittingReply
+
+  const handleCancelReply = useCallback(() => {
+    setReplyBody('')
+  }, [])
+
+  const handleSubmitReply = useCallback(() => {
+    if (!selectedPRId || !replyBody.trim() || isSubmittingReply) return
+
+    replyMutation.mutate(
+      {
+        repoFullName: selectedPRId.repoFullName,
+        prNumber: selectedPRId.prNumber,
+        threadId: comment.threadId,
+        body: replyBody.trim()
+      },
+      {
+        onSuccess: () => {
+          setReplyBody('')
+          setReplySuccess(true)
+          setTimeout(() => setReplySuccess(false), 2000)
+        }
+      }
+    )
+  }, [comment.threadId, isSubmittingReply, replyBody, replyMutation, selectedPRId])
+
+  // Keyboard shortcuts when reply editor is focused
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement
+      if (!(active instanceof HTMLElement) || active.id !== replyEditorId) return
+
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        if (replyBody.trim()) handleSubmitReply()
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCancelReply()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleCancelReply, handleSubmitReply, replyBody, replyEditorId])
 
   // Find the actual line number from the hunk (last line is where comment applies)
   const commentLineInHunk = useMemo(() => findLastLineNumber(comment.diffHunk), [comment.diffHunk])
@@ -134,6 +194,66 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
     </Tooltip>
   )
 
+  const replyEditor = (
+    <div className="mt-2 space-y-2">
+      <MarkdownEditor
+        value={replyBody}
+        onChange={setReplyBody}
+        placeholder="Write a reply..."
+        height={120}
+        disabled={isSubmittingReply}
+        id={replyEditorId}
+        data-testid="review-comment-reply-editor"
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground">
+          {typeof navigator !== 'undefined' && navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}
+          +Enter to reply, Esc to cancel
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px]"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleCancelReply()
+            }}
+            disabled={isSubmittingReply}
+          >
+            <X className="w-3 h-3 mr-1" />
+            Cancel
+          </Button>
+          {resolveButton}
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="h-6 px-2 text-[10px] gap-1"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleSubmitReply()
+            }}
+            disabled={!canSubmitReply}
+          >
+            {isSubmittingReply ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Replying...
+              </>
+            ) : (
+              <>
+                <Send className="w-3 h-3" />
+                Reply
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+
   // Build inline comment for embedding in DiffViewer
   // Note: We can't use useMemo here because resolveButton changes with isToggling state
   const buildInlineComments = (): DiffComment[] => {
@@ -150,9 +270,13 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
                 <MarkdownContent content={comment.body} />
               </div>
             </div>
-            <div className="flex justify-end border-t border-border-subtle pt-1 mt-1">
-              {resolveButton}
+            <div className="flex items-center justify-between border-t border-border-subtle pt-1 mt-1">
+              <div className="flex items-center gap-2 min-h-5">
+                {replySuccess && <span className="text-[10px] text-success">Reply posted</span>}
+                {replyError && <span className="text-[10px] text-destructive">{replyError}</span>}
+              </div>
             </div>
+            {replyEditor}
           </div>
         )
       }
@@ -198,9 +322,13 @@ export function CommentNode({ comment, filePath }: CommentNodeProps): React.JSX.
                 <MarkdownContent content={comment.body} />
               </div>
             </div>
-            <div className="flex justify-end border-t border-border-subtle pt-1 mt-1">
-              {resolveButton}
+            <div className="flex items-center justify-between border-t border-border-subtle pt-1 mt-1">
+              <div className="flex items-center gap-2 min-h-5">
+                {replySuccess && <span className="text-[10px] text-success">Reply posted</span>}
+                {replyError && <span className="text-[10px] text-destructive">{replyError}</span>}
+              </div>
             </div>
+            {replyEditor}
           </div>
         </div>
       )}

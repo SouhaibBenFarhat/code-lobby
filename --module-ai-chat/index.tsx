@@ -59,14 +59,6 @@ export type {
   StreamingState
 } from './types'
 
-export {
-  // Claude request utilities
-  buildClaudeHeaders,
-  buildClaudeRequestBody,
-  buildSystemPrompt,
-  formatMessagesForClaude,
-  supportsThinking
-} from './utils'
 export { calculateTotalTokens, estimateTokens } from './utils/tokens'
 
 /**

@@ -81,6 +81,7 @@ export const keys = {
   enableThinking: ['ai', 'enable-thinking'] as const,
   customPrompts: ['ai', 'custom-prompts'] as const,
   aiUsage: ['ai', 'usage'] as const,
+  cliSubscriptionUsage: ['ai', 'cli-subscription-usage'] as const,
   // Agentic action prompts (PERSISTED)
   agenticPrompts: ['ai', 'agentic-prompts'] as const,
   agenticSettingsOpen: ['local', 'agentic-settings-open'] as const,

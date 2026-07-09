@@ -94,6 +94,7 @@ vi.mock('@data', () => ({
       previewUrlExtraction: ''
     })
   ),
+  useCliUsageStats: vi.fn(() => mockQueryResult(null)),
   useClaudeCodeStatus: vi.fn(() => mockQueryResult({ isInstalled: true, isChecking: false })),
   useMemoryUsage: vi.fn(() =>
     mockQueryResult({ heapUsedMB: 50, heapTotalMB: 100, rssMB: 150, heapPercentage: 50 })

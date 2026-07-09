@@ -1,10 +1,10 @@
 /**
- * ChatInput - Input area with API key entry, textarea, thinking slider, and quick actions
+ * ChatInput - Input area with textarea, thinking slider, and quick actions
  */
 
-import { Button, cn, Input, Slider, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
-import { Key, Loader2, Send, Square } from 'lucide-react'
-import React, { useCallback, useEffect, useRef } from 'react'
+import { Button, cn, Slider, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
+import { Send, Square } from 'lucide-react'
+import React, { useCallback, useRef } from 'react'
 import type { ChatMessage, CustomPrompt, QuickPrompt, StreamingState } from '../../types'
 import { ContextIndicator } from '../ContextIndicator'
 import { QuickActions } from '../QuickActions'
@@ -22,12 +22,6 @@ function formatThinkingBudgetCompact(value: number): string {
 }
 
 export interface ChatInputProps {
-  // API Key state
-  apiKey: string | null
-  apiKeyInput: string
-  isSettingKey: boolean
-  onApiKeyInputChange: (value: string) => void
-  onSetApiKey: () => void
   // Message state
   input: string
   isSending: boolean
@@ -53,11 +47,6 @@ export interface ChatInputProps {
 }
 
 export function ChatInput({
-  apiKey,
-  apiKeyInput,
-  isSettingKey,
-  onApiKeyInputChange,
-  onSetApiKey,
   input,
   isSending,
   isContextValid,
@@ -101,59 +90,6 @@ export function ChatInput({
       textareaRef.current.style.height = '72px'
     }
   }
-
-  // Focus textarea when API key is set
-  useEffect(() => {
-    if (apiKey && textareaRef.current) {
-      setTimeout(() => textareaRef.current?.focus(), 100)
-    }
-  }, [apiKey])
-
-  // API Key Input
-  if (!apiKey) {
-    return (
-      <div className="p-3 border-t border-border">
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Input
-              type="password"
-              placeholder="Enter Claude API key (sk-ant-...)"
-              value={apiKeyInput}
-              onChange={(e) => onApiKeyInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSetApiKey()}
-              className="flex-1 h-9 text-sm"
-              autoFocus
-            />
-            <Button
-              onClick={onSetApiKey}
-              disabled={isSettingKey || !apiKeyInput.trim()}
-              size="icon"
-              className="h-9 w-9"
-            >
-              {isSettingKey ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Key className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            Get your key from{' '}
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              console.anthropic.com
-            </a>
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // Message Input
   return (
     <div className="p-3 border-t border-border bg-background relative z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.2)]">
       <div className="space-y-2">
