@@ -1,6 +1,6 @@
 # CodeLobby API & Data Flow
 
-This document describes how data flows between the UI and external services (GitHub API, Claude AI API) in CodeLobby's TanStack Query-based architecture.
+This document describes how data flows between the UI and external services (GitHub API, Claude Code CLI) in CodeLobby's TanStack Query-based architecture.
 
 ---
 
@@ -23,17 +23,17 @@ CodeLobby uses a **simplified 3-layer architecture**:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                       External APIs                          │
+│                     External Backends                        │
 │        GitHub API (GraphQL)     │    Claude Code CLI         │
 └─────────────────────────────────┴────────────────────────────┘
                     ▲                           ▲
-                    │ fetch()                   │ Agent SDK
-                    │ (direct)                  │ (via IPC)
+                    │ fetch()                   │ spawn()
+                    │ (direct)                  │ (stdio)
 ┌───────────────────┴───────────────┬───────────┴──────────────┐
 │        @data            │      Main Process        │
 │  ┌─────────────────────────────┐  │  ┌────────────────────┐  │
-│  │  github.ts (API functions)  │  │  │claude-code-relay.ts│  │
-│  │  queries/* (useQuery hooks) │  │  │   (Agent SDK)      │  │
+│  │  github.ts (API functions)  │  │  │   claude-cli.ts    │  │
+│  │  queries/* (useQuery hooks) │  │  │  (spawned CLI)     │  │
 │  │  mutations/* (useMutation)  │  │  └────────────────────┘  │
 │  └─────────────────────────────┘  │                          │
 └───────────────────────────────────┴──────────────────────────┘
@@ -49,7 +49,7 @@ CodeLobby uses a **simplified 3-layer architecture**:
 ### Key Principles
 
 1. **GitHub API calls are direct** — fetch() from renderer, no IPC
-2. **Claude Code CLI uses IPC** — Agent SDK streaming requires main process
+2. **Claude Code CLI uses IPC** — the main process spawns the CLI subprocess and relays its stdout stream
 3. **TanStack Query manages all state** — Caching, loading states, persistence
 4. **Network tracking via fetch interception** — Global fetch wrapper
 
@@ -161,15 +161,15 @@ function transformPR(node: GraphQLPR): PullRequest {
 
 Claude AI requires the main process because:
 1. **Streaming** — Real-time event streaming requires proper handling
-2. **API Key security** — Keys stored via environment variable or electron-store
-3. **Agent SDK usage** — Claude Agent SDK runs in Node.js
+2. **Subprocess management** — Only the main process can `spawn` the `claude` CLI
+3. **Auth** — The CLI uses its own OAuth login (Claude Pro/Max); there is no Anthropic API key and nothing is stored
 
 ### Architecture
 
 ```
-Component → IPC → Main Process → Agent SDK → Claude Code CLI
-    ↑                                              │
-    └──────────── streaming events ←───────────────┘
+Component → IPC → Main Process → spawn → claude CLI (subprocess)
+    ↑                                            │
+    └────────── claude:chunk events (IPC) ←──────┘
 ```
 
 ### Example: Sending Chat Message
@@ -179,16 +179,16 @@ Component → IPC → Main Process → Agent SDK → Claude Code CLI
 const sendMessage = useSendPRMessage()
 sendMessage.mutate({ content: "Review this PR" })
 
-// 2. Mutation hook starts a Claude session
+// 2. Mutation hook starts a Claude CLI session via IPC
 export function useSendPRMessage() {
   return useMutation({
     mutationFn: async ({ content }) => {
-      // Start Claude Code session via IPC
-      await window.electron.startClaudeSession({
+      // Start the Claude CLI session in the main process
+      await window.electron.startClaudeCliSession({
         sessionId,
         prompt: content,
         systemPrompt,
-        model,
+        model,          // default 'sonnet'
         githubToken
       })
     }
@@ -196,26 +196,36 @@ export function useSendPRMessage() {
 }
 
 // 3. Preload exposes IPC
-startClaudeSession: (config) =>
-  ipcRenderer.invoke('start-claude-session', config)
+startClaudeCliSession: (config) =>
+  ipcRenderer.invoke('claude:start', config)
 
 // 4. Main process handler (index.ts)
-ipcMain.handle('start-claude-session', async (_, config) => {
-  await startClaudeSession(config, (event) => {
-    mainWindow?.webContents.send('claude-chunk', { sessionId, event })
+ipcMain.handle('claude:start', async (_, config) => {
+  await startClaudeCliSession(config, (event) => {
+    // Relay each parsed stdout event to the renderer
+    mainWindow?.webContents.send('claude:chunk', { sessionId, event })
   })
 })
 
-// 5. Claude Code Relay (claude-code-relay.ts)
-export async function startClaudeSession(
+// 5. Claude CLI runner (claude-cli.ts)
+export async function startClaudeCliSession(
   config: ClaudeConfig,
   onEvent: (event: StreamEvent) => void
 ) {
-  const claude = new ClaudeAgent({ model, apiKey, systemPrompt })
-  
-  // Claude Agent SDK handles the agentic loop
-  for await (const event of claude.stream(prompt)) {
-    onEvent(event)  // Relay: text, thinking, tool_use, tool_result, etc.
+  // System prompt is written to a temp file; the user prompt is piped via
+  // stdin (never passed as CLI args). Auth is the CLI's own OAuth login.
+  const child = spawn('/bin/sh', [
+    '-c',
+    `claude -p --output-format stream-json --model ${config.model} ...`
+  ])
+
+  child.stdin.write(config.prompt)
+  child.stdin.end()
+
+  // Stdout is line-delimited JSON — parse each line and relay it as
+  // claude:chunk / claude:done / claude:error / claude:review
+  for await (const line of readLines(child.stdout)) {
+    onEvent(JSON.parse(line))
   }
 }
 ```
@@ -498,12 +508,12 @@ try {
 |-----------|--------|--------|-------------|
 | GitHub repos/PRs | GitHub GraphQL | Direct fetch | Persisted |
 | Settings | Local | TanStack cache | Persisted |
-| AI chat | Claude Code CLI | IPC + Agent SDK streaming | Persisted |
+| AI chat | Claude Code CLI | IPC + spawned CLI subprocess (stdout stream) | Persisted |
 | Network requests | Fetch interceptor | TanStack cache | Not persisted |
 | System state | Electron | IPC | Not persisted |
 
-**Key takeaway:** TanStack Query handles everything — fetching, caching, loading states, and persistence. GitHub calls are direct from renderer, Claude Code CLI uses IPC for streaming via the Agent SDK.
+**Key takeaway:** TanStack Query handles everything — fetching, caching, loading states, and persistence. GitHub calls are direct from renderer; the Claude Code CLI runs as a subprocess spawned by the main process, which relays its stdout stream back to the renderer over IPC.
 
 ---
 
-*Last updated: January 31, 2026*
+*Last updated: July 9, 2026*

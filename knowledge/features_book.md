@@ -584,9 +584,11 @@ This means you see:
 **Useful For:**
 - Debugging API issues (see exact request/response)
 - Understanding rate limit usage
-- Monitoring Claude API calls
+- Monitoring GitHub GraphQL/REST traffic
 - Troubleshooting GitHub API errors
 - Verifying GraphQL query structure
+
+> **Note:** AI runs as a Claude Code CLI subprocess over IPC, so AI calls do **not** appear here — the panel only captures GitHub `fetch()` traffic.
 
 The panel can be resized vertically when both AI and Network panels are open. Drag the resize handle between panels to adjust the split.
 
@@ -640,11 +642,11 @@ Close the app Friday, open it Monday — everything is exactly where you left it
 
 **Sign Out** — Clean slate:
 - Clears all user data and cache
-- Preserves your Claude API key and settings
+- Preserves your settings
 - Log back in to start fresh
 
 **Factory Reset** — Complete wipe:
-- Erases **ALL** data (including API keys and settings)
+- Erases **ALL** data (including tokens and settings)
 - Returns app to fresh install state
 - Found in About dialog → "Factory Reset" button
 - Two-step confirmation prevents accidents
@@ -654,7 +656,6 @@ Close the app Friday, open it Monday — everything is exactly where you left it
 |-------------------|----------|---------------|
 | GitHub Token | ✅ | ✅ |
 | Cache & History | ✅ | ✅ |
-| Claude API Key | ❌ | ✅ |
 | Settings | ❌ | ✅ |
 
 ---
@@ -664,7 +665,7 @@ Close the app Friday, open it Monday — everything is exactly where you left it
 ### Your Data Stays Yours
 
 - **Local Storage** — All data stored on your machine
-- **Encrypted Tokens** — API keys are encrypted at rest
+- **Encrypted Tokens** — Your GitHub Personal Access Token is encrypted at rest
 - **No Telemetry** — We don't track you
 - **Open Architecture** — See exactly what data is stored
 
@@ -685,7 +686,7 @@ CodeLobby includes a full logging system for debugging and understanding app beh
 
 **What Gets Logged:**
 - API calls (IPC) with timing and response summaries
-- HTTP requests to external services (GitHub, Claude)
+- HTTP requests to external services (GitHub)
 - Store operations (read/write) with performance metrics
 - User interactions and navigation events
 
@@ -702,7 +703,7 @@ CodeLobby includes a full logging system for debugging and understanding app beh
 |----------|----------------|
 | App | General application events |
 | API | IPC calls between renderer and main process |
-| HTTP | External HTTP requests (GitHub API, Claude API) |
+| HTTP | External HTTP requests (GitHub API) |
 | GraphQL | GitHub GraphQL queries |
 | Store | Local storage read/write operations |
 | Cache | TanStack Query cache persistence |
@@ -728,49 +729,25 @@ Never wonder why data isn't loading.
 
 ---
 
-## 💰 AI Cost Tracking
+## 📊 AI Usage (Subscription)
 
-Keep track of your Claude API usage and costs in real-time:
+CodeLobby's AI runs on the **Claude Code CLI**, so usage is covered by your **Claude Pro/Max subscription** — there's no metered per-token API cost and no bill to track.
 
 **What You See:**
-- **Cost in Euros** — Live display in the header (next to rate limit)
-- **Token Usage** — Input and output tokens tracked separately
-- **Session Tracking** — See when tracking started and last usage
+The AI indicator in the header shows:
+- **CLI Status** — Whether the Claude Code CLI is installed and logged in
+- **Subscription Usage** — Usage stats read from `~/.claude/stats-cache.json`
 
 **How It Works:**
-- Every AI request (chat, PR analysis, CI analysis) is tracked
-- Costs are calculated based on Anthropic's official pricing
-- USD costs are converted to EUR (approximate rate)
+- The Electron main process spawns the `claude` CLI as a subprocess for every AI request (chat, PR analysis, CI analysis)
+- The CLI authenticates with your existing Claude login (OAuth) — there is **no Anthropic API key**
+- Usage is billed through your flat subscription, not per token — so there's no EUR/USD cost display
 
-**Detailed View:**
-Click the cost indicator to see the full breakdown:
+**Prerequisite:**
+- Install the CLI: `npm install -g @anthropic-ai/claude-code`
+- Log in once with your Claude Pro/Max account
 
-| Metric | Description |
-|--------|-------------|
-| **Total Cost** | Running cost in EUR and USD |
-| **Input Tokens** | Tokens sent to Claude |
-| **Output Tokens** | Tokens received from Claude |
-| **Session Start** | When tracking began |
-| **Last Update** | Most recent AI usage |
-
-**Visual Indicators:**
-- **Normal** — Subtle display when costs are low
-- **Medium** — Slightly highlighted when costs reach €0.10+
-- **High** — Warning style when costs reach €1.00+
-
-**Reset Tracking:**
-- Click the reset button in the popover
-- Starts fresh tracking from current timestamp
-- Useful for tracking costs per work session
-
-**Supported Models:**
-- Claude Opus 4
-- Claude Sonnet 4
-- Claude 3.7 Sonnet
-- Claude 3.5 Sonnet / Haiku
-- Claude 3 Opus / Sonnet / Haiku
-
-All tracking happens locally — no data leaves your machine.
+Everything runs locally through the CLI — no API keys to manage.
 
 ---
 
@@ -852,7 +829,7 @@ We're actively building:
 | **Responsive Testing** | Test at mobile/desktop widths |
 | **Console Monitor** | See page logs/warnings/errors |
 | **Network Panel** | Debug HTTP requests in real-time |
-| **AI Cost Tracking** | Monitor Claude API costs in real-time |
+| **AI Usage (Subscription)** | CLI status & subscription usage stats |
 | **Deep AI Review** | Full codebase AI analysis (coming soon) |
 | **Persistent State** | Pick up where you left off |
 | **Activity Logs** | Full debugging capability |

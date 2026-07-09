@@ -1,5 +1,7 @@
 # Claude Code CLI Integration Plan
 
+> **Status (July 9, 2026):** ✅ Implemented — but the shipped architecture is the **Claude Code CLI spawned as a subprocess** (`src/main/claude-cli.ts`), authenticated by the user's Claude Pro/Max OAuth (no API key). Where this original plan references the Claude REST SDK (`@anthropic-ai/sdk`), an Agent-SDK relay, or `claude-code-relay.ts`, that reflects earlier thinking, not the final implementation. See knowledge/claude-cli-stream-json.md.
+
 > Replace Claude SDK with Claude Code CLI for more powerful AI capabilities with zero context management overhead.
 
 ---
@@ -42,7 +44,7 @@
 
 ### Current State
 
-CodeLobby uses the **Claude SDK** (`@anthropic-ai/sdk`) to communicate with Claude API. This requires:
+CodeLobby shells out to the installed **Claude Code CLI** (`claude`), authenticated by the user's Claude Pro/Max OAuth login (no Anthropic API key). This plan originally set out to replace the **Claude REST SDK** (`@anthropic-ai/sdk`), which required:
 - Manual context management
 - Token counting and compression
 - Building prompts manually
@@ -426,8 +428,8 @@ Use `--continue` flag for multi-turn conversations within same session.
 
 ```
 ~/.codelobby/repos/
-├── parcellab-api/           # Cached clone
-├── parcellab-frontend/      # Cached clone
+├── example-api/             # Cached clone
+├── example-frontend/        # Cached clone
 └── ...
 ```
 
