@@ -947,29 +947,6 @@ When reporting bugs, please include:
 - [GitHub GraphQL API](https://docs.github.com/en/graphql) - Data source
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) - AI assistant integration
 
----
-
-## Contributors
-
-<a href="https://github.com/souhaibparcellab/code-lobby/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=souhaibparcellab/code-lobby" />
-</a>
-
-<!-- readme: contributors -start -->
-<table>
-	<tbody>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/souhaibparcellab">
-                    <img src="https://avatars.githubusercontent.com/u/196962925?v=4" width="64;" alt="souhaibparcellab"/>
-                    <br />
-                    <sub><b>souhaibparcellab</b></sub>
-                </a>
-            </td>
-		</tr>
-	<tbody>
-</table>
-<!-- readme: contributors -end -->
 
 ---
 
