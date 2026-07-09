@@ -98,7 +98,10 @@ export function RepoSelector(): React.JSX.Element {
           <ChevronDown className="w-3 h-3 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="end">
+      <PopoverContent
+        className="w-[320px] p-0 overflow-hidden bg-surface-raised border-border shadow-elevation-high"
+        align="end"
+      >
         <div className="flex items-center justify-between h-10 px-3 py-2 section-header">
           <div className="flex items-center gap-2">
             <FolderGit2 className="w-4 h-4 text-primary flex-shrink-0" />
@@ -135,7 +138,7 @@ export function RepoSelector(): React.JSX.Element {
           </div>
         </div>
 
-        <ScrollArea className="h-[300px]">
+        <ScrollArea className="h-[300px] bg-background shadow-[inset_0_2px_5px_-2px_rgba(0,0,0,0.12)] dark:shadow-[inset_0_2px_6px_-1px_rgba(0,0,0,0.45)]">
           <div className="p-2">
             {filteredRepos.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
