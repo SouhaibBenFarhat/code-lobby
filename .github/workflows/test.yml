@@ -9,32 +9,68 @@ on:
       - main
 
 jobs:
-  test:
+  # Lint + typecheck run in parallel with the test shards (off the critical path).
+  lint-typecheck:
+    name: Lint & Typecheck
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Run linter
         run: pnpm run lint
-
       - name: Run type check
         run: pnpm run typecheck
 
-      - name: Run tests
-        run: pnpm run test
+  # Tests are sharded across parallel runners. Wall-clock ≈ slowest shard,
+  # not the whole suite. (Free on public repos; costs more runner-minutes.)
+  unit:
+    name: Unit (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests (shard ${{ matrix.shard }}/3)
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3
+
+  # Aggregate gate — THIS is the required status check on `main`. Keeping the
+  # name `test` means branch protection needs no change. It passes only if
+  # lint/typecheck AND every test shard passed.
+  test:
+    name: test
+    needs: [lint-typecheck, unit]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all upstream jobs passed
+        run: |
+          if [ "${{ needs.lint-typecheck.result }}" != "success" ] || [ "${{ needs.unit.result }}" != "success" ]; then
+            echo "::error::A required job failed (lint-typecheck=${{ needs.lint-typecheck.result }}, unit=${{ needs.unit.result }})"
+            exit 1
+          fi
+          echo "All checks passed ✅"
