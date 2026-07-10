@@ -69,7 +69,7 @@ CodeLobby is built on one premise — **the Pull Request is the atomic unit of s
 
 ## Features
 
-**Authentication** — GitHub Personal Access Token (`repo` scope), stored locally via TanStack Query persistence; one-click token-creation link.
+**Authentication** — **Sign in with GitHub** (OAuth device flow — no token to create, no scopes to pick), with a Personal Access Token (`repo` scope) available as an Advanced fallback. The resulting token is stored locally via TanStack Query persistence.
 
 **Dashboard** — two views, switchable anytime:
 - **Canvas** — free-form draggable/resizable repo cards on a 50px grid; infinite canvas; lock, auto-grid, and fill-equal layout tools; layout persists.
@@ -124,9 +124,11 @@ pnpm run dev
 
 ## Getting Started
 
-1. **Create a GitHub token** — click **"Create Token on GitHub"** on the login screen (or go to [Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)), generate a **classic** token with the `repo` scope, and copy it (starts with `ghp_`).
-2. **Sign in** — paste the token, click **"Connect to GitHub"**, wait for validation.
+1. **Sign in** — click **"Sign in with GitHub"** on the login screen. Your browser opens to GitHub with the code pre-filled; click **Authorize** and you're in — no token to create, no scopes to choose.
+2. **(Advanced) Personal Access Token** — prefer a token, or does your org restrict OAuth apps? Expand **"Use a Personal Access Token instead"**, generate a **classic** token with the `repo` scope (there's a pre-filled link), and paste it (starts with `ghp_`).
 3. **Explore** — your repos with open PRs appear as cards; click a PR for details, drag cards to arrange, use the toolbar to auto-arrange or lock the layout.
+
+> **GitHub sign-in** ships with a public OAuth App **Client ID**, so it works out of the box. To point at your own OAuth App, register one at [Settings → Developer settings](https://github.com/settings/developers), tick **Enable Device Flow**, and set `GITHUB_CLIENT_ID` to override the default. (OAuth App client IDs are public — no client secret is ever required or shipped.)
 
 ---
 

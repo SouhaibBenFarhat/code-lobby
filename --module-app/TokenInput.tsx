@@ -1,9 +1,14 @@
 /**
- * TokenInput - GitHub authentication form with beautiful UI.
- * Uses @codelobby/data for authentication.
+ * TokenInput - GitHub authentication screen.
+ *
+ * Primary path: "Sign in with GitHub" via the OAuth device flow (no token
+ * copy-paste, no scope picking — the app requests the scopes for you). Falls
+ * back to a Personal Access Token under an "Advanced" toggle for power users and
+ * SSO-restricted orgs. Both paths end at the same auth cache (useSignIn / the
+ * device-flow hook write keys.githubToken + keys.user identically).
  */
 
-import { useSignIn } from '@data'
+import { useGitHubDeviceAuth, useSignIn } from '@data'
 import {
   Button,
   Card,
@@ -14,22 +19,26 @@ import {
   CodeLobbyLogo,
   Input
 } from '@ui-kit'
-import { ChevronDown, ChevronUp, ExternalLink, Key, Loader2, Shield } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink, Github, Key, Loader2, Shield } from 'lucide-react'
 import React, { useState } from 'react'
 
 const GITHUB_TOKEN_URL =
   'https://github.com/settings/tokens/new?scopes=repo,read:org,read:user&description=CodeLobby%20App'
 
 export function TokenInput(): React.JSX.Element {
+  const auth = useGitHubDeviceAuth()
   const [token, setToken] = useState('')
-  const [showInstructions, setShowInstructions] = useState(false)
+  const [showPAT, setShowPAT] = useState(false)
   const signIn = useSignIn()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePATSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!token.trim()) return
     signIn.mutate(token.trim())
   }
+
+  const isWaiting = auth.status === 'awaiting' || auth.status === 'authorizing'
+  const isStarting = auth.status === 'starting'
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
@@ -52,147 +61,145 @@ export function TokenInput(): React.JSX.Element {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="token" className="text-sm font-medium flex items-center gap-2">
-                <Key className="w-4 h-4 text-muted-foreground" />
-                Personal Access Token
-              </label>
-              <Input
-                id="token"
-                type="password"
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="font-mono text-sm bg-background"
-                disabled={signIn.isPending}
-              />
-              {signIn.isError && (
-                <p className="text-sm text-destructive">
-                  {signIn.error?.message || 'Invalid token. Please try again.'}
-                </p>
-              )}
+          {isWaiting ? (
+            /* ---- Device flow: waiting for the user to authorize in the browser ---- */
+            <div className="space-y-4 text-center animate-slideUp">
+              <p className="text-sm text-muted-foreground">
+                We opened GitHub in your browser. Enter this code to authorize:
+              </p>
+              <div className="text-3xl font-mono font-bold tracking-[0.3em] bg-background border border-border rounded-lg py-4 select-all">
+                {auth.userCode ?? '········'}
+              </div>
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Waiting for authorization…</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-9 text-sm"
+                  disabled={!auth.verificationUri}
+                  onClick={() => {
+                    if (auth.verificationUri) window.open(auth.verificationUri, '_blank')
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open GitHub
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 h-9 text-sm"
+                  onClick={auth.cancel}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
+          ) : (
+            /* ---- Default: Sign in with GitHub, with PAT fallback ---- */
+            <>
+              <Button
+                type="button"
+                className="w-full h-11 font-medium"
+                onClick={auth.start}
+                disabled={isStarting}
+              >
+                {isStarting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Starting…
+                  </>
+                ) : (
+                  <>
+                    <Github className="w-4 h-4 mr-2" />
+                    Sign in with GitHub
+                  </>
+                )}
+              </Button>
 
-            <Button
-              type="submit"
-              className="w-full h-11 font-medium"
-              disabled={signIn.isPending || !token.trim()}
-            >
-              {signIn.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Connect to GitHub
-                </>
+              {auth.status === 'error' && auth.error && (
+                <p className="text-sm text-destructive text-center">{auth.error}</p>
               )}
-            </Button>
-          </form>
 
-          <div className="border-t border-border pt-4 space-y-3">
-            {/* Quick action button */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-9 text-sm"
-              onClick={() => window.open(GITHUB_TOKEN_URL, '_blank')}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Create Token on GitHub
-            </Button>
+              {/* Advanced: Personal Access Token fallback */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <Button
+                  type="button"
+                  variant="unstyled"
+                  size="none"
+                  onClick={() => setShowPAT(!showPAT)}
+                  className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  <span className="font-medium flex items-center gap-2">
+                    <Key className="w-3.5 h-3.5" />
+                    Use a Personal Access Token instead
+                  </span>
+                  {showPAT ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </Button>
 
-            {/* Collapsible instructions */}
-            <Button
-              variant="unstyled"
-              size="none"
-              onClick={() => setShowInstructions(!showInstructions)}
-              className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
-            >
-              <span className="font-medium">How to get a Personal Access Token?</span>
-              {showInstructions ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
-            </Button>
+                {showPAT && (
+                  <div className="space-y-4 animate-slideUp">
+                    <form onSubmit={handlePATSubmit} className="space-y-3">
+                      <Input
+                        id="token"
+                        type="password"
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                        value={token}
+                        onChange={(e) => setToken(e.target.value)}
+                        className="font-mono text-sm bg-background"
+                        disabled={signIn.isPending}
+                      />
+                      {signIn.isError && (
+                        <p className="text-sm text-destructive">
+                          {signIn.error?.message || 'Invalid token. Please try again.'}
+                        </p>
+                      )}
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="w-full h-10 font-medium"
+                        disabled={signIn.isPending || !token.trim()}
+                      >
+                        {signIn.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Connecting…
+                          </>
+                        ) : (
+                          <>
+                            <Shield className="w-4 h-4 mr-2" />
+                            Connect with Token
+                          </>
+                        )}
+                      </Button>
+                    </form>
 
-            {showInstructions && (
-              <div className="text-xs text-muted-foreground space-y-3 bg-surface rounded-lg p-3 animate-slideUp">
-                <p className="font-medium text-foreground">Step-by-step guide:</p>
-                <ol className="space-y-2 list-decimal list-inside">
-                  <li>
-                    Go to{' '}
                     <Button
+                      type="button"
                       variant="unstyled"
                       size="none"
-                      onClick={() => window.open('https://github.com/settings/tokens', '_blank')}
-                      className="text-primary hover:underline inline"
+                      className="w-full flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
+                      onClick={() => window.open(GITHUB_TOKEN_URL, '_blank')}
                     >
-                      GitHub Settings → Developer settings → Personal access tokens
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Create a token (scopes pre-filled)
                     </Button>
-                  </li>
-                  <li>
-                    Click <strong>"Generate new token"</strong> →{' '}
-                    <strong>"Generate new token (classic)"</strong>
-                  </li>
-                  <li>Give it a name (e.g., "CodeLobby App")</li>
-                  <li>
-                    Select these scopes:
-                    <ul className="mt-1.5 ml-4 space-y-1">
-                      <li>
-                        <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">repo</code>
-                        <span className="text-muted-foreground ml-1.5">
-                          — access to repositories
-                        </span>
-                      </li>
-                      <li>
-                        <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">
-                          read:org
-                        </code>
-                        <span className="text-muted-foreground ml-1.5">
-                          — access to organization repos
-                        </span>
-                      </li>
-                      <li>
-                        <code className="bg-surface px-1.5 py-0.5 rounded text-[10px]">
-                          read:user
-                        </code>
-                        <span className="text-muted-foreground ml-1.5">
-                          — view contribution history
-                        </span>
-                      </li>
-                    </ul>
-                  </li>
-                  <li>
-                    Click <strong>"Generate token"</strong>
-                  </li>
-                  <li>
-                    Copy the token (starts with{' '}
-                    <code className="bg-surface px-1 py-0.5 rounded text-[10px]">ghp_</code>) and
-                    paste it above
-                  </li>
-                </ol>
 
-                <div className="border-t border-border pt-3 mt-3 space-y-2">
-                  <p className="flex items-start gap-2">
-                    <span className="text-primary">💡</span>
-                    <span>
-                      Or click the button above - it will pre-fill the token name and scopes for
-                      you!
-                    </span>
-                  </p>
-                  <p className="flex items-start gap-2">
-                    <span className="text-success">🔒</span>
-                    <span>Your token is stored locally on your machine only.</span>
-                  </p>
-                </div>
+                    <p className="text-xs text-muted-foreground flex items-start gap-2">
+                      <span className="text-success">🔒</span>
+                      <span>Your token is stored locally on your machine only.</span>
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

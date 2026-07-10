@@ -15,6 +15,28 @@ const electronAPI: ElectronAPI = {
   factoryReset: () => ipcRenderer.invoke('factory-reset'),
   clearWebviewData: () => ipcRenderer.invoke('clear-webview-data'),
 
+  // GitHub OAuth (device flow sign-in)
+  startGitHubAuth: () => ipcRenderer.invoke('github-auth:start'),
+  cancelGitHubAuth: () => ipcRenderer.invoke('github-auth:cancel'),
+  onGitHubAuthDone: (callback: (data: { token: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { token: string }) => {
+      callback(data)
+    }
+    ipcRenderer.on('github-auth:done', handler)
+    return () => {
+      ipcRenderer.removeListener('github-auth:done', handler)
+    }
+  },
+  onGitHubAuthError: (callback: (data: { error: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { error: string }) => {
+      callback(data)
+    }
+    ipcRenderer.on('github-auth:error', handler)
+    return () => {
+      ipcRenderer.removeListener('github-auth:error', handler)
+    }
+  },
+
   // TanStack Query cache persistence
   getQueryCache: () => ipcRenderer.invoke('get-query-cache'),
   setQueryCache: (cache: string) => ipcRenderer.invoke('set-query-cache', cache),

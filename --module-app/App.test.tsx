@@ -74,12 +74,11 @@ describe('App', () => {
       })
     })
 
-    it('should show token input field', async () => {
+    it('should show the Sign in with GitHub button', async () => {
       render(<App />)
 
       await waitFor(() => {
-        const input = screen.getByPlaceholderText(/ghp_/i) || screen.getByRole('textbox')
-        expect(input).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /sign in with github/i })).toBeInTheDocument()
       })
     })
 

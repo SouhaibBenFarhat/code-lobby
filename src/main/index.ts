@@ -53,6 +53,7 @@ import {
 } from './claude-cli'
 import { setCachedClaudePath } from './claude-cli-path'
 import { fetchCliUsageStats } from './claude-cli-usage'
+import { cancelGitHubDeviceAuth, startGitHubDeviceAuth } from './github-auth'
 import {
   buildCIFailureAnalysisPrompt,
   buildJiraTicketPrompt,
@@ -238,6 +239,23 @@ function createWindow(): void {
 // IPC Handlers - Only AI and native features
 function setupIPCHandlers(): void {
   logger.info(LogCategory.APP, 'Setting up IPC handlers (AI + native features only)')
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GITHUB AUTH (OAuth Device Flow)
+  // github.com/login/* endpoints have no CORS, so the flow runs in main.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  ipcMain.handle('github-auth:start', async () => {
+    if (!mainWindow) {
+      return { success: false, error: 'Main window not available' }
+    }
+    return startGitHubDeviceAuth(mainWindow)
+  })
+
+  ipcMain.handle('github-auth:cancel', () => {
+    cancelGitHubDeviceAuth()
+    return { success: true }
+  })
 
   // ═══════════════════════════════════════════════════════════════════════════
   // WINDOW & NATIVE FEATURES
