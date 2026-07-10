@@ -9,9 +9,49 @@ on:
       - main
 
 jobs:
+  # Detect whether this change actually touches app code / build/test config.
+  # Docs-, site-, and unrelated-workflow-only changes skip the expensive jobs
+  # below — but the `test` gate still runs and passes, so the required status
+  # check is always reported (a plain `paths:` filter would leave it "pending"
+  # forever and block the PR).
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Filter changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # If ANY of these match, run the full lint/typecheck/test/coverage suite.
+          filters: |
+            code:
+              - 'src/**'
+              - '--module-*/**'
+              - 'tests/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig*.json'
+              - 'biome.json'
+              - 'vitest.config.ts'
+              - 'electron.vite.config.ts'
+              - 'drizzle.config.ts'
+              - 'drizzle/**'
+              - 'tailwind.config.js'
+              - 'postcss.config.js'
+              - '.github/workflows/test.yml'
+
   # Lint + typecheck run in parallel with the test shards (off the critical path).
   lint-typecheck:
     name: Lint & Typecheck
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -37,6 +77,8 @@ jobs:
   # so the suite runs ONCE, not again for coverage.
   unit:
     name: Unit (shard ${{ matrix.shard }}/3)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -70,7 +112,8 @@ jobs:
   # and fail if <90% of the lines CHANGED in this PR are covered (diff-cover).
   coverage:
     name: Coverage (merge + 90% patch gate)
-    needs: [unit]
+    needs: [changes, unit]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -124,18 +167,28 @@ jobs:
             --fail-under=90 | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Aggregate gate — THIS is the required status check on `main`. Keeping the
-  # name `test` means branch protection needs no change. It passes only if
-  # lint/typecheck, every test shard, AND the patch-coverage gate passed.
+  # name `test` means branch protection needs no change. It ALWAYS runs (so the
+  # required check is always reported) and passes when the code jobs succeeded
+  # OR were skipped (a non-code change); it fails only if one actually failed.
   test:
     name: test
-    needs: [lint-typecheck, unit, coverage]
+    needs: [changes, lint-typecheck, unit, coverage]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Verify all upstream jobs passed
+      - name: Verify no required job failed
         run: |
-          if [ "${{ needs.lint-typecheck.result }}" != "success" ] || [ "${{ needs.unit.result }}" != "success" ] || [ "${{ needs.coverage.result }}" != "success" ]; then
-            echo "::error::A required job failed (lint-typecheck=${{ needs.lint-typecheck.result }}, unit=${{ needs.unit.result }}, coverage=${{ needs.coverage.result }})"
-            exit 1
-          fi
-          echo "All checks passed ✅"
+          for entry in \
+            "changes=${{ needs.changes.result }}" \
+            "lint-typecheck=${{ needs.lint-typecheck.result }}" \
+            "unit=${{ needs.unit.result }}" \
+            "coverage=${{ needs.coverage.result }}"; do
+            name="${entry%%=*}"
+            result="${entry##*=}"
+            # success and skipped are both OK; skipped means no code changed.
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              echo "::error::Required job '$name' $result"
+              exit 1
+            fi
+          done
+          echo "All required checks passed (code jobs run on code changes, skipped otherwise) ✅"
