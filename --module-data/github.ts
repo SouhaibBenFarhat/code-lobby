@@ -147,27 +147,29 @@ export async function fetchRateLimit(token: string): Promise<RateLimitResult> {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function fetchRepos(token: string): Promise<Repository[]> {
-  // Fetch all repos from organizations the user belongs to
+  // Fetch every repo the viewer can access: their own (OWNER), repos they
+  // collaborate on (COLLABORATOR), and repos from orgs they belong to
+  // (ORGANIZATION_MEMBER). A single flat list — the previous org-only query
+  // missed personal repos entirely.
   const query = `
     query {
       viewer {
         login
-        organizations(first: 100) {
+        repositories(
+          first: 100
+          affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
+          orderBy: { field: UPDATED_AT, direction: DESC }
+        ) {
           nodes {
-            login
-            repositories(first: 100, orderBy: { field: UPDATED_AT, direction: DESC }) {
-              nodes {
-                id
-                name
-                nameWithOwner
-                url
-                description
-                owner { login avatarUrl }
-                stargazerCount
-                primaryLanguage { name }
-                updatedAt
-              }
-            }
+            id
+            name
+            nameWithOwner
+            url
+            description
+            owner { login avatarUrl }
+            stargazerCount
+            primaryLanguage { name }
+            updatedAt
           }
         }
       }
@@ -177,31 +179,25 @@ export async function fetchRepos(token: string): Promise<Repository[]> {
   const data = await graphql<{
     viewer: {
       login: string
-      organizations: {
+      repositories: {
         nodes: Array<{
-          login: string
-          repositories: {
-            nodes: Array<{
-              id: string
-              name: string
-              nameWithOwner: string
-              url: string
-              description: string | null
-              owner: { login: string; avatarUrl: string }
-              stargazerCount: number
-              primaryLanguage: { name: string } | null
-              updatedAt: string
-            }>
-          }
+          id: string
+          name: string
+          nameWithOwner: string
+          url: string
+          description: string | null
+          owner: { login: string; avatarUrl: string }
+          stargazerCount: number
+          primaryLanguage: { name: string } | null
+          updatedAt: string
         }>
       }
     }
   }>(token, query)
 
-  // Flatten all org repos into a single array
-  const allRepos = data.viewer.organizations.nodes.flatMap((org) => org.repositories.nodes)
+  const nodes = data.viewer.repositories.nodes ?? []
 
-  return allRepos.map((r) => ({
+  return nodes.map((r) => ({
     id: r.id,
     name: r.name,
     full_name: r.nameWithOwner,

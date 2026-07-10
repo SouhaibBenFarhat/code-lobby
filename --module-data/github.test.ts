@@ -149,31 +149,24 @@ describe('GitHub API', () => {
   })
 
   describe('fetchRepos', () => {
-    it('fetches and transforms organization repos', async () => {
+    it('fetches and transforms the viewer repositories', async () => {
       mockFetch.mockResolvedValueOnce(
         mockResponse({
           data: {
             viewer: {
               login: 'testuser',
-              organizations: {
+              repositories: {
                 nodes: [
                   {
-                    login: 'myorg',
-                    repositories: {
-                      nodes: [
-                        {
-                          id: 'R_123',
-                          name: 'repo1',
-                          nameWithOwner: 'myorg/repo1',
-                          url: 'https://github.com/myorg/repo1',
-                          description: 'Test repo',
-                          owner: { login: 'myorg', avatarUrl: 'https://github.com/myorg.png' },
-                          stargazerCount: 100,
-                          primaryLanguage: { name: 'TypeScript' },
-                          updatedAt: '2024-01-01T00:00:00Z'
-                        }
-                      ]
-                    }
+                    id: 'R_123',
+                    name: 'repo1',
+                    nameWithOwner: 'myorg/repo1',
+                    url: 'https://github.com/myorg/repo1',
+                    description: 'Test repo',
+                    owner: { login: 'myorg', avatarUrl: 'https://github.com/myorg.png' },
+                    stargazerCount: 100,
+                    primaryLanguage: { name: 'TypeScript' },
+                    updatedAt: '2024-01-01T00:00:00Z'
                   }
                 ]
               }
@@ -198,49 +191,35 @@ describe('GitHub API', () => {
       })
     })
 
-    it('flattens repos from multiple orgs', async () => {
+    it('returns all affiliated repos (personal + org)', async () => {
       mockFetch.mockResolvedValueOnce(
         mockResponse({
           data: {
             viewer: {
               login: 'testuser',
-              organizations: {
+              repositories: {
                 nodes: [
                   {
-                    login: 'org1',
-                    repositories: {
-                      nodes: [
-                        {
-                          id: 'R_1',
-                          name: 'repo1',
-                          nameWithOwner: 'org1/repo1',
-                          url: '',
-                          description: null,
-                          owner: { login: 'org1', avatarUrl: '' },
-                          stargazerCount: 0,
-                          primaryLanguage: null,
-                          updatedAt: ''
-                        }
-                      ]
-                    }
+                    id: 'R_1',
+                    name: 'personal',
+                    nameWithOwner: 'testuser/personal',
+                    url: '',
+                    description: null,
+                    owner: { login: 'testuser', avatarUrl: '' },
+                    stargazerCount: 0,
+                    primaryLanguage: null,
+                    updatedAt: ''
                   },
                   {
-                    login: 'org2',
-                    repositories: {
-                      nodes: [
-                        {
-                          id: 'R_2',
-                          name: 'repo2',
-                          nameWithOwner: 'org2/repo2',
-                          url: '',
-                          description: null,
-                          owner: { login: 'org2', avatarUrl: '' },
-                          stargazerCount: 0,
-                          primaryLanguage: null,
-                          updatedAt: ''
-                        }
-                      ]
-                    }
+                    id: 'R_2',
+                    name: 'repo2',
+                    nameWithOwner: 'org2/repo2',
+                    url: '',
+                    description: null,
+                    owner: { login: 'org2', avatarUrl: '' },
+                    stargazerCount: 0,
+                    primaryLanguage: null,
+                    updatedAt: ''
                   }
                 ]
               }
@@ -252,8 +231,18 @@ describe('GitHub API', () => {
       const result = await fetchRepos('token')
 
       expect(result).toHaveLength(2)
-      expect(result[0].full_name).toBe('org1/repo1')
+      expect(result[0].full_name).toBe('testuser/personal')
       expect(result[1].full_name).toBe('org2/repo2')
+    })
+
+    it('handles an empty repository list', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({ data: { viewer: { login: 'testuser', repositories: { nodes: [] } } } })
+      )
+
+      const result = await fetchRepos('token')
+
+      expect(result).toEqual([])
     })
   })
 
