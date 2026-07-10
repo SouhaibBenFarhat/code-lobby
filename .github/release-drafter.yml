@@ -1,0 +1,54 @@
+# Release Drafter config — PR-based changelog driven by Conventional Commit PR titles.
+# The autolabeler applies labels from the PR title; categories group by those labels;
+# version-resolver computes the next semver bump from them.
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+# One changelog line per merged PR: title, PR number, author.
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+change-title-escapes: '\<*_&'
+
+categories:
+  - title: '🚀 Features'
+    labels: [feature]
+  - title: '🐛 Fixes'
+    labels: [fix]
+  - title: '🧹 Maintenance'
+    labels: [maintenance]
+
+# feat → minor, fix/chore/etc → patch, anything breaking (`!` or BREAKING CHANGE) → major.
+version-resolver:
+  major:
+    labels: [breaking]
+  minor:
+    labels: [feature]
+  patch:
+    labels: [fix, maintenance]
+  default: patch
+
+# Apply labels automatically from the (already Conventional-Commit-enforced) PR title.
+autolabeler:
+  - label: feature
+    title: '/^feat(\(.+\))?!?:/i'
+  - label: fix
+    title: '/^fix(\(.+\))?!?:/i'
+  - label: maintenance
+    title: '/^(chore|ci|build|docs|refactor|perf|test|style|revert)(\(.+\))?!?:/i'
+  - label: breaking
+    title: '/^[a-z]+(\(.+\))?!:/i'
+  - label: breaking
+    body: '/BREAKING CHANGE/'
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/SouhaibBenFarhat/code-lobby/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+  ---
+  ### 📦 Install (macOS)
+  Download `CodeLobby-$RESOLVED_VERSION-arm64.dmg` below (Apple Silicon).
+  The build is currently **unsigned** — on first open, right-click the app → **Open**
+  (or run `xattr -cr /Applications/CodeLobby.app`) to bypass Gatekeeper.
