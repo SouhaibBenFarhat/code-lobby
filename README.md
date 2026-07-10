@@ -12,6 +12,16 @@ Built with Electron • React • TypeScript • GraphQL
 
 ---
 
+## Install (macOS)
+
+```bash
+brew install --cask --no-quarantine souhaibbenfarhat/tap/codelobby
+```
+
+Apple Silicon (arm64). Prefer a direct download? Grab the latest `.dmg` from the [Releases page](https://github.com/SouhaibBenFarhat/code-lobby/releases/latest).
+
+---
+
 ## Why CodeLobby
 
 AI assistants made writing code fast, which moved the bottleneck to **code review**. Queues grow, PRs sit for days, and reviewers burn time context-switching between dozens of PRs across repos: open GitHub, find PR, read diff, check CI, read comments, switch tab, repeat.
