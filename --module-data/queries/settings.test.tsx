@@ -76,9 +76,10 @@ describe('Settings Queries', () => {
       expect(result.current.data).toBeNull()
     })
 
-    it('returns selected repos when set', async () => {
+    it('returns selected repos for the active account', async () => {
       const repos = ['org/repo-1', 'org/repo-2']
-      queryClient.setQueryData(keys.selectedRepos, repos)
+      queryClient.setQueryData(keys.activeAccountId, 'alice')
+      queryClient.setQueryData(keys.selectedReposFor('alice'), repos)
 
       const { result } = renderHook(() => useSelectedRepos(), {
         wrapper: createWrapper(queryClient)
@@ -86,6 +87,19 @@ describe('Settings Queries', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
       expect(result.current.data).toEqual(repos)
+    })
+
+    it('is scoped per account (different accounts have different repos)', async () => {
+      queryClient.setQueryData(keys.selectedReposFor('alice'), ['org/a'])
+      queryClient.setQueryData(keys.selectedReposFor('bob'), ['org/b'])
+
+      queryClient.setQueryData(keys.activeAccountId, 'alice')
+      const alice = renderHook(() => useSelectedRepos(), { wrapper: createWrapper(queryClient) })
+      await waitFor(() => expect(alice.result.current.data).toEqual(['org/a']))
+
+      queryClient.setQueryData(keys.activeAccountId, 'bob')
+      const bob = renderHook(() => useSelectedRepos(), { wrapper: createWrapper(queryClient) })
+      await waitFor(() => expect(bob.result.current.data).toEqual(['org/b']))
     })
   })
 

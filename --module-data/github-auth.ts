@@ -16,7 +16,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as github from './github'
-import { keys } from './keys'
+import { upsertAccountAndActivate } from './mutations/accounts'
 import type { GitHubUser } from './types'
 
 export type GitHubAuthStatus =
@@ -69,10 +69,8 @@ export function useGitHubDeviceAuth(): GitHubDeviceAuthState {
           setError('GitHub returned an invalid token.')
           return
         }
-        // Same cache writes as useSignIn — single source of truth for auth.
-        qc.setQueryData(keys.githubToken, token)
-        qc.setQueryData(keys.user, { user: result.user as GitHubUser, token })
-        qc.refetchQueries({ queryKey: keys.repos })
+        // Same funnel as useSignIn — adds/updates the account and activates it.
+        upsertAccountAndActivate(qc, token, result.user as GitHubUser)
         setStatus('success')
       } catch {
         setStatus('error')

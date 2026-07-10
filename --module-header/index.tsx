@@ -6,7 +6,6 @@
 
 import {
   useAIPanel,
-  useCurrentUser,
   useSetAIPanel,
   useSetViewMode,
   useSignOut,
@@ -27,7 +26,6 @@ export { RepoSelector } from './components/RepoSelector'
  * HeaderWrapper connects the Header component to TanStack Query.
  */
 function HeaderWrapper() {
-  const { data: user } = useCurrentUser()
   const { data: viewMode = 'canvas' } = useViewMode()
   const { data: aiPanelData } = useAIPanel()
   const isAIPanelOpen = aiPanelData?.isOpen ?? false
@@ -50,7 +48,6 @@ function HeaderWrapper() {
 
   return (
     <Header
-      user={user ?? null}
       onLogout={handleLogout}
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
