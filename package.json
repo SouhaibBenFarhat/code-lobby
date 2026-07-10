@@ -143,8 +143,12 @@
     ],
     "mac": {
       "target": "dmg",
+      "artifactName": "CodeLobby-${arch}.${ext}",
       "icon": "build/icon.icns",
       "extendInfo": "build/Info.plist"
+    },
+    "dmg": {
+      "artifactName": "CodeLobby-${arch}.${ext}"
     },
     "win": {
       "target": "nsis",
