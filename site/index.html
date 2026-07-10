@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CodeLobby — Your pull requests, in one place</title>
+  <meta name="description" content="A PR-centric desktop app for code review, with an integrated Claude assistant. Aggregate every pull request across your repos, see full CI/review context, and act — approve, merge, comment — without tab-switching." />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="CodeLobby — Your pull requests, in one place" />
+  <meta property="og:description" content="A PR-centric desktop app for code review, with an integrated Claude assistant." />
+  <meta property="og:url" content="https://souhaibbenfarhat.github.io/code-lobby/" />
+  <meta property="og:image" content="icon.svg" />
+  <meta name="theme-color" content="#080b1a" />
+
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+
+  <style>
+    :root {
+      --bg: #080b1a;
+      --bg-soft: #0b1024;
+      --surface: rgba(255, 255, 255, 0.028);
+      --surface-2: rgba(255, 255, 255, 0.05);
+      --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --brand: #1e2766;
+      --accent: #5b8cff;
+      --accent-2: #8b5cf6;
+      --text: #eaecf5;
+      --muted: #9ba3c7;
+      --faint: #6b7299;
+      --success: #34d399;
+      --danger: #fb7185;
+      --warning: #fbbf24;
+      --radius: 14px;
+      --radius-lg: 20px;
+      --maxw: 1120px;
+      --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      letter-spacing: -0.011em;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+    ::selection { background: rgba(91, 140, 255, 0.35); }
+
+    /* Ambient background glows */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(60rem 40rem at 72% -8%, rgba(91, 140, 255, 0.16), transparent 60%),
+        radial-gradient(50rem 40rem at 8% 8%, rgba(139, 92, 246, 0.13), transparent 55%),
+        var(--bg);
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+      background-size: 52px 52px;
+      mask-image: radial-gradient(70% 55% at 50% 0%, #000 40%, transparent 100%);
+      -webkit-mask-image: radial-gradient(70% 55% at 50% 0%, #000 40%, transparent 100%);
+    }
+
+    .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- Nav ---------- */
+    header.nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: saturate(180%) blur(16px);
+      -webkit-backdrop-filter: saturate(180%) blur(16px);
+      background: rgba(8, 11, 26, 0.6);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.25s var(--ease), background 0.25s var(--ease);
+    }
+    header.nav.scrolled { border-bottom-color: var(--border); background: rgba(8, 11, 26, 0.82); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; letter-spacing: -0.02em; }
+    .brand .mark { width: 26px; height: 26px; border-radius: 7px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a.link { color: var(--muted); font-size: 14px; font-weight: 500; transition: color 0.15s var(--ease); }
+    .nav-links a.link:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--font); font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+      padding: 9px 16px; border-radius: 10px; border: 1px solid transparent;
+      cursor: pointer; white-space: nowrap; transition: transform 0.12s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, #6f9bff, #4c7dff);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 8px 22px -8px rgba(76, 125, 255, 0.7);
+    }
+    .btn-primary:hover { box-shadow: 0 1px 0 rgba(255,255,255,0.3) inset, 0 10px 28px -8px rgba(76, 125, 255, 0.85); }
+    .btn-ghost { color: var(--text); background: var(--surface-2); border-color: var(--border); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.09); border-color: var(--border-strong); }
+    .btn-lg { padding: 13px 22px; font-size: 15px; border-radius: 12px; }
+
+    /* ---------- Hero ---------- */
+    .hero { padding: 84px 0 40px; text-align: center; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12.5px; font-weight: 550; color: var(--muted);
+      padding: 6px 13px 6px 8px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--border);
+      margin-bottom: 26px;
+    }
+    .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
+    .badge b { color: var(--text); font-weight: 650; }
+
+    h1.title {
+      font-size: clamp(38px, 6.6vw, 68px);
+      line-height: 1.03;
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      margin: 0 auto 22px;
+      max-width: 14ch;
+    }
+    h1.title .grad {
+      background: linear-gradient(115deg, #fff 8%, #a9c0ff 48%, #8b5cf6 96%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+    }
+    .subtitle { font-size: clamp(16px, 2.1vw, 20px); color: var(--muted); max-width: 62ch; margin: 0 auto 34px; line-height: 1.5; }
+    .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .cta-note { font-size: 13px; color: var(--faint); }
+    .cta-note code { font-family: var(--mono); color: var(--muted); }
+
+    /* ---------- App mock window ---------- */
+    .mockwrap { margin: 58px auto 0; max-width: 940px; position: relative; }
+    .mockwrap::before {
+      content: ""; position: absolute; inset: -6% -4% 8%; z-index: -1;
+      background: radial-gradient(60% 60% at 50% 40%, rgba(91,140,255,0.28), transparent 70%);
+      filter: blur(40px);
+    }
+    .window {
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-strong);
+      background: linear-gradient(180deg, #0e1430, #0a0e22);
+      box-shadow: 0 40px 90px -30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.02) inset;
+      overflow: hidden;
+      text-align: left;
+    }
+    .titlebar {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .traffic { display: flex; gap: 8px; }
+    .traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .traffic i:nth-child(1) { background: #ff5f57; }
+    .traffic i:nth-child(2) { background: #febc2e; }
+    .traffic i:nth-child(3) { background: #28c840; }
+    .titlebar .tb-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .titlebar .tb-title .mmark { width: 15px; height: 15px; border-radius: 4px; }
+    .titlebar .tb-right { margin-left: auto; display: flex; gap: 14px; color: var(--faint); font-size: 13px; }
+
+    .mock-body { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 16px; background:
+        radial-gradient(120% 80% at 50% 0, rgba(91,140,255,0.05), transparent 60%); }
+    .col-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--faint); text-transform: lowercase; margin: 2px 4px 9px; display:flex; align-items:center; gap:6px;}
+    .col-head::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--accent);opacity:.7;}
+    .repo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+    .pr {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 10px; border-radius: 9px; margin-bottom: 7px;
+      background: rgba(255,255,255,0.022); border: 1px solid transparent;
+      transition: border-color .2s var(--ease), background .2s var(--ease);
+    }
+    .pr:last-child { margin-bottom: 0; }
+    .pr.sel { border-color: rgba(91,140,255,0.55); background: rgba(91,140,255,0.10); box-shadow: inset 0 0 0 1px rgba(91,140,255,0.25); }
+    .pr .num { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .pr .st { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+    .st .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .st.fail { color: #ffb3bd; background: rgba(251,113,133,0.14); } .st.fail .dot { background: var(--danger); }
+    .st.pass { color: #9df0cf; background: rgba(52,211,153,0.14); } .st.pass .dot { background: var(--success); }
+    .st.run  { color: #ffe1a3; background: rgba(251,191,36,0.14); } .st.run .dot { background: var(--warning); animation: pulse 1.4s infinite; }
+    .st.rev  { color: #b9c8ff; background: rgba(91,140,255,0.14); } .st.rev .dot { background: var(--accent); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .ai-strip { border-top: 1px solid var(--border); padding: 14px 16px 16px; background: rgba(255,255,255,0.015); }
+    .ai-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 650; color: var(--muted); margin-bottom: 10px; }
+    .ai-label .spark { color: var(--accent); }
+    .ai-prompt { font-family: var(--mono); font-size: 12.5px; color: var(--text); background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; margin-bottom: 9px; }
+    .ai-prompt .caret{color:var(--accent)}
+    .ai-line { font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+    .ai-line .file { font-family: var(--mono); color: #ffb3bd; }
+    .ai-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 11px; }
+    .chip { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 5px 11px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); }
+    .chip.go { color: #cdd8ff; border-color: rgba(91,140,255,0.4); background: rgba(91,140,255,0.1); }
+
+    /* ---------- Section scaffolding ---------- */
+    section { padding: 76px 0; }
+    .eyebrow { font-size: 13px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+    h2.sec { font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+    .sec-lead { font-size: clamp(16px, 2vw, 18px); color: var(--muted); max-width: 60ch; }
+    .sec-head { text-align: center; margin: 0 auto 52px; display: flex; flex-direction: column; align-items: center; }
+    .sec-head .sec-lead { margin: 0 auto; }
+
+    /* ---------- Feature grid ---------- */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+    }
+    .card:hover { transform: translateY(-3px); border-color: var(--border-strong); background: var(--surface-2); }
+    .ic { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 16px;
+      background: linear-gradient(180deg, rgba(91,140,255,0.2), rgba(91,140,255,0.06)); border: 1px solid rgba(91,140,255,0.28); color: #aec4ff; }
+    .ic svg { width: 21px; height: 21px; }
+    .card h3 { font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 7px; }
+    .card p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+    /* ---------- Split spotlight ---------- */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    .feat-list { list-style: none; margin-top: 24px; display: grid; gap: 14px; }
+    .feat-list li { display: flex; gap: 12px; font-size: 15px; color: var(--muted); }
+    .feat-list li b { color: var(--text); font-weight: 600; }
+    .feat-list .tick { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: rgba(52,211,153,0.14); color: var(--success); margin-top: 1px; }
+    .feat-list .tick svg { width: 13px; height: 13px; }
+
+    .panel {
+      background: linear-gradient(180deg, #0e1430, #0a0e22); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg); padding: 22px; box-shadow: 0 30px 70px -30px rgba(0,0,0,0.7);
+    }
+    .chatline { display: flex; gap: 10px; margin-bottom: 14px; }
+    .chatline .av { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+    .chatline.user .av { background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+    .chatline.ai .av { background: linear-gradient(180deg, #6f9bff, #4c7dff); color: #fff; }
+    .chatline .msg { font-size: 13.5px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 10px 13px; }
+    .chatline.ai .msg { background: rgba(91,140,255,0.06); border-color: rgba(91,140,255,0.22); }
+    .chatline .msg .file { font-family: var(--mono); color: #ffb3bd; font-size: 12.5px; }
+    .thinking { font-size: 12px; color: var(--faint); font-style: italic; padding-left: 36px; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+    .thinking .dots span { display:inline-block; width:4px;height:4px;border-radius:50%;background:var(--faint);margin-right:3px;animation:pulse 1.2s infinite}
+    .thinking .dots span:nth-child(2){animation-delay:.2s} .thinking .dots span:nth-child(3){animation-delay:.4s}
+
+    /* ---------- Steps ---------- */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
+    .step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; position: relative; }
+    .step .n { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+    .step h3 { font-size: 16px; font-weight: 650; margin-bottom: 6px; }
+    .step p { font-size: 14px; color: var(--muted); }
+
+    /* ---------- Tech strip ---------- */
+    .tech { display: flex; flex-wrap: wrap; gap: 10px 12px; justify-content: center; }
+    .tech span { font-size: 13px; font-weight: 550; color: var(--muted); padding: 7px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); }
+
+    /* ---------- Download CTA ---------- */
+    .cta-final { text-align: center; }
+    .cta-card {
+      max-width: 780px; margin: 0 auto; padding: 56px 32px;
+      border-radius: var(--radius-lg); border: 1px solid var(--border-strong);
+      background:
+        radial-gradient(90% 120% at 50% 0%, rgba(91,140,255,0.16), transparent 65%),
+        linear-gradient(180deg, #0e1430, #0a0e22);
+      position: relative; overflow: hidden;
+    }
+    .cta-card .mark-big { width: 60px; height: 60px; border-radius: 15px; margin: 0 auto 22px; box-shadow: 0 12px 30px -10px rgba(0,0,0,0.7); }
+    .cta-card h2 { font-size: clamp(26px, 3.6vw, 38px); font-weight: 700; letter-spacing: -0.03em; margin-bottom: 12px; }
+    .cta-card p { color: var(--muted); max-width: 48ch; margin: 0 auto 28px; }
+    .os-note { margin-top: 18px; font-size: 13px; color: var(--faint); }
+
+    /* ---------- Footer ---------- */
+    footer { border-top: 1px solid var(--border); padding: 40px 0; }
+    .foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .foot .brand { font-size: 15px; }
+    .foot .built { font-size: 13px; color: var(--faint); }
+    .foot-links { display: flex; gap: 22px; }
+    .foot-links a { font-size: 14px; color: var(--muted); transition: color 0.15s var(--ease); }
+    .foot-links a:hover { color: var(--text); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 860px) {
+      .grid, .steps { grid-template-columns: 1fr 1fr; }
+      .split { grid-template-columns: 1fr; gap: 32px; }
+      .nav-links .link { display: none; }
+    }
+    @media (max-width: 560px) {
+      .grid, .steps { grid-template-columns: 1fr; }
+      .mock-body { grid-template-columns: 1fr; }
+      .mock-body .repo-card:nth-child(n+3) { display: none; }
+      .hero { padding: 56px 0 24px; }
+      .foot { flex-direction: column; text-align: center; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="CodeLobby home">
+        <img class="mark" src="icon.svg" alt="" width="26" height="26" />
+        <span>CodeLobby</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="link" href="#features">Features</a>
+        <a class="link" href="#ai">AI</a>
+        <a class="link" href="#how">How it works</a>
+        <a class="link" href="https://github.com/SouhaibBenFarhat/code-lobby">GitHub</a>
+        <a class="btn btn-primary" href="https://github.com/SouhaibBenFarhat/code-lobby/releases">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <div class="wrap">
+        <span class="badge"><span class="dot"></span> macOS desktop app · <b>Claude-powered</b></span>
+        <h1 class="title">Your pull requests, <span class="grad">in one place.</span></h1>
+        <p class="subtitle">
+          CodeLobby is a PR-centric desktop app for code review. Aggregate every pull request across your
+          repos, see full CI, review &amp; diff context without tab-switching — and let an integrated Claude
+          assistant analyze, review, and unblock them.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary btn-lg" href="https://github.com/SouhaibBenFarhat/code-lobby/releases">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            Download for macOS
+          </a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/SouhaibBenFarhat/code-lobby">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <p class="cta-note">Free &amp; open source (MIT) · Bring your own GitHub token</p>
+
+        <!-- App mock -->
+        <div class="mockwrap" aria-hidden="true">
+          <div class="window">
+            <div class="titlebar">
+              <div class="traffic"><i></i><i></i><i></i></div>
+              <div class="tb-title"><img class="mmark" src="icon.svg" alt="" width="15" height="15" /> CodeLobby</div>
+              <div class="tb-right"><span>🌙</span><span>⚙</span><span>◍</span></div>
+            </div>
+            <div class="mock-body">
+              <div>
+                <div class="col-head">portal</div>
+                <div class="repo-card">
+                  <div class="pr sel"><span class="num">#234</span><span class="st fail"><span class="dot"></span>Failed</span></div>
+                  <div class="pr"><span class="num">#235</span><span class="st rev"><span class="dot"></span>Review</span></div>
+                  <div class="pr"><span class="num">#231</span><span class="st pass"><span class="dot"></span>Passed</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="col-head">api</div>
+                <div class="repo-card">
+                  <div class="pr"><span class="num">#567</span><span class="st pass"><span class="dot"></span>Passed</span></div>
+                  <div class="pr"><span class="num">#568</span><span class="st run"><span class="dot"></span>Running</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="col-head">sdk</div>
+                <div class="repo-card">
+                  <div class="pr"><span class="num">#89</span><span class="st rev"><span class="dot"></span>3 comments</span></div>
+                  <div class="pr"><span class="num">#90</span><span class="st pass"><span class="dot"></span>Passed</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="ai-strip">
+              <div class="ai-label"><span class="spark">✦</span> AI Assistant</div>
+              <div class="ai-prompt"><span class="caret">&gt;</span> Why is PR #234 failing?</div>
+              <div class="ai-line">🔍 Analyzing CI logs…</div>
+              <div class="ai-line">💡 Found: <span class="file">TypeError at src/utils/parser.ts:45</span></div>
+              <div class="ai-actions">
+                <span class="chip go">📝 Generate review</span>
+                <span class="chip">💬 Comment</span>
+                <span class="chip">✅ Approve</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROBLEM / PREMISE ============ -->
+    <section id="why">
+      <div class="wrap sec-head">
+        <div class="eyebrow">The premise</div>
+        <h2 class="sec">The pull request is the atomic unit&nbsp;— not the file.</h2>
+        <p class="sec-lead">
+          AI made writing code fast, which moved the bottleneck to <b style="color:var(--text)">review</b>.
+          Queues grow, PRs sit for days, and you burn time context-switching: open GitHub, find the PR, read
+          the diff, check CI, read comments, switch tab, repeat. CodeLobby collapses that loop into one view
+          and asks the questions that actually matter — <em>what does this PR solve, does CI pass, what's blocking merge?</em>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ FEATURES ============ -->
+    <section id="features">
+      <div class="wrap">
+        <div class="sec-head">
+          <div class="eyebrow">Everything, in one lobby</div>
+          <h2 class="sec">Built for reviewing at speed</h2>
+          <p class="sec-lead">A spatial home for your pull requests, with the full context and the actions right where you need them.</p>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></div>
+            <h3>Spatial PR canvas</h3>
+            <p>Every repo and its open PRs as draggable, resizable cards on an infinite grid. Your layout, your way — and it persists.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18"/><path d="M3 12h10"/><path d="M3 19h14"/><path d="m17 10 4 2-4 2"/></svg></div>
+            <h3>IDE tree view</h3>
+            <p>Prefer a tree? Flip to a familiar repository → PR explorer with keyboard navigation, grouped by author.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 8.5V13a3 3 0 0 0 3 3h6"/><circle cx="18" cy="18" r="2.5"/></svg></div>
+            <h3>Full PR context</h3>
+            <p>CI checks, comments, reviews, threads, labels, commit history and complete file diffs — no tab-switching.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3Z"/></svg></div>
+            <h3>Act from the app</h3>
+            <p>Approve, merge (squash/merge/rebase), comment, resolve threads, update branch, manage labels — one click.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9c0 5-6 4-6 9"/></svg></div>
+            <h3>CI at a glance</h3>
+            <p>Every check run, grouped by state with search and filters, live-updating — click through to the logs on GitHub.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/><circle cx="8" cy="5" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="11" cy="19" r="1.5" fill="currentColor"/></svg></div>
+            <h3>Network &amp; rate-limit monitor</h3>
+            <p>A built-in inspector for every API call — method, timing, payloads, GraphQL queries — plus a live GitHub rate-limit gauge.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AI SPOTLIGHT ============ -->
+    <section id="ai">
+      <div class="wrap split">
+        <div>
+          <div class="eyebrow">Claude, built in</div>
+          <h2 class="sec">An AI reviewer that reads the whole PR.</h2>
+          <p class="sec-lead">
+            CodeLobby integrates Claude with real tools — it can read files, search the codebase, run git, and
+            fetch the web to actually understand a change before it says a word. Powered by Claude Code and your
+            own Claude subscription.
+          </p>
+          <ul class="feat-list">
+            <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span><span><b>“Why is this PR still open?”</b> — one click surfaces every blocker: failing CI, pending reviews, unresolved threads, draft state.</span></li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span><span><b>AI-generated reviews</b> — Claude drafts a structured review you edit and submit to GitHub with inline comments.</span></li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span><span><b>CI-failure diagnosis</b> — it pulls the logs, finds the root cause, and suggests a fix.</span></li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span><span><b>Per-PR chat &amp; quick actions</b> — full PR context, streaming reasoning, and your own saved prompts.</span></li>
+          </ul>
+        </div>
+        <div class="panel" aria-hidden="true">
+          <div class="chatline user"><span class="av">You</span><span class="msg">Review PR #234 and flag anything risky.</span></div>
+          <div class="thinking">Reading diff · git blame · scanning tests <span class="dots"><span></span><span></span><span></span></span></div>
+          <div class="chatline ai"><span class="av">✦</span><span class="msg">Found a null-deref risk in <span class="file">src/utils/parser.ts:45</span> when <code>input</code> is empty, and the new branch drops test coverage on the error path. Draft review ready — 2 comments, verdict: request changes.</span></div>
+          <div class="ai-actions" style="margin-top:6px">
+            <span class="chip go">Open review draft</span>
+            <span class="chip">Explain the fix</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ HOW IT WORKS ============ -->
+    <section id="how">
+      <div class="wrap">
+        <div class="sec-head">
+          <div class="eyebrow">Up and running in a minute</div>
+          <h2 class="sec">How it works</h2>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="n">01</div>
+            <h3>Connect GitHub</h3>
+            <p>Paste a personal access token with <code style="font-family:var(--mono);color:var(--muted)">repo</code> scope. It's stored locally &amp; encrypted — your data never leaves your machine.</p>
+          </div>
+          <div class="step">
+            <div class="n">02</div>
+            <h3>Pick your repos</h3>
+            <p>Choose the repositories to watch. CodeLobby pulls every open PR with its CI, reviews and comments into one canvas.</p>
+          </div>
+          <div class="step">
+            <div class="n">03</div>
+            <h3>Review &amp; ship</h3>
+            <p>Read, ask Claude, and act — approve, comment, or merge — without ever leaving the app.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TECH ============ -->
+    <section style="padding-top:12px">
+      <div class="wrap sec-head" style="margin-bottom:28px">
+        <div class="eyebrow">Under the hood</div>
+      </div>
+      <div class="wrap tech">
+        <span>Electron</span><span>React 18</span><span>TypeScript</span><span>TanStack Query</span>
+        <span>GitHub GraphQL</span><span>Tailwind CSS</span><span>SQLite · Drizzle</span><span>Claude Code</span>
+        <span>Local-first</span><span>MIT licensed</span>
+      </div>
+    </section>
+
+    <!-- ============ DOWNLOAD CTA ============ -->
+    <section class="cta-final">
+      <div class="wrap">
+        <div class="cta-card">
+          <img class="mark-big" src="icon.svg" alt="CodeLobby icon" width="60" height="60" />
+          <h2>Bring order to your PRs.</h2>
+          <p>Download CodeLobby, connect your GitHub, and turn a dozen browser tabs into one calm, spatial lobby.</p>
+          <div class="cta-row" style="margin-bottom:0">
+            <a class="btn btn-primary btn-lg" href="https://github.com/SouhaibBenFarhat/code-lobby/releases">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+              Download for macOS
+            </a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/SouhaibBenFarhat/code-lobby">Star on GitHub</a>
+          </div>
+          <p class="os-note">Also builds for Windows &amp; Linux · Requires a Claude subscription for AI features</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer>
+    <div class="wrap foot">
+      <div>
+        <a class="brand" href="#top"><img class="mark" src="icon.svg" alt="" width="24" height="24" style="width:24px;height:24px" /> CodeLobby</a>
+        <div class="built" style="margin-top:6px">Built with Electron · React · TypeScript · GraphQL</div>
+      </div>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="https://github.com/SouhaibBenFarhat/code-lobby">GitHub</a>
+        <a href="https://github.com/SouhaibBenFarhat/code-lobby/releases">Releases</a>
+        <a href="https://github.com/SouhaibBenFarhat/code-lobby/issues">Issues</a>
+        <a href="https://github.com/SouhaibBenFarhat/code-lobby/blob/main/README.md">Docs</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Add a subtle border to the nav once the page scrolls.
+    (function () {
+      var nav = document.getElementById('nav');
+      var onScroll = function () {
+        if (window.scrollY > 12) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    })();
+  </script>
+</body>
+</html>
