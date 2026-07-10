@@ -122,7 +122,8 @@
       {
         "provider": "github",
         "owner": "SouhaibBenFarhat",
-        "repo": "code-lobby"
+        "repo": "code-lobby",
+        "releaseType": "release"
       }
     ],
     "directories": {
