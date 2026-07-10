@@ -29,4 +29,10 @@ jobs:
         # run below is authoritative and still fails loudly if the config is broken.
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use a user PAT so the draft release is owned by YOU, not github-actions[bot].
+          # Publishing a bot-owned release is credited to the bot, and GitHub suppresses
+          # workflow triggers from bot/GITHUB_TOKEN events — so release.yml (the DMG build)
+          # never fires. Owning the draft under the PAT means your "Publish release" click
+          # is credited to you and DOES trigger the build. Falls back to the default token
+          # if the secret is missing.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
