@@ -1,0 +1,42 @@
+name: PR Title Lint
+
+# Enforces Conventional Commits on the PR *title*. Because the repo squash-merges
+# with squash_merge_commit_title=PR_TITLE, the PR title becomes the commit message
+# on main — so a conventional title guarantees a conventional commit history.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check title follows Conventional Commits
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Allowed types — must match the categories in .github/release-drafter.yml
+          types: |
+            feat
+            fix
+            docs
+            chore
+            ci
+            build
+            refactor
+            perf
+            test
+            style
+            revert
+          requireScope: false
+          # Subject must not start with an uppercase letter (keeps changelog tidy)
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase letter.
+            Example: "feat(header): add rate-limit gauge"

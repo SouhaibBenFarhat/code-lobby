@@ -1,0 +1,52 @@
+name: Release Build (macOS DMG)
+
+# Runs when a GitHub Release is published (i.e. you publish the Release Drafter
+# draft). Builds the macOS DMG on a macOS runner — only macOS can produce a .dmg —
+# and uploads it to that same Release via electron-builder's GitHub publisher.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write # upload assets to the release
+
+jobs:
+  build-mac:
+    name: Build & attach macOS DMG
+    runs-on: macos-latest # required: DMGs can only be built on macOS
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Derive version from tag
+        id: version
+        # Tag is like "v1.2.0"; electron-builder wants the bare "1.2.0".
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build renderer + main
+        run: pnpm run build
+
+      - name: Package & publish DMG
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Unsigned build: don't let electron-builder hunt for a signing identity.
+          # To sign/notarize later, remove this and add the CSC_*/APPLE_* secrets.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          pnpm exec electron-builder --mac --arm64 --publish always \
+            -c.extraMetadata.version=${{ steps.version.outputs.version }}

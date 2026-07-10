@@ -1,0 +1,32 @@
+name: Release Drafter
+
+# Keeps a rolling DRAFT GitHub Release up to date on every merge to main, and
+# autolabels PRs from their (Conventional Commit) title so the draft categorizes
+# correctly. Publishing that draft is what triggers the DMG build (see release.yml).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # For the autolabeler — label PRs as they open/update so the draft is correct.
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    name: Update release draft
+    permissions:
+      contents: write # create/update the draft release
+      pull-requests: write # apply autolabels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        # On pull_request this only autolabels, and release-drafter reads its config
+        # from the DEFAULT branch — so it's best-effort here (and can't run at all on the
+        # PR that first introduces this config). Never block a PR on it; the push-to-main
+        # run below is authoritative and still fails loudly if the config is broken.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

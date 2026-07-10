@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "A desktop app to monitor your GitHub PRs with real-time event streaming",
   "main": "./out/main/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SouhaibBenFarhat/code-lobby.git"
+  },
   "author": "",
   "license": "MIT",
   "engines": {
@@ -114,6 +118,13 @@
   "build": {
     "appId": "com.codelobby.app",
     "productName": "CodeLobby",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SouhaibBenFarhat",
+        "repo": "code-lobby"
+      }
+    ],
     "directories": {
       "buildResources": "build"
     },
