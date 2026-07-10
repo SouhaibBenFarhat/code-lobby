@@ -32,8 +32,9 @@ jobs:
       - name: Run type check
         run: pnpm run typecheck
 
-  # Tests are sharded across parallel runners. Wall-clock ≈ slowest shard,
-  # not the whole suite. (Free on public repos; costs more runner-minutes.)
+  # Tests are sharded across parallel runners. Each shard runs WITH coverage and
+  # writes a "blob" report (raw results + coverage) that the coverage job merges —
+  # so the suite runs ONCE, not again for coverage.
   unit:
     name: Unit (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
@@ -55,15 +56,25 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run tests (shard ${{ matrix.shard }}/3)
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3
+      - name: Run tests (shard ${{ matrix.shard }}/3) with coverage
+        run: pnpm exec vitest run --coverage --reporter=default --reporter=blob --shard=${{ matrix.shard }}/3
+      - name: Upload coverage blob
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: .vitest-reports/*
+          include-hidden-files: true
+          retention-days: 1
 
-  # Patch coverage gate: fail if <90% of the lines CHANGED in this PR are covered.
-  # Runs the full (non-sharded) suite once for a complete report, then diff-cover
-  # compares against the base branch. Folded into `test` below so it blocks merges.
+  # Merge the shard blobs into ONE coverage report (no re-run), post a PR comment,
+  # and fail if <90% of the lines CHANGED in this PR are covered (diff-cover).
   coverage:
-    name: Patch coverage (90% of new code)
+    name: Coverage (merge + 90% patch gate)
+    needs: [unit]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # to post the coverage comment
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -80,8 +91,19 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run tests with coverage
-        run: pnpm exec vitest run --coverage
+      - name: Download coverage blobs from all shards
+        uses: actions/download-artifact@v4
+        with:
+          path: .vitest-reports
+          pattern: blob-report-*
+          merge-multiple: true
+      - name: Merge shard reports into one coverage report
+        run: pnpm exec vitest run --merge-reports --coverage
+      - name: Post coverage comment
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          file-coverage-mode: changes # focus the comment on the PR's changed files
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
