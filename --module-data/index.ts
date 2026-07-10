@@ -308,3 +308,13 @@ export {
   useThinking,
   useToolActivity
 } from './claude-code'
+
+// =============================================================================
+// GITHUB DEVICE FLOW SIGN-IN
+// =============================================================================
+
+export {
+  type GitHubAuthStatus,
+  type GitHubDeviceAuthState,
+  useGitHubDeviceAuth
+} from './github-auth'

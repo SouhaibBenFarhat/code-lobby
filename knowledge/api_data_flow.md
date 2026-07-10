@@ -57,6 +57,31 @@ CodeLobby uses a **simplified 3-layer architecture**:
 
 ## 2. GitHub Data Flow
 
+### Authentication (Sign in with GitHub)
+
+Sign-in uses the GitHub **OAuth device flow**, which needs only a public
+`client_id` (set via `GITHUB_CLIENT_ID`) — no client secret, no backend server.
+Because the `github.com/login/*` endpoints have no CORS headers, the flow runs in
+the **main process** (`src/main/github-auth.ts`), not the renderer:
+
+```
+Renderer (useGitHubDeviceAuth)
+   │  window.electron.startGitHubAuth()  (IPC: github-auth:start)
+   ▼
+Main (github-auth.ts)
+   │  POST /login/device/code → { user_code, verification_uri, device_code }
+   │  ← returns user_code to renderer (shown in UI); opens browser via shell.openExternal
+   │  poll POST /login/oauth/access_token …
+   ▼
+   emits github-auth:done { token }  →  renderer validates + writes keys.githubToken
+```
+
+The device-flow token is a normal user access token and flows into the **same
+cache path as `useSignIn`** (`keys.githubToken` + `keys.user`), so the rest of the
+app is agnostic to how the user signed in. A Personal Access Token remains
+available as an Advanced fallback. See `src/main/github-auth.ts` and
+`--module-data/github-auth.ts`.
+
 ### Architecture
 
 GitHub API calls go directly from the renderer process using `fetch()`:

@@ -8,6 +8,19 @@ export interface ElectronAPI {
   factoryReset: () => Promise<{ success: boolean }>
   clearWebviewData: () => Promise<{ success: boolean; error?: string }>
 
+  // GitHub OAuth (device flow sign-in)
+  startGitHubAuth: () => Promise<{
+    success: boolean
+    userCode?: string
+    verificationUri?: string
+    verificationUriComplete?: string
+    expiresIn?: number
+    error?: string
+  }>
+  cancelGitHubAuth: () => Promise<{ success: boolean }>
+  onGitHubAuthDone: (callback: (data: { token: string }) => void) => () => void
+  onGitHubAuthError: (callback: (data: { error: string }) => void) => () => void
+
   // TanStack Query cache persistence
   getQueryCache: () => Promise<string | null>
   setQueryCache: (cache: string) => Promise<{ success: boolean }>

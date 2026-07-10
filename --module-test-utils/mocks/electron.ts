@@ -157,6 +157,12 @@ interface MockElectronAPI {
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
 
+  // GitHub OAuth (device flow)
+  startGitHubAuth: ReturnType<typeof vi.fn>
+  cancelGitHubAuth: ReturnType<typeof vi.fn>
+  onGitHubAuthDone: ReturnType<typeof vi.fn>
+  onGitHubAuthError: ReturnType<typeof vi.fn>
+
   // Claude Code CLI
   checkClaudeCodeInstalled: ReturnType<typeof vi.fn>
   startClaudeSession: ReturnType<typeof vi.fn>
@@ -437,6 +443,18 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),
     onFullscreenChange: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+
+    // GitHub OAuth (device flow)
+    startGitHubAuth: vi.fn().mockResolvedValue({
+      success: true,
+      userCode: 'WXYZ-1234',
+      verificationUri: 'https://github.com/login/device',
+      verificationUriComplete: 'https://github.com/login/device?user_code=WXYZ-1234',
+      expiresIn: 900
+    }),
+    cancelGitHubAuth: vi.fn().mockResolvedValue({ success: true }),
+    onGitHubAuthDone: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+    onGitHubAuthError: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
 
     // Claude Code CLI
     checkClaudeCodeInstalled: vi.fn().mockResolvedValue({ installed: true }),
