@@ -32,11 +32,12 @@ describe('CommentItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Mock clipboard API
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: vi.fn().mockResolvedValue(undefined)
-      }
+    // Mock clipboard API — defineProperty (not Object.assign) so it works under
+    // happy-dom, where navigator.clipboard is a getter-only property.
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
+      writable: true
     })
   })
 

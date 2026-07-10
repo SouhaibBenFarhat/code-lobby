@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
+    // happy-dom is significantly faster than jsdom for this RTL-heavy suite.
+    environment: 'happy-dom',
     setupFiles: ['./--module-test-utils/setup.ts'],
     include: [
       'src/main/**/*.test.ts',

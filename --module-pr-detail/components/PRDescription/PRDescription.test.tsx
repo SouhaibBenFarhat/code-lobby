@@ -46,10 +46,12 @@ describe('PRDescription', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMutateAsync.mockResolvedValue({ success: true })
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: vi.fn().mockResolvedValue(undefined)
-      }
+    // defineProperty (not Object.assign) so it works under happy-dom, where
+    // navigator.clipboard is a getter-only property.
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
+      writable: true
     })
   })
 
