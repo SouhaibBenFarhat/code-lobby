@@ -23,5 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: release-drafter/release-drafter@v6
+        # On pull_request this only autolabels, and release-drafter reads its config
+        # from the DEFAULT branch — so it's best-effort here (and can't run at all on the
+        # PR that first introduces this config). Never block a PR on it; the push-to-main
+        # run below is authoritative and still fails loudly if the config is broken.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
