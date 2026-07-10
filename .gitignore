@@ -32,4 +32,5 @@ release/
 # Misc
 *.pem
 coverage/
+.vitest-reports/
 .typecheck-temp

@@ -32,8 +32,9 @@ jobs:
       - name: Run type check
         run: pnpm run typecheck
 
-  # Tests are sharded across parallel runners. Wall-clock ≈ slowest shard,
-  # not the whole suite. (Free on public repos; costs more runner-minutes.)
+  # Tests are sharded across parallel runners. Each shard runs WITH coverage and
+  # writes a "blob" report (raw results + coverage) that the coverage job merges —
+  # so the suite runs ONCE, not again for coverage.
   unit:
     name: Unit (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
@@ -55,22 +56,86 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run tests (shard ${{ matrix.shard }}/3)
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3
+      - name: Run tests (shard ${{ matrix.shard }}/3) with coverage
+        run: pnpm exec vitest run --coverage --reporter=default --reporter=blob --shard=${{ matrix.shard }}/3
+      - name: Upload coverage blob
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: .vitest-reports/*
+          include-hidden-files: true
+          retention-days: 1
+
+  # Merge the shard blobs into ONE coverage report (no re-run), post a PR comment,
+  # and fail if <90% of the lines CHANGED in this PR are covered (diff-cover).
+  coverage:
+    name: Coverage (merge + 90% patch gate)
+    needs: [unit]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # to post the coverage comment
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so diff-cover can diff against the base
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Download coverage blobs from all shards
+        uses: actions/download-artifact@v4
+        with:
+          path: .vitest-reports
+          pattern: blob-report-*
+          merge-multiple: true
+      - name: Merge shard reports into one coverage report
+        run: pnpm exec vitest run --merge-reports --coverage
+      - name: Post coverage comment
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          file-coverage-mode: changes # focus the comment on the PR's changed files
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install diff-cover
+        run: pip install diff-cover
+      - name: Fetch base branch
+        env:
+          BASE: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: git fetch --no-tags origin "$BASE"
+      - name: Enforce 90% coverage on changed lines
+        env:
+          BASE: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: |
+          set -o pipefail
+          diff-cover coverage/cobertura-coverage.xml \
+            --compare-branch="origin/$BASE" \
+            --fail-under=90 | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Aggregate gate — THIS is the required status check on `main`. Keeping the
   # name `test` means branch protection needs no change. It passes only if
-  # lint/typecheck AND every test shard passed.
+  # lint/typecheck, every test shard, AND the patch-coverage gate passed.
   test:
     name: test
-    needs: [lint-typecheck, unit]
+    needs: [lint-typecheck, unit, coverage]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify all upstream jobs passed
         run: |
-          if [ "${{ needs.lint-typecheck.result }}" != "success" ] || [ "${{ needs.unit.result }}" != "success" ]; then
-            echo "::error::A required job failed (lint-typecheck=${{ needs.lint-typecheck.result }}, unit=${{ needs.unit.result }})"
+          if [ "${{ needs.lint-typecheck.result }}" != "success" ] || [ "${{ needs.unit.result }}" != "success" ] || [ "${{ needs.coverage.result }}" != "success" ]; then
+            echo "::error::A required job failed (lint-typecheck=${{ needs.lint-typecheck.result }}, unit=${{ needs.unit.result }}, coverage=${{ needs.coverage.result }})"
             exit 1
           fi
           echo "All checks passed ✅"
