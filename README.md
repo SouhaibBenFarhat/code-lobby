@@ -15,7 +15,7 @@ Built with Electron • React • TypeScript • GraphQL
 ## Install (macOS)
 
 ```bash
-brew install --cask --no-quarantine souhaibbenfarhat/tap/codelobby
+brew install --cask souhaibbenfarhat/tap/codelobby
 ```
 
 Apple Silicon (arm64). Prefer a direct download? Grab the latest `.dmg` from the [Releases page](https://github.com/SouhaibBenFarhat/code-lobby/releases/latest).
