@@ -10,7 +10,6 @@ import {
   useSetAboutModalOpen,
   useSetAIPanel,
   useSetViewMode,
-  useSignOut,
   useViewMode,
   type ViewMode
 } from '@data'
@@ -40,11 +39,6 @@ function HeaderWrapper() {
 
   const setViewMode = useSetViewMode()
   const setAIPanel = useSetAIPanel()
-  const signOut = useSignOut()
-
-  const handleLogout = () => {
-    signOut.mutate()
-  }
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode.mutate(mode)
@@ -57,7 +51,6 @@ function HeaderWrapper() {
   return (
     <>
       <Header
-        onLogout={handleLogout}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
         isAIPanelOpen={isAIPanelOpen}
