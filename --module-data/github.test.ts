@@ -12,6 +12,7 @@ import {
   fetchPRFiles,
   fetchPRsForRepos,
   fetchRateLimit,
+  fetchRepoEvents,
   fetchRepos,
   fetchSinglePR,
   fetchUserEvents,
@@ -1756,6 +1757,89 @@ describe('GitHub API', () => {
       const result = await fetchUserEvents('token', 'user')
 
       expect(result).toEqual([])
+    })
+  })
+
+  describe('fetchRepoEvents', () => {
+    it('fetches, transforms, and includes the actor', async () => {
+      const recentTime = new Date().toISOString()
+
+      mockFetch.mockResolvedValueOnce(
+        mockResponse([
+          {
+            id: '10',
+            type: 'PullRequestReviewEvent',
+            actor: { login: 'reviewer', avatar_url: 'https://example.com/r.png' },
+            repo: { name: 'org/repo' },
+            payload: {
+              action: 'submitted',
+              review: { state: 'approved', body: 'LGTM' },
+              pull_request: { number: 7, title: 'Add feature', state: 'open' }
+            },
+            created_at: recentTime
+          }
+        ])
+      )
+
+      const result = await fetchRepoEvents('token', 'org/repo')
+
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({
+        id: '10',
+        type: 'Review',
+        title: 'Approved PR #7',
+        icon: 'review',
+        repoName: 'org/repo',
+        actor: { login: 'reviewer', avatar_url: 'https://example.com/r.png' }
+      })
+    })
+
+    it('calls the repo events endpoint with the owner and repo', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse([]))
+
+      await fetchRepoEvents('token', 'octocat/hello-world')
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/repos/octocat/hello-world/events'),
+        expect.anything()
+      )
+    })
+
+    it('filters out PushEvents with 0 commits', async () => {
+      const recentTime = new Date().toISOString()
+
+      mockFetch.mockResolvedValueOnce(
+        mockResponse([
+          {
+            id: '1',
+            type: 'PushEvent',
+            actor: { login: 'dev', avatar_url: '' },
+            repo: { name: 'org/repo' },
+            payload: { commits: [] },
+            created_at: recentTime
+          },
+          {
+            id: '2',
+            type: 'PushEvent',
+            actor: { login: 'dev', avatar_url: '' },
+            repo: { name: 'org/repo' },
+            payload: { commits: [{ sha: 'abc', message: 'Real commit' }] },
+            created_at: recentTime
+          }
+        ])
+      )
+
+      const result = await fetchRepoEvents('token', 'org/repo')
+
+      expect(result).toHaveLength(1)
+      expect(result[0].title).toBe('Pushed 1 commit')
+    })
+
+    it('returns an empty array for a malformed repo name', async () => {
+      const result = await fetchRepoEvents('token', 'not-a-full-name')
+
+      expect(result).toEqual([])
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 })

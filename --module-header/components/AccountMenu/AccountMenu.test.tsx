@@ -34,6 +34,7 @@ vi.mock('@data', () => ({
 // Child dialogs pull their own hooks; stub them so this suite stays focused.
 vi.mock('../AddAccountModal', () => ({ AddAccountModal: () => null }))
 vi.mock('../ContributionsModal', () => ({ ContributionsModal: () => null }))
+vi.mock('../GitHubStatusMenuItem', () => ({ GitHubStatusMenuItem: () => null }))
 
 describe('AccountMenu', () => {
   let user: ReturnType<typeof userEvent.setup>

@@ -21,7 +21,8 @@ export {
   useContributions,
   useRefreshContributions,
   useRefreshUserEvents,
-  useUserEvents
+  useUserEvents,
+  useWatchedRepoEvents
 } from './contributions'
 // GitHub Status
 export {
