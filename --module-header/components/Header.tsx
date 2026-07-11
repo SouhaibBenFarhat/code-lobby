@@ -153,14 +153,8 @@ export function Header({
         {!isFullscreen && <div className="w-[72px] h-full flex-shrink-0" />}
         {isFullscreen && <div className="w-3 h-full flex-shrink-0" />}
 
-        <div className="flex items-center gap-2.5 no-drag pr-4">
+        <div className="flex items-center no-drag pr-4">
           <CodeLobbyLogo size={28} />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold leading-tight">CodeLobby</span>
-            <span className="text-[10px] text-muted-foreground leading-tight">
-              Real-time PR monitoring
-            </span>
-          </div>
         </div>
       </div>
 

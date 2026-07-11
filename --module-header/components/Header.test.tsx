@@ -105,7 +105,7 @@ describe('Header', () => {
   })
 
   describe('Rendering', () => {
-    it('should render the CodeLobby logo and name', () => {
+    it('should render the CodeLobby logo', () => {
       render(
         <Header
           viewMode="canvas"
@@ -115,20 +115,7 @@ describe('Header', () => {
         />
       )
 
-      expect(screen.getByText('CodeLobby')).toBeInTheDocument()
-    })
-
-    it('should render Live indicator', () => {
-      render(
-        <Header
-          viewMode="canvas"
-          onViewModeChange={mockOnViewModeChange}
-          isAIPanelOpen={false}
-          onToggleAIPanel={mockOnToggleAIPanel}
-        />
-      )
-
-      expect(screen.getByText('Real-time PR monitoring')).toBeInTheDocument()
+      expect(screen.getByLabelText('CodeLobby Logo')).toBeInTheDocument()
     })
 
     it('should display user avatar when user is logged in', async () => {
@@ -336,7 +323,7 @@ describe('Header', () => {
       )
 
       // Should still render without crashing
-      expect(screen.getByText('CodeLobby')).toBeInTheDocument()
+      expect(screen.getByLabelText('CodeLobby Logo')).toBeInTheDocument()
     })
   })
 
