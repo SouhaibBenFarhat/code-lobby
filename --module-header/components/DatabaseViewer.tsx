@@ -24,12 +24,34 @@ interface TableData {
   rows: Record<string, unknown>[]
 }
 
-export function DatabaseViewer(): React.JSX.Element {
-  const [open, setOpen] = useState(false)
+interface DatabaseViewerProps {
+  /** Controlled open state (e.g. driven by the native "Database Viewer" menu item). */
+  open?: boolean
+  /** Called when the open state should change (controlled mode). */
+  onOpenChange?: (open: boolean) => void
+}
+
+export function DatabaseViewer({
+  open: controlledOpen,
+  onOpenChange
+}: DatabaseViewerProps): React.JSX.Element {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [tables, setTables] = useState<TableData[]>([])
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [_loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Support both standalone (own trigger) and controlled (native menu) usage.
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setUncontrolledOpen(next)
+      onOpenChange?.(next)
+    },
+    [isControlled, onOpenChange]
+  )
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -94,16 +116,18 @@ export function DatabaseViewer(): React.JSX.Element {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Database className="w-4 h-4" />
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>Database Viewer</TooltipContent>
-      </Tooltip>
+      {!isControlled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Database className="w-4 h-4" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Database Viewer</TooltipContent>
+        </Tooltip>
+      )}
 
       <DialogContent className="max-w-6xl max-h-[85vh]">
         <DialogHeader>
