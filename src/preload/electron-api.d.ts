@@ -307,6 +307,23 @@ export interface ElectronAPI {
   setMyPRsRepos: (repos: string[]) => Promise<{ success: boolean }>
 
   // Logging
+  getLogs: () => Promise<
+    Array<{
+      id: string
+      timestamp: string
+      level: string
+      category: string
+      message: string
+      details?: unknown
+    }>
+  >
+  clearLogs: () => Promise<{ success: boolean }>
+  exportLogs: () => Promise<string>
+  getLogsSummary: () => Promise<{
+    total: number
+    byLevel: Record<string, number>
+    byCategory: Record<string, number>
+  }>
   logFromRenderer: (
     level: 'info' | 'warn' | 'error' | 'debug',
     category: string,
@@ -690,9 +707,6 @@ export interface ElectronAPI {
 
   // Native menu: opened from the "About CodeLobby" menu item
   onOpenAbout: (callback: () => void) => () => void
-
-  // Native menu: opened from the "Database Viewer" menu item (View menu)
-  onOpenDatabaseViewer: (callback: () => void) => () => void
 
   // Shell operations
   shell: {

@@ -85,7 +85,6 @@ export {
   // Code Visualizer
   useSetCodeVisualizer,
   useSetDailySpeechModalOpen,
-  useSetDatabaseViewerOpen,
   useSetEnableThinking,
   useSetIDESettings,
   useSetNetworkPanel,
@@ -167,7 +166,6 @@ export {
   useDailySpeeches,
   // Daily Speech
   useDailySpeechModalOpen,
-  useDatabaseViewerOpen,
   useEnableThinking,
   // File Content (Code Visualizer)
   useFileContent,

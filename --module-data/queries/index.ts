@@ -78,7 +78,6 @@ export {
   useAboutModalOpen,
   useClaudeApiKeyStatus,
   useClaudeCodeStatus,
-  useDatabaseViewerOpen,
   useIsFullscreen,
   useNetworkPanel,
   useNetworkPanelHeight,

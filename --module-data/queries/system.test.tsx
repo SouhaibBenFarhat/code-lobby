@@ -7,7 +7,7 @@ import { setupMockElectron } from '@test-utils'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { keys } from '../keys'
-import { useAboutModalOpen, useDatabaseViewerOpen } from './system'
+import { useAboutModalOpen } from './system'
 
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -64,62 +64,6 @@ describe('useAboutModalOpen', () => {
     setupMockElectron({ onOpenAbout: undefined })
 
     const { result } = renderHook(() => useAboutModalOpen(), {
-      wrapper: createWrapper(queryClient)
-    })
-
-    await waitFor(() => expect(result.current.data).toBe(false))
-  })
-})
-
-describe('useDatabaseViewerOpen', () => {
-  let queryClient: QueryClient
-
-  beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, gcTime: Infinity, staleTime: Infinity }
-      }
-    })
-  })
-
-  it('defaults to false (viewer closed on launch)', async () => {
-    setupMockElectron()
-
-    const { result } = renderHook(() => useDatabaseViewerOpen(), {
-      wrapper: createWrapper(queryClient)
-    })
-
-    await waitFor(() => expect(result.current.data).toBe(false))
-  })
-
-  it('opens when the native Database Viewer menu item fires the IPC event', async () => {
-    let captured: (() => void) | null = null
-    setupMockElectron({
-      onOpenDatabaseViewer: vi.fn((cb: () => void) => {
-        captured = cb
-        return () => {}
-      })
-    })
-
-    const { result } = renderHook(() => useDatabaseViewerOpen(), {
-      wrapper: createWrapper(queryClient)
-    })
-
-    await waitFor(() => expect(result.current.data).toBe(false))
-
-    // Simulate the "Database Viewer" menu item being clicked
-    act(() => {
-      captured?.()
-    })
-
-    await waitFor(() => expect(result.current.data).toBe(true))
-    expect(queryClient.getQueryData(keys.system.databaseViewerOpen)).toBe(true)
-  })
-
-  it('does not throw when the menu bridge is unavailable', async () => {
-    setupMockElectron({ onOpenDatabaseViewer: undefined })
-
-    const { result } = renderHook(() => useDatabaseViewerOpen(), {
       wrapper: createWrapper(queryClient)
     })
 

@@ -81,7 +81,6 @@ export {
 export {
   useOpenExternal,
   useSetAboutModalOpen,
-  useSetDatabaseViewerOpen,
   useSetNetworkPanel,
   useSetNetworkPanelHeight,
   useSetTheme,

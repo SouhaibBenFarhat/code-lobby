@@ -256,6 +256,10 @@ const electronAPI: ElectronAPI = {
   setMyPRsRepos: (repos: string[]) => ipcRenderer.invoke('set-my-prs-repos', repos),
 
   // Logging
+  getLogs: () => ipcRenderer.invoke('get-logs'),
+  clearLogs: () => ipcRenderer.invoke('clear-logs'),
+  exportLogs: () => ipcRenderer.invoke('export-logs'),
+  getLogsSummary: () => ipcRenderer.invoke('get-logs-summary'),
   logFromRenderer: (
     level: string,
     category: string,
@@ -707,17 +711,6 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('menu:open-about', handler)
     return () => {
       ipcRenderer.removeListener('menu:open-about', handler)
-    }
-  },
-
-  // Opened from the native "Database Viewer" menu item (View menu)
-  onOpenDatabaseViewer: (callback: () => void) => {
-    const handler = () => {
-      callback()
-    }
-    ipcRenderer.on('menu:open-database-viewer', handler)
-    return () => {
-      ipcRenderer.removeListener('menu:open-database-viewer', handler)
     }
   },
 
