@@ -18,8 +18,8 @@ export function CodeLobbyLogo({ className, size = 32 }: CodeLobbyLogoProps): JSX
       role="img"
       aria-label="CodeLobby Logo"
     >
-      {/* Background */}
-      <rect width="64" height="64" rx="8" fill="#141B4D" />
+      {/* Background (app-style rounded square, ~22% radius) */}
+      <rect width="64" height="64" rx="14" fill="#141B4D" />
 
       {/* White hexagon (compact — scaled to ~66% so the navy frame reads prominently) */}
       <path d="M32 15.5 L47.2 23.4 L47.2 40.6 L32 48.5 L16.8 40.6 L16.8 23.4 Z" fill="white" />
@@ -46,7 +46,7 @@ export function CodeLobbyIcon({ className, size = 20 }: CodeLobbyLogoProps): JSX
       role="img"
       aria-label="CodeLobby Icon"
     >
-      <rect width="24" height="24" rx="4" fill="#141B4D" />
+      <rect width="24" height="24" rx="5.25" fill="#141B4D" />
 
       {/* Hexagon (compact — scaled to ~66%) */}
       <path d="M12 6.1 L17.9 9 L17.9 15 L12 17.9 L6.1 15 L6.1 9 Z" fill="white" />
@@ -73,7 +73,7 @@ export function CodeLobbyLogoAnimated({ className, size = 32 }: CodeLobbyLogoPro
       role="img"
       aria-label="CodeLobby Logo Loading"
     >
-      <rect width="64" height="64" rx="8" className="fill-muted" />
+      <rect width="64" height="64" rx="14" className="fill-muted" />
 
       <path
         d="M32 15.5 L47.2 23.4 L47.2 40.6 L32 48.5 L16.8 40.6 L16.8 23.4 Z"

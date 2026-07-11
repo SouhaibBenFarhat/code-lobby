@@ -18,58 +18,66 @@
       <stop offset="80%" stop-color="black" stop-opacity="0"/>
       <stop offset="100%" stop-color="black" stop-opacity="0.12"/>
     </linearGradient>
+
+    <!-- App-style rounded-square mask (~22% radius). Corners are transparent
+         so the icon reads as a proper rounded app tile in the dock. -->
+    <clipPath id="roundedMask">
+      <rect width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
   </defs>
 
   <!--
-    v7: Full square — macOS applies its own squircle mask automatically.
-    No clip path needed. Compact hexagon (scaled to ~66%) so the navy
-    background reads as a prominent frame around the mark.
+    v8: Rounded-square app tile. All layers are clipped to a ~22%-radius
+    rounded rect so the corners are transparent (macOS does not reliably
+    round full-bleed icons on its own). Compact hexagon (~66%) keeps the
+    navy background reading as a prominent frame.
   -->
+  <g clip-path="url(#roundedMask)">
+    <!-- Background fills the rounded tile -->
+    <rect width="512" height="512" fill="url(#bump)"/>
 
-  <!-- Background fills entire square (no transparency at corners) -->
-  <rect width="512" height="512" fill="url(#bump)"/>
+    <!-- Compact hexagon — pulled in further for a prominent navy frame in the dock -->
+    <path
+      d="M256 140
+         L364 199
+         L364 313
+         L256 372
+         L148 313
+         L148 199
+         Z"
+      fill="white"
+      fill-opacity="0.95"
+    />
 
-  <!-- Compact hexagon — pulled in further for a prominent navy frame in the dock -->
-  <path
-    d="M256 140
-       L364 199
-       L364 313
-       L256 372
-       L148 313
-       L148 199
-       Z"
-    fill="white"
-    fill-opacity="0.95"
-  />
+    <!-- Code brackets < > cut out as negative space -->
+    <!-- Left bracket < -->
+    <path
+      d="M235 199
+         L174 256
+         L235 313
+         L235 276
+         L203 256
+         L235 236
+         Z"
+      fill="#141B4D"
+    />
 
-  <!-- Code brackets < > cut out as negative space -->
-  <!-- Left bracket < -->
-  <path
-    d="M235 199
-       L174 256
-       L235 313
-       L235 276
-       L203 256
-       L235 236
-       Z"
-    fill="#141B4D"
-  />
+    <!-- Right bracket > -->
+    <path
+      d="M277 199
+         L338 256
+         L277 313
+         L277 276
+         L309 256
+         L277 236
+         Z"
+      fill="#141B4D"
+    />
 
-  <!-- Right bracket > -->
-  <path
-    d="M277 199
-       L338 256
-       L277 313
-       L277 276
-       L309 256
-       L277 236
-       Z"
-    fill="#141B4D"
-  />
+    <!-- Top gloss overlay for bumpy convex effect -->
+    <rect width="512" height="512" fill="url(#gloss)"/>
 
-  <!-- Top gloss overlay for bumpy convex effect -->
-  <rect width="512" height="512" fill="url(#gloss)"/>
-
-  <!-- Bottom shadow for grounding -->
-  <rect width="512" height="512" fill="url(#bottomShadow)"/>
+    <!-- Bottom shadow for grounding -->
+    <rect width="512" height="512" fill="url(#bottomShadow)"/>
+  </g>
 </svg>
