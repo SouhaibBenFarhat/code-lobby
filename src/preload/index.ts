@@ -306,12 +306,6 @@ const electronAPI: ElectronAPI = {
   clearChatHistory: () => ipcRenderer.invoke('clear-chat-history'),
 
   // AI-powered actions
-  extractPreviewUrl: (context: {
-    title: string
-    body: string | null
-    comments: Array<{ author: string; body: string }>
-  }) => ipcRenderer.invoke('extract-preview-url', context),
-
   extractJiraTicket: (context: {
     title: string
     body: string | null
@@ -588,66 +582,6 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('daily-speech:error', handler)
     return () => {
       ipcRenderer.removeListener('daily-speech:error', handler)
-    }
-  },
-
-  // Reviewer Suggestion (Agentic)
-  startReviewerSuggestion: (options: {
-    repoFullName: string
-    prNumber: number
-    branch: string
-    baseBranch: string
-    changedFiles: string[]
-    prAuthor: string
-    githubToken: string
-  }) => ipcRenderer.invoke('reviewer-suggest:start', options),
-
-  onReviewerSuggestDone: (
-    callback: (data: {
-      reviewers: Array<{
-        login: string | null
-        name: string
-        email: string
-        linesOwned: number
-        filesOwned: number
-        recencyScore: number
-        totalScore: number
-      }>
-      analyzedFiles: number
-      timestamp: string
-    }) => void
-  ) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: {
-        reviewers: Array<{
-          login: string | null
-          name: string
-          email: string
-          linesOwned: number
-          filesOwned: number
-          recencyScore: number
-          totalScore: number
-        }>
-        analyzedFiles: number
-        timestamp: string
-      }
-    ) => {
-      callback(data)
-    }
-    ipcRenderer.on('reviewer-suggest:done', handler)
-    return () => {
-      ipcRenderer.removeListener('reviewer-suggest:done', handler)
-    }
-  },
-
-  onReviewerSuggestError: (callback: (data: { error: string }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { error: string }) => {
-      callback(data)
-    }
-    ipcRenderer.on('reviewer-suggest:error', handler)
-    return () => {
-      ipcRenderer.removeListener('reviewer-suggest:error', handler)
     }
   },
 

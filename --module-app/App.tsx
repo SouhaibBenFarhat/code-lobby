@@ -17,7 +17,6 @@ import {
   useNetworkPanelHeight,
   usePRDetailPanel,
   usePRFiles,
-  useReviewerSuggestListener,
   useSelectedPRId,
   useSetAIPanel,
   useSetIDESettings,
@@ -94,9 +93,6 @@ export function App(): React.JSX.Element {
 
   // Initialize Claude Code stream listener (receives IPC events from main process)
   useClaudeStreamListener()
-
-  // Initialize reviewer suggestion IPC listener
-  useReviewerSuggestListener()
 
   // Validate persisted token on startup (after hydration completes)
   const { mutate: validatePersistedToken } = useValidatePersistedToken()

@@ -23,7 +23,6 @@ export {
   type ConvertToDraftButtonProps
 } from './ConvertToDraftButton'
 export { FileTreeNode, type FileTreeNodeProps } from './FileTreeNode'
-export { FindPreviewButton } from './FindPreviewButton'
 export { LabelsButton, type LabelsButtonProps } from './LabelsButton'
 export { LabelsSection, type LabelsSectionProps } from './LabelsSection'
 export { MergeButton, type MergeButtonProps } from './MergeButton'
@@ -50,10 +49,6 @@ export {
   ReviewTree,
   type ReviewTreeProps
 } from './ReviewTree'
-export {
-  SuggestedReviewers,
-  type SuggestedReviewersProps
-} from './SuggestedReviewers'
 // Types (DiffLine is now in @ui-kit)
 export type {
   CheckRun,

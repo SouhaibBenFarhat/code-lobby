@@ -48,13 +48,6 @@ export const keys = {
   repoLabels: (repoFullName: string): readonly ['github', 'repo-labels', string] =>
     ['github', 'repo-labels', repoFullName] as const,
 
-  /** PR reviewer suggestions (agentic, from git blame analysis) */
-  prReviewerSuggestions: (
-    repoFullName: string,
-    prNumber: number
-  ): readonly ['github', 'pr', string, number, 'reviewer-suggestions'] =>
-    ['github', 'pr', repoFullName, prNumber, 'reviewer-suggestions'] as const,
-
   user: ['github', 'user'] as const,
   currentUser: ['github', 'current-user'] as const,
   rateLimit: ['github', 'rate-limit'] as const,
@@ -102,9 +95,6 @@ export const keys = {
   // Per-PR chat messages (each PR has its own cache entry)
   prChatMessages: (prId: string): readonly ['ai', 'pr-chat', string] =>
     ['ai', 'pr-chat', prId] as const,
-  // Per-PR preview URL (persisted forever)
-  previewUrl: (prId: string): readonly ['ai', 'preview-url', string] =>
-    ['ai', 'preview-url', prId] as const,
 
   // Network (NOT persisted - runtime only)
   networkRequests: ['network', 'requests'] as const,

@@ -126,17 +126,6 @@ Your conversations are private and stored locally.
 
 ---
 
-### 🔗 Open Preview (AI-Powered)
-
-Many PRs have preview/staging links buried in comments. Finding them is tedious.
-
-**One Click:**
-1. Click the globe icon on any PR
-2. AI scans the description and comments
-3. Preview URL opens in your browser
-
-No more searching through bot comments for that Vercel link.
-
 ### 🌐 Webview Tabs
 
 Open preview URLs directly within CodeLobby as browser-like tabs:
@@ -817,7 +806,6 @@ We're actively building:
 | **Quick Actions** | Start AI chats with one click |
 | **Custom Prompts** | Save your own quick prompts |
 | **AI PR Reviews** | Generate and submit full PR reviews |
-| **Open Preview** | One-click staging access |
 | **Why Open Analysis** | Instant PR diagnostics |
 | **CI Failure Analysis** | AI explains why CI failed |
 | **Web Fetch Tool** | Claude can fetch URLs for context |
