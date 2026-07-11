@@ -130,6 +130,7 @@ export const keys = {
   // System (native/OS state)
   system: {
     fullscreen: ['system', 'fullscreen'] as const,
-    theme: ['system', 'theme'] as const
+    theme: ['system', 'theme'] as const,
+    aboutModalOpen: ['system', 'about-modal-open'] as const
   }
 } as const

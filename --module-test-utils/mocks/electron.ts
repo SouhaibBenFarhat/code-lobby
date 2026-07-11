@@ -157,6 +157,9 @@ interface MockElectronAPI {
   isFullscreen: ReturnType<typeof vi.fn>
   onFullscreenChange: ReturnType<typeof vi.fn>
 
+  // Native menu
+  onOpenAbout: ReturnType<typeof vi.fn>
+
   // GitHub OAuth (device flow)
   startGitHubAuth: ReturnType<typeof vi.fn>
   cancelGitHubAuth: ReturnType<typeof vi.fn>
@@ -443,6 +446,9 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     // Fullscreen
     isFullscreen: vi.fn().mockResolvedValue(false),
     onFullscreenChange: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+
+    // Native menu
+    onOpenAbout: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
 
     // GitHub OAuth (device flow)
     startGitHubAuth: vi.fn().mockResolvedValue({

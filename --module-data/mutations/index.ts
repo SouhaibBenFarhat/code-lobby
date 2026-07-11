@@ -80,6 +80,7 @@ export {
 // System
 export {
   useOpenExternal,
+  useSetAboutModalOpen,
   useSetNetworkPanel,
   useSetNetworkPanelHeight,
   useSetTheme,
