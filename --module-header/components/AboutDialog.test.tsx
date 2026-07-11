@@ -46,4 +46,27 @@ describe('AboutDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
     expect(screen.queryByText(/erase ALL data/i)).not.toBeInTheDocument()
   })
+
+  describe('uncontrolled (standalone) mode', () => {
+    it('renders its own Book trigger button, closed by default', () => {
+      render(<AboutDialog />)
+
+      // The default trigger button is shown when no `open` prop is provided
+      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.queryByText(/Built with/i)).not.toBeInTheDocument()
+    })
+
+    it('opens the modal from its own trigger', () => {
+      render(<AboutDialog />)
+
+      fireEvent.click(screen.getByRole('button'))
+      expect(screen.getByText(/What is CodeLobby\?/i)).toBeInTheDocument()
+    })
+
+    it('renders a custom trigger when provided', () => {
+      render(<AboutDialog trigger={<button type="button">Open about</button>} />)
+
+      expect(screen.getByRole('button', { name: 'Open about' })).toBeInTheDocument()
+    })
+  })
 })
