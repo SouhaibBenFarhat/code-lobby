@@ -363,12 +363,6 @@ export interface ElectronAPI {
   clearChatHistory: () => Promise<{ success: boolean }>
 
   // AI-powered actions
-  extractPreviewUrl: (context: {
-    title: string
-    body: string | null
-    comments: Array<{ author: string; body: string }>
-  }) => Promise<{ success: boolean; url?: string; message?: string }>
-
   extractJiraTicket: (context: {
     title: string
     body: string | null
@@ -762,35 +756,6 @@ export interface ElectronAPI {
   ) => () => void
 
   onClaudeError: (callback: (data: { sessionId: string; error: string }) => void) => () => void
-
-  // Reviewer Suggestion (agentic git-blame analysis)
-  startReviewerSuggestion: (request: {
-    repoFullName: string
-    prNumber: number
-    branch: string
-    baseBranch: string
-    changedFiles: string[]
-    prAuthor: string
-    githubToken: string
-  }) => Promise<{ success: boolean; error?: string }>
-
-  onReviewerSuggestDone: (
-    callback: (data: {
-      reviewers: Array<{
-        login: string | null
-        name: string
-        email: string
-        linesOwned: number
-        filesOwned: number
-        recencyScore: number
-        totalScore: number
-      }>
-      analyzedFiles: number
-      timestamp: string
-    }) => void
-  ) => () => void
-
-  onReviewerSuggestError: (callback: (data: { error: string }) => void) => () => void
 
   // Claude review event - emitted when Claude generates a structured review
   onClaudeReview: (

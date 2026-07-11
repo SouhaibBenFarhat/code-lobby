@@ -113,7 +113,6 @@ interface MockElectronAPI {
   setAIPanel: ReturnType<typeof vi.fn>
 
   // AI-powered actions
-  extractPreviewUrl: ReturnType<typeof vi.fn>
   extractJiraTicket: ReturnType<typeof vi.fn>
   analyzePRStatus: ReturnType<typeof vi.fn>
   analyzePRStatusStreaming: ReturnType<typeof vi.fn>
@@ -345,10 +344,6 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     setAIPanel: vi.fn().mockResolvedValue({ success: true }),
 
     // AI-powered actions
-    extractPreviewUrl: vi.fn().mockResolvedValue({
-      success: false,
-      message: 'No preview URL found in this PR'
-    }),
     extractJiraTicket: vi.fn().mockResolvedValue({
       success: false,
       message: 'No Jira ticket found in this PR'

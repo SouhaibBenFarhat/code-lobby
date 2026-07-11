@@ -2,7 +2,7 @@
  * LabelsButton - Manage PR labels via dropdown
  *
  * A button that opens a popover to view, add, and remove labels from the PR.
- * Follows the same pattern as UpdateBranchButton, FindPreviewButton, etc.
+ * Follows the same pattern as UpdateBranchButton, etc.
  */
 
 import type { github } from '@data'

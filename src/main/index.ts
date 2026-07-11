@@ -58,7 +58,6 @@ import {
   buildCIFailureAnalysisPrompt,
   buildJiraTicketPrompt,
   buildPRAnalysisPrompt,
-  buildPreviewURLPrompt,
   CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
   GENERAL_CHAT_SYSTEM_PROMPT
 } from './prompts'
@@ -650,51 +649,8 @@ function setupIPCHandlers(): void {
   )
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // AI-POWERED FEATURES (Preview URL, Jira, CI Analysis, PR Analysis)
+  // AI-POWERED FEATURES (Jira, CI Analysis, PR Analysis)
   // ═══════════════════════════════════════════════════════════════════════════
-
-  // Extract preview URL from PR context using AI
-  ipcMain.handle(
-    'extract-preview-url',
-    async (
-      _,
-      context: {
-        title: string
-        body: string | null
-        comments: Array<{ author: string; body: string }>
-      }
-    ) => {
-      logger.info(LogCategory.API, 'Extracting preview URL from PR', {
-        title: context.title,
-        commentsCount: context.comments.length
-      })
-
-      let result: { success: boolean; url?: string; message?: string }
-
-      try {
-        const prompt = buildPreviewURLPrompt(context)
-        const responseText = await cliOneShot(prompt)
-
-        if (responseText.includes('NO_PREVIEW_URL_FOUND') || !responseText) {
-          result = { success: false, message: 'No preview URL found in this PR' }
-        } else {
-          const urlMatch = responseText.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)
-          result = urlMatch
-            ? { success: true, url: urlMatch[0] }
-            : { success: false, message: 'Could not extract a valid URL from the response' }
-        }
-      } catch (error) {
-        result = { success: false, message: `Error: ${(error as Error).message}` }
-      }
-
-      if (result.success && result.url) {
-        await shell.openExternal(result.url)
-        logger.info(LogCategory.APP, 'Opened preview URL in browser', { url: result.url })
-      }
-
-      return result
-    }
-  )
 
   // Extract Jira ticket from PR context using AI
   ipcMain.handle(
@@ -1154,76 +1110,6 @@ function setupIPCHandlers(): void {
   ipcMain.handle('stop-daily-speech', () => {
     return false
   })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // REVIEWER SUGGESTION (AGENTIC)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  ipcMain.handle(
-    'reviewer-suggest:start',
-    async (
-      _,
-      options: {
-        repoFullName: string
-        prNumber: number
-        branch: string
-        baseBranch: string
-        changedFiles: string[]
-        prAuthor: string
-        githubToken: string
-      }
-    ) => {
-      if (!mainWindow) {
-        return { success: false, error: 'Main window not available' }
-      }
-
-      logger.info(LogCategory.API, 'Starting reviewer suggestion', {
-        repo: options.repoFullName,
-        prNumber: options.prNumber,
-        fileCount: options.changedFiles.length
-      })
-
-      const prompt = `Analyze git blame data for the following PR and suggest optimal reviewers.
-
-Repository: ${options.repoFullName}
-PR #${options.prNumber}
-Branch: ${options.branch} → ${options.baseBranch}
-PR Author (exclude from suggestions): ${options.prAuthor}
-
-Changed files:
-${options.changedFiles.map((f) => `- ${f}`).join('\n')}
-
-For each changed file, consider who has recently modified it and who has the most expertise.
-Return your response as a JSON array with this format:
-[{"login": "username", "score": 0.95, "reason": "Modified 5 of the changed files recently"}]
-
-Return ONLY the JSON array, no other text.`
-
-      try {
-        const responseText = await cliOneShot(prompt, undefined, 'haiku')
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/)
-        if (jsonMatch) {
-          const suggestions = JSON.parse(jsonMatch[0])
-          mainWindow.webContents.send('reviewer-suggest:result', {
-            success: true,
-            suggestions
-          })
-        } else {
-          mainWindow.webContents.send('reviewer-suggest:result', {
-            success: false,
-            error: 'Could not parse reviewer suggestions'
-          })
-        }
-      } catch (error) {
-        mainWindow.webContents.send('reviewer-suggest:result', {
-          success: false,
-          error: (error as Error).message
-        })
-      }
-
-      return { success: true }
-    }
-  )
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PR CHAT OPERATIONS

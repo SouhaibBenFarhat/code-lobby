@@ -43,7 +43,6 @@ import { useSelectedPR } from '../../hooks'
 import { ApproveButton } from '../ApproveButton'
 import { CloseButton } from '../CloseButton'
 import { ConvertToDraftButton } from '../ConvertToDraftButton'
-import { FindPreviewButton } from '../FindPreviewButton'
 import { LabelsButton } from '../LabelsButton'
 import { MergeButton } from '../MergeButton'
 import { ReadyForReviewButton } from '../ReadyForReviewButton'
@@ -518,9 +517,6 @@ export function PRHeader({ onClose }: PRHeaderProps): React.JSX.Element | null {
             <Row gutter="xs" align="center" wrap>
               <Col span="auto">
                 <ReopenButton />
-              </Col>
-              <Col span="auto">
-                <FindPreviewButton />
               </Col>
               <Col span="auto">
                 <CloseButton />

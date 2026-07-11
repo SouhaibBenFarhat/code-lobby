@@ -1,19 +1,9 @@
 /**
  * ChangedFilesSection - Displays changed files in a tree structure with diff viewer.
- * Uses TanStack Query hooks. Includes agentic reviewer suggestion button.
+ * Uses TanStack Query hooks.
  */
 
-import {
-  type PRFile,
-  type ReviewerSuggestionResult,
-  setPendingReviewerRequest,
-  useClaudeCodeStatus,
-  useGitHubToken,
-  useOpenCodeVisualizer,
-  usePRFiles,
-  useSuggestReviewers,
-  useTriggerReviewerSuggestion
-} from '@data'
+import { type PRFile, useOpenCodeVisualizer, usePRFiles } from '@data'
 import { Badge, Button, cn, Input, Tooltip, TooltipContent, TooltipTrigger } from '@ui-kit'
 import {
   AlertCircle,
@@ -26,12 +16,10 @@ import {
   FilePlus,
   Loader2,
   Search,
-  Sparkles,
   X
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { FileTreeNode } from '../FileTreeNode'
-import { SuggestedReviewers } from '../SuggestedReviewers'
 import type { FileTreeNode as FileTreeNodeType } from '../types'
 
 export interface ChangedFilesSectionProps {
@@ -40,12 +28,6 @@ export interface ChangedFilesSectionProps {
   totalChanged: number
   /** PR head branch ref for opening files in code visualizer */
   headRef?: string
-  /** PR author login - used to exclude from reviewer suggestions */
-  prAuthor?: string
-  /** PR head branch name */
-  branch?: string
-  /** PR base branch name */
-  baseBranch?: string
 }
 
 function buildFileTreeFromFiles(files: PRFile[]): FileTreeNodeType {
@@ -89,34 +71,13 @@ export function ChangedFilesSection({
   repoFullName,
   prNumber,
   totalChanged,
-  headRef,
-  prAuthor,
-  branch,
-  baseBranch
+  headRef
 }: ChangedFilesSectionProps): React.JSX.Element {
   // TanStack Query hook - pass totalChanged to enable parallel fetching for large PRs
   const { data: files = [], isLoading, error } = usePRFiles(repoFullName, prNumber, totalChanged)
 
   // Code Visualizer mutation
   const openCodeVisualizer = useOpenCodeVisualizer()
-
-  // Reviewer suggestion hooks
-  const { data: reviewerResult } = useSuggestReviewers(repoFullName, prNumber)
-  const triggerSuggestion = useTriggerReviewerSuggestion()
-  const { data: claudeStatus } = useClaudeCodeStatus()
-  const { data: githubToken } = useGitHubToken()
-
-  const [showReviewerPanel, setShowReviewerPanel] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const analyzingRef = useRef(false)
-
-  // Clear analyzing state when result arrives from IPC listener
-  useEffect(() => {
-    if (analyzingRef.current && reviewerResult) {
-      setIsAnalyzing(false)
-      analyzingRef.current = false
-    }
-  }, [reviewerResult])
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isExpanded, setIsExpanded] = useState(true)
@@ -221,83 +182,6 @@ export function ChangedFilesSection({
     }
   }, [repoFullName, prNumber, headRef, files, openCodeVisualizer])
 
-  // Reviewer suggestion handler — CLI-only guard
-  const canSuggestReviewers = claudeStatus?.installed
-  const isSuggesting = isAnalyzing || triggerSuggestion.isPending
-
-  const reviewerDisabledReason = !claudeStatus?.installed ? 'Claude Code CLI required' : undefined
-
-  const handleSuggestReviewers = useCallback(() => {
-    if (!canSuggestReviewers || !prAuthor || !branch || !baseBranch || !githubToken) return
-
-    // If we already have a cached result, just show it
-    if (reviewerResult?.reviewers?.length) {
-      setShowReviewerPanel(true)
-      return
-    }
-
-    const filePaths = files.map((f) => f.path)
-    if (filePaths.length === 0) return
-
-    // Track which PR is being analyzed for the IPC listener
-    setPendingReviewerRequest({ repoFullName, prNumber })
-    setShowReviewerPanel(true)
-    setIsAnalyzing(true)
-    analyzingRef.current = true
-
-    triggerSuggestion.mutate({
-      repoFullName,
-      prNumber,
-      branch,
-      baseBranch,
-      changedFiles: filePaths,
-      prAuthor,
-      githubToken
-    })
-  }, [
-    canSuggestReviewers,
-    prAuthor,
-    branch,
-    baseBranch,
-    githubToken,
-    reviewerResult,
-    files,
-    repoFullName,
-    prNumber,
-    triggerSuggestion
-  ])
-
-  const handleRetryReviewerSuggestion = useCallback(() => {
-    if (!canSuggestReviewers || !prAuthor || !branch || !baseBranch || !githubToken) return
-
-    const filePaths = files.map((f) => f.path)
-    if (filePaths.length === 0) return
-
-    setPendingReviewerRequest({ repoFullName, prNumber })
-    setIsAnalyzing(true)
-    analyzingRef.current = true
-
-    triggerSuggestion.mutate({
-      repoFullName,
-      prNumber,
-      branch,
-      baseBranch,
-      changedFiles: filePaths,
-      prAuthor,
-      githubToken
-    })
-  }, [
-    canSuggestReviewers,
-    prAuthor,
-    branch,
-    baseBranch,
-    githubToken,
-    files,
-    repoFullName,
-    prNumber,
-    triggerSuggestion
-  ])
-
   const fileStats = useMemo(() => {
     const stats = { added: 0, deleted: 0, modified: 0, renamed: 0 }
     for (const file of files) {
@@ -343,32 +227,6 @@ export function ChangedFilesSection({
         </Button>
 
         <div className="flex items-center gap-1.5">
-          {/* Suggest Reviewer button */}
-          {prAuthor && branch && baseBranch && files.length > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 gap-1.5 text-xs"
-                  onClick={handleSuggestReviewers}
-                  disabled={!canSuggestReviewers || isSuggesting}
-                >
-                  {isSuggesting ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>Suggest Reviewer</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {reviewerDisabledReason || 'Analyze code ownership to suggest reviewers'}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
           {/* Open Code Visualizer button */}
           {headRef && files.length > 0 && (
             <Tooltip>
@@ -520,19 +378,6 @@ export function ChangedFilesSection({
                   </Badge>
                 </button>
               )}
-            </div>
-          )}
-
-          {/* Reviewer Suggestions Panel */}
-          {showReviewerPanel && (
-            <div className="rounded-lg border border-border-muted bg-surface p-3">
-              <SuggestedReviewers
-                result={
-                  reviewerResult as (ReviewerSuggestionResult & { error?: string }) | undefined
-                }
-                isLoading={isSuggesting}
-                onRetry={handleRetryReviewerSuggestion}
-              />
             </div>
           )}
 

@@ -312,9 +312,6 @@ export function PRDetail({ onClose }: PRDetailProps): React.JSX.Element | null {
                 prNumber={pr.number}
                 totalChanged={pr.changed_files}
                 headRef={pr.head.ref}
-                prAuthor={pr.user.login}
-                branch={pr.head.ref}
-                baseBranch={pr.base.ref}
               />
             </Col>
 
