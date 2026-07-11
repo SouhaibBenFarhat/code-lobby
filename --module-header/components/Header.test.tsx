@@ -108,7 +108,6 @@ vi.mock('./AccountMenu', () => ({
 }))
 
 describe('Header', () => {
-  const mockOnLogout = vi.fn()
   const mockOnViewModeChange = vi.fn()
   const mockOnToggleAIPanel = vi.fn()
 
@@ -126,7 +125,6 @@ describe('Header', () => {
     it('should render the CodeLobby logo and name', () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -140,7 +138,6 @@ describe('Header', () => {
     it('should render Live indicator', () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -155,7 +152,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -178,7 +174,6 @@ describe('Header', () => {
     it('should render view mode toggle buttons', () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -194,7 +189,6 @@ describe('Header', () => {
     it('should highlight canvas button when viewMode is canvas', () => {
       const { container } = render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -210,7 +204,6 @@ describe('Header', () => {
     it('should call onViewModeChange when IDE button is clicked', async () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -229,7 +222,6 @@ describe('Header', () => {
     it('should call onViewModeChange when Canvas button is clicked', async () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="ide"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -250,7 +242,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -274,7 +265,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -296,7 +286,6 @@ describe('Header', () => {
 
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -311,39 +300,10 @@ describe('Header', () => {
     })
   })
 
-  describe('Logout', () => {
-    it('should call onLogout when logout button is clicked', async () => {
-      await act(async () => {
-        render(
-          <Header
-            onLogout={mockOnLogout}
-            viewMode="canvas"
-            onViewModeChange={mockOnViewModeChange}
-            isAIPanelOpen={false}
-            onToggleAIPanel={mockOnToggleAIPanel}
-          />
-        )
-      })
-
-      // Find logout button by looking for LogOut icon in buttons
-      const logoutButton =
-        document.querySelector('button svg.lucide-log-out')?.closest('button') ||
-        document.querySelector('button[title*="logout"]')
-
-      if (logoutButton) {
-        await act(async () => {
-          fireEvent.click(logoutButton)
-        })
-        expect(mockOnLogout).toHaveBeenCalledTimes(1)
-      }
-    })
-  })
-
   describe('Refresh', () => {
     it('should show loading state when fetching', async () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -360,7 +320,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -386,7 +345,6 @@ describe('Header', () => {
     it('should handle null user gracefully', () => {
       render(
         <Header
-          onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
           isAIPanelOpen={false}
@@ -408,7 +366,6 @@ describe('Header', () => {
       await act(async () => {
         const result = render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -429,7 +386,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -446,7 +402,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -464,7 +419,6 @@ describe('Header', () => {
       await act(async () => {
         const result = render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}
@@ -489,7 +443,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
             isAIPanelOpen={false}

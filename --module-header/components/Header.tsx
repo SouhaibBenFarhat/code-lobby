@@ -35,7 +35,6 @@ import {
   Gauge,
   LayoutGrid,
   Loader2,
-  LogOut,
   Monitor,
   Moon,
   Network,
@@ -78,7 +77,6 @@ function formatTimeUntilReset(resetAt: string): string {
 }
 
 interface HeaderProps {
-  onLogout: () => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   isAIPanelOpen: boolean
@@ -86,7 +84,6 @@ interface HeaderProps {
 }
 
 export function Header({
-  onLogout,
   viewMode,
   onViewModeChange,
   isAIPanelOpen,
@@ -455,20 +452,6 @@ export function Header({
         ) : (
           <AccountMenu />
         )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onLogout}
-              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Sign out</TooltipContent>
-        </Tooltip>
       </div>
     </header>
   )

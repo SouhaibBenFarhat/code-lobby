@@ -4,14 +4,7 @@
  * Self-contained header module using TanStack Query.
  */
 
-import {
-  useAIPanel,
-  useSetAIPanel,
-  useSetViewMode,
-  useSignOut,
-  useViewMode,
-  type ViewMode
-} from '@data'
+import { useAIPanel, useSetAIPanel, useSetViewMode, useViewMode, type ViewMode } from '@data'
 import { registerToSlot } from '@slot-system'
 import { Header } from './components/Header'
 
@@ -32,11 +25,6 @@ function HeaderWrapper() {
 
   const setViewMode = useSetViewMode()
   const setAIPanel = useSetAIPanel()
-  const signOut = useSignOut()
-
-  const handleLogout = () => {
-    signOut.mutate()
-  }
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode.mutate(mode)
@@ -48,7 +36,6 @@ function HeaderWrapper() {
 
   return (
     <Header
-      onLogout={handleLogout}
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
       isAIPanelOpen={isAIPanelOpen}
