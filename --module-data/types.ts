@@ -229,16 +229,6 @@ export interface ClaudeModel {
   type?: string
 }
 
-/**
- * Agentic Prompts - Custom system prompts for AI-powered actions
- */
-export interface AgenticPrompts {
-  ciFailureAnalysis: string
-  prStatusAnalysis: string
-  jiraTicketExtraction: string
-  previewUrlExtraction: string
-}
-
 export interface AIUsage {
   inputTokens: number
   outputTokens: number

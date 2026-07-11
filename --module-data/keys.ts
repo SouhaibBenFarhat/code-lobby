@@ -82,9 +82,6 @@ export const keys = {
   customPrompts: ['ai', 'custom-prompts'] as const,
   aiUsage: ['ai', 'usage'] as const,
   cliSubscriptionUsage: ['ai', 'cli-subscription-usage'] as const,
-  // Agentic action prompts (PERSISTED)
-  agenticPrompts: ['ai', 'agentic-prompts'] as const,
-  agenticSettingsOpen: ['local', 'agentic-settings-open'] as const,
   // Daily speeches (PERSISTED)
   dailySpeeches: ['ai', 'daily-speeches'] as const,
   dailySpeechModalOpen: ['local', 'daily-speech-modal-open'] as const,

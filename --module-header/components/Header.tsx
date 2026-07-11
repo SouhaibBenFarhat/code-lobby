@@ -1,13 +1,11 @@
 import {
   type ThemeVariant,
-  useAgenticSettingsOpen,
   useIsFullscreen,
   useNetworkPanel,
   usePRs,
   useQueryClient,
   useRateLimit,
   useRepos,
-  useSetAgenticSettingsOpen,
   useSetTheme,
   useSetUserProfilePanel,
   useTheme,
@@ -46,12 +44,10 @@ import {
   Network,
   Palette,
   RefreshCw,
-  Settings,
   Sun
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AboutDialog } from './AboutDialog'
-import { AgenticSettingsSidebar } from './AgenticSettingsSidebar'
 import { AICostIndicator } from './AICostIndicator'
 import { ContributionsModal } from './ContributionsModal'
 import { DatabaseViewer } from './DatabaseViewer'
@@ -126,10 +122,6 @@ export function Header({
   // Network panel
   const { data: networkPanelOpen } = useNetworkPanel()
   const toggleNetworkPanel = useToggleNetworkPanel()
-
-  // Agentic settings sidebar
-  const { data: agenticSettingsOpen } = useAgenticSettingsOpen()
-  const setAgenticSettingsOpen = useSetAgenticSettingsOpen()
 
   // User profile panel
   const { data: userProfilePanelData } = useUserProfilePanel()
@@ -424,20 +416,6 @@ export function Header({
           <TooltipContent>Network Panel</TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-7 w-7', agenticSettingsOpen && 'bg-interactive-active')}
-              onClick={() => setAgenticSettingsOpen.mutate(true)}
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Agentic Settings</TooltipContent>
-        </Tooltip>
-
         <Popover>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -518,9 +496,6 @@ export function Header({
           <TooltipContent>Sign out</TooltipContent>
         </Tooltip>
       </div>
-
-      {/* Agentic Settings Sidebar */}
-      <AgenticSettingsSidebar />
     </header>
   )
 }
