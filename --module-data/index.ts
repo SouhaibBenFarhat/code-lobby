@@ -75,9 +75,6 @@ export {
   useSaveDailySpeech,
   useSaveMessage,
   useSelectPR,
-  // Agentic Settings
-  useSetAgenticPrompts,
-  useSetAgenticSettingsOpen,
   useSetAIPanel,
   useSetCardLayouts,
   useSetClaudeApiKey,
@@ -140,9 +137,6 @@ export {
   type ThemeVariant,
   type UserEvent,
   type UserProfilePanel,
-  // Agentic Settings
-  useAgenticPrompts,
-  useAgenticSettingsOpen,
   // Settings
   useAIPanel,
   // AI
@@ -210,7 +204,6 @@ export {
 } from './queries'
 // Types
 export type {
-  AgenticPrompts,
   AIUsage,
   CardLayout,
   ChatMessage,

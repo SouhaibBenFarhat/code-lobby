@@ -4,14 +4,7 @@
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
-import type {
-  AgenticPrompts,
-  CardLayout,
-  CodeVisualizerState,
-  DailySpeech,
-  PRWebviewTab,
-  ViewMode
-} from '../types'
+import type { CardLayout, CodeVisualizerState, DailySpeech, PRWebviewTab, ViewMode } from '../types'
 
 export function useSetSelectedRepos(): UseMutationResult<string[], Error, string[]> {
   const qc = useQueryClient()
@@ -245,45 +238,6 @@ export function useSetUserProfilePanel(): UseMutationResult<
         height: 250
       }
       qc.setQueryData(keys.local.userProfilePanel, { ...current, ...s })
-    }
-  })
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// AGENTIC SETTINGS - Custom prompts for AI-powered actions
-// ═══════════════════════════════════════════════════════════════════════════
-
-const DEFAULT_AGENTIC_PROMPTS: AgenticPrompts = {
-  ciFailureAnalysis: '',
-  prStatusAnalysis: '',
-  jiraTicketExtraction: '',
-  previewUrlExtraction: ''
-}
-
-export function useSetAgenticPrompts(): UseMutationResult<
-  Partial<AgenticPrompts>,
-  Error,
-  Partial<AgenticPrompts>
-> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (prompts: Partial<AgenticPrompts>) => Promise.resolve(prompts),
-    onSuccess: (prompts) => {
-      const current =
-        qc.getQueryData<AgenticPrompts>(keys.agenticPrompts) || DEFAULT_AGENTIC_PROMPTS
-      qc.setQueryData(keys.agenticPrompts, { ...current, ...prompts })
-    }
-  })
-}
-
-export function useSetAgenticSettingsOpen(): UseMutationResult<boolean, Error, boolean> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
-    onSuccess: (isOpen) => {
-      qc.setQueryData(keys.agenticSettingsOpen, isOpen)
     }
   })
 }

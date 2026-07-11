@@ -58,8 +58,6 @@ export {
   useOpenCodeVisualizer,
   useRemoveWebviewTab,
   useSaveDailySpeech,
-  useSetAgenticPrompts,
-  useSetAgenticSettingsOpen,
   useSetAIPanel,
   useSetCardLayouts,
   useSetCodeVisualizer,

@@ -85,15 +85,6 @@ vi.mock('@data', () => ({
   useContributions: vi.fn(() => mockQueryResult(null)),
   useRefreshContributions: vi.fn(() => vi.fn()),
   useUserProfilePanel: vi.fn(() => mockQueryResult({ isOpen: false, height: 250 })),
-  useAgenticSettingsOpen: vi.fn(() => mockQueryResult(false)),
-  useAgenticPrompts: vi.fn(() =>
-    mockQueryResult({
-      ciFailureAnalysis: '',
-      prStatusAnalysis: '',
-      jiraTicketExtraction: '',
-      previewUrlExtraction: ''
-    })
-  ),
   useCliUsageStats: vi.fn(() => mockQueryResult(null)),
   useClaudeCodeStatus: vi.fn(() => mockQueryResult({ isInstalled: true, isChecking: false })),
   useMemoryUsage: vi.fn(() =>
@@ -109,9 +100,7 @@ vi.mock('@data', () => ({
   useFactoryReset: vi.fn(() => mockMutationResult()),
   useSignOut: vi.fn(() => mockMutationResult()),
   useClearCache: vi.fn(() => mockMutationResult()),
-  useResetAIUsage: vi.fn(() => mockMutationResult()),
-  useSetAgenticSettingsOpen: vi.fn(() => mockMutationResult()),
-  useSetAgenticPrompts: vi.fn(() => mockMutationResult())
+  useResetAIUsage: vi.fn(() => mockMutationResult())
 }))
 
 describe('Header', () => {

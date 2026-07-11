@@ -50,8 +50,6 @@ export { useRepos } from './repository'
 // Settings
 export {
   type UserProfilePanel,
-  useAgenticPrompts,
-  useAgenticSettingsOpen,
   useAIPanel,
   useCardLayouts,
   useCodeVisualizer,

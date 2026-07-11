@@ -5,14 +5,7 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
 import { keys } from '../keys'
-import type {
-  AgenticPrompts,
-  CardLayout,
-  CodeVisualizerState,
-  DailySpeech,
-  PRWebviewTab,
-  ViewMode
-} from '../types'
+import type { CardLayout, CodeVisualizerState, DailySpeech, PRWebviewTab, ViewMode } from '../types'
 
 // Helper to get persisted data with default
 function getPersisted<T>(key: readonly string[], defaultValue: T): T {
@@ -125,36 +118,6 @@ export function useUserProfilePanel(): UseQueryResult<UserProfilePanel, Error> {
     queryKey: keys.local.userProfilePanel,
     queryFn: () =>
       getPersisted<UserProfilePanel>(keys.local.userProfilePanel, { isOpen: false, height: 250 }),
-    staleTime: Infinity
-  })
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// AGENTIC SETTINGS - Custom prompts for AI-powered actions
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Default prompts for agentic actions (empty = use built-in prompts)
- */
-const DEFAULT_AGENTIC_PROMPTS: AgenticPrompts = {
-  ciFailureAnalysis: '',
-  prStatusAnalysis: '',
-  jiraTicketExtraction: '',
-  previewUrlExtraction: ''
-}
-
-export function useAgenticPrompts(): UseQueryResult<AgenticPrompts, Error> {
-  return useQuery({
-    queryKey: keys.agenticPrompts,
-    queryFn: () => getPersisted<AgenticPrompts>(keys.agenticPrompts, DEFAULT_AGENTIC_PROMPTS),
-    staleTime: Infinity
-  })
-}
-
-export function useAgenticSettingsOpen(): UseQueryResult<boolean, Error> {
-  return useQuery({
-    queryKey: keys.agenticSettingsOpen,
-    queryFn: () => getPersisted<boolean>(keys.agenticSettingsOpen, false),
     staleTime: Infinity
   })
 }
