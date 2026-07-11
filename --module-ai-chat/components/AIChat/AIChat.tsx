@@ -726,7 +726,7 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
             variant="unstyled"
             size="none"
             onClick={handleScrollToBottomClick}
-            className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-surface-raised text-foreground-muted border border-border shadow-lg flex items-center justify-center hover:bg-surface-hover hover:text-foreground transition-colors z-10"
             title="Scroll to bottom"
           >
             <ArrowDown className="w-4 h-4" />

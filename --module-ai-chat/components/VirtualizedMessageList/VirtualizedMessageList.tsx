@@ -120,7 +120,7 @@ export function VirtualizedMessageList({
   return (
     <div
       ref={scrollContainerRef}
-      className="h-full overflow-auto p-3"
+      className="h-full overflow-auto px-3 pt-3"
       onScroll={onScroll}
       onWheel={handleWheel}
     >

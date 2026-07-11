@@ -24,6 +24,10 @@ const mockAuthStatus: {
 // Mock for panel states
 let mockAIPanelOpen = false
 let mockNetworkPanelOpen = false
+let mockViewMode: 'canvas' | 'ide' = 'canvas'
+let mockPRDetailOpen = false
+let mockSelectedPRId: { repoFullName: string; prNumber: number } | null = null
+let mockUserProfileOpen = false
 
 vi.mock('@data', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@data')>()
@@ -31,7 +35,11 @@ vi.mock('@data', async (importOriginal) => {
     ...actual,
     useIsAuthenticated: () => mockAuthStatus,
     useAIPanel: () => ({ data: { isOpen: mockAIPanelOpen, width: 400 } }),
-    useNetworkPanel: () => ({ data: mockNetworkPanelOpen })
+    useNetworkPanel: () => ({ data: mockNetworkPanelOpen }),
+    useViewMode: () => ({ data: mockViewMode }),
+    usePRDetailPanel: () => ({ data: { isOpen: mockPRDetailOpen, width: 400 } }),
+    useSelectedPRId: () => ({ data: mockSelectedPRId }),
+    useUserProfilePanel: () => ({ data: { isOpen: mockUserProfileOpen, height: 250 } })
   }
 })
 
@@ -47,6 +55,10 @@ describe('App', () => {
     mockAuthStatus.token = null
     mockAIPanelOpen = false
     mockNetworkPanelOpen = false
+    mockViewMode = 'canvas'
+    mockPRDetailOpen = false
+    mockSelectedPRId = null
+    mockUserProfileOpen = false
   })
 
   afterEach(() => {
@@ -179,7 +191,7 @@ describe('App', () => {
       expect(resizeHandle).not.toBeInTheDocument()
     })
 
-    it('should not show sidebar when both panels are closed', async () => {
+    it('should collapse the sidebar to an empty zero-width panel when both panels are closed', async () => {
       mockAIPanelOpen = false
       mockNetworkPanelOpen = false
 
@@ -189,9 +201,43 @@ describe('App', () => {
         expect(container.querySelector('.h-screen')).toBeInTheDocument()
       })
 
-      // Sidebar should not exist
-      const sidebar = container.querySelector('.apple-panel')
-      expect(sidebar).not.toBeInTheDocument()
+      // The sidebar stays mounted so its width can animate open/closed, but it
+      // collapses to zero width and renders no content when both panels close.
+      const sidebar = container.querySelector<HTMLElement>('.apple-panel')
+      expect(sidebar).toBeInTheDocument()
+      expect(sidebar?.childElementCount).toBe(0)
+      expect(sidebar?.style.width).toBe('0px')
+    })
+
+    it('renders the explorer sidebar and user profile panel in IDE mode', () => {
+      mockViewMode = 'ide'
+      mockUserProfileOpen = true
+
+      const { container } = render(<App />)
+
+      expect(container.querySelector('.apple-sidebar')).toBeInTheDocument()
+    })
+
+    it('renders the PR detail panel with a selected PR in canvas mode', () => {
+      mockViewMode = 'canvas'
+      mockPRDetailOpen = true
+      mockSelectedPRId = { repoFullName: 'org/repo', prNumber: 1 }
+
+      const { container } = render(<App />)
+
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
+    it('shows the "No PR selected" empty state when PR detail is open with no PR', async () => {
+      mockViewMode = 'canvas'
+      mockPRDetailOpen = true
+      mockSelectedPRId = null
+
+      render(<App />)
+
+      await waitFor(() => {
+        expect(screen.getByText('No PR selected')).toBeInTheDocument()
+      })
     })
   })
 })

@@ -79,14 +79,14 @@ export function ToolActivityIndicator({
     <div className={cn('space-y-1', className)}>
       {/* Current activity - always visible */}
       {activity && Icon && (
-        <div className="bg-info-subtle text-info border border-info-border rounded-md px-2 py-1.5">
+        <div className="bg-surface text-foreground-muted border border-border-muted rounded-md px-2 py-1.5">
           <div className="flex items-center gap-2 text-xs">
             <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
             <Icon className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="font-medium">{label}</span>
           </div>
           {activity.input && (
-            <div className="mt-1 text-[11px] font-mono text-info bg-info-subtle rounded px-2 py-1 break-all">
+            <div className="mt-1 text-[11px] font-mono text-foreground-muted bg-background rounded px-2 py-1 break-all">
               {activity.input}
             </div>
           )}
@@ -124,7 +124,7 @@ export function ToolActivityIndicator({
                     key={entry.id}
                     className={cn(
                       'text-[10px] py-1 px-1.5 rounded border',
-                      isRunning && 'bg-info-subtle text-info border-info-border',
+                      isRunning && 'bg-surface text-foreground border-border-muted',
                       isError && 'bg-destructive-subtle text-destructive border-destructive-border',
                       !isRunning && !isError && 'text-muted-foreground border-border-subtle'
                     )}

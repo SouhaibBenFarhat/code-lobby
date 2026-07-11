@@ -115,6 +115,42 @@ describe('IDEView', () => {
 
       expect(screen.getByText('frontend')).toBeInTheDocument()
     })
+
+    it('shows an empty message when an expanded repo has no PRs', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: { sidebarWidth: 280, expandedRepos: ['test-org/frontend'], expandedOwners: [] }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [], isFetching: false, refetch: vi.fn() })
+
+      render(<IDEView currentUser="testuser" />)
+
+      expect(screen.getByText('No open pull requests')).toBeInTheDocument()
+    })
+
+    it('shows a loading message while an expanded repo is fetching PRs', () => {
+      const repo = createMockRepository({
+        name: 'frontend',
+        full_name: 'test-org/frontend',
+        owner: { login: 'test-org', avatar_url: '' }
+      })
+      mockRepos.mockReturnValue({ data: [repo], isLoading: false })
+      mockSelectedRepos.mockReturnValue({ data: ['test-org/frontend'] })
+      mockIDESettings.mockReturnValue({
+        data: { sidebarWidth: 280, expandedRepos: ['test-org/frontend'], expandedOwners: [] }
+      })
+      mockPRsForRepo.mockReturnValue({ data: [], isFetching: true, refetch: vi.fn() })
+
+      render(<IDEView currentUser="testuser" />)
+
+      expect(screen.getByText('Loading pull requests…')).toBeInTheDocument()
+    })
   })
 
   describe('Interactions', () => {

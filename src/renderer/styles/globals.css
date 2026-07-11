@@ -519,6 +519,57 @@
   background: oklch(var(--surface));
 }
 
+/* Sliding side panels animate their layout width (0 ↔ full) so the main
+   content reflows smoothly instead of snapping. The class is removed during
+   drag-resize (so dragging stays instant) and disabled for reduced motion. */
+.panel-slide {
+  transition:
+    width var(--duration-slow) var(--ease),
+    min-width var(--duration-slow) var(--ease),
+    max-width var(--duration-slow) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-slide {
+    transition: none;
+  }
+}
+
+/* Chat composer — floats with a subtle AI-style glow on focus.
+   No box-shadow transition: animating it repaints the clipped inner box and
+   flashes a light seam along the divider, so the glow is applied instantly. */
+.composer-glow {
+  box-shadow: var(--shadow-elevation-high);
+}
+
+.composer-glow:focus-within {
+  box-shadow:
+    var(--shadow-elevation-high),
+    0 0 24px oklch(var(--primary) / 0.16);
+}
+
+/* Suppress the two focus-time repaints on the composer textarea that the box's
+   overflow-hidden shows as a stray line at the divider: the global
+   `textarea { transition: all }` and the global :focus-visible box-shadow ring. */
+.composer-glow textarea {
+  transition: none;
+}
+
+.composer-glow textarea:focus,
+.composer-glow textarea:focus-visible {
+  box-shadow: none;
+}
+
+/* User message bubble — a neutral tone parked in the free gap of the lightness
+   scale so it stays distinct from the agent bubble, the chat background, and the
+   panel chrome in both light and dark. Low chroma (no blue tint). */
+.user-bubble {
+  background: oklch(0.885 0.006 264);
+}
+.dark .user-bubble {
+  background: oklch(0.25 0.01 264);
+}
+
 /* Elevated / floating panel — surface-raised */
 .elevated-panel {
   background: oklch(var(--surface-raised));
@@ -552,6 +603,59 @@
   background: oklch(var(--primary) / 0.18);
   border-color: oklch(var(--primary));
   box-shadow: 0 0 0 3px oklch(var(--primary) / 0.2);
+}
+
+/* AI panel toggle — Claude brand CTA.
+   Coral is a fixed brand color (identical in light & dark, like the Claude mark),
+   so it is intentionally hard-coded rather than pulled from a theme token. */
+.ai-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px 0 8px;
+  border-radius: var(--radius);
+  background: #bc5233;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+
+.ai-panel-btn:hover {
+  background: #a9482c;
+}
+
+.ai-panel-btn:active {
+  transform: scale(0.97);
+}
+
+.ai-panel-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(188 82 51 / 0.4);
+}
+
+/* Pressed / active state when the panel is open */
+.ai-panel-btn.is-open {
+  background: #93401f;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.25);
+}
+
+/* White chip keeps the coral Claude mark legible on the coral fill */
+.ai-panel-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  flex-shrink: 0;
 }
 
 /* Drag region for titlebar */
@@ -1059,7 +1163,7 @@ button, a, input, select, textarea {
   display: inline-block;
   width: 2px;
   height: 1em;
-  background: oklch(var(--primary) / 0.6);
+  background: oklch(var(--foreground-muted) / 0.7);
   margin-left: 1px;
   animation: cursorBlink 1s ease-in-out infinite;
   vertical-align: text-bottom;

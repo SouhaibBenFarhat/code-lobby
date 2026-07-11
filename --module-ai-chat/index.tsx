@@ -4,7 +4,7 @@
  * AI Chat Module - Automatically follows selected PR
  */
 
-import { useAIPanel, useIsAuthenticated, useSelectedPR, useSetAIPanel, useUser } from '@data'
+import { useIsAuthenticated, useSelectedPR, useSetAIPanel, useUser } from '@data'
 import { registerToSlot } from '@slot-system'
 import { AIChatPanel } from './components/AIChat'
 import type { SelectedPR } from './types'
@@ -71,15 +71,14 @@ export { calculateTotalTokens, estimateTokens } from './utils/tokens'
  */
 function AIChatWrapper(): React.JSX.Element | null {
   const { data: authData } = useUser()
-  const { data: aiPanelData } = useAIPanel()
   const { data: selectedPR } = useSelectedPR()
   const { isAuthenticated } = useIsAuthenticated()
   const setAIPanel = useSetAIPanel()
 
-  const aiPanelOpen = aiPanelData?.isOpen ?? false
-
-  // Don't render if panel is closed or not authenticated
-  if (!aiPanelOpen || !isAuthenticated) {
+  // Visibility and the open/close slide lifecycle are owned by App.tsx (same as
+  // the network module). Keeping this mounted regardless of the open flag lets
+  // the content ride the shell's slide-out instead of vanishing on dismiss.
+  if (!isAuthenticated) {
     return null
   }
 

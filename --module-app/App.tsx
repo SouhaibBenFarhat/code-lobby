@@ -30,7 +30,7 @@ import {
 } from '@data'
 import { CodeVisualizerPanel } from '@pr-detail'
 import { Slot } from '@slot-system'
-import { Button, ResizeHandle, Toaster, TooltipProvider } from '@ui-kit'
+import { Button, cn, ResizeHandle, Toaster, TooltipProvider } from '@ui-kit'
 import { MousePointerClick, PanelRightClose } from 'lucide-react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenInput } from './TokenInput'
@@ -42,6 +42,29 @@ const DEFAULT_AI_PANEL_WIDTH = 380
 const MIN_PANEL_HEIGHT = 80
 const DEFAULT_NETWORK_PANEL_HEIGHT = 200
 const DEFAULT_USER_PROFILE_HEIGHT = 250
+
+// Matches the .panel-slide CSS transition duration (--duration-slow = 350ms).
+const PANEL_SLIDE_MS = 350
+
+/**
+ * Keeps a panel's content mounted for one slide duration after it closes, so the
+ * content rides the collapse animation instead of vanishing before the panel
+ * finishes sliding shut. Returns true while active, and stays true briefly after.
+ */
+function usePanelPresence(active: boolean, durationMs: number = PANEL_SLIDE_MS): boolean {
+  const [present, setPresent] = useState(active)
+
+  useEffect(() => {
+    if (active) {
+      setPresent(true)
+      return
+    }
+    const timer = window.setTimeout(() => setPresent(false), durationMs)
+    return () => window.clearTimeout(timer)
+  }, [active, durationMs])
+
+  return present
+}
 
 export function App(): React.JSX.Element {
   // Read data from TanStack Query
@@ -59,6 +82,9 @@ export function App(): React.JSX.Element {
   // Network panel state
   const { data: networkPanelOpen } = useNetworkPanel()
   const { data: networkPanelHeight = DEFAULT_NETWORK_PANEL_HEIGHT } = useNetworkPanelHeight()
+
+  // The right sidebar hosts both the AI panel and the network panel.
+  const sidebarOpen = aiPanelOpen || !!networkPanelOpen
 
   // User profile panel state
   const { data: userProfilePanelData } = useUserProfilePanel()
@@ -90,6 +116,12 @@ export function App(): React.JSX.Element {
   const setIDESettings = useSetIDESettings()
   const setNetworkPanelHeight = useSetNetworkPanelHeight()
   const setUserProfilePanel = useSetUserProfilePanel()
+
+  // Keep panel content mounted through the slide-out so it doesn't pop away
+  // before the panel width finishes collapsing.
+  const prDetailContentPresent = usePanelPresence(prDetailOpen)
+  const aiContentPresent = usePanelPresence(aiPanelOpen)
+  const networkContentPresent = usePanelPresence(!!networkPanelOpen)
 
   // Initialize Claude Code stream listener (receives IPC events from main process)
   useClaudeStreamListener()
@@ -388,138 +420,191 @@ export function App(): React.JSX.Element {
         <Slot name="header" wrapInContainer={false} />
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Left sidebar: Explorer + User Profile - only in IDE mode */}
-          {viewMode === 'ide' && (
-            <>
-              <aside
-                ref={leftSidebarRef}
-                className="apple-sidebar overflow-hidden flex flex-shrink-0"
-                style={{ width: explorerWidth, minWidth: explorerWidth, maxWidth: explorerWidth }}
+          {/* Left sidebar (Explorer + User Profile) — populated only in IDE mode.
+              The <aside> stays mounted so its width can animate 0 ↔ full, letting
+              <main> reflow smoothly instead of snapping when the mode changes. */}
+          <aside
+            ref={leftSidebarRef}
+            className={cn(
+              'apple-sidebar overflow-hidden flex flex-shrink-0',
+              !isExplorerResizing && 'panel-slide'
+            )}
+            style={{
+              width: viewMode === 'ide' ? explorerWidth : 0,
+              minWidth: viewMode === 'ide' ? explorerWidth : 0,
+              maxWidth: viewMode === 'ide' ? explorerWidth : 0
+            }}
+          >
+            {viewMode === 'ide' && (
+              <div
+                className={cn(
+                  'flex flex-col overflow-hidden',
+                  isExplorerResizing ? 'flex-1 min-w-0' : 'flex-shrink-0'
+                )}
+                style={isExplorerResizing ? undefined : { width: explorerWidth }}
               >
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                  <div
-                    className={
-                      userProfileOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'
-                    }
-                  >
-                    <Slot name="left-panel" wrapInContainer={false} />
-                  </div>
-                  {userProfileOpen && (
-                    <>
-                      <ResizeHandle
-                        direction="vertical"
-                        isResizing={isUserProfileResizing}
-                        onMouseDown={handleUserProfileResizeStart}
-                      />
-                      <div
-                        ref={userProfilePanelRef}
-                        className="flex-shrink-0 overflow-hidden"
-                        style={{ height: userProfileHeight }}
-                      >
-                        <Slot name="user-profile" wrapInContainer={false} />
-                      </div>
-                    </>
-                  )}
+                <div
+                  className={userProfileOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'}
+                >
+                  <Slot name="left-panel" wrapInContainer={false} />
                 </div>
-              </aside>
-              {/* Explorer resize handle - outside aside for better hit area */}
-              <ResizeHandle
-                direction="horizontal"
-                isResizing={isExplorerResizing}
-                onMouseDown={handleExplorerResizeStart}
-              />
-            </>
+                {userProfileOpen && (
+                  <>
+                    <ResizeHandle
+                      direction="vertical"
+                      isResizing={isUserProfileResizing}
+                      onMouseDown={handleUserProfileResizeStart}
+                    />
+                    <div
+                      ref={userProfilePanelRef}
+                      className="flex-shrink-0 overflow-hidden"
+                      style={{ height: userProfileHeight }}
+                    >
+                      <Slot name="user-profile" wrapInContainer={false} />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </aside>
+          {/* Explorer resize handle - outside aside for better hit area */}
+          {viewMode === 'ide' && (
+            <ResizeHandle
+              direction="horizontal"
+              isResizing={isExplorerResizing}
+              onMouseDown={handleExplorerResizeStart}
+            />
           )}
 
           <main className="flex-1 overflow-auto bg-background">
             <Slot name="main" wrapInContainer={false} />
           </main>
 
-          {viewMode === 'canvas' && prDetailOpen && (
+          {/* PR detail panel (Canvas mode). Stays mounted while in canvas so its
+              width animates open/closed and <main> reflows in lockstep. */}
+          {viewMode === 'canvas' && (
             <aside
               ref={prPanelRef}
-              className="overflow-hidden flex bg-background relative flex-shrink-0 border-l border-border shadow-[-2px_0_8px_rgba(0,0,0,0.06)] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.2)]"
-              style={{ width: prDetailWidth, minWidth: prDetailWidth, maxWidth: prDetailWidth }}
+              className={cn(
+                'overflow-hidden flex bg-background relative flex-shrink-0',
+                prDetailContentPresent &&
+                  'border-l border-border shadow-[-2px_0_8px_rgba(0,0,0,0.06)] dark:shadow-[-2px_0_8px_rgba(0,0,0,0.2)]',
+                !isPRResizing && 'panel-slide'
+              )}
+              style={{
+                width: prDetailOpen ? prDetailWidth : 0,
+                minWidth: prDetailOpen ? prDetailWidth : 0,
+                maxWidth: prDetailOpen ? prDetailWidth : 0
+              }}
             >
-              <ResizeHandle
-                direction="horizontal"
-                position="left"
-                isResizing={isPRResizing}
-                onMouseDown={handlePRResizeStart}
-              />
-              <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-                {selectedPRId ? (
-                  <Slot name="pr-detail-panel" wrapInContainer={false} />
-                ) : (
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between p-3 border-b border-border bg-surface-raised">
-                      <h3 className="font-semibold text-sm">PR Details</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={closePRPanel}
-                      >
-                        <PanelRightClose className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="flex-1 flex items-center justify-center p-6">
-                      <div className="text-center space-y-4">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-surface flex items-center justify-center">
-                          <MousePointerClick className="w-8 h-8 text-foreground-subtle" />
+              {prDetailContentPresent && (
+                <>
+                  <ResizeHandle
+                    direction="horizontal"
+                    position="left"
+                    isResizing={isPRResizing}
+                    onMouseDown={handlePRResizeStart}
+                  />
+                  <div
+                    className={cn(
+                      'overflow-hidden flex flex-col',
+                      isPRResizing ? 'flex-1 min-w-0' : 'flex-shrink-0'
+                    )}
+                    style={isPRResizing ? undefined : { width: prDetailWidth }}
+                  >
+                    {selectedPRId ? (
+                      <Slot name="pr-detail-panel" wrapInContainer={false} />
+                    ) : (
+                      <div className="flex flex-col h-full">
+                        <div className="flex items-center justify-between p-3 border-b border-border bg-surface-raised">
+                          <h3 className="font-semibold text-sm">PR Details</h3>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={closePRPanel}
+                          >
+                            <PanelRightClose className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">No PR selected</p>
+                        <div className="flex-1 flex items-center justify-center p-6">
+                          <div className="text-center space-y-4">
+                            <div className="w-16 h-16 mx-auto rounded-full bg-surface flex items-center justify-center">
+                              <MousePointerClick className="w-8 h-8 text-foreground-subtle" />
+                            </div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              No PR selected
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </aside>
           )}
 
-          {(aiPanelOpen || networkPanelOpen) && (
-            <aside
-              ref={rightSidebarRef}
-              className="apple-panel overflow-hidden flex relative flex-shrink-0"
-              style={{ width: aiPanelWidth, minWidth: aiPanelWidth, maxWidth: aiPanelWidth }}
-            >
-              <ResizeHandle
-                direction="horizontal"
-                position="left"
-                isResizing={isAIResizing}
-                onMouseDown={handleAIResizeStart}
-              />
-              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {aiPanelOpen && (
-                  <div
-                    className={
-                      networkPanelOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'
-                    }
-                  >
-                    <Slot name="ai-panel" wrapInContainer={false} />
-                  </div>
-                )}
-                {networkPanelOpen && (
-                  <>
-                    {aiPanelOpen && (
-                      <ResizeHandle
-                        direction="vertical"
-                        isResizing={isNetworkResizing}
-                        onMouseDown={handleNetworkResizeStart}
-                      />
-                    )}
+          {/* Right sidebar (AI chat + Network). Always mounted so its width can
+              animate 0 ↔ full; content lingers briefly on close to ride the slide. */}
+          <aside
+            ref={rightSidebarRef}
+            className={cn(
+              'apple-panel overflow-hidden flex relative flex-shrink-0',
+              !isAIResizing && 'panel-slide'
+            )}
+            style={{
+              width: sidebarOpen ? aiPanelWidth : 0,
+              minWidth: sidebarOpen ? aiPanelWidth : 0,
+              maxWidth: sidebarOpen ? aiPanelWidth : 0
+            }}
+          >
+            {(aiContentPresent || networkContentPresent) && (
+              <>
+                <ResizeHandle
+                  direction="horizontal"
+                  position="left"
+                  isResizing={isAIResizing}
+                  onMouseDown={handleAIResizeStart}
+                />
+                <div
+                  className={cn(
+                    'flex flex-col overflow-hidden',
+                    isAIResizing ? 'flex-1 min-w-0' : 'flex-shrink-0'
+                  )}
+                  style={isAIResizing ? undefined : { width: aiPanelWidth }}
+                >
+                  {aiContentPresent && (
                     <div
-                      ref={networkPanelRef}
-                      className="flex-shrink-0 overflow-hidden"
-                      style={{ height: aiPanelOpen ? networkPanelHeight : '100%' }}
+                      className={
+                        networkContentPresent ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'
+                      }
                     >
-                      <Slot name="network-panel" wrapInContainer={false} />
+                      <Slot name="ai-panel" wrapInContainer={false} />
                     </div>
-                  </>
-                )}
-              </div>
-            </aside>
-          )}
+                  )}
+                  {networkContentPresent && (
+                    <>
+                      {aiContentPresent && (
+                        <ResizeHandle
+                          direction="vertical"
+                          isResizing={isNetworkResizing}
+                          onMouseDown={handleNetworkResizeStart}
+                        />
+                      )}
+                      <div
+                        ref={networkPanelRef}
+                        className="flex-shrink-0 overflow-hidden"
+                        style={{ height: aiContentPresent ? networkPanelHeight : '100%' }}
+                      >
+                        <Slot name="network-panel" wrapInContainer={false} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </aside>
         </div>
 
         {/* Code Visualizer Floating Window */}

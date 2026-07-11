@@ -48,8 +48,8 @@ const _TOOL_LABELS: Record<string, string> = {
 // State config: color class and label
 const STATE_CONFIG: Record<string, { colorClass: string; bgClass: string; label: string }> = {
   thinking: {
-    colorClass: 'text-violet-500 dark:text-violet-400',
-    bgClass: 'bg-violet-500/10 border-violet-500/20',
+    colorClass: 'text-muted-foreground',
+    bgClass: 'bg-surface border-border-muted',
     label: 'Reasoning...'
   },
   tool_use: {
@@ -63,8 +63,8 @@ const STATE_CONFIG: Record<string, { colorClass: string; bgClass: string; label:
     label: 'Writing...'
   },
   composing: {
-    colorClass: 'text-blue-500 dark:text-blue-400',
-    bgClass: 'bg-blue-500/10 border-blue-500/20',
+    colorClass: 'text-muted-foreground',
+    bgClass: 'bg-surface border-border-muted',
     label: 'Processing...'
   }
 }

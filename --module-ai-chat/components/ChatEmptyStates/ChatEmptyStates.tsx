@@ -121,7 +121,7 @@ export function PRContextBanner({
   repoFullName
 }: PRContextBannerProps): React.JSX.Element {
   return (
-    <div className="px-3 py-2 border-b border-border bg-info-subtle">
+    <div className="px-3 py-2 border-b border-border bg-surface-content">
       <div className="flex items-center gap-2">
         <GitPullRequest className="w-4 h-4 text-primary flex-shrink-0" />
         <div className="flex-1 min-w-0">

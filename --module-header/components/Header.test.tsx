@@ -434,19 +434,16 @@ describe('Header', () => {
         )
       })
 
-      // Find AI panel toggle button (has ClaudeIcon)
-      const aiButton =
-        document.querySelector('button svg[class*="claude"]')?.closest('button') ||
-        Array.from(document.querySelectorAll('button')).find(
-          (btn) => btn.querySelector('svg') && btn.textContent?.includes('AI')
-        )
+      // Find AI panel toggle button by its accessible label
+      const aiButton = document.querySelector<HTMLButtonElement>(
+        'button[aria-label*="Claude AI panel"]'
+      )
+      expect(aiButton).not.toBeNull()
 
-      if (aiButton) {
-        await act(async () => {
-          fireEvent.click(aiButton)
-        })
-        expect(mockOnToggleAIPanel).toHaveBeenCalledTimes(1)
-      }
+      await act(async () => {
+        fireEvent.click(aiButton as HTMLButtonElement)
+      })
+      expect(mockOnToggleAIPanel).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -294,6 +294,24 @@ export function Header({
 
         <Tooltip>
           <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={cn('ai-panel-btn ml-1', isAIPanelOpen && 'is-open')}
+              onClick={onToggleAIPanel}
+              aria-label={isAIPanelOpen ? 'Close Claude AI panel' : 'Open Claude AI panel'}
+              aria-pressed={isAIPanelOpen}
+            >
+              <span className="ai-panel-btn__icon">
+                <ClaudeIcon className="w-3.5 h-3.5" />
+              </span>
+              Claude
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-7 w-7">
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
@@ -367,20 +385,6 @@ export function Header({
             </div>
           </PopoverContent>
         </Popover>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={isAIPanelOpen ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-7 w-7"
-              onClick={onToggleAIPanel}
-            >
-              <ClaudeIcon className="w-3.5 h-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{isAIPanelOpen ? 'Close AI Panel' : 'Open AI Panel'}</TooltipContent>
-        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
