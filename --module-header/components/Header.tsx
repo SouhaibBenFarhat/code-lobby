@@ -46,7 +46,6 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { AccountMenu } from './AccountMenu'
 import { AICostIndicator } from './AICostIndicator'
-import { DatabaseViewer } from './DatabaseViewer'
 import { EventStream } from './EventStream'
 import { GitHubStatusIndicator } from './GitHubStatusIndicator'
 import { LogsViewer } from './LogsViewer'
@@ -423,8 +422,6 @@ export function Header({
             <EventStream />
           </PopoverContent>
         </Popover>
-
-        <DatabaseViewer />
 
         <Tooltip>
           <TooltipTrigger asChild>

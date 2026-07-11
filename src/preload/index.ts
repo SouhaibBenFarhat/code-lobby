@@ -714,6 +714,17 @@ const electronAPI: ElectronAPI = {
     }
   },
 
+  // Opened from the native "Database Viewer" menu item (View menu)
+  onOpenDatabaseViewer: (callback: () => void) => {
+    const handler = () => {
+      callback()
+    }
+    ipcRenderer.on('menu:open-database-viewer', handler)
+    return () => {
+      ipcRenderer.removeListener('menu:open-database-viewer', handler)
+    }
+  },
+
   // Shell operations
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell-open-external', url)

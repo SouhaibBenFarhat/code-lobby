@@ -66,6 +66,34 @@ export function useAboutModalOpen(): UseQueryResult<boolean, Error> {
 }
 
 /**
+ * Query for the Database Viewer open state.
+ *
+ * Opened from the native "Database Viewer" menu item (View menu), which sends a
+ * `menu:open-database-viewer` IPC event. State lives under the `system` prefix
+ * so it is NOT persisted — the viewer never auto-reopens on launch.
+ */
+export function useDatabaseViewerOpen(): UseQueryResult<boolean, Error> {
+  const qc = useQueryClient()
+
+  // Open the viewer when the native "Database Viewer" menu item is clicked
+  useEffect(() => {
+    if (!window.electron?.onOpenDatabaseViewer) return
+
+    const cleanup = window.electron.onOpenDatabaseViewer(() => {
+      qc.setQueryData(keys.system.databaseViewerOpen, true)
+    })
+
+    return cleanup
+  }, [qc])
+
+  return useQuery({
+    queryKey: keys.system.databaseViewerOpen,
+    queryFn: () => qc.getQueryData<boolean>(keys.system.databaseViewerOpen) ?? false,
+    staleTime: Infinity // Only updates via the menu subscription / mutation
+  })
+}
+
+/**
  * Theme variants:
  * - 'light'          — Apple light
  * - 'dark'           — Apple dark

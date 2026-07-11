@@ -708,6 +708,9 @@ export interface ElectronAPI {
   // Native menu: opened from the "About CodeLobby" menu item
   onOpenAbout: (callback: () => void) => () => void
 
+  // Native menu: opened from the "Database Viewer" menu item (View menu)
+  onOpenDatabaseViewer: (callback: () => void) => () => void
+
   // Shell operations
   shell: {
     openExternal: (url: string) => Promise<void>

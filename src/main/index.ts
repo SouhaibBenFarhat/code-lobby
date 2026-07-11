@@ -212,6 +212,11 @@ function createWindow(): void {
     mainWindow?.webContents.send('menu:open-about')
   }
 
+  // Opens the in-app SQLite Database Viewer (debug panel) in the renderer.
+  const openDatabaseViewer = (): void => {
+    mainWindow?.webContents.send('menu:open-database-viewer')
+  }
+
   const template: Electron.MenuItemConstructorOptions[] = [
     // macOS: About lives in the app menu (App menu → About CodeLobby).
     // Other platforms get it in a Help menu below. Both open the in-app modal.
@@ -245,7 +250,9 @@ function createWindow(): void {
         { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: zoomOut },
         { label: 'Reset Zoom', accelerator: 'CommandOrControl+0', click: zoomReset },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: 'Toggle Full Screen' }
+        { role: 'togglefullscreen', label: 'Toggle Full Screen' },
+        { type: 'separator' },
+        { label: 'Database Viewer', click: openDatabaseViewer }
       ]
     },
     { role: 'windowMenu' },

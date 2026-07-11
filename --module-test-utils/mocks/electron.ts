@@ -159,6 +159,7 @@ interface MockElectronAPI {
 
   // Native menu
   onOpenAbout: ReturnType<typeof vi.fn>
+  onOpenDatabaseViewer: ReturnType<typeof vi.fn>
 
   // GitHub OAuth (device flow)
   startGitHubAuth: ReturnType<typeof vi.fn>
@@ -449,6 +450,7 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
 
     // Native menu
     onOpenAbout: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+    onOpenDatabaseViewer: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
 
     // GitHub OAuth (device flow)
     startGitHubAuth: vi.fn().mockResolvedValue({
