@@ -43,7 +43,6 @@ import {
   Sun
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { AboutDialog } from './AboutDialog'
 import { AccountMenu } from './AccountMenu'
 import { AICostIndicator } from './AICostIndicator'
 import { DatabaseViewer } from './DatabaseViewer'
@@ -431,15 +430,6 @@ export function Header({
             </div>
           </TooltipTrigger>
           <TooltipContent>Application logs</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <AboutDialog />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>About CodeLobby</TooltipContent>
         </Tooltip>
 
         <Separator orientation="vertical" className="h-6" />

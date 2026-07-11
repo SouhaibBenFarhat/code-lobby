@@ -28,6 +28,23 @@ export function useToggleFullscreen(): UseMutationResult<boolean, Error, void> {
 }
 
 /**
+ * Set the About modal open state.
+ *
+ * Used to close the modal (the native menu item opens it via the subscription
+ * in useAboutModalOpen).
+ */
+export function useSetAboutModalOpen(): UseMutationResult<boolean, Error, boolean> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
+    onSuccess: (isOpen) => {
+      qc.setQueryData(keys.system.aboutModalOpen, isOpen)
+    }
+  })
+}
+
+/**
  * Set theme variant.
  * Applies CSS classes to <html>:
  *   - 'light'         → no classes

@@ -703,6 +703,17 @@ const electronAPI: ElectronAPI = {
   },
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
 
+  // Opened from the native "About CodeLobby" menu item
+  onOpenAbout: (callback: () => void) => {
+    const handler = () => {
+      callback()
+    }
+    ipcRenderer.on('menu:open-about', handler)
+    return () => {
+      ipcRenderer.removeListener('menu:open-about', handler)
+    }
+  },
+
   // Shell operations
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell-open-external', url)

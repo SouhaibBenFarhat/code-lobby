@@ -705,6 +705,9 @@ export interface ElectronAPI {
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
   toggleFullscreen: () => Promise<boolean>
 
+  // Native menu: opened from the "About CodeLobby" menu item
+  onOpenAbout: (callback: () => void) => () => void
+
   // Shell operations
   shell: {
     openExternal: (url: string) => Promise<void>

@@ -70,12 +70,33 @@ No more clicking into each PR just to check its status.
 interface AboutDialogProps {
   trigger?: React.ReactNode
   onFactoryReset?: () => void
+  /** Controlled open state (e.g. driven by the native "About CodeLobby" menu item). */
+  open?: boolean
+  /** Called when the open state should change (controlled mode). */
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps): React.JSX.Element {
-  const [open, setOpen] = useState(false)
+export function AboutDialog({
+  trigger,
+  onFactoryReset,
+  open: controlledOpen,
+  onOpenChange
+}: AboutDialogProps): React.JSX.Element {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const factoryReset = useFactoryReset()
+
+  // Support both standalone (own trigger) and controlled (native menu) usage.
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setUncontrolledOpen(next)
+      onOpenChange?.(next)
+    },
+    [isControlled, onOpenChange]
+  )
 
   const handleFactoryReset = useCallback(async () => {
     factoryReset.mutate(undefined, {
@@ -89,17 +110,19 @@ export function AboutDialog({ trigger, onFactoryReset }: AboutDialogProps): Reac
         }
       }
     })
-  }, [factoryReset, onFactoryReset])
+  }, [factoryReset, onFactoryReset, setOpen])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
-            <Book className="w-4 h-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
+              <Book className="w-4 h-4" />
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">

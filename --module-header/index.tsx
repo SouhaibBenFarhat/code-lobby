@@ -4,8 +4,17 @@
  * Self-contained header module using TanStack Query.
  */
 
-import { useAIPanel, useSetAIPanel, useSetViewMode, useViewMode, type ViewMode } from '@data'
+import {
+  useAboutModalOpen,
+  useAIPanel,
+  useSetAboutModalOpen,
+  useSetAIPanel,
+  useSetViewMode,
+  useViewMode,
+  type ViewMode
+} from '@data'
 import { registerToSlot } from '@slot-system'
+import { AboutDialog } from './components/AboutDialog'
 import { Header } from './components/Header'
 
 export { AboutDialog } from './components/AboutDialog'
@@ -23,6 +32,11 @@ function HeaderWrapper() {
   const { data: aiPanelData } = useAIPanel()
   const isAIPanelOpen = aiPanelData?.isOpen ?? false
 
+  // About modal is opened from the native "About CodeLobby" menu item.
+  // useAboutModalOpen subscribes to the menu IPC event and flips this state.
+  const { data: isAboutOpen = false } = useAboutModalOpen()
+  const setAboutModalOpen = useSetAboutModalOpen()
+
   const setViewMode = useSetViewMode()
   const setAIPanel = useSetAIPanel()
 
@@ -35,12 +49,15 @@ function HeaderWrapper() {
   }
 
   return (
-    <Header
-      viewMode={viewMode}
-      onViewModeChange={handleViewModeChange}
-      isAIPanelOpen={isAIPanelOpen}
-      onToggleAIPanel={handleToggleAIPanel}
-    />
+    <>
+      <Header
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        isAIPanelOpen={isAIPanelOpen}
+        onToggleAIPanel={handleToggleAIPanel}
+      />
+      <AboutDialog open={isAboutOpen} onOpenChange={(open) => setAboutModalOpen.mutate(open)} />
+    </>
   )
 }
 
