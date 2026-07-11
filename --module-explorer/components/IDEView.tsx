@@ -37,7 +37,6 @@ import {
   Circle,
   FileText,
   Folder,
-  FolderOpen,
   GitPullRequest,
   Loader2,
   RefreshCw,
@@ -127,10 +126,7 @@ function TreeItem({
         role="treeitem"
         aria-expanded={isExpanded}
         tabIndex={0}
-        className={cn(
-          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-interactive-hover rounded transition-colors group w-full text-left',
-          isExpanded && 'bg-surface'
-        )}
+        className="flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-interactive-hover rounded transition-colors group w-full text-left"
         onClick={onToggle}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -140,22 +136,13 @@ function TreeItem({
         }}
       >
         <span className="w-4 h-4 flex items-center justify-center text-muted-foreground">
-          {hasPRs ? (
-            isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )
+          {isExpanded ? (
+            <ChevronDown className="w-3.5 h-3.5" />
           ) : (
-            <span className="w-3.5" />
+            <ChevronRight className="w-3.5 h-3.5" />
           )}
         </span>
-        {isExpanded ? (
-          <FolderOpen className="w-4 h-4 text-yellow-500" />
-        ) : (
-          <Folder className="w-4 h-4 text-yellow-500/70" />
-        )}
-        <span className="text-sm font-medium truncate flex-1">{repo.name}</span>
+        <span className="text-sm font-medium truncate flex-1 text-foreground/80">{repo.name}</span>
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -241,8 +228,17 @@ function TreeItem({
         </div>
       )}
 
-      {isExpanded && hasPRs && !hasFilteredPRs && showOnlyMyPRs && (
-        <div className="ml-8 py-2 text-xs text-muted-foreground italic">No PRs by you</div>
+      {/* Expanded body when there are no PRs to show — loading or empty message */}
+      {isExpanded && !hasFilteredPRs && (
+        <div className="ml-4 border-l border-border-muted">
+          <div className="px-3 py-3 text-xs text-muted-foreground italic">
+            {isFetching
+              ? 'Loading pull requests…'
+              : showOnlyMyPRs && hasPRs
+                ? 'No PRs by you'
+                : 'No open pull requests'}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -533,8 +529,8 @@ export function IDEView({ currentUser }: IDEViewProps): React.JSX.Element {
           </span>
         </div>
       </div>
-      <ScrollArea className="flex-1">
-        <div className="p-1">
+      <ScrollArea className="flex-1 bg-chat">
+        <div className="p-1 space-y-1">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin text-primary mb-2" />

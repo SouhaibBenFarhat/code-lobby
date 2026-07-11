@@ -2,7 +2,7 @@
  * ThinkingSection - Collapsible section showing AI thinking/reasoning
  *
  * Features:
- * - Collapsible thinking text display with primary color accent
+ * - Collapsible thinking text display in a neutral panel
  * - Optional streaming indicator
  * - Optional tool activity display (current tool, tool count)
  * - Auto-scroll support
@@ -119,13 +119,7 @@ export function ThinkingSection({
   if (!thinking && !currentTool) return null
 
   return (
-    <div
-      className={cn(
-        'transition-colors rounded-lg',
-        expanded ? 'bg-info-subtle' : 'bg-surface',
-        className
-      )}
-    >
+    <div className={cn('transition-colors rounded-lg bg-surface', className)}>
       {/* Header button */}
       <button
         type="button"
@@ -133,9 +127,11 @@ export function ThinkingSection({
         className="flex items-center gap-1 w-full px-2 py-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronRight className={cn('w-2.5 h-2.5 transition-transform', expanded && 'rotate-90')} />
-        <Brain className={cn('w-2.5 h-2.5', expanded && 'text-primary')} />
+        <Brain className={cn('w-2.5 h-2.5', expanded && 'text-foreground')} />
         <span>{label}</span>
-        {isStreaming && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+        {isStreaming && (
+          <span className="ml-1 w-1.5 h-1.5 rounded-full bg-foreground-muted animate-pulse" />
+        )}
         {toolCount !== undefined && toolCount > 0 && (
           <span className="text-foreground-subtle">• {toolCount} tools used</span>
         )}
@@ -148,7 +144,7 @@ export function ThinkingSection({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="px-2 pb-2 mx-2 mb-1.5 bg-info-subtle rounded-lg border-l-2 border-border-muted">
+        <div className="px-2 pb-2 mx-2 mb-1.5 bg-surface rounded-lg border-l-2 border-border-muted">
           {/* Thinking text */}
           <div
             ref={contentRef}
@@ -158,17 +154,17 @@ export function ThinkingSection({
             <pre className="whitespace-pre-wrap font-mono text-[9px] leading-tight pt-1.5">
               {thinking || 'Starting...'}
               {isStreaming && (
-                <span className="inline-block w-1.5 h-3 bg-primary animate-pulse ml-0.5 align-middle" />
+                <span className="inline-block w-1.5 h-3 bg-foreground-muted animate-pulse ml-0.5 align-middle" />
               )}
             </pre>
           </div>
 
           {/* Current tool activity */}
           {currentTool && (
-            <div className="flex items-center gap-1 text-[10px] mt-1.5 px-2 py-1 bg-info-subtle rounded text-primary">
+            <div className="flex items-center gap-1 text-[10px] mt-1.5 px-2 py-1 bg-surface rounded text-foreground-muted">
               <span className="font-medium">{currentTool.name}</span>
               {currentTool.input && (
-                <span className="text-primary truncate">{currentTool.input}</span>
+                <span className="text-foreground-subtle truncate">{currentTool.input}</span>
               )}
             </div>
           )}

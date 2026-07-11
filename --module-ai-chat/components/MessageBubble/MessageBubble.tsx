@@ -91,7 +91,7 @@ function MessageBubbleInner({
           className={cn(
             'max-w-[85%] rounded-lg relative',
             message.role === 'user'
-              ? 'bg-primary text-primary-foreground px-3 py-2 selection:bg-white/30 selection:text-white'
+              ? 'user-bubble text-foreground px-3 py-2 shadow-elevation-low'
               : 'bg-chat-bubble border border-border shadow-elevation-low'
           )}
         >

@@ -95,6 +95,14 @@ describe('ThinkingSection', () => {
       const container = screen.getByRole('button')
       expect(container.querySelector('.animate-pulse')).not.toBeInTheDocument()
     })
+
+    it('shows a streaming caret in the expanded content while streaming', () => {
+      const { container } = render(
+        <ThinkingSection thinking="Streaming..." isStreaming defaultExpanded />
+      )
+      // Header dot + the in-content caret both pulse when expanded and streaming
+      expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(1)
+    })
   })
 
   describe('tool activity', () => {
@@ -146,9 +154,9 @@ describe('ThinkingSection', () => {
   })
 
   describe('styling', () => {
-    it('applies primary background when expanded', () => {
+    it('has no blue tint when expanded', () => {
       const { container } = render(<ThinkingSection thinking="test" defaultExpanded />)
-      expect(container.firstChild).toHaveClass('bg-info-subtle')
+      expect(container.firstChild).not.toHaveClass('bg-info-subtle')
     })
 
     it('applies custom className', () => {

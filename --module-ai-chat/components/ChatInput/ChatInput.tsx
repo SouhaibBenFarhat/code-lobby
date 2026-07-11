@@ -91,18 +91,10 @@ export function ChatInput({
     }
   }
   return (
-    <div className="p-3 border-t border-border bg-background relative z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.2)]">
-      <div className="space-y-2">
-        <QuickActions
-          prompts={prompts}
-          customPrompts={customPrompts}
-          onSelect={onQuickActionSelect}
-          onAddCustomPrompt={onAddCustomPrompt}
-          onUpdateCustomPrompt={onUpdateCustomPrompt}
-          onDeleteCustomPrompt={onDeleteCustomPrompt}
-          disabled={isSending || streaming.isStreaming || (linkedPRChat && !isContextValid)}
-        />
-
+    <div className="px-3 pb-3 bg-chat">
+      {/* Floating Cursor-style composer: textarea + divider + toolbar */}
+      <div className="composer-glow relative rounded-xl border border-border bg-background overflow-hidden">
+        {/* Upper part: textarea with vertically-centered send button */}
         <div className="relative">
           <textarea
             ref={textareaRef}
@@ -119,11 +111,12 @@ export function ChatInput({
               adjustTextareaHeight()
             }}
             onKeyDown={handleKeyDown}
-            className="w-full min-h-[72px] max-h-[200px] px-3 py-2 pr-12 text-sm rounded border border-border bg-surface resize-none transition-colors duration-fast ease-theme placeholder:text-foreground-subtle hover:border-border hover:bg-surface-hover focus:outline-none focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_oklch(var(--primary)/0.15)]"
+            className="w-full min-h-[72px] max-h-[200px] px-3 py-2.5 pr-12 text-sm bg-transparent border-0 resize-none placeholder:text-foreground-subtle focus:outline-none"
             style={{ height: '72px' }}
           />
-          {/* FAB Send/Stop Button */}
-          <div className="absolute bottom-4 right-2">
+
+          {/* Send / Stop button — vertically centered in the textarea area */}
+          <div className="absolute top-1/2 right-2 -translate-y-1/2 z-10">
             {streaming.isStreaming && onStopStreaming ? (
               <Button
                 onClick={onStopStreaming}
@@ -138,10 +131,13 @@ export function ChatInput({
               <Button
                 onClick={handleSendClick}
                 disabled={!input.trim()}
-                size="icon"
+                variant="unstyled"
+                size="none"
                 className={cn(
-                  'h-6 w-6 rounded-full shadow-sm',
-                  isSending && input.trim() && 'bg-primary/70'
+                  'h-6 w-6 rounded-full flex items-center justify-center border border-border shadow-sm transition-colors',
+                  'bg-surface-raised text-foreground-muted hover:bg-surface-hover hover:text-foreground',
+                  isSending && input.trim() && 'text-foreground',
+                  'disabled:opacity-40 disabled:cursor-not-allowed'
                 )}
                 title={isSending ? 'Add to queue (Enter)' : 'Send message (Enter)'}
               >
@@ -150,7 +146,21 @@ export function ChatInput({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Divider + toolbar: pre-prompts · context progress · thinking */}
+        <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border">
+          <div className="flex-1 min-w-0">
+            <QuickActions
+              prompts={prompts}
+              customPrompts={customPrompts}
+              onSelect={onQuickActionSelect}
+              onAddCustomPrompt={onAddCustomPrompt}
+              onUpdateCustomPrompt={onUpdateCustomPrompt}
+              onDeleteCustomPrompt={onDeleteCustomPrompt}
+              disabled={isSending || streaming.isStreaming || (linkedPRChat && !isContextValid)}
+            />
+          </div>
+
           <ContextIndicator
             messages={messages}
             streamingContent={streaming.content}
@@ -174,7 +184,7 @@ export function ChatInput({
                 <span
                   className={cn(
                     'text-[10px] tabular-nums ml-1',
-                    thinkingBudget > 0 ? 'text-primary' : 'text-muted-foreground'
+                    thinkingBudget > 0 ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
                   {formatThinkingBudgetCompact(thinkingBudget)}

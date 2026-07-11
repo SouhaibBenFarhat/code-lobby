@@ -146,13 +146,13 @@ function StreamingBubbleInner({ streaming }: StreamingBubbleProps): React.JSX.El
       <div className="max-w-[85%] rounded-lg bg-chat-bubble border border-border shadow-elevation-low min-h-[40px]">
         {/* Thinking section - compact, no blue borders, same radius as bubble */}
         {streaming.thinking && (
-          <div className="bg-info-subtle rounded-t-lg">
-            <div className="flex items-center gap-1 px-2 py-1 text-[10px] text-primary">
-              <Brain className="w-2.5 h-2.5 animate-pulse flex-shrink-0" />
+          <div className="bg-surface rounded-t-lg">
+            <div className="flex items-center gap-1 px-2 py-1 text-[10px] text-muted-foreground">
+              <Brain className="w-2.5 h-2.5 animate-pulse flex-shrink-0 text-foreground" />
               <span className="font-medium">Thinking...</span>
               <span className="text-[9px] text-muted-foreground ml-auto">Extended reasoning</span>
             </div>
-            <div className="px-2 pb-2 text-[10px] text-foreground-muted bg-info-subtle ml-2 mr-2 mb-1.5 rounded-lg border-l-2 border-border-muted">
+            <div className="px-2 pb-2 text-[10px] text-foreground-muted bg-surface ml-2 mr-2 mb-1.5 rounded-lg border-l-2 border-border-muted">
               <pre
                 ref={thinkingRef}
                 className="whitespace-pre-wrap font-mono text-[9px] max-h-32 overflow-y-auto leading-tight"
