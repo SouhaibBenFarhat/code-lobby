@@ -256,10 +256,6 @@ const electronAPI: ElectronAPI = {
   setMyPRsRepos: (repos: string[]) => ipcRenderer.invoke('set-my-prs-repos', repos),
 
   // Logging
-  getLogs: () => ipcRenderer.invoke('get-logs'),
-  clearLogs: () => ipcRenderer.invoke('clear-logs'),
-  exportLogs: () => ipcRenderer.invoke('export-logs'),
-  getLogsSummary: () => ipcRenderer.invoke('get-logs-summary'),
   logFromRenderer: (
     level: string,
     category: string,

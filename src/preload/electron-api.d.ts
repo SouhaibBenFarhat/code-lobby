@@ -307,23 +307,6 @@ export interface ElectronAPI {
   setMyPRsRepos: (repos: string[]) => Promise<{ success: boolean }>
 
   // Logging
-  getLogs: () => Promise<
-    Array<{
-      id: string
-      timestamp: string
-      level: string
-      category: string
-      message: string
-      details?: unknown
-    }>
-  >
-  clearLogs: () => Promise<{ success: boolean }>
-  exportLogs: () => Promise<string>
-  getLogsSummary: () => Promise<{
-    total: number
-    byLevel: Record<string, number>
-    byCategory: Record<string, number>
-  }>
   logFromRenderer: (
     level: 'info' | 'warn' | 'error' | 'debug',
     category: string,

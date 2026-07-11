@@ -48,7 +48,6 @@ import { AccountMenu } from './AccountMenu'
 import { AICostIndicator } from './AICostIndicator'
 import { EventStream } from './EventStream'
 import { GitHubStatusIndicator } from './GitHubStatusIndicator'
-import { LogsViewer } from './LogsViewer'
 import { MemoryUsageIndicator } from './MemoryUsageIndicator'
 import { RepoSelector } from './RepoSelector'
 
@@ -422,15 +421,6 @@ export function Header({
             <EventStream />
           </PopoverContent>
         </Popover>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <LogsViewer />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>Application logs</TooltipContent>
-        </Tooltip>
 
         <Separator orientation="vertical" className="h-6" />
 

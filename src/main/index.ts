@@ -1292,24 +1292,6 @@ Return ONLY the JSON array, no other text.`
   // LOGGING
   // ═══════════════════════════════════════════════════════════════════════════
 
-  ipcMain.handle('get-logs', async () => {
-    return logger.getLogs()
-  })
-
-  ipcMain.handle('clear-logs', async () => {
-    logger.clearLogs()
-    logger.info(LogCategory.APP, 'Logs cleared by user')
-    return { success: true }
-  })
-
-  ipcMain.handle('export-logs', async () => {
-    return logger.exportLogs()
-  })
-
-  ipcMain.handle('get-logs-summary', async () => {
-    return logger.getLogsSummary()
-  })
-
   // Log from renderer
   ipcMain.handle(
     'log-from-renderer',
