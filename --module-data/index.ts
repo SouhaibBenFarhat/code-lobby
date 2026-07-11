@@ -78,6 +78,7 @@ export {
   useSaveDailySpeech,
   useSaveMessage,
   useSelectPR,
+  useSetAboutModalOpen,
   useSetAIPanel,
   useSetCardLayouts,
   useSetClaudeApiKey,
@@ -141,6 +142,7 @@ export {
   type ThemeVariant,
   type UserEvent,
   type UserProfilePanel,
+  useAboutModalOpen,
   // Multi-account
   useAccounts,
   useActiveAccount,

@@ -75,6 +75,7 @@ export {
   type ClaudeApiKeyStatus,
   type ClaudeCodeStatus,
   type ThemeVariant,
+  useAboutModalOpen,
   useClaudeApiKeyStatus,
   useClaudeCodeStatus,
   useIsFullscreen,

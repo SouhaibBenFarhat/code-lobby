@@ -37,6 +37,35 @@ export function useIsFullscreen(): UseQueryResult<boolean, Error> {
 }
 
 /**
+ * Query for the About modal open state.
+ *
+ * The modal is opened from the native "About CodeLobby" menu item (on macOS the
+ * App menu → About CodeLobby; on other platforms the Help menu), which sends a
+ * `menu:open-about` IPC event. State lives under the `system` prefix so it is
+ * NOT persisted — the modal never auto-reopens on launch.
+ */
+export function useAboutModalOpen(): UseQueryResult<boolean, Error> {
+  const qc = useQueryClient()
+
+  // Open the modal when the native "About" menu item is clicked
+  useEffect(() => {
+    if (!window.electron?.onOpenAbout) return
+
+    const cleanup = window.electron.onOpenAbout(() => {
+      qc.setQueryData(keys.system.aboutModalOpen, true)
+    })
+
+    return cleanup
+  }, [qc])
+
+  return useQuery({
+    queryKey: keys.system.aboutModalOpen,
+    queryFn: () => qc.getQueryData<boolean>(keys.system.aboutModalOpen) ?? false,
+    staleTime: Infinity // Only updates via the menu subscription / mutation
+  })
+}
+
+/**
  * Theme variants:
  * - 'light'          — Apple light
  * - 'dark'           — Apple dark

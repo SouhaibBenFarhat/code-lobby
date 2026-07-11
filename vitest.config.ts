@@ -18,7 +18,20 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'cobertura', 'json-summary'],
-      exclude: ['node_modules/', 'tests/', 'out/', '**/*.d.ts', '**/*.config.*', '**/types.ts'],
+      exclude: [
+        'node_modules/',
+        'tests/',
+        'out/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/types.ts',
+        // Electron entry points: the main-process bootstrap and the preload
+        // contextBridge can't run in the happy-dom renderer test env, so they're
+        // structurally uncoverable here (Vitest's coverage.all would otherwise
+        // report them as 0% and drag down the diff-coverage gate).
+        'src/main/index.ts',
+        'src/preload/index.ts'
+      ],
       thresholds: {
         global: {
           branches: 85,

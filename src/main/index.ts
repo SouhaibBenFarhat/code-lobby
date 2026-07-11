@@ -207,8 +207,32 @@ function createWindow(): void {
   // Application menu: View > Zoom uses same handlers as globalShortcut (main
   // window always zooms; focused webview synced). Custom click ensures macOS
   // menu accelerators run our logic instead of Electron’s focus-based zoom.
+  // Opens the in-app About modal (features book) in the renderer.
+  const openAbout = (): void => {
+    mainWindow?.webContents.send('menu:open-about')
+  }
+
   const template: Electron.MenuItemConstructorOptions[] = [
-    { role: 'appMenu' },
+    // macOS: About lives in the app menu (App menu → About CodeLobby).
+    // Other platforms get it in a Help menu below. Both open the in-app modal.
+    ...(process.platform === 'darwin'
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { label: 'About CodeLobby', click: openAbout },
+              { type: 'separator' },
+              { role: 'services' },
+              { type: 'separator' },
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              { type: 'separator' },
+              { role: 'quit' }
+            ]
+          } as Electron.MenuItemConstructorOptions
+        ]
+      : []),
     { role: 'fileMenu' },
     { role: 'editMenu' },
     {
@@ -224,7 +248,16 @@ function createWindow(): void {
         { role: 'togglefullscreen', label: 'Toggle Full Screen' }
       ]
     },
-    { role: 'windowMenu' }
+    { role: 'windowMenu' },
+    // Non-macOS: expose About under a Help menu so it stays reachable.
+    ...(process.platform === 'darwin'
+      ? []
+      : [
+          {
+            role: 'help',
+            submenu: [{ label: 'About CodeLobby', click: openAbout }]
+          } as Electron.MenuItemConstructorOptions
+        ])
   ]
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)

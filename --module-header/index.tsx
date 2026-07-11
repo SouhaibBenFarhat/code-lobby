@@ -5,7 +5,9 @@
  */
 
 import {
+  useAboutModalOpen,
   useAIPanel,
+  useSetAboutModalOpen,
   useSetAIPanel,
   useSetViewMode,
   useSignOut,
@@ -13,6 +15,7 @@ import {
   type ViewMode
 } from '@data'
 import { registerToSlot } from '@slot-system'
+import { AboutDialog } from './components/AboutDialog'
 import { Header } from './components/Header'
 
 export { AboutDialog } from './components/AboutDialog'
@@ -29,6 +32,11 @@ function HeaderWrapper() {
   const { data: viewMode = 'canvas' } = useViewMode()
   const { data: aiPanelData } = useAIPanel()
   const isAIPanelOpen = aiPanelData?.isOpen ?? false
+
+  // About modal is opened from the native "About CodeLobby" menu item.
+  // useAboutModalOpen subscribes to the menu IPC event and flips this state.
+  const { data: isAboutOpen = false } = useAboutModalOpen()
+  const setAboutModalOpen = useSetAboutModalOpen()
 
   const setViewMode = useSetViewMode()
   const setAIPanel = useSetAIPanel()
@@ -47,13 +55,16 @@ function HeaderWrapper() {
   }
 
   return (
-    <Header
-      onLogout={handleLogout}
-      viewMode={viewMode}
-      onViewModeChange={handleViewModeChange}
-      isAIPanelOpen={isAIPanelOpen}
-      onToggleAIPanel={handleToggleAIPanel}
-    />
+    <>
+      <Header
+        onLogout={handleLogout}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        isAIPanelOpen={isAIPanelOpen}
+        onToggleAIPanel={handleToggleAIPanel}
+      />
+      <AboutDialog open={isAboutOpen} onOpenChange={(open) => setAboutModalOpen.mutate(open)} />
+    </>
   )
 }
 
