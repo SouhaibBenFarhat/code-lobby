@@ -32,8 +32,6 @@ export {
   type GitHubStatusSummary,
   useGitHubStatus
 } from './github-status'
-// Memory Usage
-export { type MemoryUsage, useMemoryUsage } from './memory-usage'
 // Network
 export { useNetworkRequests } from './network'
 // Pull Request

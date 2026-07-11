@@ -69,9 +69,6 @@ vi.mock('@data', () => ({
   useUserProfilePanel: vi.fn(() => mockQueryResult({ isOpen: false, height: 250 })),
   useCliUsageStats: vi.fn(() => mockQueryResult(null)),
   useClaudeCodeStatus: vi.fn(() => mockQueryResult({ isInstalled: true, isChecking: false })),
-  useMemoryUsage: vi.fn(() =>
-    mockQueryResult({ heapUsedMB: 50, heapTotalMB: 100, rssMB: 150, heapPercentage: 50 })
-  ),
   useGitHubStatus: vi.fn(() => mockQueryResult(null)),
   // Mutation hooks
   useSetSelectedRepos: vi.fn(() => mockMutationResult()),

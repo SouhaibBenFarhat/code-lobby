@@ -46,7 +46,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { AccountMenu } from './AccountMenu'
 import { AICostIndicator } from './AICostIndicator'
 import { EventStream } from './EventStream'
-import { MemoryUsageIndicator } from './MemoryUsageIndicator'
 import { RepoSelector } from './RepoSelector'
 
 function formatTimeUntilReset(resetAt: string): string {
@@ -153,7 +152,7 @@ export function Header({
         {!isFullscreen && <div className="w-[72px] h-full flex-shrink-0" />}
         {isFullscreen && <div className="w-3 h-full flex-shrink-0" />}
 
-        <div className="flex items-center no-drag pr-4">
+        <div className="flex items-center no-drag">
           <CodeLobbyLogo size={28} />
         </div>
       </div>
@@ -271,8 +270,6 @@ export function Header({
       )}
 
       <AICostIndicator />
-
-      <MemoryUsageIndicator />
 
       <div className="flex-1" />
 

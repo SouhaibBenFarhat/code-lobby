@@ -170,9 +170,6 @@ interface MockElectronAPI {
   onClaudeDone: ReturnType<typeof vi.fn>
   onClaudeError: ReturnType<typeof vi.fn>
 
-  // Memory usage
-  getMemoryUsage: ReturnType<typeof vi.fn>
-
   // Network request tracking
   onNetworkRequest: ReturnType<typeof vi.fn>
 
@@ -454,15 +451,6 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     onClaudeChunk: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
     onClaudeDone: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
     onClaudeError: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
-
-    // Memory usage
-    getMemoryUsage: vi.fn().mockResolvedValue({
-      heapUsed: 50 * 1024 * 1024,
-      heapTotal: 100 * 1024 * 1024,
-      rss: 150 * 1024 * 1024,
-      external: 10 * 1024 * 1024,
-      arrayBuffers: 5 * 1024 * 1024
-    }),
 
     // Network request tracking
     onNetworkRequest: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
