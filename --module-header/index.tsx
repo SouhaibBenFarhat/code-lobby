@@ -7,8 +7,10 @@
 import {
   useAboutModalOpen,
   useAIPanel,
+  useDatabaseViewerOpen,
   useSetAboutModalOpen,
   useSetAIPanel,
+  useSetDatabaseViewerOpen,
   useSetViewMode,
   useSignOut,
   useViewMode,
@@ -16,13 +18,13 @@ import {
 } from '@data'
 import { registerToSlot } from '@slot-system'
 import { AboutDialog } from './components/AboutDialog'
+import { DatabaseViewer } from './components/DatabaseViewer'
 import { Header } from './components/Header'
 
 export { AboutDialog } from './components/AboutDialog'
 export { ContributionsModal } from './components/ContributionsModal'
 export { EventStream } from './components/EventStream'
 export { Header } from './components/Header'
-export { LogsViewer } from './components/LogsViewer'
 export { RepoSelector } from './components/RepoSelector'
 
 /**
@@ -37,6 +39,10 @@ function HeaderWrapper() {
   // useAboutModalOpen subscribes to the menu IPC event and flips this state.
   const { data: isAboutOpen = false } = useAboutModalOpen()
   const setAboutModalOpen = useSetAboutModalOpen()
+
+  // Database Viewer is opened from the native "Database Viewer" menu item (View menu).
+  const { data: isDatabaseViewerOpen = false } = useDatabaseViewerOpen()
+  const setDatabaseViewerOpen = useSetDatabaseViewerOpen()
 
   const setViewMode = useSetViewMode()
   const setAIPanel = useSetAIPanel()
@@ -64,6 +70,10 @@ function HeaderWrapper() {
         onToggleAIPanel={handleToggleAIPanel}
       />
       <AboutDialog open={isAboutOpen} onOpenChange={(open) => setAboutModalOpen.mutate(open)} />
+      <DatabaseViewer
+        open={isDatabaseViewerOpen}
+        onOpenChange={(open) => setDatabaseViewerOpen.mutate(open)}
+      />
     </>
   )
 }

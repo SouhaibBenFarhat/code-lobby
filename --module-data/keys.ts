@@ -131,6 +131,7 @@ export const keys = {
   system: {
     fullscreen: ['system', 'fullscreen'] as const,
     theme: ['system', 'theme'] as const,
-    aboutModalOpen: ['system', 'about-modal-open'] as const
+    aboutModalOpen: ['system', 'about-modal-open'] as const,
+    databaseViewerOpen: ['system', 'database-viewer-open'] as const
   }
 } as const

@@ -92,10 +92,6 @@ interface MockElectronAPI {
   setIDEViewSettings: ReturnType<typeof vi.fn>
 
   // Logging
-  getLogs: ReturnType<typeof vi.fn>
-  clearLogs: ReturnType<typeof vi.fn>
-  exportLogs: ReturnType<typeof vi.fn>
-  getLogsSummary: ReturnType<typeof vi.fn>
   logFromRenderer: ReturnType<typeof vi.fn>
 
   // AI Chat
@@ -159,6 +155,7 @@ interface MockElectronAPI {
 
   // Native menu
   onOpenAbout: ReturnType<typeof vi.fn>
+  onOpenDatabaseViewer: ReturnType<typeof vi.fn>
 
   // GitHub OAuth (device flow)
   startGitHubAuth: ReturnType<typeof vi.fn>
@@ -310,14 +307,6 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
     setIDEViewSettings: vi.fn().mockResolvedValue({ success: true }),
 
     // Logging
-    getLogs: vi.fn().mockResolvedValue([]),
-    clearLogs: vi.fn().mockResolvedValue({ success: true }),
-    exportLogs: vi.fn().mockResolvedValue('[]'),
-    getLogsSummary: vi.fn().mockResolvedValue({
-      total: 0,
-      byLevel: {},
-      byCategory: {}
-    }),
     logFromRenderer: vi.fn().mockResolvedValue(undefined),
 
     // AI Chat
@@ -449,6 +438,7 @@ export function createMockElectronAPI(overrides: Partial<MockElectronAPI> = {}):
 
     // Native menu
     onOpenAbout: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
+    onOpenDatabaseViewer: vi.fn().mockReturnValue(() => {}), // Returns cleanup function
 
     // GitHub OAuth (device flow)
     startGitHubAuth: vi.fn().mockResolvedValue({

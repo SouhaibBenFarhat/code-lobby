@@ -15,23 +15,6 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Header } from './Header'
 
-// Mock TanStack Query direct imports (used by LogsViewer)
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return {
-    ...actual,
-    useQuery: vi.fn(() => ({
-      data: [],
-      isLoading: false,
-      isFetching: false,
-      refetch: vi.fn()
-    })),
-    useQueryClient: vi.fn(() => ({
-      invalidateQueries: vi.fn()
-    }))
-  }
-})
-
 // Helper to create default query result
 const mockQueryResult = (data: unknown = null) => ({
   data,
