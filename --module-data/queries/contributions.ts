@@ -5,11 +5,11 @@
  * Lazy-loaded: only fetches when enabled=true (panel open)
  */
 
-import { type UseQueryResult, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type UseQueryResult, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ContributionsData, UserEvent } from '../github'
 import * as github from '../github'
 import { keys } from '../keys'
-import { useGitHubToken } from './settings'
+import { useGitHubToken, useSelectedRepos } from './settings'
 import { useCurrentUser } from './user'
 
 export type { ContributionsData, UserEvent } from '../github'
@@ -75,4 +75,53 @@ export function useRefreshUserEvents(): () => void {
   return () => {
     qc.invalidateQueries({ queryKey: keys.userEvents })
   }
+}
+
+/**
+ * Activity across the repos the user is monitoring (their selected repos).
+ *
+ * Fans out one `GET /repos/:owner/:repo/events` per selected repo (each its own
+ * cached query, so one failing repo can't blank the whole feed), then merges,
+ * sorts newest-first, and caps the feed. Powers the header Activity Stream.
+ */
+export function useWatchedRepoEvents(): {
+  data: UserEvent[]
+  isLoading: boolean
+  isFetching: boolean
+  refetch: () => void
+} {
+  const { data: token } = useGitHubToken()
+  const { data: selectedRepos } = useSelectedRepos()
+  const qc = useQueryClient()
+  const reposToFetch = selectedRepos || []
+
+  const eventQueries = useQueries({
+    queries: reposToFetch.map((repoFullName) => ({
+      queryKey: keys.repoEvents(repoFullName),
+      queryFn: async (): Promise<UserEvent[]> => {
+        if (!token) return []
+        return github.fetchRepoEvents(token, repoFullName)
+      },
+      enabled: !!token,
+      staleTime: 60 * 1000, // 60s — ETag-protected REST call, 304s are free
+      gcTime: 30 * 60 * 1000
+    }))
+  })
+
+  const data = eventQueries
+    .flatMap((q) => q.data || [])
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 100)
+
+  // Only "loading" on the very first load (every repo still loading, none cached)
+  const isLoading = reposToFetch.length > 0 && eventQueries.every((q) => q.isLoading)
+  const isFetching = eventQueries.some((q) => q.isFetching)
+
+  const refetch = (): void => {
+    for (const repoFullName of reposToFetch) {
+      qc.invalidateQueries({ queryKey: keys.repoEvents(repoFullName) })
+    }
+  }
+
+  return { data, isLoading, isFetching, refetch }
 }

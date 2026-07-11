@@ -1174,6 +1174,8 @@ export interface UserEvent {
   icon: 'commit' | 'pr' | 'review' | 'comment' | 'issue' | 'branch' | 'other'
   /** PR number if this event is related to a PR */
   prNumber?: number
+  /** Who performed the event — used for avatars in activity feeds */
+  actor?: { login: string; avatar_url: string }
 }
 
 /**
@@ -1205,11 +1207,43 @@ export async function fetchUserEvents(token: string, username: string): Promise<
   return transformedEvents
 }
 
+/**
+ * Fetch recent activity events for a single repository (up to 100 most recent).
+ * Uses GET /repos/{owner}/{repo}/events — real GitHub activity across everyone
+ * active on the repo (pushes, PRs, reviews, comments, issues, branch changes).
+ *
+ * Note: GitHub's Events API only returns the last ~90 days / 300 events and is
+ * cached with a short propagation delay.
+ */
+export async function fetchRepoEvents(token: string, repoFullName: string): Promise<UserEvent[]> {
+  const [owner, repo] = repoFullName.split('/')
+  if (!owner || !repo) return []
+
+  const events = await http.get<GitHubEvent[]>(
+    `${GITHUB_API}/repos/${owner}/${repo}/events?per_page=100`,
+    authHeaders(token)
+  )
+
+  if (!events) return []
+
+  return events
+    .filter((event: GitHubEvent) => {
+      // Skip PushEvents with 0 commits (branch syncs, force pushes, etc.)
+      if (event.type === 'PushEvent') {
+        const commits = event.payload.commits || []
+        if (commits.length === 0) return false
+      }
+      return true
+    })
+    .map((event: GitHubEvent) => transformEvent(event))
+}
+
 function transformEvent(event: GitHubEvent): UserEvent {
   const base = {
     id: event.id,
     repoName: event.repo.name,
-    timestamp: event.created_at
+    timestamp: event.created_at,
+    actor: { login: event.actor.login, avatar_url: event.actor.avatar_url }
   }
 
   switch (event.type) {

@@ -27,8 +27,8 @@ import {
   TooltipTrigger
 } from '@ui-kit'
 import {
-  Activity,
   AlertTriangle,
+  Bell,
   Check,
   Clock,
   FolderTree,
@@ -46,7 +46,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { AccountMenu } from './AccountMenu'
 import { AICostIndicator } from './AICostIndicator'
 import { EventStream } from './EventStream'
-import { GitHubStatusIndicator } from './GitHubStatusIndicator'
 import { MemoryUsageIndicator } from './MemoryUsageIndicator'
 import { RepoSelector } from './RepoSelector'
 
@@ -281,8 +280,6 @@ export function Header({
 
       <MemoryUsageIndicator />
 
-      <GitHubStatusIndicator />
-
       <div className="flex-1" />
 
       <div className="flex items-center gap-1 no-drag">
@@ -404,7 +401,7 @@ export function Header({
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Activity className="w-3.5 h-3.5" />
+                  <Bell className="w-3.5 h-3.5" />
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>

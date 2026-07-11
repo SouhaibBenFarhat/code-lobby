@@ -33,6 +33,7 @@ import { BarChart3, Check, ChevronDown, LogOut, Plus, Trash2 } from 'lucide-reac
 import React, { useState } from 'react'
 import { AddAccountModal } from '../AddAccountModal'
 import { ContributionsModal } from '../ContributionsModal'
+import { GitHubStatusMenuItem } from '../GitHubStatusMenuItem'
 
 interface AccountMenuProps {
   /** IDE mode: show a "Show/Hide profile" item instead of "View contributions". */
@@ -156,6 +157,8 @@ export function AccountMenu({
                 }}
               />
             )}
+
+            <GitHubStatusMenuItem />
           </ListMenu>
         </PopoverContent>
       </Popover>

@@ -61,6 +61,9 @@ export const keys = {
   githubStatus: ['github', 'status'] as const,
   contributions: ['github', 'contributions'] as const,
   userEvents: ['github', 'user-events'] as const,
+  /** Recent activity events for a single repo (GET /repos/:owner/:repo/events) */
+  repoEvents: (repoFullName: string): readonly ['github', 'repo-events', string] =>
+    ['github', 'repo-events', repoFullName] as const,
 
   // Settings (PERSISTED)
   selectedRepos: ['settings', 'selected-repos'] as const,

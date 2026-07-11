@@ -212,7 +212,8 @@ export {
   useUser,
   useUserEvents,
   useUserProfilePanel,
-  useViewMode
+  useViewMode,
+  useWatchedRepoEvents
 } from './queries'
 // Types
 export type {

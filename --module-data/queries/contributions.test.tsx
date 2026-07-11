@@ -3,7 +3,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { keys } from '../keys'
@@ -11,18 +11,21 @@ import {
   useContributions,
   useRefreshContributions,
   useRefreshUserEvents,
-  useUserEvents
+  useUserEvents,
+  useWatchedRepoEvents
 } from './contributions'
 
 // Mock the GitHub API
 vi.mock('../github', () => ({
   fetchContributions: vi.fn(),
-  fetchUserEvents: vi.fn()
+  fetchUserEvents: vi.fn(),
+  fetchRepoEvents: vi.fn()
 }))
 
-// Mock the settings hook
+// Mock the settings hooks
 vi.mock('./settings', () => ({
-  useGitHubToken: vi.fn(() => ({ data: 'test-token' }))
+  useGitHubToken: vi.fn(() => ({ data: 'test-token' })),
+  useSelectedRepos: vi.fn(() => ({ data: [] }))
 }))
 
 // Mock the user hook
@@ -31,12 +34,14 @@ vi.mock('./user', () => ({
 }))
 
 import * as github from '../github'
-import { useGitHubToken } from './settings'
+import { useGitHubToken, useSelectedRepos } from './settings'
 import { useCurrentUser } from './user'
 
 const mockFetchContributions = vi.mocked(github.fetchContributions)
 const mockFetchUserEvents = vi.mocked(github.fetchUserEvents)
+const mockFetchRepoEvents = vi.mocked(github.fetchRepoEvents)
 const mockUseGitHubToken = vi.mocked(useGitHubToken)
+const mockUseSelectedRepos = vi.mocked(useSelectedRepos)
 const mockUseCurrentUser = vi.mocked(useCurrentUser)
 
 const mockContributionsData = {
@@ -93,7 +98,11 @@ describe('Contributions Queries', () => {
     })
     mockFetchContributions.mockResolvedValue(mockContributionsData)
     mockFetchUserEvents.mockResolvedValue(mockUserEventsData)
+    mockFetchRepoEvents.mockResolvedValue([])
     mockUseGitHubToken.mockReturnValue({ data: 'test-token' } as ReturnType<typeof useGitHubToken>)
+    mockUseSelectedRepos.mockReturnValue({ data: [] as string[] } as ReturnType<
+      typeof useSelectedRepos
+    >)
     mockUseCurrentUser.mockReturnValue({ data: { login: 'testuser' } } as ReturnType<
       typeof useCurrentUser
     >)
@@ -262,6 +271,74 @@ describe('Contributions Queries', () => {
       result.current()
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: keys.userEvents })
+    })
+  })
+
+  describe('useWatchedRepoEvents', () => {
+    const evt = (id: string, timestamp: string) => ({
+      id,
+      type: 'Push',
+      repoName: 'org/repo',
+      title: 'Pushed 1 commit',
+      description: '',
+      timestamp,
+      icon: 'commit' as const,
+      actor: { login: 'dev', avatar_url: '' }
+    })
+
+    it('returns nothing and does not fetch when no repos are selected', async () => {
+      mockUseSelectedRepos.mockReturnValue({ data: [] as string[] } as ReturnType<
+        typeof useSelectedRepos
+      >)
+
+      const { result } = renderHook(() => useWatchedRepoEvents(), {
+        wrapper: createWrapper(queryClient)
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(result.current.data).toEqual([])
+      expect(result.current.isLoading).toBe(false)
+      expect(mockFetchRepoEvents).not.toHaveBeenCalled()
+    })
+
+    it('fans out across the selected repos and merges newest-first', async () => {
+      mockUseSelectedRepos.mockReturnValue({
+        data: ['org/a', 'org/b']
+      } as ReturnType<typeof useSelectedRepos>)
+      mockFetchRepoEvents.mockImplementation(async (_token, repo) =>
+        repo === 'org/a' ? [evt('a1', '2026-02-01T10:00:00Z')] : [evt('b1', '2026-02-02T10:00:00Z')]
+      )
+
+      const { result } = renderHook(() => useWatchedRepoEvents(), {
+        wrapper: createWrapper(queryClient)
+      })
+
+      await waitFor(() => expect(result.current.data.length).toBe(2))
+
+      expect(mockFetchRepoEvents).toHaveBeenCalledWith('test-token', 'org/a')
+      expect(mockFetchRepoEvents).toHaveBeenCalledWith('test-token', 'org/b')
+      // Newest first: b1 (Feb 2) before a1 (Feb 1)
+      expect(result.current.data.map((e) => e.id)).toEqual(['b1', 'a1'])
+    })
+
+    it('refetch invalidates the per-repo event queries', async () => {
+      mockUseSelectedRepos.mockReturnValue({
+        data: ['org/a']
+      } as ReturnType<typeof useSelectedRepos>)
+      mockFetchRepoEvents.mockResolvedValue([evt('a1', '2026-02-01T10:00:00Z')])
+
+      const { result } = renderHook(() => useWatchedRepoEvents(), {
+        wrapper: createWrapper(queryClient)
+      })
+      await waitFor(() => expect(result.current.data.length).toBe(1))
+
+      mockFetchRepoEvents.mockClear()
+      act(() => {
+        result.current.refetch()
+      })
+
+      await waitFor(() => expect(mockFetchRepoEvents).toHaveBeenCalledWith('test-token', 'org/a'))
     })
   })
 })
