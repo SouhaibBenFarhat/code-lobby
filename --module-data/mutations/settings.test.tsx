@@ -52,6 +52,20 @@ describe('Settings Mutations', () => {
 
       expect(queryClient.getQueryData(keys.selectedRepos)).toEqual(['org/repo-1', 'org/repo-2'])
     })
+
+    it('writes to the active account namespace when signed in', async () => {
+      queryClient.setQueryData(keys.activeAccountId, 'alice')
+
+      const { result } = renderHook(() => useSetSelectedRepos(), {
+        wrapper: createWrapper(queryClient)
+      })
+
+      await act(async () => {
+        await result.current.mutateAsync(['org/x'])
+      })
+
+      expect(queryClient.getQueryData(keys.selectedReposFor('alice'))).toEqual(['org/x'])
+    })
   })
 
   describe('useSetViewMode', () => {

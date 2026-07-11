@@ -12,7 +12,8 @@ export function useSetSelectedRepos(): UseMutationResult<string[], Error, string
   return useMutation({
     mutationFn: (repos: string[]) => Promise.resolve(repos),
     onSuccess: (repos) => {
-      qc.setQueryData(keys.selectedRepos, repos)
+      const activeId = qc.getQueryData<string | null>(keys.activeAccountId)
+      qc.setQueryData(activeId ? keys.selectedReposFor(activeId) : keys.selectedRepos, repos)
     }
   })
 }

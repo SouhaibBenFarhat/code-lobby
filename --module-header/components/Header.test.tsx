@@ -5,7 +5,6 @@
 
 import {
   act,
-  createMockUser,
   fireEvent,
   render,
   resetMockElectron,
@@ -103,8 +102,12 @@ vi.mock('@data', () => ({
   useResetAIUsage: vi.fn(() => mockMutationResult())
 }))
 
+// AccountMenu pulls its own account hooks; stub it so this suite stays focused on Header.
+vi.mock('./AccountMenu', () => ({
+  AccountMenu: () => <div data-testid="account-menu" />
+}))
+
 describe('Header', () => {
-  const mockUser = createMockUser({ login: 'testuser', name: 'Test User' })
   const mockOnLogout = vi.fn()
   const mockOnViewModeChange = vi.fn()
   const mockOnToggleAIPanel = vi.fn()
@@ -123,7 +126,6 @@ describe('Header', () => {
     it('should render the CodeLobby logo and name', () => {
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -138,7 +140,6 @@ describe('Header', () => {
     it('should render Live indicator', () => {
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -154,7 +155,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -178,7 +178,6 @@ describe('Header', () => {
     it('should render view mode toggle buttons', () => {
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -195,7 +194,6 @@ describe('Header', () => {
     it('should highlight canvas button when viewMode is canvas', () => {
       const { container } = render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -212,7 +210,6 @@ describe('Header', () => {
     it('should call onViewModeChange when IDE button is clicked', async () => {
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -232,7 +229,6 @@ describe('Header', () => {
     it('should call onViewModeChange when Canvas button is clicked', async () => {
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="ide"
           onViewModeChange={mockOnViewModeChange}
@@ -254,7 +250,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -279,7 +274,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -302,7 +296,6 @@ describe('Header', () => {
 
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -323,7 +316,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -351,7 +343,6 @@ describe('Header', () => {
     it('should show loading state when fetching', async () => {
       render(
         <Header
-          user={mockUser}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -369,7 +360,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -396,7 +386,6 @@ describe('Header', () => {
     it('should handle null user gracefully', () => {
       render(
         <Header
-          user={null}
           onLogout={mockOnLogout}
           viewMode="canvas"
           onViewModeChange={mockOnViewModeChange}
@@ -419,7 +408,6 @@ describe('Header', () => {
       await act(async () => {
         const result = render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -441,7 +429,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -452,14 +439,13 @@ describe('Header', () => {
       })
 
       // Header should be rendered
-      expect(screen.getByText(mockUser.login)).toBeInTheDocument()
+      expect(screen.getByTestId('account-menu')).toBeInTheDocument()
     })
 
     it('should render header correctly', async () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -470,7 +456,7 @@ describe('Header', () => {
       })
 
       // Header should display user info
-      expect(screen.getByText(mockUser.login)).toBeInTheDocument()
+      expect(screen.getByTestId('account-menu')).toBeInTheDocument()
     })
 
     it('should render header with unmount support', async () => {
@@ -478,7 +464,6 @@ describe('Header', () => {
       await act(async () => {
         const result = render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}
@@ -490,7 +475,7 @@ describe('Header', () => {
       })
 
       // Component should render
-      expect(screen.getByText(mockUser.login)).toBeInTheDocument()
+      expect(screen.getByTestId('account-menu')).toBeInTheDocument()
 
       // Unmount should not throw
       await act(async () => {
@@ -504,7 +489,6 @@ describe('Header', () => {
       await act(async () => {
         render(
           <Header
-            user={mockUser}
             onLogout={mockOnLogout}
             viewMode="canvas"
             onViewModeChange={mockOnViewModeChange}

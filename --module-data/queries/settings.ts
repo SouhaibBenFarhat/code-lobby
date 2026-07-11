@@ -6,6 +6,7 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
 import { keys } from '../keys'
 import type { CardLayout, CodeVisualizerState, DailySpeech, PRWebviewTab, ViewMode } from '../types'
+import { useActiveAccountId } from './accounts'
 
 // Helper to get persisted data with default
 function getPersisted<T>(key: readonly string[], defaultValue: T): T {
@@ -32,10 +33,19 @@ export function getGitHubToken(): string | null {
   return queryClient.getQueryData<string>(keys.githubToken) ?? null
 }
 
+/**
+ * Selected repos for the ACTIVE account. Each account remembers its own set;
+ * the queryKey includes the active account id so switching accounts swaps the
+ * value automatically and consumers keep calling `useSelectedRepos()` unchanged.
+ */
 export function useSelectedRepos(): UseQueryResult<string[] | null, Error> {
+  const { data: activeAccountId = null } = useActiveAccountId()
+  const key = activeAccountId
+    ? keys.selectedReposFor(activeAccountId)
+    : (['settings', 'selected-repos', 'none'] as const)
   return useQuery({
-    queryKey: keys.selectedRepos,
-    queryFn: (): string[] | null => getPersisted(keys.selectedRepos, null),
+    queryKey: key,
+    queryFn: (): string[] | null => getPersisted(key, null),
     staleTime: Infinity
   })
 }

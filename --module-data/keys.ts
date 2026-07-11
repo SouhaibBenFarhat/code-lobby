@@ -74,6 +74,17 @@ export const keys = {
   myPRsRepos: ['settings', 'my-prs-repos'] as const,
   githubToken: ['settings', 'github-token'] as const,
 
+  // Multi-account (PERSISTED). `githubToken` above holds the ACTIVE account's
+  // token so the entire GitHub layer keeps reading a single source of truth.
+  accounts: ['settings', 'accounts'] as const,
+  activeAccountId: ['settings', 'active-account-id'] as const,
+  /**
+   * Per-account selected repos. Each account remembers its own repo selection;
+   * the legacy flat `selectedRepos` key above is kept only for one-time migration.
+   */
+  selectedReposFor: (accountId: string): readonly ['settings', 'selected-repos', string] =>
+    ['settings', 'selected-repos', accountId] as const,
+
   // AI (PERSISTED)
   claudeApiKey: ['ai', 'claude-api-key'] as const,
   claudeModels: ['ai', 'claude-models'] as const,

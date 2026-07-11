@@ -192,6 +192,22 @@ export interface GitHubUser {
   html_url: string
 }
 
+/**
+ * A signed-in GitHub account. Multiple accounts can be stored; one is active at
+ * a time. The `user` snapshot is cached so the account switcher can render
+ * without a network call (the live `github/*` user query is not persisted).
+ */
+export interface Account {
+  /** Canonical id — the GitHub login (GitHubUser has no numeric id). */
+  id: string
+  /** Cached profile for rendering the switcher offline. */
+  user: GitHubUser
+  /** OAuth/device-flow access token or Personal Access Token for this account. */
+  token: string
+  /** When the account was first added (Unix epoch ms). */
+  addedAt: number
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // AI CHAT TYPES
 // ═══════════════════════════════════════════════════════════════════════════

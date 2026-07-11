@@ -58,10 +58,13 @@ export {
   useFactoryReset,
   useMarkPRReady,
   useMergePR,
+  // Multi-account
+  useMigrateAccounts,
   // Code Visualizer
   useOpenCodeVisualizer,
   // System
   useOpenExternal,
+  useRemoveAccount,
   // Labels
   useRemoveLabel,
   // Webview Tabs
@@ -102,6 +105,7 @@ export {
   useSignOut,
   useSubmitPRReview,
   useSubmitPRReviewWithComments,
+  useSwitchAccount,
   useToggleFullscreen,
   useToggleMyPRsFilter,
   useToggleNetworkPanel,
@@ -137,6 +141,10 @@ export {
   type ThemeVariant,
   type UserEvent,
   type UserProfilePanel,
+  // Multi-account
+  useAccounts,
+  useActiveAccount,
+  useActiveAccountId,
   // Settings
   useAIPanel,
   // AI
@@ -204,6 +212,7 @@ export {
 } from './queries'
 // Types
 export type {
+  Account,
   AIUsage,
   CardLayout,
   ChatMessage,

@@ -41,6 +41,12 @@ interface User {
 
 interface ContributionsModalProps {
   user: User
+  /** Controlled open state. When provided, the modal is controlled by the parent. */
+  open?: boolean
+  /** Controlled open-change handler (used with `open`). */
+  onOpenChange?: (open: boolean) => void
+  /** Hide the built-in avatar trigger (e.g. when opened from the account menu). */
+  hideTrigger?: boolean
 }
 
 // Animated counter component
@@ -397,8 +403,15 @@ function ContributionsContent({ data }: { data: ContributionsData }): React.JSX.
   )
 }
 
-export function ContributionsModal({ user }: ContributionsModalProps): React.JSX.Element {
-  const [open, setOpen] = useState(false)
+export function ContributionsModal({
+  user,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false
+}: ContributionsModalProps): React.JSX.Element {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
   const { data, isLoading, isFetching, error } = useContributions(open)
   const refreshContributions = useRefreshContributions()
 
@@ -408,18 +421,20 @@ export function ContributionsModal({ user }: ContributionsModalProps): React.JSX
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-        >
-          <Avatar className="h-7 w-7 ring-2 ring-transparent hover:ring-primary/50 transition-all">
-            <AvatarImage src={user.avatar_url} alt={user.login} />
-            <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm font-medium">{user.login}</span>
-        </button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          >
+            <Avatar className="h-7 w-7 ring-2 ring-transparent hover:ring-primary/50 transition-all">
+              <AvatarImage src={user.avatar_url} alt={user.login} />
+              <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium">{user.login}</span>
+          </button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader className="pb-4 border-b border-border">
           <div className="flex items-center justify-between">

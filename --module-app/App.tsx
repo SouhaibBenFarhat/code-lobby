@@ -12,6 +12,7 @@ import {
   useCodeVisualizer,
   useIDESettings,
   useIsAuthenticated,
+  useMigrateAccounts,
   useNetworkPanel,
   useNetworkPanelHeight,
   usePRDetailPanel,
@@ -99,13 +100,16 @@ export function App(): React.JSX.Element {
 
   // Validate persisted token on startup (after hydration completes)
   const { mutate: validatePersistedToken } = useValidatePersistedToken()
+  // One-time migration from the single-account model to multi-account.
+  const { mutateAsync: migrateAccounts } = useMigrateAccounts()
   useEffect(() => {
     // Wait for TanStack Query cache to hydrate from localStorage
-    // and initialize session cache from SQLite
-    Promise.all([waitForHydration(), initSessionCache()]).then(() => {
-      validatePersistedToken()
-    })
-  }, [validatePersistedToken])
+    // and initialize session cache from SQLite, then migrate any legacy single
+    // account into the accounts list before validating the active token.
+    Promise.all([waitForHydration(), initSessionCache()])
+      .then(() => migrateAccounts())
+      .then(() => validatePersistedToken())
+  }, [migrateAccounts, validatePersistedToken])
 
   // Panel resize state
   const [isPRResizing, setIsPRResizing] = useState(false)

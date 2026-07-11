@@ -14,9 +14,6 @@ import {
   type ViewMode
 } from '@data'
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
   ClaudeIcon,
   CodeLobbyLogo,
@@ -48,8 +45,8 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AboutDialog } from './AboutDialog'
+import { AccountMenu } from './AccountMenu'
 import { AICostIndicator } from './AICostIndicator'
-import { ContributionsModal } from './ContributionsModal'
 import { DatabaseViewer } from './DatabaseViewer'
 import { EventStream } from './EventStream'
 import { GitHubStatusIndicator } from './GitHubStatusIndicator'
@@ -80,14 +77,7 @@ function formatTimeUntilReset(resetAt: string): string {
   return `${diffSecs}s`
 }
 
-interface User {
-  login: string
-  avatar_url: string
-  name: string | null
-}
-
 interface HeaderProps {
-  user: User | null
   onLogout: () => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
@@ -96,7 +86,6 @@ interface HeaderProps {
 }
 
 export function Header({
-  user,
   onLogout,
   viewMode,
   onViewModeChange,
@@ -458,29 +447,14 @@ export function Header({
 
         <Separator orientation="vertical" className="h-6" />
 
-        {user?.login && viewMode === 'ide' && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={toggleUserProfile}
-                className={cn(
-                  'flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity rounded-md px-1.5 py-0.5',
-                  userProfileOpen && 'bg-interactive-active'
-                )}
-              >
-                <Avatar className="h-5 w-5 ring-2 ring-transparent hover:ring-primary/50 transition-all">
-                  <AvatarImage src={user.avatar_url} alt={user.login} />
-                  <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <span className="text-xs font-medium">{user.login}</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{userProfileOpen ? 'Hide Profile' : 'Show Profile'}</TooltipContent>
-          </Tooltip>
+        {viewMode === 'ide' ? (
+          <AccountMenu
+            onToggleProfilePanel={toggleUserProfile}
+            profilePanelOpen={userProfileOpen}
+          />
+        ) : (
+          <AccountMenu />
         )}
-
-        {user?.login && viewMode !== 'ide' && <ContributionsModal user={user} />}
 
         <Tooltip>
           <TooltipTrigger asChild>

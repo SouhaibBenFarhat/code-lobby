@@ -8,6 +8,7 @@ import * as github from '../github'
 import { clearETagCache } from '../http'
 import { keys } from '../keys'
 import type { GitHubUser } from '../types'
+import { upsertAccountAndActivate } from './accounts'
 
 export function useSignIn(): UseMutationResult<{ token: string; user: GitHubUser }, Error, string> {
   const qc = useQueryClient()
@@ -22,12 +23,9 @@ export function useSignIn(): UseMutationResult<{ token: string; user: GitHubUser
       return { token, user: result.user as GitHubUser }
     },
     onSuccess: ({ token, user }) => {
-      // Store token in TanStack cache (auto-persisted to localStorage)
-      qc.setQueryData(keys.githubToken, token)
-      // Store user data
-      qc.setQueryData(keys.user, { user, token })
-      // Refetch repos with new token
-      qc.refetchQueries({ queryKey: keys.repos })
+      // Add (or update) this account and make it active. First sign-in creates
+      // the first account; a subsequent sign-in appends another.
+      upsertAccountAndActivate(qc, token, user)
     }
   })
 }
@@ -40,10 +38,14 @@ export function useSignOut(): UseMutationResult<void, Error, void> {
       // Nothing to do in mutationFn - all cleanup in onSuccess
     },
     onSuccess: () => {
+      // Sign out of ALL accounts.
+      qc.setQueryData(keys.accounts, [])
+      qc.setQueryData(keys.activeAccountId, null)
       // Clear token from cache
       qc.setQueryData(keys.githubToken, null)
       // Clear user
       qc.setQueryData(keys.user, null)
+      qc.setQueryData(keys.currentUser, null)
       // Clear HTTP ETag cache (stale ETags shouldn't persist across accounts)
       clearETagCache()
       // Clear all GitHub-related data
@@ -70,8 +72,7 @@ export function useValidateToken(): UseMutationResult<
     },
     onSuccess: ({ token, valid, user }) => {
       if (valid && user) {
-        qc.setQueryData(keys.githubToken, token)
-        qc.setQueryData(keys.user, { user, token })
+        upsertAccountAndActivate(qc, token, user)
       } else {
         qc.setQueryData(keys.githubToken, null)
         qc.setQueryData(keys.user, null)
