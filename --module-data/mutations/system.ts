@@ -45,6 +45,23 @@ export function useSetAboutModalOpen(): UseMutationResult<boolean, Error, boolea
 }
 
 /**
+ * Set the Database Viewer open state.
+ *
+ * Used to close the viewer (the native menu item opens it via the subscription
+ * in useDatabaseViewerOpen).
+ */
+export function useSetDatabaseViewerOpen(): UseMutationResult<boolean, Error, boolean> {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
+    onSuccess: (isOpen) => {
+      qc.setQueryData(keys.system.databaseViewerOpen, isOpen)
+    }
+  })
+}
+
+/**
  * Set theme variant.
  * Applies CSS classes to <html>:
  *   - 'light'         → no classes

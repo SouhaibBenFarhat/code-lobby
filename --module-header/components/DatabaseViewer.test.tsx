@@ -153,3 +153,30 @@ describe('DatabaseViewer', () => {
     })
   })
 })
+
+describe('DatabaseViewer (controlled mode)', () => {
+  it('opens directly from the open prop, with no trigger button', async () => {
+    mockElectron.db.tables.list.mockResolvedValue({
+      success: true,
+      data: ['conversations']
+    })
+    mockElectron.db.tables.count.mockResolvedValue({ success: true, data: 1 })
+    mockElectron.db.tables.query.mockResolvedValue({ success: true, data: [] })
+
+    render(<DatabaseViewer open onOpenChange={vi.fn()} />)
+
+    // Content is shown without clicking a trigger (menu-driven open)
+    expect(screen.getByText('SQLite Database Viewer')).toBeInTheDocument()
+    await waitFor(() => expect(mockElectron.db.tables.list).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText('conversations')).toBeInTheDocument())
+  })
+
+  it('renders nothing (no trigger button) when controlled closed', () => {
+    render(<DatabaseViewer open={false} onOpenChange={vi.fn()} />)
+
+    expect(screen.queryByText('SQLite Database Viewer')).not.toBeInTheDocument()
+    // Controlled mode must not render the standalone Database trigger button
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(mockElectron.db.tables.list).not.toHaveBeenCalled()
+  })
+})
