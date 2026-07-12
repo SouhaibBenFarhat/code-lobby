@@ -94,21 +94,42 @@ export function useDatabaseViewerOpen(): UseQueryResult<boolean, Error> {
 }
 
 /**
- * Theme variants:
- * - 'light'          — Apple light
- * - 'dark'           — Apple dark
- * - 'windows-light'  — Fluent light
- * - 'windows-dark'   — Fluent dark
+ * Theme mode:
+ * - 'light'   — light color scheme
+ * - 'dark'    — dark color scheme
+ * - 'system'  — follow the OS `prefers-color-scheme` setting
  */
-export type ThemeVariant = 'light' | 'dark' | 'windows-light' | 'windows-dark'
+export type ThemeVariant = 'light' | 'dark' | 'system'
 
-const VALID_THEMES: ThemeVariant[] = ['light', 'dark', 'windows-light', 'windows-dark']
+const VALID_THEMES: ThemeVariant[] = ['light', 'dark', 'system']
+
+/** Whether the OS currently prefers a dark color scheme. */
+function prefersDark(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+}
 
 /**
- * Query for theme
+ * Apply the resolved color scheme to the <html> element.
+ * 'system' resolves to dark/light via the OS preference.
+ */
+export function applyThemeClasses(theme: ThemeVariant): void {
+  const isDark = theme === 'dark' || (theme === 'system' && prefersDark())
+  document.documentElement.classList.toggle('dark', isDark)
+}
+
+/**
+ * Query for the current theme mode.
+ *
+ * Also owns theme application: it writes the resolved `.dark` class to <html>
+ * on mount and whenever the mode changes, and — while in 'system' mode —
+ * subscribes to OS color-scheme changes so the app follows the system live.
  */
 export function useTheme(): UseQueryResult<ThemeVariant, Error> {
-  return useQuery({
+  const query = useQuery({
     queryKey: keys.system.theme,
     queryFn: (): ThemeVariant => {
       const saved = localStorage.getItem('codelobby-theme')
@@ -119,6 +140,19 @@ export function useTheme(): UseQueryResult<ThemeVariant, Error> {
     },
     staleTime: Infinity
   })
+
+  const theme = query.data
+  useEffect(() => {
+    if (!theme) return
+    applyThemeClasses(theme)
+    if (theme !== 'system' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (): void => applyThemeClasses('system')
+    mq.addEventListener('change', handleChange)
+    return () => mq.removeEventListener('change', handleChange)
+  }, [theme])
+
+  return query
 }
 
 /**

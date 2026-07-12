@@ -62,20 +62,10 @@ export function useSetDatabaseViewerOpen(): UseMutationResult<boolean, Error, bo
 }
 
 /**
- * Set theme variant.
- * Applies CSS classes to <html>:
- *   - 'light'         → no classes
- *   - 'dark'          → .dark
- *   - 'windows-light' → .windows
- *   - 'windows-dark'  → .windows .dark
+ * Set the theme mode ('light' | 'dark' | 'system') and apply it to <html>.
+ * 'system' follows the OS color-scheme preference.
  */
-import type { ThemeVariant } from '../queries/system'
-
-function applyThemeClasses(theme: ThemeVariant): void {
-  const el = document.documentElement
-  el.classList.toggle('dark', theme === 'dark' || theme === 'windows-dark')
-  el.classList.toggle('windows', theme === 'windows-light' || theme === 'windows-dark')
-}
+import { applyThemeClasses, type ThemeVariant } from '../queries/system'
 
 export function useSetTheme(): UseMutationResult<ThemeVariant, Error, ThemeVariant> {
   const qc = useQueryClient()
