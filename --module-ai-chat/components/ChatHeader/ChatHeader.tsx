@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@ui-kit'
-import { Loader2, Settings, Trash2, X } from 'lucide-react'
+import { GitPullRequest, Loader2, Settings, Trash2, X } from 'lucide-react'
 import type { ClaudeModel } from '../../types'
 
 export interface ChatHeaderProps {
@@ -27,6 +27,10 @@ export interface ChatHeaderProps {
   models: ClaudeModel[]
   isLoadingModels: boolean
   isConfigured: boolean
+  /** Linked PR context — when set, the header shows the PR instead of a generic label */
+  prNumber?: number
+  prTitle?: string
+  repoFullName?: string
   onModelChange: (modelId: string) => void
   onClearHistory: () => void
   onClose: () => void
@@ -37,24 +41,42 @@ export function ChatHeader({
   models,
   isLoadingModels,
   isConfigured,
+  prNumber,
+  prTitle,
+  repoFullName,
   onModelChange,
   onClearHistory,
   onClose
 }: ChatHeaderProps): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between h-10 px-3 py-2 section-header">
+    <div className="flex items-center justify-between gap-2 min-h-10 px-3 py-1.5 section-header">
       <div className="flex items-center gap-2 min-w-0">
-        <ClaudeIcon className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="font-semibold text-sm">AI Chat</span>
-        {isConfigured && selectedModel && (
-          <span className="text-xs text-muted-foreground truncate max-w-[120px]">
-            • CLI{' '}
-            {models.find((m) => m.id === selectedModel)?.display_name ||
-              selectedModel.split('-').slice(0, 2).join(' ')}
-          </span>
+        {prTitle ? (
+          <>
+            <GitPullRequest className="w-4 h-4 text-primary flex-shrink-0" />
+            <div className="min-w-0 leading-tight">
+              <div className="text-xs font-medium truncate">
+                #{prNumber} {prTitle}
+              </div>
+              {repoFullName && (
+                <div className="text-[10px] text-muted-foreground truncate">{repoFullName}</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <ClaudeIcon className="w-4 h-4 text-primary flex-shrink-0" />
+            {isConfigured && selectedModel && (
+              <span className="text-xs text-muted-foreground truncate max-w-[160px]">
+                CLI{' '}
+                {models.find((m) => m.id === selectedModel)?.display_name ||
+                  selectedModel.split('-').slice(0, 2).join(' ')}
+              </span>
+            )}
+          </>
         )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-shrink-0">
         {isConfigured && (
           <>
             <Popover>

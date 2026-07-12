@@ -106,36 +106,6 @@ export function NoPRSelectedState(): React.JSX.Element {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PR Context Banner
-// ═══════════════════════════════════════════════════════════════════════════
-
-export interface PRContextBannerProps {
-  prNumber: number
-  prTitle: string
-  repoFullName: string
-}
-
-export function PRContextBanner({
-  prNumber,
-  prTitle,
-  repoFullName
-}: PRContextBannerProps): React.JSX.Element {
-  return (
-    <div className="px-3 py-2 border-b border-border bg-surface-content">
-      <div className="flex items-center gap-2">
-        <GitPullRequest className="w-4 h-4 text-primary flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium truncate">
-            #{prNumber} {prTitle}
-          </div>
-          <div className="text-[10px] text-muted-foreground truncate">{repoFullName}</div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // Status Banners
 // ═══════════════════════════════════════════════════════════════════════════
 

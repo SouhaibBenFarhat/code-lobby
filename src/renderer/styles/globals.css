@@ -484,13 +484,19 @@
   box-shadow: var(--shadow-elevation-medium);
 }
 
-/* App header — highest chrome level with frosted glass */
+/* App header — highest chrome level with Apple-style frosted glass.
+   Translucent + heavy saturate/blur reads as vibrancy; the top highlight
+   hairline and hairline bottom border give the toolbar its "gloss". */
 .header-bar {
-  background: oklch(var(--header) / 0.95);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border-bottom: 1px solid oklch(var(--border));
-  box-shadow: var(--shadow-elevation-medium);
+  background:
+    linear-gradient(to bottom, oklch(1 0 0 / 0.05), transparent 45%),
+    oklch(var(--header) / 0.66);
+  backdrop-filter: saturate(180%) blur(30px);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  border-bottom: 1px solid oklch(var(--border) / 0.7);
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.09),
+    var(--shadow-elevation-medium);
 }
 
 /* Chrome-zone section headers (Explorer, AI Chat) — subtle elevation */
@@ -509,14 +515,26 @@
   z-index: 10;
 }
 
-/* Sidebar — matches profile section background */
+/* Sidebars use surface bg; the floating-card treatment (border/radius/shadow)
+   is applied via .floating-panel only while the panel is visible, so a
+   collapsed (width:0) sidebar never leaves a stray border, shadow, or margin. */
 .apple-sidebar {
-  background: oklch(var(--background));
+  background: oklch(var(--surface));
 }
 
-/* Panel — surface level (right side) */
 .apple-panel {
   background: oklch(var(--surface));
+}
+
+/* Floating rounded card for side panels — Apple-style inset look.
+   The 1px edge is an inset ring (box-shadow), NOT a real `border`: a border
+   shrinks the content box by 2px, which makes a fixed-width panel's content
+   reflow the instant a resize starts. box-shadow takes zero layout space. */
+.floating-panel {
+  border-radius: var(--radius-xl);
+  box-shadow:
+    inset 0 0 0 1px oklch(var(--border-subtle)),
+    var(--shadow-elevation-low);
 }
 
 /* Sliding side panels animate their layout width (0 ↔ full) so the main

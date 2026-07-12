@@ -6,7 +6,6 @@ import {
   ContextSyncBanner,
   ErrorBanner,
   NoPRSelectedState,
-  PRContextBanner,
   PREmptyState
 } from './ChatEmptyStates'
 
@@ -104,15 +103,6 @@ describe('ChatEmptyStates', () => {
       expect(
         screen.getByText(/select a pull request from the list to start chatting/i)
       ).toBeInTheDocument()
-    })
-  })
-
-  describe('PRContextBanner', () => {
-    it('renders PR context information', () => {
-      render(<PRContextBanner prNumber={123} prTitle="My PR Title" repoFullName="owner/repo" />)
-
-      expect(screen.getByText('#123 My PR Title')).toBeInTheDocument()
-      expect(screen.getByText('owner/repo')).toBeInTheDocument()
     })
   })
 

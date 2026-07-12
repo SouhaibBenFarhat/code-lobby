@@ -18,8 +18,6 @@ export {
   type ErrorBannerProps,
   NoPRSelectedState,
   type NoPRSelectedStateProps,
-  PRContextBanner,
-  type PRContextBannerProps,
   PREmptyState,
   type PREmptyStateProps
 } from './ChatEmptyStates'

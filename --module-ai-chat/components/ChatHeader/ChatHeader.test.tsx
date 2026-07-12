@@ -30,12 +30,25 @@ describe('ChatHeader', () => {
   })
 
   describe('title display', () => {
-    it('shows AI Chat title', () => {
-      render(<ChatHeader {...defaultProps} />)
-      expect(screen.getByText('AI Chat')).toBeInTheDocument()
+    it('shows the linked PR (number, title, repo) when a PR is set', () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          prNumber={123}
+          prTitle="Fix the bug"
+          repoFullName="owner/repo"
+        />
+      )
+      expect(screen.getByText('#123 Fix the bug')).toBeInTheDocument()
+      expect(screen.getByText('owner/repo')).toBeInTheDocument()
     })
 
-    it('shows model name when configured', () => {
+    it('does not render a static "AI Chat" label', () => {
+      render(<ChatHeader {...defaultProps} />)
+      expect(screen.queryByText('AI Chat')).not.toBeInTheDocument()
+    })
+
+    it('shows model name when configured (no PR)', () => {
       render(<ChatHeader {...defaultProps} />)
       expect(screen.getByText(/Claude 3.5 Sonnet/)).toBeInTheDocument()
     })

@@ -2,7 +2,6 @@ export type {
   ContextSyncBannerProps,
   ErrorBannerProps,
   NoPRSelectedStateProps,
-  PRContextBannerProps,
   PREmptyStateProps
 } from './ChatEmptyStates'
 export {
@@ -10,6 +9,5 @@ export {
   ContextSyncBanner,
   ErrorBanner,
   NoPRSelectedState,
-  PRContextBanner,
   PREmptyState
 } from './ChatEmptyStates'
