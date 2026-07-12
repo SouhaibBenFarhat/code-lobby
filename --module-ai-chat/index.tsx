@@ -24,8 +24,6 @@ export {
   MessageErrorBoundary,
   NoPRSelectedState,
   type NoPRSelectedStateProps,
-  PRContextBanner,
-  type PRContextBannerProps,
   PREmptyState,
   type PREmptyStateProps,
   QuickActions,

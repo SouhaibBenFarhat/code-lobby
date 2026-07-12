@@ -6,8 +6,6 @@ export interface ResizeHandleProps extends React.ButtonHTMLAttributes<HTMLButton
   direction: 'horizontal' | 'vertical'
   /** Whether the handle is currently being dragged */
   isResizing?: boolean
-  /** Position for absolute positioning (only for horizontal handles) */
-  position?: 'left' | 'right'
 }
 
 type ForwardRefComponent<T, P> = React.ForwardRefExoticComponent<P & React.RefAttributes<T>>
@@ -15,74 +13,60 @@ type ForwardRefComponent<T, P> = React.ForwardRefExoticComponent<P & React.RefAt
 /**
  * ResizeHandle - A reusable resize handle for resizable panels.
  *
- * @example
- * // Horizontal resize (left/right panels)
- * <ResizeHandle
- *   direction="horizontal"
- *   isResizing={isResizing}
- *   onMouseDown={handleResizeStart}
- * />
+ * Renders a transparent, easy-to-grab hit area with a subtle rounded grip pill
+ * in the centre — no hard divider line. The grip is faint at rest, strengthens
+ * on hover, and is most prominent while dragging.
+ *
+ * The element itself stays 1px in flow (so it never widens the gutter); a wider
+ * transparent `::before` provides the pointer target. Always render it as a flex
+ * sibling in the gutter between two panels — never inside an `overflow-hidden`
+ * panel, which would clip the hit area.
  *
  * @example
- * // Vertical resize (top/bottom panels)
- * <ResizeHandle
- *   direction="vertical"
- *   isResizing={isResizing}
- *   onMouseDown={handleResizeStart}
- * />
+ * // Left/right (width) resize
+ * <ResizeHandle direction="horizontal" isResizing={isResizing} onMouseDown={handleResizeStart} />
  *
  * @example
- * // Absolute positioned (inside a panel)
- * <ResizeHandle
- *   direction="horizontal"
- *   position="left"
- *   isResizing={isResizing}
- *   onMouseDown={handleResizeStart}
- * />
+ * // Top/bottom (height) resize
+ * <ResizeHandle direction="vertical" isResizing={isResizing} onMouseDown={handleResizeStart} />
  */
 const ResizeHandle: ForwardRefComponent<HTMLButtonElement, ResizeHandleProps> = React.forwardRef<
   HTMLButtonElement,
   ResizeHandleProps
->(({ direction, isResizing = false, position, className, ...props }, ref) => {
+>(({ direction, isResizing = false, className, ...props }, ref) => {
   const isHorizontal = direction === 'horizontal'
-
-  // Base styles shared by all handles
-  // The element is 1px wide/tall (the visible divider line).
-  // A ::before pseudo-element extends the hit area to 8px so users
-  // don't have to aim at a single pixel — the hover highlight still
-  // only appears on the 1px line itself.
-  const baseStyles = cn(
-    'border-0 p-0 flex-shrink-0 relative transition-colors',
-    'before:content-[""] before:absolute before:z-10'
-  )
-
-  const directionStyles = isHorizontal
-    ? cn(
-        'w-px cursor-col-resize bg-border',
-        // Invisible hit area: 8px wide strip centered on the 1px line
-        'before:top-0 before:bottom-0 before:-left-[4px] before:w-[9px]',
-        isResizing ? 'bg-primary' : 'hover:bg-primary'
-      )
-    : cn(
-        'h-px w-full cursor-row-resize bg-border',
-        // Invisible hit area: 8px tall strip centered on the 1px line
-        'before:left-0 before:right-0 before:-top-[4px] before:h-[9px]',
-        isResizing ? 'bg-primary' : 'hover:bg-primary'
-      )
-
-  // Position styles (for absolute positioning inside panels)
-  const positionStyles = position
-    ? cn('absolute top-0 bottom-0 z-20', position === 'left' ? 'left-0' : 'right-0')
-    : ''
 
   return (
     <button
       ref={ref}
       type="button"
-      aria-label={`Resize ${direction === 'horizontal' ? 'panel width' : 'panel height'}`}
-      className={cn(baseStyles, directionStyles, positionStyles, className)}
+      aria-label={`Resize ${isHorizontal ? 'panel width' : 'panel height'}`}
+      className={cn(
+        // z-20 keeps the hover grip painted above both (flush) panel edges.
+        'group relative z-20 flex flex-shrink-0 items-center justify-center border-0 bg-transparent p-0',
+        // Transparent hit target so users don't have to aim at the 1px seam.
+        'before:absolute before:z-10 before:content-[""]',
+        isHorizontal
+          ? 'w-px cursor-col-resize self-stretch before:inset-y-0 before:-left-[7px] before:w-[15px]'
+          : 'h-px w-full cursor-row-resize before:inset-x-0 before:-top-[7px] before:h-[15px]',
+        className
+      )}
       {...props}
-    />
+    >
+      {/* Rounded grip — invisible at rest, fades in on hover of the seam, prominent while dragging */}
+      <span
+        className={cn(
+          'pointer-events-none shrink-0 rounded-full transition-all duration-150',
+          isResizing
+            ? isHorizontal
+              ? 'w-1.5 h-14 bg-foreground-muted opacity-100'
+              : 'h-1.5 w-14 bg-foreground-muted opacity-100'
+            : isHorizontal
+              ? 'w-1.5 h-11 bg-foreground-subtle opacity-0 group-hover:opacity-100'
+              : 'h-1.5 w-11 bg-foreground-subtle opacity-0 group-hover:opacity-100'
+        )}
+      />
+    </button>
   )
 })
 

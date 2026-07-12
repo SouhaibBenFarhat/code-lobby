@@ -37,7 +37,7 @@ import type {
   ReviewVerdict,
   StreamingState
 } from '../../types'
-import { NoPRSelectedState, PRContextBanner } from '../ChatEmptyStates'
+import { NoPRSelectedState } from '../ChatEmptyStates'
 import { ChatHeader } from '../ChatHeader'
 import { ChatInput } from '../ChatInput'
 import { ReviewPreviewModal } from '../ReviewPreviewModal'
@@ -667,19 +667,13 @@ export function AIChatPanel({ onClose, user, selectedPR }: AIChatPanelProps): Re
         models={CLAUDE_MODELS}
         isLoadingModels={false}
         isConfigured={isClaudeCodeInstalled}
+        prNumber={selectedPR?.number}
+        prTitle={selectedPR?.title}
+        repoFullName={selectedPR?.base.repo.full_name}
         onModelChange={setSelectedModel}
         onClearHistory={handleClearHistory}
         onClose={onClose}
       />
-
-      {/* Show PR context banner when a PR is selected */}
-      {selectedPR && (
-        <PRContextBanner
-          prNumber={selectedPR.number}
-          prTitle={selectedPR.title}
-          repoFullName={selectedPR.base.repo.full_name}
-        />
-      )}
 
       <div className="flex-1 relative overflow-hidden bg-chat">
         {/* No PR selected */}

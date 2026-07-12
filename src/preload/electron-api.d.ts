@@ -668,15 +668,6 @@ export interface ElectronAPI {
     }>
   >
 
-  // Memory usage
-  getMemoryUsage: () => Promise<{
-    heapUsed: number
-    heapTotal: number
-    rss: number
-    external: number
-    arrayBuffers: number
-  }>
-
   // Window state
   isFullscreen: () => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void

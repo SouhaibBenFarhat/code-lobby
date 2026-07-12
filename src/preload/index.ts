@@ -617,9 +617,6 @@ const electronAPI: ElectronAPI = {
   getAIPricing: () => ipcRenderer.invoke('get-ai-pricing'),
   getCliSubscriptionUsage: () => ipcRenderer.invoke('get-cli-subscription-usage'),
 
-  // Memory usage
-  getMemoryUsage: () => ipcRenderer.invoke('get-memory-usage'),
-
   // Window state
   isFullscreen: () => ipcRenderer.invoke('is-fullscreen'),
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {

@@ -24,87 +24,73 @@ describe('ResizeHandle', () => {
       render(<ResizeHandle direction="horizontal" />)
       expect(screen.getByRole('button')).toHaveAttribute('type', 'button')
     })
+
+    it('should render a grip indicator element', () => {
+      render(<ResizeHandle direction="horizontal" />)
+      const grip = screen.getByRole('button').querySelector('span')
+      expect(grip).toBeInTheDocument()
+      expect(grip).toHaveClass('rounded-full')
+    })
   })
 
   describe('direction variants', () => {
     describe('horizontal direction', () => {
       it('should apply horizontal resize styles', () => {
         render(<ResizeHandle direction="horizontal" />)
-        const handle = screen.getByRole('button')
-        expect(handle).toHaveClass('w-px', 'cursor-col-resize')
+        expect(screen.getByRole('button')).toHaveClass('w-px', 'cursor-col-resize')
       })
 
       it('should have correct aria-label for horizontal resize', () => {
         render(<ResizeHandle direction="horizontal" />)
         expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Resize panel width')
       })
-
-      it('should NOT have border for horizontal resize', () => {
-        render(<ResizeHandle direction="horizontal" />)
-        const handle = screen.getByRole('button')
-        expect(handle).not.toHaveClass('border-t')
-      })
     })
 
     describe('vertical direction', () => {
       it('should apply vertical resize styles', () => {
         render(<ResizeHandle direction="vertical" />)
-        const handle = screen.getByRole('button')
-        expect(handle).toHaveClass('h-px', 'w-full', 'cursor-row-resize')
+        expect(screen.getByRole('button')).toHaveClass('h-px', 'w-full', 'cursor-row-resize')
       })
 
       it('should have correct aria-label for vertical resize', () => {
         render(<ResizeHandle direction="vertical" />)
         expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Resize panel height')
       })
-
-      it('should have bg-border for vertical resize', () => {
-        render(<ResizeHandle direction="vertical" />)
-        const handle = screen.getByRole('button')
-        expect(handle).toHaveClass('bg-border')
-      })
     })
   })
 
   describe('isResizing state', () => {
-    it('should apply active styles when isResizing is true', () => {
+    it('should show a prominent grip while resizing', () => {
+      render(<ResizeHandle direction="horizontal" isResizing />)
+      const grip = screen.getByRole('button').querySelector('span')
+      expect(grip).toHaveClass('bg-foreground-muted')
+    })
+
+    it('should show a prominent grip while resizing (vertical)', () => {
+      render(<ResizeHandle direction="vertical" isResizing />)
+      const grip = screen.getByRole('button').querySelector('span')
+      expect(grip).toHaveClass('bg-foreground-muted', 'w-14')
+    })
+
+    it('should hide the grip at rest and reveal it on hover', () => {
+      render(<ResizeHandle direction="horizontal" isResizing={false} />)
+      const grip = screen.getByRole('button').querySelector('span')
+      expect(grip).toHaveClass('opacity-0')
+      expect(grip).toHaveClass('group-hover:opacity-100')
+    })
+
+    it('should default isResizing to false (grip hidden until hover)', () => {
+      render(<ResizeHandle direction="horizontal" />)
+      const grip = screen.getByRole('button').querySelector('span')
+      expect(grip).toHaveClass('opacity-0')
+    })
+
+    it('should never render a solid divider/primary line on the button', () => {
       render(<ResizeHandle direction="horizontal" isResizing />)
       const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('bg-primary')
-    })
-
-    it('should apply hover styles when isResizing is false', () => {
-      render(<ResizeHandle direction="horizontal" isResizing={false} />)
-      const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('hover:bg-primary')
-    })
-
-    it('should default isResizing to false', () => {
-      render(<ResizeHandle direction="horizontal" />)
-      const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('hover:bg-primary')
-    })
-  })
-
-  describe('position prop', () => {
-    it('should apply left position styles', () => {
-      render(<ResizeHandle direction="horizontal" position="left" />)
-      const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('absolute', 'top-0', 'bottom-0', 'z-20', 'left-0')
-    })
-
-    it('should apply right position styles', () => {
-      render(<ResizeHandle direction="horizontal" position="right" />)
-      const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('absolute', 'top-0', 'bottom-0', 'z-20', 'right-0')
-    })
-
-    it('should NOT apply position styles when position is not provided', () => {
-      render(<ResizeHandle direction="horizontal" />)
-      const handle = screen.getByRole('button')
-      expect(handle).not.toHaveClass('absolute')
-      expect(handle).not.toHaveClass('left-0')
-      expect(handle).not.toHaveClass('right-0')
+      expect(handle).toHaveClass('bg-transparent')
+      expect(handle).not.toHaveClass('bg-primary')
+      expect(handle).not.toHaveClass('bg-border')
     })
   })
 
@@ -127,14 +113,7 @@ describe('ResizeHandle', () => {
   describe('base styles', () => {
     it('should have common base styles', () => {
       render(<ResizeHandle direction="horizontal" />)
-      const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('border-0', 'p-0', 'flex-shrink-0', 'transition-colors')
-    })
-
-    it('should have border background by default', () => {
-      render(<ResizeHandle direction="horizontal" />)
-      const handle = screen.getByRole('button')
-      expect(handle).toHaveClass('bg-border')
+      expect(screen.getByRole('button')).toHaveClass('border-0', 'p-0', 'flex-shrink-0', 'group')
     })
   })
 
@@ -162,7 +141,6 @@ describe('ResizeHandle', () => {
       render(
         <ResizeHandle
           direction="horizontal"
-          position="left"
           isResizing
           className="extra-class"
           onMouseDown={handleMouseDown}
@@ -171,20 +149,9 @@ describe('ResizeHandle', () => {
       )
 
       const handle = screen.getByRole('button')
+      expect(handle).toHaveClass('w-px', 'cursor-col-resize', 'extra-class')
+      expect(handle.querySelector('span')).toHaveClass('bg-foreground-muted')
 
-      // Direction styles
-      expect(handle).toHaveClass('w-px', 'cursor-col-resize')
-
-      // Position styles
-      expect(handle).toHaveClass('absolute', 'left-0')
-
-      // isResizing styles
-      expect(handle).toHaveClass('bg-primary')
-
-      // Custom class
-      expect(handle).toHaveClass('extra-class')
-
-      // Interaction
       fireEvent.mouseDown(handle)
       expect(handleMouseDown).toHaveBeenCalledTimes(1)
     })

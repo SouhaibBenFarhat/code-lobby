@@ -364,18 +364,6 @@ function setupIPCHandlers(): void {
     }
   })
 
-  // Memory usage - returns process memory info
-  ipcMain.handle('get-memory-usage', () => {
-    const memUsage = process.memoryUsage()
-    return {
-      heapUsed: memUsage.heapUsed,
-      heapTotal: memUsage.heapTotal,
-      rss: memUsage.rss, // Resident Set Size - total memory allocated
-      external: memUsage.external,
-      arrayBuffers: memUsage.arrayBuffers
-    }
-  })
-
   // ═══════════════════════════════════════════════════════════════════════════
   // CUSTOM QUICK PROMPTS
   // ═══════════════════════════════════════════════════════════════════════════

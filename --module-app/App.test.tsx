@@ -5,6 +5,7 @@
 
 import type { GitHubUser } from '@data'
 import { render, resetMockElectron, screen, setupMockElectron, waitFor } from '@test-utils'
+import { act, fireEvent } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 
@@ -238,6 +239,93 @@ describe('App', () => {
       await waitFor(() => {
         expect(screen.getByText('No PR selected')).toBeInTheDocument()
       })
+    })
+  })
+
+  // Regression: dragging a panel handle must commit the final width synchronously
+  // on release. The @data width hooks are mocked to a CONSTANT, so a width that
+  // reflects the drag proves the width came from local state committed on mouse-up
+  // — not read back a frame later from the unchanged store (the width flash).
+  describe('Panel resize (commits final width on drag end)', () => {
+    const mockUser = {
+      login: 'testuser',
+      avatar_url: 'https://example.com/avatar.png',
+      name: 'Test User',
+      html_url: ''
+    }
+    const realRAF = globalThis.requestAnimationFrame
+    const realCAF = globalThis.cancelAnimationFrame
+
+    beforeEach(() => {
+      mockAuthStatus.isAuthenticated = true
+      mockAuthStatus.user = mockUser
+      mockAuthStatus.token = 'test-token'
+      // Run the drag's rAF synchronously so the live width lands before release.
+      globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+        cb(0)
+        return 0
+      }) as typeof globalThis.requestAnimationFrame
+      globalThis.cancelAnimationFrame = (() => {}) as typeof globalThis.cancelAnimationFrame
+    })
+
+    afterEach(() => {
+      globalThis.requestAnimationFrame = realRAF
+      globalThis.cancelAnimationFrame = realCAF
+    })
+
+    // Press the handle, drag horizontally, release.
+    async function dragWidth(handle: Element, startX: number, endX: number): Promise<void> {
+      await act(async () => {
+        fireEvent.mouseDown(handle, { clientX: startX })
+      })
+      await act(async () => {
+        fireEvent.mouseMove(document, { clientX: endX })
+      })
+      await act(async () => {
+        fireEvent.mouseUp(document)
+      })
+    }
+
+    it('commits the AI panel width on release', async () => {
+      mockViewMode = 'canvas'
+      mockAIPanelOpen = true
+      const { container } = render(<App />)
+      const handle = await screen.findByLabelText('Resize panel width')
+      const panel = container.querySelector<HTMLElement>('.apple-panel')
+      const before = Number.parseInt(panel?.style.width ?? '0', 10)
+
+      // AI panel is on the right — dragging its handle left by 60px widens it.
+      await dragWidth(handle, 800, 740)
+
+      expect(Number.parseInt(panel?.style.width ?? '0', 10)).toBe(before + 60)
+    })
+
+    it('commits the explorer sidebar width on release', async () => {
+      mockViewMode = 'ide'
+      const { container } = render(<App />)
+      const handle = await screen.findByLabelText('Resize panel width')
+      const sidebar = container.querySelector<HTMLElement>('.apple-sidebar')
+      const before = Number.parseInt(sidebar?.style.width ?? '0', 10)
+
+      // Explorer is on the left — dragging its handle right by 50px widens it.
+      await dragWidth(handle, 100, 150)
+
+      expect(Number.parseInt(sidebar?.style.width ?? '0', 10)).toBe(before + 50)
+    })
+
+    it('commits the PR-detail panel width on release', async () => {
+      mockViewMode = 'canvas'
+      mockPRDetailOpen = true
+      mockSelectedPRId = null
+      render(<App />)
+      const handle = await screen.findByLabelText('Resize panel width')
+      const panel = (await screen.findByText('PR Details')).closest('aside') as HTMLElement
+      const before = Number.parseInt(panel.style.width || '0', 10)
+
+      // PR-detail is on the right — dragging its handle left by 60px widens it.
+      await dragWidth(handle, 800, 740)
+
+      expect(Number.parseInt(panel.style.width || '0', 10)).toBe(before + 60)
     })
   })
 })

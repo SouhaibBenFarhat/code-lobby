@@ -138,7 +138,6 @@ export {
   // AI
   type GitHubStatusComponent,
   type GitHubStatusSummary,
-  type MemoryUsage,
   // Theme
   type ThemeVariant,
   type UserEvent,
@@ -177,8 +176,6 @@ export {
   useIsAuthenticated,
   // System
   useIsFullscreen,
-  // Memory Usage
-  useMemoryUsage,
   useMinimizedRepos,
   useMyPRsRepos,
   useNetworkPanel,
