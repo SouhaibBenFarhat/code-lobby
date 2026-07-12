@@ -50,3 +50,52 @@ jobs:
         run: |
           pnpm exec electron-builder --mac --arm64 --publish always \
             -c.extraMetadata.version=${{ steps.version.outputs.version }}
+
+      - name: Bump Homebrew cask in tap
+        # Point souhaibbenfarhat/homebrew-tap at this release so that
+        # `brew install --cask souhaibbenfarhat/tap/codelobby` (and `brew upgrade`)
+        # always land on the newest version. The cask pins version + sha256, so it
+        # must be rewritten on every release — nothing floats to "latest" on its own.
+        #
+        # Requires repo secret HOMEBREW_TAP_PAT: a PAT with contents:write on the
+        # homebrew-tap repo (the default GITHUB_TOKEN can't push to another repo).
+        env:
+          TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TAP_PAT:-}" ]; then
+            echo "::warning::HOMEBREW_TAP_PAT not set — skipping cask bump. Create the secret to enable auto-bump."
+            exit 0
+          fi
+
+          DMG="dist/CodeLobby-arm64.dmg"
+          if [ ! -f "$DMG" ]; then
+            echo "::error::Expected DMG not found at $DMG"
+            ls -la dist || true
+            exit 1
+          fi
+
+          SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
+          echo "Bumping cask → version ${VERSION}, sha256 ${SHA} (from ${DMG})"
+
+          git clone --depth 1 \
+            "https://x-access-token:${TAP_PAT}@github.com/SouhaibBenFarhat/homebrew-tap.git" tap
+          CASK="tap/Casks/codelobby.rb"
+
+          # BSD sed (macOS runner): rewrite the pinned version + sha256 lines.
+          # The cask's url uses v#{version}, so updating version updates the URL too.
+          sed -i '' -E "s/^  version \"[^\"]*\"/  version \"${VERSION}\"/" "$CASK"
+          sed -i '' -E "s/^  sha256 \"[^\"]*\"/  sha256 \"${SHA}\"/" "$CASK"
+
+          git -C tap config user.name "github-actions[bot]"
+          git -C tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git -C tap diff --quiet; then
+            echo "Cask already at ${VERSION} — nothing to do."
+          else
+            git -C tap commit -am "codelobby ${VERSION}"
+            git -C tap push origin HEAD:master
+            echo "Pushed cask bump to homebrew-tap (v${VERSION})."
+          fi
