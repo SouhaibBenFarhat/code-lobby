@@ -10,7 +10,6 @@ import type { ContributionsData, UserEvent } from '../github'
 import * as github from '../github'
 import { keys } from '../keys'
 import { useGitHubToken, useSelectedRepos } from './settings'
-import { useCurrentUser } from './user'
 
 export type { ContributionsData, UserEvent } from '../github'
 
@@ -42,38 +41,6 @@ export function useRefreshContributions(): () => void {
 
   return () => {
     qc.invalidateQueries({ queryKey: keys.contributions })
-  }
-}
-
-/**
- * Fetch user events for today
- *
- * @param enabled - Only fetch when true (lazy loading)
- */
-export function useUserEvents(enabled = false): UseQueryResult<UserEvent[]> {
-  const { data: token } = useGitHubToken()
-  const { data: user } = useCurrentUser()
-
-  return useQuery({
-    queryKey: keys.userEvents,
-    queryFn: async (): Promise<UserEvent[]> => {
-      if (!token || !user?.login) return []
-      return github.fetchUserEvents(token, user.login)
-    },
-    enabled: enabled && !!token && !!user?.login,
-    staleTime: 30 * 1000, // 30 seconds — ETag-protected REST call, 304 is free
-    gcTime: 30 * 60 * 1000 // Keep in cache for 30 minutes
-  })
-}
-
-/**
- * Hook to manually refresh user events
- */
-export function useRefreshUserEvents(): () => void {
-  const qc = useQueryClient()
-
-  return () => {
-    qc.invalidateQueries({ queryKey: keys.userEvents })
   }
 }
 

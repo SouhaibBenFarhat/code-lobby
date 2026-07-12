@@ -20,8 +20,6 @@ export {
   type UserEvent,
   useContributions,
   useRefreshContributions,
-  useRefreshUserEvents,
-  useUserEvents,
   useWatchedRepoEvents
 } from './contributions'
 // GitHub Status
@@ -54,8 +52,6 @@ export {
   useAIPanel,
   useCardLayouts,
   useCodeVisualizer,
-  useDailySpeeches,
-  useDailySpeechModalOpen,
   useGitHubToken,
   useIDESettings,
   useMinimizedRepos,

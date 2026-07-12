@@ -361,6 +361,21 @@
   }
 }
 
+/* Vertical variant for stacked drawers (e.g. the user-profile panel below the
+   explorer). Animates height 0 ↔ full so the sibling above reflows in lockstep. */
+.panel-slide-v {
+  transition:
+    height var(--duration-slow) var(--ease),
+    min-height var(--duration-slow) var(--ease),
+    max-height var(--duration-slow) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-slide-v {
+    transition: none;
+  }
+}
+
 /* Chat composer — floats with a subtle AI-style glow on focus.
    No box-shadow transition: animating it repaints the clipped inner box and
    flashes a light seam along the divider, so the glow is applied instantly. */

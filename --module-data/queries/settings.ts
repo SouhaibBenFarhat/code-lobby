@@ -5,7 +5,7 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { queryClient } from '../client'
 import { keys } from '../keys'
-import type { CardLayout, CodeVisualizerState, DailySpeech, PRWebviewTab, ViewMode } from '../types'
+import type { CardLayout, CodeVisualizerState, PRWebviewTab, ViewMode } from '../types'
 import { useActiveAccountId } from './accounts'
 
 // Helper to get persisted data with default
@@ -128,26 +128,6 @@ export function useUserProfilePanel(): UseQueryResult<UserProfilePanel, Error> {
     queryKey: keys.local.userProfilePanel,
     queryFn: () =>
       getPersisted<UserProfilePanel>(keys.local.userProfilePanel, { isOpen: false, height: 250 }),
-    staleTime: Infinity
-  })
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DAILY SPEECHES - AI-generated standup summaries
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useDailySpeeches(): UseQueryResult<DailySpeech[], Error> {
-  return useQuery({
-    queryKey: keys.dailySpeeches,
-    queryFn: () => getPersisted<DailySpeech[]>(keys.dailySpeeches, []),
-    staleTime: Infinity
-  })
-}
-
-export function useDailySpeechModalOpen(): UseQueryResult<boolean, Error> {
-  return useQuery({
-    queryKey: keys.dailySpeechModalOpen,
-    queryFn: () => getPersisted<boolean>(keys.dailySpeechModalOpen, false),
     staleTime: Infinity
   })
 }

@@ -283,22 +283,6 @@ export interface CliUsageStats {
   fetchedAt: string
 }
 
-/**
- * Daily Speech - AI-generated standup summary
- */
-export interface DailySpeech {
-  id: string
-  date: string // ISO date string (YYYY-MM-DD)
-  content: string // Markdown content
-  metadata: {
-    generatedAt: string // ISO timestamp
-    eventCount: number
-    prsFetched: number
-  }
-  createdAt: string
-  updatedAt: string
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // LAYOUT TYPES
 // ═══════════════════════════════════════════════════════════════════════════

@@ -4,7 +4,7 @@
 
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 import { keys } from '../keys'
-import type { CardLayout, CodeVisualizerState, DailySpeech, PRWebviewTab, ViewMode } from '../types'
+import type { CardLayout, CodeVisualizerState, PRWebviewTab, ViewMode } from '../types'
 
 export function useSetSelectedRepos(): UseMutationResult<string[], Error, string[]> {
   const qc = useQueryClient()
@@ -239,58 +239,6 @@ export function useSetUserProfilePanel(): UseMutationResult<
         height: 250
       }
       qc.setQueryData(keys.local.userProfilePanel, { ...current, ...s })
-    }
-  })
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DAILY SPEECHES - AI-generated standup summaries
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useSaveDailySpeech(): UseMutationResult<DailySpeech, Error, DailySpeech> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (speech: DailySpeech) => Promise.resolve(speech),
-    onSuccess: (speech) => {
-      const current = qc.getQueryData<DailySpeech[]>(keys.dailySpeeches) || []
-      // Check if this speech already exists (by id)
-      const existingIndex = current.findIndex((s) => s.id === speech.id)
-      if (existingIndex >= 0) {
-        // Update existing
-        const updated = [...current]
-        updated[existingIndex] = speech
-        qc.setQueryData(keys.dailySpeeches, updated)
-      } else {
-        // Add new (prepend to keep newest first)
-        qc.setQueryData(keys.dailySpeeches, [speech, ...current])
-      }
-    }
-  })
-}
-
-export function useDeleteDailySpeech(): UseMutationResult<string, Error, string> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (speechId: string) => Promise.resolve(speechId),
-    onSuccess: (speechId) => {
-      const current = qc.getQueryData<DailySpeech[]>(keys.dailySpeeches) || []
-      qc.setQueryData(
-        keys.dailySpeeches,
-        current.filter((s) => s.id !== speechId)
-      )
-    }
-  })
-}
-
-export function useSetDailySpeechModalOpen(): UseMutationResult<boolean, Error, boolean> {
-  const qc = useQueryClient()
-
-  return useMutation({
-    mutationFn: (isOpen: boolean) => Promise.resolve(isOpen),
-    onSuccess: (isOpen) => {
-      qc.setQueryData(keys.dailySpeechModalOpen, isOpen)
     }
   })
 }

@@ -89,7 +89,7 @@ export function App(): React.JSX.Element {
   // User profile panel state
   const { data: userProfilePanelData } = useUserProfilePanel()
   const userProfileOpen = userProfilePanelData?.isOpen ?? false
-  const userProfileHeight = userProfilePanelData?.height ?? DEFAULT_USER_PROFILE_HEIGHT
+  const storedUserProfileHeight = userProfilePanelData?.height ?? DEFAULT_USER_PROFILE_HEIGHT
 
   // Code Visualizer state
   const { data: codeVisualizerData } = useCodeVisualizer()
@@ -118,6 +118,7 @@ export function App(): React.JSX.Element {
   const [prDetailWidth, setPrDetailWidthState] = useState(storedPrDetailWidth)
   const [aiPanelWidth, setAiPanelWidthState] = useState(storedAiPanelWidth)
   const [explorerWidth, setExplorerWidthState] = useState(storedExplorerWidth)
+  const [userProfileHeight, setUserProfileHeightState] = useState(storedUserProfileHeight)
   useEffect(() => {
     setPrDetailWidthState(storedPrDetailWidth)
   }, [storedPrDetailWidth])
@@ -127,6 +128,9 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     setExplorerWidthState(storedExplorerWidth)
   }, [storedExplorerWidth])
+  useEffect(() => {
+    setUserProfileHeightState(storedUserProfileHeight)
+  }, [storedUserProfileHeight])
 
   // Mutations
   const setPRDetailPanel = useSetPRDetailPanel()
@@ -140,6 +144,7 @@ export function App(): React.JSX.Element {
   const prDetailContentPresent = usePanelPresence(prDetailOpen)
   const aiContentPresent = usePanelPresence(aiPanelOpen)
   const networkContentPresent = usePanelPresence(!!networkPanelOpen)
+  const userProfileContentPresent = usePanelPresence(userProfileOpen)
 
   // Initialize Claude Code stream listener (receives IPC events from main process)
   useClaudeStreamListener()
@@ -365,6 +370,7 @@ export function App(): React.JSX.Element {
         setNetworkPanelHeight.mutate(networkHeightRef.current)
       }
       if (isUserProfileResizing) {
+        setUserProfileHeightState(userProfileHeightRef.current)
         setUserProfilePanel.mutate({ height: userProfileHeightRef.current })
       }
 
@@ -466,26 +472,42 @@ export function App(): React.JSX.Element {
                 style={isExplorerResizing ? undefined : { width: explorerWidth }}
               >
                 <div
-                  className={userProfileOpen ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'}
+                  className={
+                    userProfileContentPresent ? 'flex-1 overflow-hidden' : 'h-full overflow-hidden'
+                  }
                 >
                   <Slot name="left-panel" wrapInContainer={false} />
                 </div>
-                {userProfileOpen && (
-                  <>
-                    <ResizeHandle
-                      direction="vertical"
-                      isResizing={isUserProfileResizing}
-                      onMouseDown={handleUserProfileResizeStart}
-                    />
+                {userProfileContentPresent && (
+                  <ResizeHandle
+                    direction="vertical"
+                    isResizing={isUserProfileResizing}
+                    onMouseDown={handleUserProfileResizeStart}
+                  />
+                )}
+                {/* User-profile drawer — always mounted so its height animates
+                    0 ↔ full (panel-slide-v); content lingers on close to ride the
+                    slide, and the explorer above reflows in lockstep. */}
+                <div
+                  ref={userProfilePanelRef}
+                  className={cn(
+                    'overflow-hidden flex flex-col flex-shrink-0',
+                    !isUserProfileResizing && 'panel-slide-v'
+                  )}
+                  style={{ height: userProfileOpen ? userProfileHeight : 0 }}
+                >
+                  {userProfileContentPresent && (
                     <div
-                      ref={userProfilePanelRef}
-                      className="flex-shrink-0 overflow-hidden"
-                      style={{ height: userProfileHeight }}
+                      className={cn(
+                        'overflow-hidden',
+                        isUserProfileResizing ? 'flex-1 min-h-0' : 'flex-shrink-0'
+                      )}
+                      style={isUserProfileResizing ? undefined : { height: userProfileHeight }}
                     >
                       <Slot name="user-profile" wrapInContainer={false} />
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             )}
           </aside>

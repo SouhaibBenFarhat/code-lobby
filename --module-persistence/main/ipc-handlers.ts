@@ -11,15 +11,8 @@ import { getRawDatabase } from './connection'
 import { aiUsageRepo } from './repositories/ai-usage'
 import { conversationsRepo } from './repositories/conversations'
 import { customPromptsRepo } from './repositories/custom-prompts'
-import { dailyReportsRepo } from './repositories/daily-reports'
 import { messagesRepo } from './repositories/messages'
-import type {
-  NewAIUsageRecord,
-  NewConversation,
-  NewCustomPrompt,
-  NewDailyReport,
-  NewMessage
-} from './schema'
+import type { NewAIUsageRecord, NewConversation, NewCustomPrompt, NewMessage } from './schema'
 
 /**
  * Register all persistence-related IPC handlers.
@@ -261,85 +254,6 @@ export function registerPersistenceIpcHandlers(): void {
       return { success: true, data: aiUsageRepo.clear() }
     } catch (error) {
       logger.error(LogCategory.AI, 'Failed to clear AI usage', { error })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  // ===========================================================================
-  // Daily Reports
-  // ===========================================================================
-
-  ipcMain.handle('db:dailyReports:list', async () => {
-    try {
-      return { success: true, data: dailyReportsRepo.list() }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to list daily reports', { error })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('db:dailyReports:get', async (_, id: string) => {
-    try {
-      return { success: true, data: dailyReportsRepo.get(id) }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to get daily report', { error, id })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('db:dailyReports:getByDate', async (_, date: string) => {
-    try {
-      return { success: true, data: dailyReportsRepo.getByDate(date) }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to get daily report by date', { error, date })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('db:dailyReports:create', async (_, data: NewDailyReport) => {
-    try {
-      return { success: true, data: dailyReportsRepo.create(data) }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to create daily report', { error })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('db:dailyReports:upsert', async (_, data: NewDailyReport) => {
-    try {
-      return { success: true, data: dailyReportsRepo.upsert(data) }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to upsert daily report', { error })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle(
-    'db:dailyReports:update',
-    async (_, id: string, data: Partial<Omit<NewDailyReport, 'id' | 'createdAt'>>) => {
-      try {
-        return { success: true, data: dailyReportsRepo.update(id, data) }
-      } catch (error) {
-        logger.error(LogCategory.AI, 'Failed to update daily report', { error, id })
-        return { success: false, error: String(error) }
-      }
-    }
-  )
-
-  ipcMain.handle('db:dailyReports:delete', async (_, id: string) => {
-    try {
-      return { success: true, data: dailyReportsRepo.delete(id) }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to delete daily report', { error, id })
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('db:dailyReports:listRecent', async (_, limit?: number) => {
-    try {
-      return { success: true, data: dailyReportsRepo.listRecent(limit) }
-    } catch (error) {
-      logger.error(LogCategory.AI, 'Failed to list recent daily reports', { error })
       return { success: false, error: String(error) }
     }
   })

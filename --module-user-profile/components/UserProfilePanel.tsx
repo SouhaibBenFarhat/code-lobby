@@ -1,41 +1,34 @@
 /**
  * UserProfilePanel
  *
- * A panel showing user's GitHub profile and contributions.
+ * A panel showing the user's GitHub profile and contribution stats.
  * Placed below the explorer, resizable vertically.
  */
 
 import {
   type ContributionsData,
-  type UserEvent,
   useContributions,
   useCurrentUser,
-  useRefreshContributions,
-  useRefreshUserEvents,
-  useUserEvents
+  useRefreshContributions
 } from '@data'
 import { Avatar, AvatarFallback, AvatarImage, Button, cn, ScrollArea } from '@ui-kit'
 import {
-  Calendar,
   ChevronDown,
   ChevronUp,
-  CircleDot,
   Flame,
-  GitBranch,
   GitCommit,
   GitPullRequest,
   Loader2,
   MessageSquare,
   RefreshCw,
-  Sparkles,
   Target,
   TrendingUp,
   Trophy,
   User,
+  X,
   Zap
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { DailySpeechModal } from './DailySpeechModal'
+import { useMemo } from 'react'
 
 // Animated counter component
 function AnimatedNumber({
@@ -344,206 +337,20 @@ function ContributionsContent({ data }: { data: ContributionsData }): React.JSX.
   )
 }
 
-// Event icon based on type
-function EventIcon({ icon }: { icon: UserEvent['icon'] }): React.JSX.Element {
-  const iconClass = 'w-3.5 h-3.5'
-  switch (icon) {
-    case 'commit':
-      return <GitCommit className={cn(iconClass, 'text-green-500')} />
-    case 'pr':
-      return <GitPullRequest className={cn(iconClass, 'text-blue-500')} />
-    case 'review':
-      return <MessageSquare className={cn(iconClass, 'text-purple-500')} />
-    case 'comment':
-      return <MessageSquare className={cn(iconClass, 'text-yellow-500')} />
-    case 'issue':
-      return <CircleDot className={cn(iconClass, 'text-orange-500')} />
-    case 'branch':
-      return <GitBranch className={cn(iconClass, 'text-cyan-500')} />
-    default:
-      return <Zap className={cn(iconClass, 'text-muted-foreground')} />
-  }
-}
-
-// Single event item
-function EventItem({ event }: { event: UserEvent }): React.JSX.Element {
-  const time = new Date(event.timestamp).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-
-  return (
-    <div className="flex items-start gap-2 py-2 px-3 hover:bg-interactive-hover transition-colors">
-      <div className="mt-0.5">
-        <EventIcon icon={event.icon} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium truncate">{event.title}</span>
-          <span className="text-[10px] text-muted-foreground shrink-0">{time}</span>
-        </div>
-        {event.description && (
-          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{event.description}</p>
-        )}
-        <p className="text-[9px] text-foreground-muted truncate mt-0.5">{event.repoName}</p>
-      </div>
-    </div>
-  )
-}
-
-// Group events by date
-function groupEventsByDate(events: UserEvent[]): Map<string, UserEvent[]> {
-  const groups = new Map<string, UserEvent[]>()
-
-  for (const event of events) {
-    const date = new Date(event.timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-    const existing = groups.get(date) || []
-    groups.set(date, [...existing, event])
-  }
-
-  return groups
-}
-
-// Format date label (Today, Yesterday, or date)
-function formatDateLabel(dateStr: string): string {
-  const eventDate = new Date(dateStr)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  // Reset time for comparison
-  const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
-  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
-
-  if (eventDateOnly.getTime() === todayOnly.getTime()) {
-    return 'Today'
-  }
-  if (eventDateOnly.getTime() === yesterdayOnly.getTime()) {
-    return 'Yesterday'
-  }
-  return dateStr
-}
-
-// Events list content
-function EventsContent({
-  events,
-  isLoading,
-  error,
-  onRefresh,
-  onGenerateDaily
-}: {
-  events: UserEvent[]
-  isLoading: boolean
-  error: Error | null
-  onRefresh: () => void
-  onGenerateDaily: () => void
-}): React.JSX.Element {
-  const groupedEvents = useMemo(() => groupEventsByDate(events), [events])
-
-  if (isLoading && events.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2">
-        <Loader2 className="w-5 h-5 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground">Loading events...</p>
-      </div>
-    )
-  }
-
-  if (error && events.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
-        <div className="p-2 bg-destructive-subtle rounded-full">
-          <Zap className="w-4 h-4 text-destructive" />
-        </div>
-        <p className="text-xs text-muted-foreground">Failed to load events</p>
-        <Button variant="outline" size="sm" onClick={onRefresh} className="h-6 text-xs">
-          Retry
-        </Button>
-      </div>
-    )
-  }
-
-  if (events.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
-        <div className="p-2 bg-surface rounded-full">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <p className="text-xs text-muted-foreground">No recent activity</p>
-        <p className="text-[10px] text-foreground-muted">Your events will appear here</p>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      {/* Header — lightweight inline, no background band */}
-      <div className="px-3 pt-2.5 pb-1.5 border-b border-border-subtle">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-foreground-muted uppercase tracking-wider">
-              Activity
-            </span>
-            <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded">
-              {events.length}
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onGenerateDaily}
-            className="h-6 text-[10px] gap-1 text-primary hover:text-primary"
-          >
-            <Sparkles className="w-3 h-3" />
-            Generate Daily
-          </Button>
-        </div>
-      </div>
-
-      {/* Grouped events */}
-      {Array.from(groupedEvents.entries()).map(([date, dateEvents]) => (
-        <div key={date}>
-          {/* Date header — subtle inline divider */}
-          <div className="px-3 py-1.5 sticky top-0 bg-background">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[10px] font-medium text-muted-foreground">
-                {formatDateLabel(date)}
-              </span>
-              <span className="text-[9px] text-foreground-subtle">({dateEvents.length})</span>
-            </div>
-          </div>
-          {/* Events for this date */}
-          <div className="divide-y divide-border-subtle">
-            {dateEvents.map((event) => (
-              <EventItem key={event.id} event={event} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 interface UserProfilePanelProps {
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+  onClose?: () => void
 }
 
 export function UserProfilePanel({
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  onClose
 }: UserProfilePanelProps): React.JSX.Element {
   const { data: user } = useCurrentUser()
-  const [activeTab, setActiveTab] = useState<'today' | 'stats'>('today')
-  const [isDailySpeechModalOpen, setIsDailySpeechModalOpen] = useState(false)
 
-  // Contributions
+  // Contributions (stats)
   const {
     data: contributionsData,
     isLoading: contributionsLoading,
@@ -552,25 +359,9 @@ export function UserProfilePanel({
   } = useContributions(true)
   const refreshContributions = useRefreshContributions()
 
-  // Events
-  const {
-    data: eventsData = [],
-    isLoading: eventsLoading,
-    isFetching: eventsFetching,
-    error: eventsError
-  } = useUserEvents(true)
-  const refreshEvents = useRefreshUserEvents()
-
-  const handleRefresh = (): void => {
-    refreshContributions()
-    refreshEvents()
-  }
-
-  const isRefreshing = contributionsFetching || eventsFetching
-
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Combined header — avatar + tabs + actions in one row */}
+      {/* Header — avatar + title + actions in one row */}
       <div className="flex items-center justify-between px-3 h-10 shrink-0 section-header">
         <div className="flex items-center gap-3 min-w-0">
           {user ? (
@@ -581,52 +372,29 @@ export function UserProfilePanel({
           ) : (
             <User className="w-4 h-4 text-muted-foreground shrink-0" />
           )}
-          {/* Inline tabs */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('today')}
-              className={cn(
-                'text-xs transition-colors flex items-center gap-1',
-                activeTab === 'today'
-                  ? 'text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Today
-              {eventsData.length > 0 && (
-                <span className="text-[10px] bg-info-subtle text-primary px-1 rounded">
-                  {eventsData.length}
-                </span>
-              )}
-            </button>
-            <span className="text-foreground-ghost text-[10px]">/</span>
-            <button
-              type="button"
-              onClick={() => setActiveTab('stats')}
-              className={cn(
-                'text-xs transition-colors',
-                activeTab === 'stats'
-                  ? 'text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Stats
-            </button>
-          </div>
+          <span className="text-xs font-medium text-foreground truncate">
+            {user?.login ?? 'Stats'}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
+            onClick={refreshContributions}
+            disabled={contributionsFetching}
             className="h-6 w-6"
+            aria-label="Refresh stats"
           >
-            <RefreshCw className={cn('w-3 h-3', isRefreshing && 'animate-spin')} />
+            <RefreshCw className={cn('w-3 h-3', contributionsFetching && 'animate-spin')} />
           </Button>
           {onToggleCollapse && (
-            <Button variant="ghost" size="icon" onClick={onToggleCollapse} className="h-6 w-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className="h-6 w-6"
+              aria-label={isCollapsed ? 'Expand profile panel' : 'Collapse profile panel'}
+            >
               {isCollapsed ? (
                 <ChevronUp className="w-3 h-3" />
               ) : (
@@ -634,65 +402,52 @@ export function UserProfilePanel({
               )}
             </Button>
           )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-6 w-6"
+              aria-label="Close profile panel"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — recessed well, matching the Explorer body surface (bg-chat) */}
       {!isCollapsed && (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Tab content */}
-          <div className="flex-1 overflow-hidden">
-            {activeTab === 'today' && (
-              <ScrollArea className="h-full">
-                <EventsContent
-                  events={eventsData}
-                  isLoading={eventsLoading}
-                  error={eventsError}
-                  onRefresh={refreshEvents}
-                  onGenerateDaily={() => setIsDailySpeechModalOpen(true)}
-                />
-              </ScrollArea>
+        <div className="flex-1 overflow-hidden bg-chat">
+          <ScrollArea className="h-full">
+            {contributionsLoading && !contributionsData && (
+              <div className="flex flex-col items-center justify-center h-32 gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">Loading...</p>
+              </div>
             )}
 
-            {activeTab === 'stats' && (
-              <ScrollArea className="h-full">
-                {contributionsLoading && !contributionsData && (
-                  <div className="flex flex-col items-center justify-center h-32 gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    <p className="text-xs text-muted-foreground">Loading...</p>
-                  </div>
-                )}
-
-                {contributionsError && !contributionsData && (
-                  <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
-                    <div className="p-2 bg-destructive-subtle rounded-full">
-                      <Zap className="w-4 h-4 text-destructive" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">Failed to load</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={refreshContributions}
-                      className="h-6 text-xs"
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                )}
-
-                {contributionsData && <ContributionsContent data={contributionsData} />}
-              </ScrollArea>
+            {contributionsError && !contributionsData && (
+              <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-3">
+                <div className="p-2 bg-destructive-subtle rounded-full">
+                  <Zap className="w-4 h-4 text-destructive" />
+                </div>
+                <p className="text-xs text-muted-foreground">Failed to load</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshContributions}
+                  className="h-6 text-xs"
+                >
+                  Retry
+                </Button>
+              </div>
             )}
-          </div>
+
+            {contributionsData && <ContributionsContent data={contributionsData} />}
+          </ScrollArea>
         </div>
       )}
-
-      {/* Daily Speech Modal */}
-      <DailySpeechModal
-        isOpen={isDailySpeechModalOpen}
-        onClose={() => setIsDailySpeechModalOpen(false)}
-        events={eventsData}
-      />
     </div>
   )
 }
