@@ -12,8 +12,8 @@
   <meta property="og:description" content="A PR-centric desktop app for code review, with an integrated Claude assistant." />
   <meta property="og:url" content="https://souhaibbenfarhat.github.io/code-lobby/" />
   <meta property="og:image" content="https://souhaibbenfarhat.github.io/code-lobby/screenshot-dark.png" />
-  <meta property="og:image:width" content="1844" />
-  <meta property="og:image:height" content="1161" />
+  <meta property="og:image:width" content="1947" />
+  <meta property="og:image:height" content="1267" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#080b1a" />
 
@@ -163,14 +163,11 @@
       background: radial-gradient(60% 60% at 50% 40%, rgba(91,140,255,0.28), transparent 70%);
       filter: blur(40px);
     }
-    /* Real product screenshot (has its own window chrome baked in) */
+    /* Real product screenshot — window chrome (rounded corners + shadow) is baked into the PNG */
     .shot {
       display: block;
       width: 100%;
       height: auto;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border-strong);
-      box-shadow: 0 40px 90px -30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.02) inset;
     }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
@@ -331,8 +328,6 @@
     .overlay-close:hover, .modal-close:hover { background: rgba(255, 255, 255, 0.12); border-color: var(--border-strong); }
     .lightbox-img {
       max-width: min(1500px, 96vw); max-height: 90vh; width: auto; height: auto;
-      border-radius: 12px; border: 1px solid var(--border-strong);
-      box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.85);
       animation: pop-in 0.2s var(--ease);
     }
     .modal-card {
@@ -460,8 +455,8 @@
               class="shot shot-dark"
               src="screenshot-dark.png"
               alt="CodeLobby's IDE view — a repository explorer on the left, full pull-request detail in the center with description and CI checks, and the built-in Claude assistant summarizing the PR on the right."
-              width="1844"
-              height="1161"
+              width="1947"
+              height="1267"
               loading="eager"
               decoding="async"
             />
@@ -469,8 +464,8 @@
               class="shot shot-light"
               src="screenshot-light.png"
               alt="CodeLobby in light mode — the repository explorer, full pull-request detail, and the built-in Claude assistant panel."
-              width="1847"
-              height="1169"
+              width="1947"
+              height="1267"
               loading="eager"
               decoding="async"
             />
