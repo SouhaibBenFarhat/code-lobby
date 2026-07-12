@@ -140,37 +140,3 @@ export interface ConversationWithMessages {
   conversation: Conversation
   messages: Message[]
 }
-
-// =============================================================================
-// Daily Report Types
-// =============================================================================
-
-export interface DailyReport {
-  id: string
-  date: string
-  content: string
-  summary: string | null
-  eventCount: number
-  analyzedRepos: string | null
-  analyzedPRs: string | null
-  generationDurationMs: number | null
-  toolsUsed: string | null
-  thinking: string | null
-  createdAt: number
-  updatedAt: number
-}
-
-export interface NewDailyReport {
-  id: string
-  date: string
-  content: string
-  summary?: string | null
-  eventCount: number
-  analyzedRepos?: string | null
-  analyzedPRs?: string | null
-  generationDurationMs?: number | null
-  toolsUsed?: string | null
-  thinking?: string | null
-  createdAt?: number
-  updatedAt?: number
-}

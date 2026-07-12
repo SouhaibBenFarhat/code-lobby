@@ -52,8 +52,6 @@ export {
   useClosePR,
   useConvertPRToDraft,
   useDeleteCustomPrompt,
-  // Daily Speech
-  useDeleteDailySpeech,
   useDeletePRComment,
   useFactoryReset,
   useMarkPRReady,
@@ -74,8 +72,6 @@ export {
   useResetAIUsage,
   // Review Threads
   useResolveReviewThread,
-  // Daily Speech
-  useSaveDailySpeech,
   useSaveMessage,
   useSelectPR,
   useSetAboutModalOpen,
@@ -84,7 +80,6 @@ export {
   useSetClaudeApiKey,
   // Code Visualizer
   useSetCodeVisualizer,
-  useSetDailySpeechModalOpen,
   useSetDatabaseViewerOpen,
   useSetEnableThinking,
   useSetIDESettings,
@@ -163,9 +158,6 @@ export {
   useContributions,
   useCurrentUser,
   useCustomPrompts,
-  useDailySpeeches,
-  // Daily Speech
-  useDailySpeechModalOpen,
   useDatabaseViewerOpen,
   useEnableThinking,
   // File Content (Code Visualizer)
@@ -195,7 +187,6 @@ export {
   // Rate Limit
   useRateLimit,
   useRefreshContributions,
-  useRefreshUserEvents,
   useRepoColors,
   // Labels
   useRepoLabels,
@@ -207,7 +198,6 @@ export {
   useSelectedRepos,
   useTheme,
   useUser,
-  useUserEvents,
   useUserProfilePanel,
   useViewMode,
   useWatchedRepoEvents
@@ -223,7 +213,6 @@ export type {
   CliUsageStats,
   CodeVisualizerState,
   CustomPrompt,
-  DailySpeech,
   GitHubUser,
   MergeableState,
   MergeMethod,

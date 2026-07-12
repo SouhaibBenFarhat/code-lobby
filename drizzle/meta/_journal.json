@@ -15,6 +15,13 @@
       "when": 1770028321736,
       "tag": "0001_natural_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783872023195,
+      "tag": "0002_unusual_union_jack",
+      "breakpoints": true
     }
   ]
 }

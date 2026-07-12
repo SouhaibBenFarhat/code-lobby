@@ -5,7 +5,7 @@
  * Shows user avatar, contributions, and activity heatmap.
  */
 
-import { useIsAuthenticated, useUserProfilePanel, useViewMode } from '@data'
+import { useIsAuthenticated, useSetUserProfilePanel, useViewMode } from '@data'
 import { registerToSlot } from '@slot-system'
 import { UserProfilePanel } from './components/UserProfilePanel'
 
@@ -14,14 +14,18 @@ export { UserProfilePanel } from './components/UserProfilePanel'
 function UserProfileWrapper() {
   const { data: viewMode } = useViewMode()
   const { isAuthenticated } = useIsAuthenticated()
-  const { data: panelData } = useUserProfilePanel()
+  const setUserProfilePanel = useSetUserProfilePanel()
 
-  // Only render in IDE mode when authenticated and panel is open
-  if (viewMode !== 'ide' || !isAuthenticated || !panelData?.isOpen) {
+  // Visibility and the open/close slide lifecycle are owned by App.tsx (same as
+  // the ai-chat and network modules). Staying mounted regardless of the open
+  // flag lets the content ride the shell's slide-out instead of vanishing on
+  // close. Gating on `isOpen` here would unmount the content on the first frame
+  // of the close, defeating App's usePanelPresence slide deferral.
+  if (viewMode !== 'ide' || !isAuthenticated) {
     return null
   }
 
-  return <UserProfilePanel />
+  return <UserProfilePanel onClose={() => setUserProfilePanel.mutate({ isOpen: false })} />
 }
 
 // Self-register to the user-profile slot

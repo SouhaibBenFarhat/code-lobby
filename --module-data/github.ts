@@ -1179,35 +1179,6 @@ export interface UserEvent {
 }
 
 /**
- * Fetch user events (up to 100 most recent)
- * Uses GET /users/{username}/events endpoint
- */
-export async function fetchUserEvents(token: string, username: string): Promise<UserEvent[]> {
-  const events = await http.get<GitHubEvent[]>(
-    `${GITHUB_API}/users/${username}/events?per_page=100`,
-    authHeaders(token)
-  )
-
-  if (!events) {
-    return []
-  }
-
-  // Filter and transform events
-  const transformedEvents = events
-    .filter((event: GitHubEvent) => {
-      // Skip PushEvents with 0 commits (force pushes, branch syncs, etc.)
-      if (event.type === 'PushEvent') {
-        const commits = event.payload.commits || []
-        if (commits.length === 0) return false
-      }
-      return true
-    })
-    .map((event: GitHubEvent) => transformEvent(event))
-
-  return transformedEvents
-}
-
-/**
  * Fetch recent activity events for a single repository (up to 100 most recent).
  * Uses GET /repos/{owner}/{repo}/events — real GitHub activity across everyone
  * active on the repo (pushes, PRs, reviews, comments, issues, branch changes).

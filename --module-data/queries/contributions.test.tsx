@@ -7,18 +7,11 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { keys } from '../keys'
-import {
-  useContributions,
-  useRefreshContributions,
-  useRefreshUserEvents,
-  useUserEvents,
-  useWatchedRepoEvents
-} from './contributions'
+import { useContributions, useRefreshContributions, useWatchedRepoEvents } from './contributions'
 
 // Mock the GitHub API
 vi.mock('../github', () => ({
   fetchContributions: vi.fn(),
-  fetchUserEvents: vi.fn(),
   fetchRepoEvents: vi.fn()
 }))
 
@@ -28,21 +21,13 @@ vi.mock('./settings', () => ({
   useSelectedRepos: vi.fn(() => ({ data: [] }))
 }))
 
-// Mock the user hook
-vi.mock('./user', () => ({
-  useCurrentUser: vi.fn(() => ({ data: { login: 'testuser' } }))
-}))
-
 import * as github from '../github'
 import { useGitHubToken, useSelectedRepos } from './settings'
-import { useCurrentUser } from './user'
 
 const mockFetchContributions = vi.mocked(github.fetchContributions)
-const mockFetchUserEvents = vi.mocked(github.fetchUserEvents)
 const mockFetchRepoEvents = vi.mocked(github.fetchRepoEvents)
 const mockUseGitHubToken = vi.mocked(useGitHubToken)
 const mockUseSelectedRepos = vi.mocked(useSelectedRepos)
-const mockUseCurrentUser = vi.mocked(useCurrentUser)
 
 const mockContributionsData = {
   totalContributions: 500,
@@ -57,27 +42,6 @@ const mockContributionsData = {
   mostActiveDay: '2026-01-15',
   mostActiveDayCount: 20
 }
-
-const mockUserEventsData = [
-  {
-    id: '1',
-    type: 'Push',
-    repoName: 'org/repo',
-    title: 'Pushed 2 commits',
-    description: 'Fix bug',
-    timestamp: new Date().toISOString(),
-    icon: 'commit' as const
-  },
-  {
-    id: '2',
-    type: 'Pull Request',
-    repoName: 'org/repo',
-    title: 'Opened PR #123',
-    description: 'New feature',
-    timestamp: new Date().toISOString(),
-    icon: 'pr' as const
-  }
-]
 
 // Create wrapper with QueryClient
 function createWrapper(queryClient: QueryClient) {
@@ -97,14 +61,10 @@ describe('Contributions Queries', () => {
       }
     })
     mockFetchContributions.mockResolvedValue(mockContributionsData)
-    mockFetchUserEvents.mockResolvedValue(mockUserEventsData)
     mockFetchRepoEvents.mockResolvedValue([])
     mockUseGitHubToken.mockReturnValue({ data: 'test-token' } as ReturnType<typeof useGitHubToken>)
     mockUseSelectedRepos.mockReturnValue({ data: [] as string[] } as ReturnType<
       typeof useSelectedRepos
-    >)
-    mockUseCurrentUser.mockReturnValue({ data: { login: 'testuser' } } as ReturnType<
-      typeof useCurrentUser
     >)
   })
 
@@ -188,89 +148,6 @@ describe('Contributions Queries', () => {
       result.current()
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: keys.contributions })
-    })
-  })
-
-  describe('useUserEvents', () => {
-    it('should not fetch when enabled is false', async () => {
-      const { result } = renderHook(() => useUserEvents(false), {
-        wrapper: createWrapper(queryClient)
-      })
-
-      // Wait a bit to ensure no fetch happens
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      expect(mockFetchUserEvents).not.toHaveBeenCalled()
-      expect(result.current.data).toBeUndefined()
-    })
-
-    it('should fetch when enabled is true', async () => {
-      const { result } = renderHook(() => useUserEvents(true), {
-        wrapper: createWrapper(queryClient)
-      })
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-      expect(mockFetchUserEvents).toHaveBeenCalledWith('test-token', 'testuser')
-      expect(result.current.data).toEqual(mockUserEventsData)
-    })
-
-    it('should not fetch when no token is available', async () => {
-      mockUseGitHubToken.mockReturnValue({ data: null } as ReturnType<typeof useGitHubToken>)
-
-      const { result } = renderHook(() => useUserEvents(true), {
-        wrapper: createWrapper(queryClient)
-      })
-
-      // Wait a bit to ensure no fetch happens
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      expect(mockFetchUserEvents).not.toHaveBeenCalled()
-      expect(result.current.isFetched).toBe(false)
-    })
-
-    it('should not fetch when no user is available', async () => {
-      mockUseCurrentUser.mockReturnValue({ data: null } as ReturnType<typeof useCurrentUser>)
-
-      const { result } = renderHook(() => useUserEvents(true), {
-        wrapper: createWrapper(queryClient)
-      })
-
-      // Wait a bit to ensure no fetch happens
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      expect(mockFetchUserEvents).not.toHaveBeenCalled()
-      expect(result.current.isFetched).toBe(false)
-    })
-
-    it('should handle fetch errors', async () => {
-      const error = new Error('GitHub API Error')
-      mockFetchUserEvents.mockRejectedValue(error)
-
-      const { result } = renderHook(() => useUserEvents(true), {
-        wrapper: createWrapper(queryClient)
-      })
-
-      await waitFor(() => expect(result.current.isError).toBe(true))
-      expect(result.current.error).toBeDefined()
-    })
-  })
-
-  describe('useRefreshUserEvents', () => {
-    it('should invalidate user events query when called', async () => {
-      // Pre-populate cache
-      queryClient.setQueryData(keys.userEvents, mockUserEventsData)
-
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
-
-      const { result } = renderHook(() => useRefreshUserEvents(), {
-        wrapper: createWrapper(queryClient)
-      })
-
-      // Call the refresh function
-      result.current()
-
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: keys.userEvents })
     })
   })
 

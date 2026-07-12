@@ -53,7 +53,6 @@ export const keys = {
   rateLimit: ['github', 'rate-limit'] as const,
   githubStatus: ['github', 'status'] as const,
   contributions: ['github', 'contributions'] as const,
-  userEvents: ['github', 'user-events'] as const,
   /** Recent activity events for a single repo (GET /repos/:owner/:repo/events) */
   repoEvents: (repoFullName: string): readonly ['github', 'repo-events', string] =>
     ['github', 'repo-events', repoFullName] as const,
@@ -89,9 +88,6 @@ export const keys = {
   customPrompts: ['ai', 'custom-prompts'] as const,
   aiUsage: ['ai', 'usage'] as const,
   cliSubscriptionUsage: ['ai', 'cli-subscription-usage'] as const,
-  // Daily speeches (PERSISTED)
-  dailySpeeches: ['ai', 'daily-speeches'] as const,
-  dailySpeechModalOpen: ['local', 'daily-speech-modal-open'] as const,
   // Per-PR chat messages (each PR has its own cache entry)
   prChatMessages: (prId: string): readonly ['ai', 'pr-chat', string] =>
     ['ai', 'pr-chat', prId] as const,

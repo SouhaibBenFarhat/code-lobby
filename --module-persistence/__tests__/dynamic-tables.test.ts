@@ -45,17 +45,10 @@ describe('Dynamic Tables - Filter Logic', () => {
         'conversations',
         'custom_prompts',
         'sqlite_stat1',
-        'daily_reports',
         'messages'
       ]
       const result = filterUserTables(tables)
-      expect(result).toEqual([
-        'ai_usage',
-        'conversations',
-        'custom_prompts',
-        'daily_reports',
-        'messages'
-      ])
+      expect(result).toEqual(['ai_usage', 'conversations', 'custom_prompts', 'messages'])
     })
 
     it('returns sorted table names', () => {
@@ -76,9 +69,9 @@ describe('Dynamic Tables - Filter Logic', () => {
     })
 
     it('preserves tables with underscores in the middle', () => {
-      const tables = ['daily_reports', 'ai_usage', 'custom_prompts']
+      const tables = ['ai_usage', 'custom_prompts']
       const result = filterUserTables(tables)
-      expect(result).toEqual(['ai_usage', 'custom_prompts', 'daily_reports'])
+      expect(result).toEqual(['ai_usage', 'custom_prompts'])
     })
 
     it('filters tables starting with single underscore followed by another underscore', () => {
@@ -92,7 +85,6 @@ describe('Dynamic Tables - Filter Logic', () => {
   describe('isValidTableName', () => {
     it('accepts valid table names', () => {
       expect(isValidTableName('conversations')).toBe(true)
-      expect(isValidTableName('daily_reports')).toBe(true)
       expect(isValidTableName('ai_usage')).toBe(true)
       expect(isValidTableName('Table123')).toBe(true)
       expect(isValidTableName('_private_table')).toBe(true)
@@ -124,20 +116,13 @@ describe('Dynamic Tables - Filter Logic', () => {
 
 describe('Dynamic Tables - Expected Schema', () => {
   // These tests document the expected tables in the codelobby database
-  const EXPECTED_USER_TABLES = [
-    'ai_usage',
-    'conversations',
-    'custom_prompts',
-    'daily_reports',
-    'messages'
-  ]
+  const EXPECTED_USER_TABLES = ['ai_usage', 'conversations', 'custom_prompts', 'messages']
 
   it('defines expected user tables', () => {
     // This serves as documentation and will fail if schema changes
-    expect(EXPECTED_USER_TABLES).toHaveLength(5)
+    expect(EXPECTED_USER_TABLES).toHaveLength(4)
     expect(EXPECTED_USER_TABLES).toContain('conversations')
     expect(EXPECTED_USER_TABLES).toContain('messages')
-    expect(EXPECTED_USER_TABLES).toContain('daily_reports')
     expect(EXPECTED_USER_TABLES).toContain('ai_usage')
     expect(EXPECTED_USER_TABLES).toContain('custom_prompts')
   })

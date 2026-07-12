@@ -17,11 +17,6 @@ export {
   CI_FAILURE_ANALYSIS_SYSTEM_PROMPT,
   type CIFailureContext
 } from './ci-failure-analysis'
-export {
-  buildDailySpeechPrompt,
-  type DailySpeechContext,
-  type DailySpeechEvent
-} from './daily-speech'
 export { GENERAL_CHAT_SYSTEM_PROMPT } from './general-chat'
 export { buildJiraTicketPrompt, type JiraTicketContext } from './jira-ticket'
 export {

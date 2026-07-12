@@ -1,1 +1,0 @@
-export { DailySpeechModal } from './DailySpeechModal'
