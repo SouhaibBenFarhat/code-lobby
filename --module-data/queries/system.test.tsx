@@ -7,7 +7,7 @@ import { setupMockElectron } from '@test-utils'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { keys } from '../keys'
-import { useAboutModalOpen, useDatabaseViewerOpen } from './system'
+import { applyThemeClasses, useAboutModalOpen, useDatabaseViewerOpen, useTheme } from './system'
 
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -124,5 +124,126 @@ describe('useDatabaseViewerOpen', () => {
     })
 
     await waitFor(() => expect(result.current.data).toBe(false))
+  })
+})
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+
+/**
+ * Install a controllable `window.matchMedia` stub. `setDark` flips the OS
+ * preference and notifies subscribers, mirroring a live OS theme change.
+ */
+function mockMatchMedia(initialDark: boolean) {
+  let dark = initialDark
+  const listeners = new Set<() => void>()
+  const mql = {
+    get matches() {
+      return dark
+    },
+    media: '(prefers-color-scheme: dark)',
+    onchange: null,
+    addEventListener: (_type: string, cb: () => void) => {
+      listeners.add(cb)
+    },
+    removeEventListener: (_type: string, cb: () => void) => {
+      listeners.delete(cb)
+    },
+    addListener: (cb: () => void) => listeners.add(cb),
+    removeListener: (cb: () => void) => listeners.delete(cb),
+    dispatchEvent: () => true
+  }
+  window.matchMedia = vi.fn(() => mql) as unknown as typeof window.matchMedia
+  return {
+    setDark(next: boolean) {
+      dark = next
+      for (const cb of listeners) cb()
+    },
+    get listenerCount() {
+      return listeners.size
+    }
+  }
+}
+
+describe('applyThemeClasses', () => {
+  beforeEach(() => {
+    document.documentElement.classList.remove('dark')
+    Reflect.deleteProperty(window, 'matchMedia')
+  })
+
+  it("adds .dark for 'dark'", () => {
+    applyThemeClasses('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it("removes .dark for 'light'", () => {
+    document.documentElement.classList.add('dark')
+    applyThemeClasses('light')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+
+  it("resolves 'system' to the OS preference", () => {
+    mockMatchMedia(true)
+    applyThemeClasses('system')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    mockMatchMedia(false)
+    applyThemeClasses('system')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+
+  it("treats 'system' as light when matchMedia is unavailable", () => {
+    document.documentElement.classList.add('dark')
+    applyThemeClasses('system')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+})
+
+describe('useTheme', () => {
+  let queryClient: QueryClient
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } }
+    })
+    localStorage.clear()
+    document.documentElement.classList.remove('dark')
+    Reflect.deleteProperty(window, 'matchMedia')
+  })
+
+  it("defaults to 'dark' and applies .dark on mount", async () => {
+    const { result } = renderHook(() => useTheme(), { wrapper: createWrapper(queryClient) })
+    await waitFor(() => expect(result.current.data).toBe('dark'))
+    await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(true))
+  })
+
+  it('reads the saved mode from localStorage', async () => {
+    localStorage.setItem('codelobby-theme', 'light')
+    const { result } = renderHook(() => useTheme(), { wrapper: createWrapper(queryClient) })
+    await waitFor(() => expect(result.current.data).toBe('light'))
+    await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(false))
+  })
+
+  it("falls back to 'dark' for an unknown saved value (e.g. removed windows themes)", async () => {
+    localStorage.setItem('codelobby-theme', 'windows-dark')
+    const { result } = renderHook(() => useTheme(), { wrapper: createWrapper(queryClient) })
+    await waitFor(() => expect(result.current.data).toBe('dark'))
+  })
+
+  it("follows OS changes while in 'system' mode and cleans up the listener", async () => {
+    localStorage.setItem('codelobby-theme', 'system')
+    const mm = mockMatchMedia(false)
+    const { result, unmount } = renderHook(() => useTheme(), {
+      wrapper: createWrapper(queryClient)
+    })
+    await waitFor(() => expect(result.current.data).toBe('system'))
+    await waitFor(() => expect(mm.listenerCount).toBe(1))
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+
+    // OS switches to dark → the app follows live
+    act(() => mm.setDark(true))
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    unmount()
+    expect(mm.listenerCount).toBe(0)
   })
 })
